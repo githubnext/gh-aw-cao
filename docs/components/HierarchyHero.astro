@@ -4,12 +4,8 @@ import HeroIntro from "./HeroIntro.astro";
 import LandingSlideshow from "./LandingSlideshow.astro";
 import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
-import dashboardCampaignValue from "../assets/product/cao-dashboard-campaign-value-mobile.png";
-import dashboardCampaignValueLight from "../assets/product/cao-dashboard-campaign-value-mobile-light.png";
 import dashboardMobileOverview from "../assets/product/cao-dashboard-mobile-overview.png";
 import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile-overview-light.png";
-import dashboardRunHistory from "../assets/product/cao-dashboard-run-history-mobile.png";
-import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-history-mobile-light.png";
 ---
 
 <div data-slideshow-slides>
@@ -82,47 +78,32 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
   <TerminalDemo />
 </section>
 
-<section class="product-story runs-story" aria-labelledby="runs-title" data-reveal data-slideshow-slide>
+<section class="product-story maintenance-story" aria-labelledby="maintenance-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Local workflows, central visibility</p>
-    <h2 id="runs-title">Monitor what runs.</h2>
+    <p class="section-eyebrow">Maintenance</p>
+    <h2 id="maintenance-title">Keep workflows current.</h2>
     <p>
-      See workflow health, cost, and outcomes in one dashboard. Find what needs attention, then drill into the run
-      and its evidence.
+      Track compiler versions across repositories and updates to installed campaigns. Review changes in your control
+      repository before rolling them out.{" "}
+      <a href="/gh-cao/operations/#update-cao">Maintain your control plane.</a>
     </p>
   </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-runs" data-slideshow-snippet="Workflow run history">
-    <ThemeImage
-      dark={dashboardRunHistory}
-      light={dashboardRunHistoryLight}
-      alt="Mobile CAO Runs view showing its compact app header and stacked workflow run chart by success, failure, cancellation, and unknown conclusion."
-      widths={[390, 780]}
-      sizes="(max-width: 42rem) calc(100vw - 3rem), 22rem"
-      loading="lazy"
-      class="product-image"
-    />
-  </figure>
-</section>
-
-<section class="product-story value-story reverse" aria-labelledby="value-title" data-reveal data-slideshow-slide>
-  <div class="product-story-copy">
-    <p class="section-eyebrow">Earn trust before expanding autonomy</p>
-    <h2 id="value-title">Roll out safely.</h2>
-    <p>
-      Review proposed actions before enabling live changes through explicit policy. Expand scope with evidence,
-      not just successful runs: execution success is not an accepted outcome.
-    </p>
-  </div>
-  <figure class="product-frame product-shot product-shot-mobile product-shot-value" data-slideshow-snippet="Operational value">
-    <ThemeImage
-      dark={dashboardCampaignValue}
-      light={dashboardCampaignValueLight}
-      alt="Mobile Operational Value view for githubnext/gh-cao showing AI credit per successful optimization-token-optimizer run over time."
-      widths={[390, 780]}
-      sizes="(max-width: 42rem) calc(100vw - 3rem), 22rem"
-      loading="lazy"
-      class="product-image"
-    />
+  <figure class="product-frame product-shot maintenance-board" data-slideshow-snippet="Maintenance overview">
+    <figcaption>Maintenance overview</figcaption>
+    <dl class="maintenance-steps">
+      <div>
+        <dt><span aria-hidden="true">01</span> Repositories</dt>
+        <dd>Compare installed and current workflow compiler versions.</dd>
+      </div>
+      <div>
+        <dt><span aria-hidden="true">02</span> Campaigns</dt>
+        <dd>Identify installed campaign revisions with updates available.</dd>
+      </div>
+      <div>
+        <dt><span aria-hidden="true">03</span> Reviewed updates</dt>
+        <dd>Validate changes and commit a complete runtime revision without widening rollout policy.</dd>
+      </div>
+    </dl>
   </figure>
 </section>
 </div>
@@ -611,23 +592,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
       display: none;
     }
 
-    .product-story.reverse {
-      grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.35fr);
-    }
-
-    .product-story.reverse .product-story-copy {
-      order: 2;
-    }
-
-    .product-story.reverse .product-shot {
-      order: 1;
-    }
-
-    .product-story.reverse::before {
-      right: auto;
-      left: -8rem;
-    }
-
     @keyframes section-glow-drift {
       from {
         opacity: 0.7;
@@ -656,43 +620,48 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
         0 0 0 1px color-mix(in srgb, var(--section-accent) 28%, transparent);
     }
 
-    .product-shot-mobile {
+    .maintenance-board {
+      min-width: 0;
+      margin: 0;
+      padding: clamp(1.25rem, 2.5vw, 2rem);
+      background: var(--cao-section-bg);
+      color: var(--cao-story-text);
+    }
+
+    .maintenance-board figcaption {
+      color: var(--cao-story-heading);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .maintenance-steps {
       display: grid;
-      min-height: 0;
-      place-items: start center;
-      background:
-        radial-gradient(circle at 50% 15%, rgba(63, 185, 80, 0.13), transparent 55%),
-        #0d1117;
+      gap: 1.25rem;
+      margin: 1.5rem 0 0;
     }
 
-    :global(:root[data-theme="light"]) .product-shot-mobile {
-      background:
-        radial-gradient(circle at 50% 15%, rgba(26, 127, 55, 0.1), transparent 55%),
-        #f6f8fa;
+    .maintenance-steps > div {
+      border-top: 1px solid var(--cao-section-border);
+      padding-top: 1rem;
     }
 
-    .product-shot-mobile :global(picture[data-theme-picture]) {
-      display: block;
-      width: 100%;
-      margin-inline: auto;
+    .maintenance-steps dt {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--cao-story-heading);
+      font-weight: 600;
     }
 
-    .product-shot-runs {
-      height: clamp(25rem, 38vw, 29rem);
-      padding: clamp(1rem, 2.25vw, 1.5rem);
+    .maintenance-steps dt span {
+      color: var(--cao-story-eyebrow);
+      font: 600 0.75rem/1.5 "Mona Sans Mono", monospace;
     }
 
-    .product-shot-runs :global(picture[data-theme-picture]) {
-      width: min(100%, 22rem);
-    }
-
-    .product-shot-value {
-      height: clamp(28rem, 38vw, 31rem);
-      padding: clamp(1rem, 2.25vw, 1.5rem) clamp(1rem, 3vw, 2.25rem) 0;
-    }
-
-    .product-shot-value :global(picture[data-theme-picture]) {
-      width: min(100%, 22rem);
+    .maintenance-steps dd {
+      margin: 0.5rem 0 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
     }
 
     .terminal-story :global(.terminal) {
@@ -807,20 +776,6 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
         top: 0.72rem;
       }
 
-      .product-shot-mobile {
-        width: 100%;
-      }
-
-      .product-shot-runs {
-        height: 25rem;
-        padding: 0.75rem;
-      }
-
-      .product-shot-value {
-        height: 32rem;
-        padding: 0.75rem 0.75rem 0;
-      }
-
       .product-story {
         width: calc(100% - 2rem);
         margin-block: 1rem;
@@ -830,14 +785,8 @@ import dashboardRunHistoryLight from "../assets/product/cao-dashboard-run-histor
     }
 
     @media (max-width: 52rem) {
-      .product-story,
-      .product-story.reverse {
+      .product-story {
         grid-template-columns: minmax(0, 1fr);
-      }
-
-      .product-story.reverse .product-story-copy,
-      .product-story.reverse .product-shot {
-        order: initial;
       }
     }
 

@@ -34,15 +34,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
-  assert.match(hero, /cao-dashboard-run-history-mobile\.png/);
-  assert.match(hero, /cao-dashboard-run-history-mobile-light\.png/);
-  assert.match(hero, /cao-dashboard-campaign-value-mobile\.png/);
-  assert.match(hero, /cao-dashboard-campaign-value-mobile-light\.png/);
-  assert.match(hero, /product-shot-mobile product-shot-runs/);
-  assert.match(hero, /product-shot-mobile product-shot-value/);
-  assert.match(hero, /\.product-shot-runs \{[\s\S]*?height: clamp\(25rem, 38vw, 29rem\)/);
-  assert.match(hero, /\.product-shot-value \{[\s\S]*?height: clamp\(28rem, 38vw, 31rem\)/);
-  assert.match(hero, /\.product-shot-value :global\(picture\[data-theme-picture\]\) \{[\s\S]*?width: min\(100%, 22rem\)/);
+  assert.doesNotMatch(hero, /cao-dashboard-(?:run-history|campaign-value)|runs-story|value-story/);
   assert.match(hero, /ThemeImage/);
   assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
   assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
@@ -75,10 +67,17 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
   assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
-  assert.match(hero, /Monitor what runs\./);
-  assert.match(hero, /Roll out safely\./);
-  assert.match(hero, /See workflow health, cost, and outcomes in one dashboard/);
-  assert.match(hero, /execution success is not an accepted outcome/);
+  assert.deepEqual(
+    [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
+    ["dispatch-story", "terminal-story", "maintenance-story"],
+  );
+  assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
+  assert.match(hero, /Keep workflows current\./);
+  assert.match(hero, /Track compiler versions across repositories and updates to installed campaigns/);
+  assert.match(hero, /href="\/gh-cao\/operations\/#update-cao"/);
+  assert.match(hero, /data-slideshow-snippet="Maintenance overview"/);
+  for (const label of ["Repositories", "Campaigns", "Reviewed updates"]) assert.ok(hero.includes(label));
+  assert.match(hero, /without widening rollout policy/);
   assert.doesNotMatch(hero, /https:\/\/github\.github\.com\/gh-aw\/practices\//);
   assert.doesNotMatch(hero, /One operating picture|phone-caption/);
   assert.doesNotMatch(
@@ -96,7 +95,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 5);
+  assert.equal(paragraphs.length, 4);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
