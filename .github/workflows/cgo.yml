@@ -86,7 +86,6 @@ jobs:
           --health-timeout 2s
           --health-retries 30
     env:
-      POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/cao_actions_test?sslmode=disable
       CAO_ACTIONS_SIMULATOR_POSTGRES: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -97,6 +96,8 @@ jobs:
           go-version: 1.27.3
           cache: false
       - name: Exercise local Actions and gateway with durable PostgreSQL state
+        env:
+          POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_actions_test?sslmode=disable
         run: >-
           go -C server test -race ./internal/admission
           -run '^TestLocalActionsPostgresIntegration$' -count=1 -timeout=2m -v
