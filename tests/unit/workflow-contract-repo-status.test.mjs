@@ -225,21 +225,29 @@ test("report lookups are destination-bound, include closed duplicates and fail c
 
 test("Setup quickstart is discoverable, review-first and honest about the missing recording and operational value", () => {
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
-  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart", link: "\/setup\/quickstart\/"/);
+  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart: install and monitor", link: "\/setup-quickstarts\/"[\s\S]*label: "Repo Status \(optional\)", link: "\/setup\/quickstart\/"/);
   assert.match(guide, /CAO recording not yet available/);
   assert.match(guide, /\*\*Video TODO:\*\*/);
-  assert.match(guide, /\*\*Estimated time: 30 minutes including setup\*\*/);
+  assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
   assert.match(guide, /## Prerequisites/);
-  assert.match(guide, /gh cao setup/);
-  assert.match(guide, /## Step 1[\s\S]*\*\*Repositories\*\*[\s\S]*\*\*Connections\*\*[\s\S]*\*\*CAO Activity\*\*/);
-  assert.match(guide, /An empty dashboard is expected/);
+  assert.match(guide, /Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);
+  assert.doesNotMatch(guide, /install\.sh|gh cao setup|gh cao validate|Review and apply/);
+  assert.match(guide, /Reuse your setup/);
   assert.deepEqual([...guide.matchAll(/^## Step \d - (.+)$/gm)].map(match => match[1]), [
-    "Set up CAO and monitor one repository",
     "Add and review the sample workflow",
     "Request one bounded review",
     "Wait for the run and inspect its result",
     "Customize your report (optional)",
   ]);
+  for (const anchor of [
+    "step-1---set-up-cao-and-monitor-one-repository",
+    "step-2---add-and-review-the-sample-workflow",
+    "step-3---request-one-bounded-review",
+    "step-4---wait-for-the-run-and-inspect-its-result",
+    "step-5---customize-your-report-optional",
+  ]) {
+    assert.ok(guide.includes(`<span id="${anchor}"></span>`), anchor);
+  }
   assert.match(guide, /## Continue learning/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
   assert.match(guide, /gh aw add https:\/\/github\.com\/githubnext\/gh-cao\/blob\/main\/\.github\/workflows\/repo-status\.md/);

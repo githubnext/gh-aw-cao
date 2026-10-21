@@ -13,6 +13,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
     "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
+    "gh cao --version",
     "gh cao setup",
     "gh cao doctor",
     'git commit -m "Set up CAO monitoring"',
@@ -28,14 +29,27 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.deepEqual([...monitoring.matchAll(/^## Step \d - (.+)$/gm)].map((match) => match[1]), [
     "Install CAO",
     "Connect one repository",
-    "Review and publish your configuration",
-    "Wait for collection and inspect your dashboard",
+    "Publish and open your dashboard",
   ]);
   assert.match(monitoring, /\*\*Estimated time: 15 minutes\*\*/);
   assert.match(monitoring, /:::note\[Video TODO\]/);
+  assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
+  const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
+  assert.match(install, /`gh cao` GitHub CLI extension/);
+  assert.match(install, /repository\s+runtime/);
+  assert.match(install, /required `gh-aw` extension/);
+  assert.match(install, /--create-repo OWNER\/CONTROL_REPOSITORY/);
+  assert.doesNotMatch(install, /gh extension install githubnext\/gh-cao/);
   assert.match(monitoring, /## Prerequisites/);
   assert.match(gettingStarted, /## Continue learning/);
   assert.match(gettingStarted, /<span id="4-open-your-dashboard"><\/span>/);
+  for (const anchor of [
+    "guided-setup-instead",
+    "step-3---review-and-publish-your-configuration",
+    "step-4---wait-for-collection-and-inspect-your-dashboard",
+  ]) {
+    assert.ok(gettingStarted.includes(`<span id="${anchor}"></span>`), anchor);
+  }
   assert.ok(gettingStarted.trim().split(/\s+/).length < 1000, "first-run guide should stay concise");
   assert.doesNotMatch(monitoring, /--quickstart|gh aw run|cao\.sh (?:add|enable|quickstart)|AI credits/);
   assert.match(monitoring, /setup installs no campaign and runs no workflow/i);
@@ -47,7 +61,16 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /not every ordinary Actions job/);
   assert.match(monitoring, /does\s+\*\*not\*\*\s+guarantee a\s+private Pages site/);
   assert.match(monitoring, /including its Pages deployment/);
-  assert.match(monitoring, /headless setup only\s+supports the exact current public control repository/);
+  assert.match(monitoring, /authentication\.md#public-only-monitoring-quickstart/);
+  const nativeSetup = readFileSync("internal/cli/native_setup.go", "utf8");
+  for (const prompt of ["Repositories CAO should read", "Authentication", "Apply this setup?"]) {
+    assert.ok(nativeSetup.includes(prompt) && monitoring.includes(`**${prompt}`), prompt);
+  }
+  assert.match(monitoring, /public-only[\s\S]*GITHUB_TOKEN/);
+  assert.match(monitoring, /Decline for non-public evidence/);
+  assert.match(monitoring, /before retrying; do not publish an incomplete setup/);
+  assert.doesNotMatch(monitoring, /gh cao validate/);
+  assert.match(gettingStarted.slice(optional), /setup\/quickstart\.md/);
   assert.match(gettingStarted.slice(optional), /repo-assist-quickstart\.md/);
   assert.match(gettingStarted.slice(optional), /Installation is not execution/);
   assert.match(gettingStarted.slice(optional), /operation-patterns\.md/);

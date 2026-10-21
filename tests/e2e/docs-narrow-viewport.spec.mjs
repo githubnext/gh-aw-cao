@@ -30,9 +30,8 @@ for (const width of [320, 1280]) {
   test(`Repo Status quickstart has honest video status and working links at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     expect((await page.goto("setup/quickstart/"))?.ok()).toBe(true);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Quickstart");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
     const content = page.locator(".sl-markdown-content");
-    await expect(content.getByRole("heading", { name: "Video walkthrough", exact: true })).toBeVisible();
     await expect(content).toContainText("CAO recording not yet available");
     await expect(content).toContainText("There is no video to play yet");
     await expect(content.locator("video, iframe")).toHaveCount(0);
@@ -41,9 +40,23 @@ for (const width of [320, 1280]) {
     await expect(content).toContainText("No campaign, orchestrator or worker dispatch is required");
     await expect(content).toContainText("manual-only");
     await expect(content).toContainText("Operational value is not measurable yet");
+    await expect(content.locator("h2")).toHaveText([
+      "Prerequisites",
+      "Step 1 - Add and review the sample workflow",
+      "Step 2 - Request one bounded review",
+      "Step 3 - Wait for the run and inspect its result",
+      "Step 4 - Customize your report (optional)",
+      "Continue learning",
+    ]);
+    await expect(content).not.toContainText("install.sh");
+    await expect(content.getByRole("link", { name: "Set Up CAO", exact: true }))
+      .toHaveAttribute("href", "/gh-cao/setup-quickstarts/");
     for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
       const href = await link.getAttribute("href");
-      expect((await page.request.get(href)).ok(), href).toBe(true);
+      const response = await page.request.get(href);
+      expect(response.ok(), href).toBe(true);
+      const hash = new URL(href, page.url()).hash;
+      if (hash) expect(await response.text(), href).toContain(`id="${hash.slice(1)}"`);
     }
     expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
   });
@@ -195,13 +208,14 @@ test("Setup navigation follows the user journey without duplicate authentication
   await expect(introductionGroup.getByRole("link")).toHaveText([
     "What is Central Agentic Ops?",
     "How does CAO work?",
+    "From outcome to execution",
     "Architecture",
   ]);
 
   const setupGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Setup$/ }).locator("..");
   await expect(setupGroup.getByRole("link")).toHaveText([
-    "Quickstart",
-    "Set up and monitor",
+    "Quickstart: install and monitor",
+    "Repo Status (optional)",
     "Add a campaign (optional)",
     "CAO commands",
     "Authentication",
@@ -212,16 +226,37 @@ test("getting started leads from monitoring to a separate optional campaign guid
   expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
   await expect(page.locator("main h2")).toHaveText([
     "Prerequisites",
-    "1. Install CAO",
-    "2. Connect one repository",
-    "3. Publish your configuration",
-    "4. Open your dashboard",
+    "Step 1 - Install CAO",
+    "Step 2 - Connect one repository",
+    "Step 3 - Publish and open your dashboard",
     "Optional: add automation later",
+    "Continue learning",
   ]);
   const content = page.locator(".sl-markdown-content");
-  await expect(content).toContainText("This setup is for monitoring only.");
+  await expect(content).toContainText("This guide sets up monitoring only.");
   await expect(content).toContainText("An empty dashboard is expected.");
   await expect(content).not.toContainText("gh aw run");
+  await expect(content).toContainText("gh cao GitHub CLI extension");
+  await expect(content).toContainText("repository runtime");
+  await expect(content.locator(".starlight-aside").first()).toContainText("recording not yet available");
+  expect(await content.locator(".starlight-aside").first().evaluate(element =>
+    Boolean(element.compareDocumentPosition(document.querySelector("h2#prerequisites")) & Node.DOCUMENT_POSITION_FOLLOWING),
+  )).toBe(true);
+  await expect(content.locator("video, iframe")).toHaveCount(0);
+  for (const anchor of [
+    "guided-setup-instead", "4-open-your-dashboard",
+    "step-3---review-and-publish-your-configuration",
+    "step-4---wait-for-collection-and-inspect-your-dashboard",
+  ]) {
+    await expect(content.locator(`[id="${anchor}"]`)).toHaveCount(1);
+  }
+  for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
+    const href = await link.getAttribute("href");
+    const response = await page.request.get(href);
+    expect(response.ok(), href).toBe(true);
+    const hash = new URL(href, page.url()).hash;
+    if (hash) expect(await response.text(), href).toContain(`id="${hash.slice(1)}"`);
+  }
   for (const [name, viewport] of [
     ["desktop", { width: 1280, height: 900 }],
     ["mobile", { width: 390, height: 844 }],
@@ -231,9 +266,9 @@ test("getting started leads from monitoring to a separate optional campaign guid
     await page.screenshot({ path: screenshot, fullPage: true });
     await testInfo.attach(`Getting started (${name})`, { path: screenshot, contentType: "image/png" });
   }
-  await content.getByRole("link", { name: "Repo Assist walkthrough", exact: true }).click();
-  await expect(page).toHaveURL(/\/repo-assist-quickstart\/$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Try a Repo Assist review");
+  await content.getByRole("link", { name: "Repo Status quickstart", exact: true }).click();
+  await expect(page).toHaveURL(/\/setup\/quickstart\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
 });
 
 test("CAO introduction presents operating capabilities and leads to how CAO works", async ({ page }, testInfo) => {

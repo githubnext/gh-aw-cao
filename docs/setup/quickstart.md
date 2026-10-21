@@ -1,5 +1,5 @@
 ---
-title: Quickstart
+title: Repo Status quickstart
 description: Run a standalone Repo Status workflow against an explicitly scoped repository and review your first daily report in CAO.
 ---
 
@@ -8,7 +8,7 @@ your control repository, select one target, and review yesterday's activity
 without writing to the target. By the end of this guide, you will have requested
 one bounded review and know where to find its report or no-op explanation.
 
-**Estimated time: 30 minutes including setup**, plus credential approval,
+**Estimated time: 15 minutes after setup**, plus credential approval,
 review, and workflow execution time. No campaign, orchestrator or worker
 dispatch is required.
 
@@ -20,10 +20,13 @@ follow the written steps below.
 
 ## Prerequisites
 
-- **Local tools and repository access.** You need Git, Bash, `curl`, Node.js 24+,
-  GitHub CLI 2.68+, an authenticated `gh`, and permission to configure Actions,
-  credentials, and Pages in your control repository. Start from a clean checkout
-  of its default branch.
+<span id="step-1---set-up-cao-and-monitor-one-repository"></span>
+
+- **A configured CAO control repository.** Complete [Set Up CAO](../setup-quickstarts.md)
+  first: install the extension and runtime, connect one repository, and publish
+  your dashboard. Return here for optional automation; monitoring alone does
+  not run Repo Status. Reuse your setup and start from a clean checkout of
+  the control repository's default branch.
 - **One target repository.** Keep exact scope for
   `TARGET_OWNER/TARGET_REPOSITORY` and the control repository, not organization
   wildcards. Use a private control repository for private or internal evidence:
@@ -38,30 +41,9 @@ follow the written steps below.
   data handling, permitted integrations, and access to logs and artifacts before
   its first run.
 
-## Step 1 - Set up CAO and monitor one repository
+<span id="step-2---add-and-review-the-sample-workflow"></span>
 
-If you have already completed [Set Up CAO](../setup-quickstarts.md), reuse that
-configuration and dashboard; continue to Step 2.
-
-Otherwise, install CAO and start guided setup from your control repository:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
-gh cao setup
-```
-
-In **Repositories**, enter one exact `TARGET_OWNER/TARGET_REPOSITORY` to monitor;
-keep the control repository included. In **Connections**, configure credentials
-for that scope, then **Review and apply**. Setup configures monitoring, not
-execution: it does not commit, push, or run the sample workflow.
-
-Follow [Set Up CAO](../setup-quickstarts.md#step-3---review-and-publish-your-configuration)
-to review and publish the configuration, wait for **CAO Activity** and **CAO
-Dashboard**, and open your dashboard. Inspect existing runs if available.
-An empty dashboard is expected if the monitored repository has no Agentic
-Workflow history; generating activity is not required before continuing.
-
-## Step 2 - Add and review the sample workflow
+## Step 1 - Add and review the sample workflow
 
 From your control repository's checkout, install the CAO Repo Status workflow:
 
@@ -108,7 +90,6 @@ cause an invocation to discover or dispatch additional work.
 ```bash
 gh aw compile .github/workflows/repo-status.md --schedule-seed githubnext/gh-cao
 gh cao doctor
-gh cao validate
 git status --short
 git diff -- .github
 ```
@@ -120,7 +101,9 @@ repository's default branch. Check **CAO validation** in Actions.
 
 Publishing this manual-only workflow does not start a run or a schedule.
 
-## Step 3 - Request one bounded review
+<span id="step-3---request-one-bounded-review"></span>
+
+## Step 2 - Request one bounded review
 
 Replace all coordinates and `main` with your control repository's actual
 default branch. Run this from its checkout:
@@ -140,7 +123,9 @@ create a report in the control repository: it is not a no-write simulation.
 The per-run ceiling is 300 AI credits, plus any gh-aw output check. A ceiling
 is not expected consumption.
 
-## Step 4 - Wait for the run and inspect its result
+<span id="step-4---wait-for-the-run-and-inspect-its-result"></span>
+
+## Step 3 - Wait for the run and inspect its result
 
 Open the control repository's **Actions** tab and follow **Repo Status**.
 Allow time for model execution and output checks; the workflow has a
@@ -167,13 +152,15 @@ Reports expire three days after creation; later daily reports refresh an owned
 report's body without closing another target's issue. Review mode creates no
 target issue, PR, comment, branch or code change.
 
-## Step 5 - Customize your report (optional)
+<span id="step-5---customize-your-report-optional"></span>
+
+## Step 4 - Customize your report (optional)
 
 Add optional report priorities in `.github/cao/repo-status.md`; steering cannot
 expand authority. Review, commit, and publish your steering change, then repeat
-Step 3 with the same target and review-mode inputs to try it. Edit the Markdown
+Step 2 with the same target and review-mode inputs to try it. Edit the Markdown
 workflow source, not its generated `.lock.yml`; if you change the workflow,
-repeat Step 2's compile, validation, and review before running again.
+repeat Step 1's compile, validation, and review before running again.
 
 To stop future execution, set the standalone workflow's
 `enabled` to `false`, commit and publish, and cancel any active runs.
