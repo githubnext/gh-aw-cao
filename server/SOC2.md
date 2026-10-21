@@ -197,14 +197,14 @@ remain coordinator-owned to avoid conflicting edits.
 
 | Finding / work | Session ID | Current state |
 | --- | --- | --- |
-| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Open non-draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); identity/migration proposal, not merged/closed |
+| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Open non-draft [#19325](https://github.com/githubnext/gh-cao/pull/19325); integrated-base head `dfdd11f3c`, CI pending; not merged/closed |
 | DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Open non-draft [#19326](https://github.com/githubnext/gh-cao/pull/19326); shared/derived erasure proposal, not merged/closed |
 | DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | [#19322](https://github.com/githubnext/gh-cao/pull/19322) merged into assessment branch; combined/default-branch validation pending |
-| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Draft [#19327](https://github.com/githubnext/gh-cao/pull/19327); lifecycle/adapter proposal, not merged/closed |
+| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | [#19327](https://github.com/githubnext/gh-cao/pull/19327) merged into assessment branch; coordinated rollout/reconciliation and default-branch closure pending |
 | IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged into assessment branch; default-branch/provider closure pending |
-| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Draft [#19328](https://github.com/githubnext/gh-cao/pull/19328); immutable actor proposal, not merged/closed |
+| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Open non-draft [#19328](https://github.com/githubnext/gh-cao/pull/19328); immutable actor proposal, not merged/closed |
 | OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Open non-draft [#19323](https://github.com/githubnext/gh-cao/pull/19323); durable lifecycle proposal, not merged/closed |
-| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Open non-draft [#19324](https://github.com/githubnext/gh-cao/pull/19324); explicit OTLP route proposed, not merged/closed |
+| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | [#19324](https://github.com/githubnext/gh-cao/pull/19324) merged into assessment branch; deployed role/collector/alert evidence pending |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Draft [#19317](https://github.com/githubnext/gh-cao/pull/19317); development-only restriction proposed, not merged/closed |
 | OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged into assessment branch; targeted integration passed; default-branch/deployment closure pending |
 | DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged into assessment branch; targeted integration passed; default-branch gate pending |
@@ -559,6 +559,30 @@ now integrated into the assessment branch, not a current open proposal;
 combined DATA-01/02 integration and required final checks remain pending.
 The earlier snapshot's counts are historical, not a claim of present PR state.
 
+#### DATA-01 integrated-base update and subsequent remote integrations
+
+DATA-01 [#19325](https://github.com/githubnext/gh-cao/pull/19325) now has
+head `dfdd11f3cb8dad7fce79e43602446ccce7ba8a6b`, incorporating assessment
+base `a643b5f17`. Its single `processErasure` call retains cancellation-aware
+`ForgetContext` and DATA-03 durable intent-before-ACK/generation behavior.
+Preflight additionally validates explicit normalized repository IDs, owner/name
+and repositoryId references, allowing legitimate normalized replay shards while
+rejecting conflicting identities. The session reports 271 collector tests
+with real isolated Redis/PostgreSQL under race detection, zero skips/failures,
+plus lint/types/build and 73-workflow compile. Coordinator verified current
+head/open/non-draft and **in-progress CI**, not a completed CI gate.
+Deployment collision inventory/legacy repair remains unresolved.
+
+A GitHub refresh reports OPS-02 merged at 15:59:15 UTC as `a643b5f17`,
+and IAM-001 at 15:59:48 UTC as `775d5ee7e`. The coordinator fast-forwarded
+those externally merged changes without initiating merges or overriding work.
+EXEC-01 is now open/non-draft; earlier draft observations remain history.
+Six of eleven code corrections and the daily worker are now integrated into
+the assessment branch; five code PRs remain open (DATA-01/02, EXEC-01,
+OPS-01/03). Default/control-branch deployment and operational closure remain
+pending. IAM-001 coordinated-replica/key/debt reconciliation and OPS-02 real
+collector/role/alert evidence are still required despite source integration.
+
 #### OPS-04 remediation proposal received 2026-10-21
 
 Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), commit
@@ -857,7 +881,7 @@ Organizational/deployment/period evidence remains pending. Scoped repository
 remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
-IAM-002 and DATA-03 are also integrated. IAM-001, EXEC-01, OPS-01/02/03 and DATA-01/02
+IAM-001/002, DATA-03 and OPS-02 are also integrated. EXEC-01, OPS-01/03 and DATA-01/02
 remain separately validated proposals awaiting review, not integrated fixes.
 The daily worker source is integrated
 into this assessment branch but not demonstrated active on the control branch.

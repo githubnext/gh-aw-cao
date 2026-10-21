@@ -457,3 +457,25 @@ Dates are UTC. Corrections are new events; original observations remain.
   Source correction is integrated; combined DATA-01/02 and final required
   validation/default-branch/deployment evidence remain pending.
 - Decision/lifecycle: `remediate` / `in-progress`; no operating control closed.
+
+## 2026-10-21 - SOC2-LOG-021 - Integrated-base shard proposal and two remote merges
+
+- Type: integration follow-up, review refresh and observed source integration.
+- Source/evidence: DATA-01 [#19325](https://github.com/githubnext/gh-cao/pull/19325)
+  head `dfdd11f3cb8dad7fce79e43602446ccce7ba8a6b`, assessment base
+  `a643b5f17`; coordinator verified head/open/non-draft and in-progress CI.
+- Specification: RFC-035, record schema version 1.
+- DATA-01 preserves DATA-03's single helper/durable generations, uses
+  ForgetContext and validates normalized repository identity before erasure.
+  Session reports 271 real Redis/PostgreSQL collector race tests with zero
+  skips/failures, lint/type/build and 73-workflow compilation; CI still pending.
+- Remote integration: OPS-02 [#19324](https://github.com/githubnext/gh-cao/pull/19324)
+  merged at 15:59:15 UTC as `a643b5f17`; IAM-001
+  [#19327](https://github.com/githubnext/gh-cao/pull/19327) at 15:59:48 UTC
+  as `775d5ee7e`. Coordinator fast-forwarded externally merged code only.
+- Current snapshot: six of eleven source corrections and daily worker
+  integrated on assessment branch; DATA-01/02, EXEC-01 and OPS-01/03 remain
+  open, with EXEC-01 now non-draft. Earlier status snapshots are history.
+- Decision/lifecycle: remediation remains in progress. No deployed identity,
+  collector/alert, legacy migration, key/debt reconciliation, provider/period
+  control or main/control-branch activation closed.
