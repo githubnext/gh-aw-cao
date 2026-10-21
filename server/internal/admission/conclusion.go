@@ -60,20 +60,13 @@ func (s *Service) Conclude(w http.ResponseWriter, r *http.Request) {
 		})
 		if err == nil && !receipt.Populated {
 			_, err = observeOperation(ctx, telemetry.SpanConclusionPublish, func(ctx context.Context) (struct{}, error) {
-				if receipt.AcceptedAt.IsZero() {
-					return struct{}{}, ErrUnavailable
-				}
-				if err := s.ConclusionRuns.RecordConcludedRun(ctx, identity, input, receipt.AcceptedAt); err != nil {
-					return struct{}{}, err
-				}
-				return struct{}{}, s.Conclusions.CompleteConclusion(ctx, identity)
+				return struct{}{}, s.publishConclusion(ctx, identity, input, receipt)
 			})
 		}
 	}
 	if err != nil {
-		if !errors.Is(err, ErrDenied) {
-			status = http.StatusServiceUnavailable
-		}
+		status = conclusionFailureStatus(err)
+		admissionLog.Printf("conclusion rejected: status=%d denied=%t", status, errors.Is(err, ErrDenied))
 		return
 	}
 	if ctx.Err() != nil {
@@ -81,4 +74,26 @@ func (s *Service) Conclude(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	status = http.StatusNoContent
+	admissionLog.Printf("conclusion accepted")
+}
+
+// conclusionFailureStatus maps a failed conclusion step to an HTTP status:
+// denials stay opaque as 403 while every other failure is retryable as 503.
+func conclusionFailureStatus(err error) int {
+	if errors.Is(err, ErrDenied) {
+		return http.StatusForbidden
+	}
+	return http.StatusServiceUnavailable
+}
+
+// publishConclusion publishes a retained, unpopulated conclusion and then
+// marks it complete so retries stop repeating downstream processing.
+func (s *Service) publishConclusion(ctx context.Context, identity Identity, input ConclusionRequest, receipt ConclusionReceipt) error {
+	if receipt.AcceptedAt.IsZero() {
+		return ErrUnavailable
+	}
+	if err := s.ConclusionRuns.RecordConcludedRun(ctx, identity, input, receipt.AcceptedAt); err != nil {
+		return err
+	}
+	return s.Conclusions.CompleteConclusion(ctx, identity)
 }
