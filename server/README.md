@@ -3305,7 +3305,17 @@ versionless Key Vault reference so ordinary credential rotation
 does not require rewriting application configuration. Session-key rotation uses
 the optional secure `previousSessionSecret` deployment parameter: deploy the old
 key as previous and the new key as current, wait for active sessions and queued
-revocations to drain, then remove the previous key. Encrypted records carry a
+revocations (including expired-session cleanup) to drain, then remove the
+previous key. Unknown-expiry GitHub tokens have no local time-based drain
+deadline: retain their key until successful revocation or independently
+confirmed provider expiry. New session records preserve cleanup ownership
+after session authority expires, so outstanding debt consumes protected
+capacity and can backpressure sign-in. Stop old replicas before rolling out
+the new Redis session-envelope format, preserve the stable revocation prefix,
+and reconcile pre-upgrade sessions/abandoned grants separately. Do not treat
+deployment or the local session TTL as provider revocation. See
+[OAuth cleanup and rotation](SECURITY.md#github-oauth-and-authorization) for
+outage ownership and restart limitations. Encrypted records carry a
 key identifier, and the server can read both keys during that window. The
 template outputs only non-secret host names, redirect URI, Redis database name,
 and Key Vault URI. Redis access keys

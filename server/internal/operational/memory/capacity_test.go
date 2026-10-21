@@ -12,10 +12,10 @@ func TestProtectedByteBudgetDoesNotPartiallyChangeOAuth(t *testing.T) {
 	s, _ := fixture(t, Config{MaxProtectedBytes: 512})
 	ctx := t.Context()
 	value := strings.Repeat("s", 100)
-	must(t, s.PutSession(ctx, "one", value, time.Hour))
-	must(t, s.PutSession(ctx, "two", value, time.Hour))
-	wantError(t, s.PutSession(ctx, "three", value, time.Hour), operational.ErrCapacity)
-	ok, err := s.CompareSession(ctx, "one", value, strings.Repeat("s", 300), time.Hour)
+	must(t, s.PutSession(ctx, "one", value, time.Hour, ""))
+	must(t, s.PutSession(ctx, "two", value, time.Hour, ""))
+	wantError(t, s.PutSession(ctx, "three", value, time.Hour, ""), operational.ErrCapacity)
+	ok, err := s.CompareSession(ctx, "one", value, strings.Repeat("s", 300), time.Hour, "")
 	wantError(t, err, operational.ErrCapacity)
 	if ok {
 		t.Fatal("failed CAS updated session")
@@ -109,7 +109,7 @@ func TestPromotionReusesRetiredDelayedNameCapacity(t *testing.T) {
 func TestInvalidRecordsAndEmptyPayloadDistinguishMiss(t *testing.T) {
 	s, _ := fixture(t, Config{MaxRecordBytes: 16})
 	ctx := t.Context()
-	wantError(t, s.PutSession(ctx, "session", strings.Repeat("s", 17), time.Hour), ErrInvalid)
+	wantError(t, s.PutSession(ctx, "session", strings.Repeat("s", 17), time.Hour, ""), ErrInvalid)
 	wantError(t, s.WriteAttribute(ctx, "meta", "field", strings.Repeat("s", 17)), ErrInvalid)
 	wantError(t, s.SetOperationalState(ctx, "state", make([]byte, 17)), ErrInvalid)
 	_, err := s.EnqueueTask(ctx, operational.EnqueueRequest{Queue: "tasks", Fields: operational.TaskFields{Task: strings.Repeat("s", 17)}})

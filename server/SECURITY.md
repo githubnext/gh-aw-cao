@@ -451,12 +451,47 @@ Encrypted session and pending-revocation records carry a non-secret key
 identifier. During controlled rotation, configure the old key through
 `CAO_SESSION_SECRET_PREVIOUS` while `CAO_SESSION_SECRET` contains the new key;
 remove the previous key only after active sessions and queued revocations using
-it have drained or their credentials have expired. The revocation worker runs
-at startup and every minute, retries bounded batches, and retains encrypted
-queue records through the latest known access/refresh credential expiry.
+it have drained or every remaining credential has provider-confirmed expiry.
+The revocation worker runs at startup and every minute and retries bounded
+batches. Local one-hour access and thirty-day refresh/session deadlines bound
+CAO authority; they never prove that GitHub credentials expired. Missing,
+nonpositive, overflowing, and legacy expiry metadata is unknown for cleanup.
+An unknown-expiry credential remains encrypted cleanup debt until GitHub
+accepts revocation (including already-absent responses); elapsed local deadlines
+do not release the record or permit key retirement. Confirmed expiry releases
+a record only when every credential actually present has expired.
+
+Inactive sessions retain their final encrypted cleanup owner after their
+local authority expires. PostgreSQL and memory stage expired sessions from
+protected records; Redis retains persistent encrypted session envelopes behind
+a stable deployment-scoped due index. Reads and CAS reject expired sessions
+before the worker runs, and maintenance cannot delete their cleanup debt.
+Session admission reserves the configured cleanup destination's capacity;
+pending debt backpressures new admission rather than evicting credentials.
+No-refresh and failed-refresh paths use atomic invalidation, just like logout.
 Refresh persistence uses an atomic compare-and-swap against the encrypted
 session record, so concurrent logout cannot be overwritten by a late token
 refresh; superseded credentials are revoked or queued separately.
+
+If both revocation and protected persistence fail for newly exchanged tokens,
+the request keeps a cleanup owner and retries independently of client
+cancellation until revocation, durable queuing, or confirmed provider expiry.
+At most sixteen exchanges per process may hold such ownership; exhausted
+capacity refuses further exchanges before asking GitHub for tokens. These
+requests can remain outstanding during a sustained outage. A forced process
+kill between provider issuance and durable persistence can still lose that
+in-memory owner; graceful shutdown must allow cleanup to finish. The opted-in
+memory backend additionally loses all retained debt on restart.
+
+Roll out the new session-envelope format with old replicas stopped: older
+executables cannot read the new Redis records and can still TTL-delete older
+ones. Preserve the stable revocation prefix, storage, and current/previous keys.
+Existing queued records without provider-expiry fields are conservatively
+unknown; do not delete them on their old local deadlines. Existing pre-upgrade
+sessions need interactive reauthentication/reconciliation: already deleted
+sessions or abandoned grants cannot be reconstructed from this fix. Operators
+must reconcile outstanding GitHub grants through a separately authorized
+procedure; deployment alone does not revoke them.
 
 Access tokens and refresh tokens remain server-side. They are encrypted with an
 AES-GCM key derived from `CAO_SESSION_SECRET` before being stored in Redis under
@@ -524,7 +559,8 @@ The readable CSRF cookie expires one day before the session cookie; if it is
 missing, the dashboard first makes an authenticated read to restore both cookies
 before sending a mutation. A missing session or failed renewal cannot authorize
 a mutation. If refresh fails or the
-refresh token has expired, the session is deleted, cookies are cleared, and the
+refresh token has expired, session authority is removed, cleanup is staged,
+cookies are cleared, and the
 client must reauthenticate. Logout revokes both the current access token and
 the current refresh token when GitHub accepts revocation, deletes the Redis
 session, and clears cookies.

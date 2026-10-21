@@ -69,6 +69,25 @@ together. Expired sessions and leases MUST never grant authority. Accepted work,
 enrollment, checkpoints, and pending revocations MUST NOT be evicted by cache
 pressure or maintenance.
 
+Session writes and CAS MUST include the deployment's opaque cleanup namespace.
+Session TTL MUST expire authority without deleting the final encrypted
+credential owner. Expired reads and CAS MUST fail closed even before cleanup
+runs. `PendingRevocation` MUST atomically transfer a bounded batch of expired
+sessions into that namespace's protected revocation queue. Invalidation and
+direct deletion MUST also transfer ownership rather than erase credentials;
+failed transitions MUST retain the previous owner. Maintenance MUST NOT delete
+expired session credentials or their reserved cleanup destination. Capacity for
+the configured destination MUST be reserved at admission, including bytes and
+entries; pending debt MUST backpressure admission instead of being evicted.
+
+Provider expiry MUST be recorded separately from local access, refresh, cookie,
+and session deadlines. Unknown/nonexpiring credentials and legacy records
+without provider evidence MUST remain cleanup debt until revocation succeeds.
+Expiry alone MAY release a record only when every present credential has a
+provider-confirmed elapsed expiry. Rotation MUST NOT copy a predecessor's
+provider expiry to a different credential. Missing decryption keys and provider
+or persistence outages MUST NOT complete or evict pending cleanup.
+
 Blocking queue reads MUST release their transaction between bounded polling
 attempts and honor cancellation. Maintenance MUST be application-owned and
 bounded to at most 512 expired protected records and 512 expired cache records

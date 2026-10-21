@@ -141,6 +141,9 @@ type githubOAuth struct {
 	key         []byte
 	keys        map[string][]byte
 	log         func(string)
+	// Bound exchanges that might need an in-memory cleanup owner while both
+	// GitHub and protected storage are unavailable.
+	exchanges chan struct{}
 	// Set only when hosted CLI actions are enabled. Rechecked at both ends
 	// of explicit repository consent; ordinary login never consults it.
 	repositoryConsentAllowed func(oauthSession) bool
@@ -156,8 +159,12 @@ type oauthSession struct {
 	RefreshToken         string    `json:"refreshToken"`
 	AccessExpires        time.Time `json:"accessExpires"`
 	RefreshExpires       time.Time `json:"refreshExpires"`
-	AuthorizedAt         time.Time `json:"authorizedAt"`
-	CSRFToken            string    `json:"csrfToken"`
+	// Local access/refresh deadlines above never prove provider expiry.
+	// Missing provider deadlines (including legacy records) retain cleanup debt.
+	ProviderAccessExpires  time.Time `json:"providerAccessExpires,omitempty"`
+	ProviderRefreshExpires time.Time `json:"providerRefreshExpires,omitempty"`
+	AuthorizedAt           time.Time `json:"authorizedAt"`
+	CSRFToken              string    `json:"csrfToken"`
 	// AuthenticatedAt is set only by an interactive authorization-code
 	// callback and is the step-up time for administrator operations.
 	AuthenticatedAt time.Time `json:"authenticatedAt,omitempty"`
@@ -195,6 +202,36 @@ type tokenResponse struct {
 	TokenType             string `json:"token_type"`
 	Error                 string `json:"error"`
 	ErrorDescription      string `json:"error_description"`
+}
+
+func providerTokenExpiry(now time.Time, seconds int64) time.Time {
+	if seconds <= 0 || seconds > int64((1<<63-1)/time.Second) {
+		return time.Time{}
+	}
+	return now.Add(time.Duration(seconds) * time.Second)
+}
+
+func (session *oauthSession) applyTokens(tokens tokenResponse, now time.Time) {
+	session.AccessToken = tokens.AccessToken
+	session.ProviderAccessExpires = providerTokenExpiry(now, tokens.ExpiresIn)
+	session.AccessExpires = session.ProviderAccessExpires
+	if session.AccessExpires.IsZero() {
+		session.AccessExpires = now.Add(time.Hour)
+	}
+	if tokens.ExpiresIn < 0 {
+		session.AccessExpires = now
+	}
+	if tokens.RefreshToken != "" {
+		if tokens.RefreshToken != session.RefreshToken {
+			session.RefreshExpires = now.Add(sessionTTL)
+			session.ProviderRefreshExpires = time.Time{}
+		}
+		session.RefreshToken = tokens.RefreshToken
+	}
+	if expires := providerTokenExpiry(now, tokens.RefreshTokenExpiresIn); !expires.IsZero() {
+		session.RefreshExpires = expires
+		session.ProviderRefreshExpires = expires
+	}
 }
 
 func (config *GitHubOAuthConfig) validate() error {
@@ -275,6 +312,7 @@ func newGitHubOAuth(config GitHubOAuthConfig, sessions operational.SessionStore,
 		revocations: revocations,
 		key:         sum[:],
 		keys:        keys,
+		exchanges:   make(chan struct{}, 16),
 		log: func(branch string) {
 			serverLog.Printf("oauth branch=%s", branch)
 		},
@@ -461,6 +499,11 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 		fail(http.StatusBadRequest, reason)
 		return
 	}
+	if !oauth.acquireExchange() {
+		fail(http.StatusServiceUnavailable, "credential_cleanup_capacity")
+		return
+	}
+	defer oauth.releaseExchange()
 	tokens, err := oauth.exchange(ctx, url.Values{
 		"client_id":     {oauth.config.ClientID},
 		"client_secret": {oauth.config.ClientSecret},
@@ -475,21 +518,16 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 	}
 	now := time.Now().UTC()
 	session := oauthSession{
-		AccessToken:    tokens.AccessToken,
-		RefreshToken:   tokens.RefreshToken,
-		AccessExpires:  now.Add(time.Duration(tokens.ExpiresIn) * time.Second),
-		RefreshExpires: now.Add(time.Duration(tokens.RefreshTokenExpiresIn) * time.Second),
-		AuthorizedAt:   now,
+		AuthorizedAt: now,
 	}
-	if tokens.ExpiresIn == 0 {
+	session.applyTokens(tokens, now)
+	if session.ProviderAccessExpires.IsZero() {
 		oauth.logBranch("callback.access_expiry_defaulted")
-		session.AccessExpires = now.Add(time.Hour)
 	} else {
 		oauth.logBranch("callback.access_expiry_provided")
 	}
-	if tokens.RefreshTokenExpiresIn <= 0 {
+	if session.ProviderRefreshExpires.IsZero() {
 		oauth.logBranch("callback.refresh_expiry_defaulted")
-		session.RefreshExpires = now.Add(sessionTTL)
 	} else {
 		oauth.logBranch("callback.refresh_expiry_provided")
 	}
@@ -505,6 +543,7 @@ func (oauth *githubOAuth) callback(response http.ResponseWriter, request *http.R
 				if oauth.queueRevocation(queueCtx, session) != nil {
 					oauth.logBranch("callback.revocation_queue_failed")
 					recordOAuthDecision(context.WithoutCancel(ctx), "callback_cleanup", "queue_failed")
+					oauth.retainCredentialCleanup(ctx, session)
 				} else {
 					oauth.logBranch("callback.revocation_queued")
 					recordOAuthDecision(context.WithoutCancel(ctx), "callback_cleanup", "queued")
@@ -754,15 +793,15 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		}
 		return session, true
 	}
-	if session.RefreshToken == "" || time.Now().UTC().After(session.RefreshExpires) {
-		if err := oauth.deleteSession(request.Context(), session.ID); err != nil {
-			oauth.logBranch("session.expired_delete_failed")
-		} else {
-			oauth.logBranch("session.expired_deleted")
-		}
-		oauth.clearSessionCookies(response)
+	if session.RefreshToken == "" || !time.Now().UTC().Before(session.RefreshExpires) {
+		oauth.logBranch("session.expired_revocation_required")
+		oauth.invalidateSessionIfUnchanged(response, request.Context(), session.ID, expected)
 		return oauthSession{}, false
 	}
+	if !oauth.acquireExchange() {
+		return oauthSession{}, false
+	}
+	defer oauth.releaseExchange()
 	refreshed, err := oauth.exchange(request.Context(), url.Values{
 		"client_id":     {oauth.config.ClientID},
 		"client_secret": {oauth.config.ClientSecret},
@@ -777,23 +816,19 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 	}
 	previous := session
 	now := time.Now().UTC()
-	session.AccessToken = refreshed.AccessToken
 	if refreshed.RefreshToken != "" {
 		oauth.logBranch("refresh.refresh_token_rotated")
-		session.RefreshToken = refreshed.RefreshToken
 	} else {
 		oauth.logBranch("refresh.refresh_token_reused")
 	}
-	session.AccessExpires = now.Add(time.Duration(refreshed.ExpiresIn) * time.Second)
+	session.applyTokens(refreshed, now)
 	if refreshed.RefreshTokenExpiresIn > 0 {
 		oauth.logBranch("refresh.refresh_expiry_updated")
-		session.RefreshExpires = now.Add(time.Duration(refreshed.RefreshTokenExpiresIn) * time.Second)
 	} else {
 		oauth.logBranch("refresh.refresh_expiry_retained")
 	}
-	if refreshed.ExpiresIn <= 0 {
+	if session.ProviderAccessExpires.IsZero() {
 		oauth.logBranch("refresh.access_expiry_defaulted")
-		session.AccessExpires = now.Add(time.Hour)
 	} else {
 		oauth.logBranch("refresh.access_expiry_provided")
 	}
@@ -802,6 +837,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		if oauth.revokeCredentials(request.Context(), session) != nil {
 			if oauth.queueRevocation(request.Context(), session) != nil {
 				oauth.logBranch("refresh.rejected_revocation_queue_failed")
+				oauth.retainCredentialCleanup(request.Context(), session)
 			} else {
 				oauth.logBranch("refresh.rejected_revocation_queued")
 			}
@@ -836,6 +872,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		if oauth.revokeCredentials(request.Context(), session) != nil {
 			if oauth.queueRevocation(request.Context(), session) != nil {
 				oauth.logBranch("refresh.save_failed_revocation_queue_failed")
+				oauth.retainCredentialCleanup(request.Context(), session)
 			} else {
 				oauth.logBranch("refresh.save_failed_revocation_queued")
 			}
@@ -851,6 +888,7 @@ func (oauth *githubOAuth) session(response http.ResponseWriter, request *http.Re
 		if oauth.revokeCredentials(request.Context(), session) != nil {
 			if oauth.queueRevocation(request.Context(), session) != nil {
 				oauth.logBranch("refresh.superseded_revocation_queue_failed")
+				oauth.retainCredentialCleanup(request.Context(), session)
 			} else {
 				oauth.logBranch("refresh.superseded_revocation_queued")
 			}
@@ -1082,6 +1120,42 @@ func (oauth *githubOAuth) revokeCredentials(ctx context.Context, session oauthSe
 	)
 }
 
+func (oauth *githubOAuth) acquireExchange() bool {
+	select {
+	case oauth.exchanges <- struct{}{}:
+		return true
+	default:
+		oauth.logBranch("exchange.cleanup_capacity_exhausted")
+		return false
+	}
+}
+
+func (oauth *githubOAuth) releaseExchange() { <-oauth.exchanges }
+
+// A failed queue write must not release the final owner of newly issued
+// credentials. Cancellation removes request authority, not cleanup ownership.
+func (oauth *githubOAuth) retainCredentialCleanup(ctx context.Context, session oauthSession) {
+	for !credentialsExpired(session) {
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+		err := oauth.revokeCredentials(cleanup, session)
+		cancel()
+		if err == nil {
+			oauth.logBranch("credential_cleanup.revoked")
+			return
+		}
+		queue, queueCancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		err = oauth.queueRevocation(queue, session)
+		queueCancel()
+		if err == nil {
+			oauth.logBranch("credential_cleanup.queued")
+			return
+		}
+		oauth.logBranch("credential_cleanup.retained")
+		time.Sleep(time.Second)
+	}
+	oauth.logBranch("credential_cleanup.provider_expired")
+}
+
 func (oauth *githubOAuth) stageRevocation(ctx context.Context, sessionID string) (oauthSession, string, error) {
 	return oauth.stageRevocationIfUnchanged(ctx, sessionID, "")
 }
@@ -1188,11 +1262,19 @@ func (oauth *githubOAuth) runRevocationWorker(ctx context.Context) {
 }
 
 func credentialsExpired(session oauthSession) bool {
-	expires := session.AccessExpires
-	if session.RefreshExpires.After(expires) {
-		expires = session.RefreshExpires
+	now := time.Now().UTC()
+	for _, credential := range []struct {
+		token   string
+		expires time.Time
+	}{
+		{session.AccessToken, session.ProviderAccessExpires},
+		{session.RefreshToken, session.ProviderRefreshExpires},
+	} {
+		if credential.token != "" && (credential.expires.IsZero() || now.Before(credential.expires)) {
+			return false
+		}
 	}
-	return !expires.IsZero() && time.Now().UTC().After(expires)
+	return true
 }
 
 type githubRequestOption func(*http.Request, *map[int]bool)
@@ -1280,7 +1362,7 @@ func (oauth *githubOAuth) saveSession(ctx context.Context, session oauthSession)
 	if err != nil {
 		return err
 	}
-	return oauth.sessions.PutSession(ctx, session.ID, sealed, sessionTTL)
+	return oauth.sessions.PutSession(ctx, session.ID, sealed, sessionTTL, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oauthSession, expected string) (bool, error) {
@@ -1292,7 +1374,7 @@ func (oauth *githubOAuth) saveSessionIfUnchanged(ctx context.Context, session oa
 	if err != nil {
 		return false, err
 	}
-	return oauth.sessions.CompareSession(ctx, session.ID, expected, sealed, sessionTTL)
+	return oauth.sessions.CompareSession(ctx, session.ID, expected, sealed, sessionTTL, oauth.config.RevocationKeyPrefix)
 }
 
 func (oauth *githubOAuth) deleteSession(ctx context.Context, sessionID string) error {
