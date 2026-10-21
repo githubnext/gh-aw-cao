@@ -49,14 +49,14 @@ async function fixture(t) {
 test('collection persists only safe unified evidence through compaction and canonical CLI ingestion', async (t) => {
   const f = await fixture(t);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
   const content = await readFile(f.shard, 'utf8');
   assert.doesNotMatch(content, /SECRET_/);
   const batch = normalize(adaptCachedGhAwJsonl(content).observations);
   assert.equal(batch.tools.length, 2);
   assert.deepEqual(batch.domains.map((row) => row.domain), ['api.github.com']);
   assert.ok(batch.tools.every((row) => row.correlationId === 'call-1'));
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 0 });
   assert.equal(await readFile(f.shard, 'utf8'), content);
 
   await execute(process.execPath, ['activity/cao.mjs', 'compact-jsonl',
@@ -85,11 +85,11 @@ test('collection persists only safe unified evidence through compaction and cano
 test('missing sessions preserve legacy ingestion and unrelated repository shards', async (t) => {
   const f = await fixture(t);
   const original = await readFile(f.shard, 'utf8');
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 0 });
   assert.equal(await readFile(f.shard, 'utf8'), original);
   assert.equal(normalize(adaptCachedGhAwJsonl(original).observations).tools.length, 2);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'different/repo'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'different/repo'), { enriched: 0, missingSessions: 0 });
   assert.equal(await readFile(f.shard, 'utf8'), original);
 });
 
@@ -118,7 +118,7 @@ test('sessions from another attempt are not associated with the cached attempt',
   const f = await fixture(t);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
   await writeFile(f.info, JSON.stringify({ run_id: 303, run_attempt: '2', repository: 'octo/api' }));
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
   assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session, undefined);
 });
 
@@ -154,7 +154,7 @@ test('compact usage metadata, called-workflow usage and flattened sessions are s
       await writeFile(path.join(directory, 'aw_info.json'), identity);
       f.envelope.run.repository = 'api';
       await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
       assert.equal(normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations).tools.length, 2);
     });
   }
@@ -187,9 +187,9 @@ test('invalid optional sessions are skipped without altering the shard or loggin
       if (options.duplicate) {
         await writeFile(path.join(f.logs, 'run-303', 'aw_session.jsonl'), session);
       }
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
       assert.equal(await readFile(f.shard, 'utf8'), original);
-      assert.equal(warnings.mock.callCount(), 1);
+      assert.equal(warnings.mock.callCount(), 3);
       assert.match(warnings.mock.calls[0].arguments[0], /Skipping invalid unified session evidence for run 303/);
       assert.doesNotMatch(warnings.mock.calls[0].arguments[0], /SECRET_|other\/repo/);
     });
@@ -215,8 +215,12 @@ test('bad optional evidence does not block valid runs and warnings are deduplica
   const result = await execute(process.execPath, [
     'activity/session-evidence.mjs', f.logs, f.prefix, 'octo/api'
   ]);
-  assert.deepEqual(JSON.parse(result.stdout), { enriched: 1 });
-  assert.equal(result.stderr.trim(), 'Skipping invalid unified session evidence for run 303');
+  assert.deepEqual(JSON.parse(result.stdout), { enriched: 1, missingSessions: 1 });
+  assert.deepEqual(result.stderr.trim().split('\n'), [
+    'Skipping invalid unified session evidence for run 303',
+    'Downloaded usage has no unified session evidence for run 303 attempt 1',
+    'Unified session evidence incomplete: 1 distinct run attempts with downloaded usage; missing evidence is not zero activity'
+  ]);
   const rows = (await readFile(f.shard, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   assert.equal(rows[0].run.cao_unified_session, undefined);
   assert.equal(rows[1].run.cao_unified_session.events.length, 4);
@@ -243,7 +247,7 @@ test('downloaded evals remain separate from graders through SQLite and normalize
   f.envelope.run.graders = { results: [{ id: 'quality', value: 0.75, status: 'pass', unit: 'ratio' }] };
   f.envelope.run.experiments = { assignments: { prompt: 'candidate' } };
   await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 1 });
   const content = await readFile(f.shard, 'utf8');
   assert.doesNotMatch(content, /SECRET_/);
   const batch = normalize(adaptCachedGhAwJsonl(content).observations);
@@ -253,7 +257,7 @@ test('downloaded evals remain separate from graders through SQLite and normalize
   assert.deepEqual(batch.evalObservations.map((row) => row.evalResult).sort(), ['UNKNOWN', 'YES']);
   assert.ok(batch.evalObservations.every((row) => batch.audits.some((audit) => audit.id === row.auditId)));
   assert.equal(batch.experimentAssignments.length, 1);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
 
   const args = ['activity/cao.mjs', 'ingest-jsonl', '--input-dir', path.dirname(f.shard),
     '--database', path.join(f.root, 'activity.sqlite'), '--retention-days', 'all'];
@@ -291,7 +295,7 @@ test('collection prefers unified experiment, grader and eval events over standal
   f.envelope.run.experiments = { assignments: { legacy: 'control' } };
   f.envelope.run.evals = [{ id: 'legacy', answer: 'NO' }];
   await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
   assert.equal(warnings.mock.callCount(), 0);
   const enriched = await readFile(f.shard, 'utf8');
   assert.doesNotMatch(enriched, /PRIVATE_/);
@@ -300,7 +304,7 @@ test('collection prefers unified experiment, grader and eval events over standal
   assert.deepEqual(batch.graders.map((row) => row.name), ['quality']);
   assert.deepEqual(batch.evals.map((row) => row.name), ['quality', 'uncertain']);
   assert.equal(batch.graderObservations[0].value, 0.93);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 0 });
 });
 
 test('v2 split graders preserve session built-ins and publish custom values once through SQLite', async (t) => {
@@ -327,7 +331,7 @@ test('v2 split graders preserve session built-ins and publish custom values once
         error: 'SECRET_ERROR', message: 'SECRET_MESSAGE' }
     ]
   }));
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
   const cached = await readFile(f.shard, 'utf8');
   assert.doesNotMatch(cached, /SECRET_/);
   const batch = normalize(adaptCachedGhAwJsonl(cached).observations);
@@ -342,7 +346,7 @@ test('v2 split graders preserve session built-ins and publish custom values once
   ]);
   assert.equal(custom.direction, 'higher_is_better');
   assert.equal(batch.audits.filter((row) => row.type === 'grader.result').length, 2);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 0 });
 
   const args = ['activity/cao.mjs', 'ingest-jsonl', '--input-dir', path.dirname(f.shard),
     '--database', path.join(f.root, 'activity.sqlite'), '--retention-days', 'all'];
@@ -364,10 +368,10 @@ test('grader artifacts support compact, named and flattened layouts without a se
       }));
       await writeFile(path.join(f.usage, 'aw_info.json'), await readFile(f.info));
       await rm(f.info);
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 1 });
       const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
       assert.equal(batch.graderObservations[0].value, 0);
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
     });
   }
 });
@@ -386,7 +390,7 @@ test('invalid grader artifacts do not replace valid sessions or expose payloads 
     await mkdir(directory);
     await writeFile(path.join(directory, 'grader_results.json'), invalid);
     const warnings = t.mock.method(console, 'warn', () => {});
-    assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+    assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
     assert.equal(warnings.mock.callCount(), 1);
     assert.equal(warnings.mock.calls[0].arguments[0], 'Skipping invalid grader evidence for run 303');
     const cached = await readFile(f.shard, 'utf8');
@@ -405,8 +409,8 @@ test('explicit experiment artifacts populate SQLite and published run shards wit
   await writeFile(path.join(standalone, 'assignments.json'), '{"style":"concise","prompt":"candidate"}');
   await writeFile(path.join(f.usage, 'aw_info.json'), await readFile(f.info));
   await rm(f.info);
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
   const result = JSON.parse((await execute(process.execPath, ['activity/cao.mjs', 'ingest-jsonl',
     '--input-dir', path.dirname(f.shard), '--database', path.join(f.root, 'activity.sqlite'),
     '--retention-days', 'all'])).stdout);
@@ -439,7 +443,7 @@ test('unified session assignments populate SQLite first, including authoritative
         f.envelope.run.experiments = { assignments: { legacy: 'control' } };
         await writeFile(f.shard, `${JSON.stringify(f.envelope)}\n`);
         const warnings = t.mock.method(console, 'warn', () => {});
-        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
         assert.equal(warnings.mock.callCount(), 0);
         const content = await readFile(f.shard, 'utf8');
         assert.deepEqual(JSON.parse(content).run.cao_unified_session.experiments, { assignments });
@@ -450,7 +454,7 @@ test('unified session assignments populate SQLite first, including authoritative
           '--retention-days', 'all'])).stdout);
         assert.equal(result.counts.experiments ?? 0, Object.keys(assignments).length);
         assert.equal(result.counts.experimentAssignments ?? 0, Object.keys(assignments).length);
-        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 0 });
       });
     }
   }
@@ -468,7 +472,9 @@ test('experiment artifacts verify identity across compact, prefixed and flattene
         await rm(f.info);
         await writeFile(path.join(path.dirname(directory), 'aw_info.json'), identity);
       }
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), {
+        enriched: 1, missingSessions: layout.endsWith('/experiment') ? 1 : 0
+      });
       const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
       assert.deepEqual(batch.experimentAssignments.map((row) => row.variant), ['candidate']);
     });
@@ -522,12 +528,12 @@ test('experiment collection accepts matching compact and standalone copies with 
       const warnings = t.mock.method(console, 'warn', () => {});
       const result = await enrichSessionEvidence(f.logs, f.prefix, 'octo/api');
       const batch = normalize(adaptCachedGhAwJsonl(await readFile(f.shard, 'utf8')).observations);
-      assert.deepEqual(result, { enriched: layout === 'conflicting copies' ? 0 : 1 });
-      assert.equal(warnings.mock.callCount(), layout === 'conflicting copies' ? 1 : 0);
+      assert.deepEqual(result, { enriched: layout === 'conflicting copies' ? 0 : 1, missingSessions: 1 });
+      assert.equal(warnings.mock.callCount(), layout === 'conflicting copies' ? 3 : 2);
       assert.equal(batch.experimentAssignments.length, layout === 'conflicting copies' ? 0 : 2);
       if (layout !== 'conflicting copies') {
         assert.deepEqual(batch.experimentAssignments.map((row) => row.variant).sort(), ['candidate', 'concise']);
-        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+        assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
       }
     });
   }
@@ -555,7 +561,7 @@ test('standalone experiments reject invalid or ambiguous sibling usage identitie
         await mkdir(caller);
         await writeFile(path.join(caller, 'aw_info.json'), JSON.stringify(info));
       }
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
       assert.equal(await readFile(f.shard, 'utf8'), original);
     });
   }
@@ -568,7 +574,9 @@ test('eval artifact layouts verify repository, run and attempt independently of 
       const directory = path.join(f.logs, 'run-303', layout);
       await mkdir(directory, { recursive: true });
       await writeFile(path.join(directory, 'evals.jsonl'), '{"id":"quality","answer":"NO","runid":"303"}\n');
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), {
+        enriched: 1, missingSessions: layout.endsWith('usage') ? 1 : 0
+      });
       const row = JSON.parse(await readFile(f.shard, 'utf8')).run.evals[0];
       assert.equal(row.answer, 'NO');
       assert.equal(row.timestamp, '2026-10-15T10:01:00.000Z');
@@ -589,7 +597,7 @@ test('eval artifact layouts verify repository, run and attempt independently of 
       const warnings = t.mock.method(console, 'warn', () => {});
       if (info) await writeFile(f.info, JSON.stringify(info));
       await writeFile(path.join(f.usage, 'evals.jsonl'), JSON.stringify(record ?? { id: 'quality', answer: 'YES' }));
-      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0 });
+      assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 0, missingSessions: 1 });
       assert.equal(await readFile(f.shard, 'utf8'), original);
       assert.doesNotMatch(JSON.stringify(warnings.mock.calls), /SECRET_|other\/repo/);
     });
@@ -601,11 +609,11 @@ test('invalid optional sessions do not prevent valid eval enrichment and vice ve
   t.mock.method(console, 'warn', () => {});
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), 'SECRET_INVALID_JSON');
   await writeFile(path.join(f.usage, 'evals.jsonl'), '{"id":"quality","answer":"YES"}\n');
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 1 });
   assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.evals[0].answer, 'YES');
   await writeFile(path.join(f.usage, 'aw_session.jsonl'), session);
   await writeFile(path.join(f.usage, 'evals.jsonl'), 'SECRET_INVALID_JSON');
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
   assert.equal(JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session.events.length, 4);
 });
 
@@ -613,7 +621,7 @@ test('unsupported formats retain only coverage metadata and never parse their pa
   const f = await fixture(t);
   await writeFile(path.join(f.usage, 'aw_session.jsonl'),
     '{"type":"session.format","data":{"version":2}}\nSECRET_INVALID_V2_PAYLOAD');
-  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1 });
+  assert.deepEqual(await enrichSessionEvidence(f.logs, f.prefix, 'octo/api'), { enriched: 1, missingSessions: 0 });
   const enriched = JSON.parse(await readFile(f.shard, 'utf8')).run.cao_unified_session;
   assert.deepEqual(enriched.events, [
     { line: 1, source: 'session', type: 'session.format', fields: { status: 'unsupported' } }

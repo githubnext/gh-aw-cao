@@ -1,0 +1,34 @@
+{
+  "schema_version": 5,
+  "kind": "run",
+  "run": {
+    "run_id": 39375198241,
+    "run_attempt": "1",
+    "organization": "github",
+    "repository": "github/gh-aw-actions",
+    "workflow_name": "Daily Runtime Threat Scan",
+    "workflow_path": ".github/workflows/daily-runtime-threat-scan.lock.yml",
+    "created_at": "2026-10-20T05:29:51Z",
+    "updated_at": "2026-10-20T05:32:29Z",
+    "status": "completed",
+    "conclusion": "success",
+    "logs_path": "/home/runner/work/_temp/cao-gh-aw-logs/github-gh-aw-actions/run-39375198241",
+    "cao_unified_session": {
+      "version": 1,
+      "path": "usage/aw_session.jsonl",
+      "events": [
+        {
+          "line": 1,
+          "source": "session",
+          "type": "session.format",
+          "fields": {
+            "status": "supported",
+            "component": "collector",
+            "phase": "conclusion",
+            "routingSessionClock": 1792474213388
+          }
+        }
+      ]
+    }
+  }
+}

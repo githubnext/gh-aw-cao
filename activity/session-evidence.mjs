@@ -1,4 +1,4 @@
-import { readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { lstat, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseUnifiedSessionDocument } from '../dashboard/site/src/data/adapters/unified-session.js';
@@ -7,6 +7,60 @@ import { parseGraderArtifacts } from '../dashboard/site/src/data/adapters/grader
 import { classifiedEval, isSupportedGhAwJsonlSchemaVersion } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { runId as canonicalRunId } from '../dashboard/site/src/data/model/ids.js';
 import { readJsonlRecords } from './jsonl.mjs';
+
+async function confinedPath(directory, candidate) {
+  const root = path.resolve(directory);
+  const resolved = path.resolve(candidate);
+  const relative = path.relative(root, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new TypeError('Evidence path is outside the repository log directory');
+  }
+  let current = root;
+  for (const segment of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, segment);
+    try {
+      if ((await lstat(current)).isSymbolicLink()) {
+        throw new TypeError('Evidence symlinks are not supported');
+      }
+    } catch (error) {
+      if (error.code === 'ENOENT') break;
+      throw error;
+    }
+  }
+  return resolved;
+}
+
+async function runDirectoryFor(logDirectory, run, runId) {
+  if (run.logs_path !== undefined) {
+    if (typeof run.logs_path !== 'string' || !run.logs_path.trim() || run.logs_path.includes('\0')) {
+      throw new TypeError('Invalid evidence log directory');
+    }
+    return confinedPath(logDirectory, path.isAbsolute(run.logs_path)
+      ? run.logs_path : path.resolve(logDirectory, run.logs_path));
+  }
+  return confinedPath(logDirectory, path.resolve(logDirectory, `run-${runId}`));
+}
+
+async function evidenceFile(directory, filename) {
+  return readFile(await confinedPath(directory, filename), 'utf8');
+}
+
+async function downloadedUsage(directory) {
+  try {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && /(^|-)usage$/.test(entry.name)) {
+        if ((await readdir(await confinedPath(directory, path.join(directory, entry.name)))).length) return true;
+      }
+    }
+    // Compact downloads can also be flattened into the run directory.
+    return entries.some((entry) => entry.isFile()
+      && ['aw_session.jsonl', 'agent_usage.json'].includes(entry.name));
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
 
 async function artifactFiles(directory, filename) {
   let entries;
@@ -38,7 +92,7 @@ async function artifactFiles(directory, filename) {
   const found = [];
   for (const candidate of candidates) {
     try {
-      found.push({ path: candidate, content: await readFile(candidate, 'utf8') });
+      found.push({ path: candidate, content: await evidenceFile(directory, candidate) });
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
@@ -67,7 +121,7 @@ async function sessionIdentity(runDirectory, sessionPath) {
   directories.push(runDirectory);
   for (const directory of new Set(directories)) {
     try {
-      return JSON.parse(await readFile(path.join(directory, 'aw_info.json'), 'utf8'));
+      return JSON.parse(await evidenceFile(runDirectory, path.join(directory, 'aw_info.json')));
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
@@ -164,6 +218,9 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
   const evals = new Map();
   const experiments = new Map();
   const graders = new Map();
+  const directories = new Map();
+  const coverage = new Map();
+  const invalidPaths = new Set();
   let enriched = 0;
   for (const name of names) {
     const filename = path.join(directory, name);
@@ -177,9 +234,32 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
       if (isSupportedGhAwJsonlSchemaVersion(envelope.schema_version) && envelope.kind === 'run'
           && run && runRepository.toLowerCase() === repository.toLowerCase()) {
         if (!/^\d+$/.test(String(runId))) throw new Error('Invalid session evidence run ID');
-        const key = `${runId}:${run.run_attempt ?? 1}`;
+        const identity = `${runId}:${run.run_attempt ?? 1}`;
+        const location = JSON.stringify({ identity, logsPath: run.logs_path });
+        if (!directories.has(location)) {
+          try {
+            directories.set(location, await runDirectoryFor(logDirectory, run, runId));
+          } catch (error) {
+            if (!(error instanceof TypeError)) throw error;
+            directories.set(location, null);
+            if (!invalidPaths.has(identity)) {
+              if (invalidPaths.size < 10) console.warn(`Skipping invalid evidence log directory for run ${runId}`);
+              invalidPaths.add(identity);
+            }
+          }
+        }
+        const runDirectory = directories.get(location);
+        if (!runDirectory) {
+          if (run.cao_unified_session) {
+            const state = coverage.get(identity);
+            if (state) state.session = true;
+            else coverage.set(identity, { runId, attempt: run.run_attempt ?? 1, usage: false, session: true });
+          }
+          output.push(JSON.stringify(envelope));
+          continue;
+        }
+        const key = JSON.stringify([identity, runDirectory]);
         if (!sessions.has(key)) {
-          const runDirectory = path.join(logDirectory, `run-${runId}`);
           let evidence = null;
           try {
             const file = await artifactFile(runDirectory, 'aw_session.jsonl');
@@ -208,24 +288,27 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
             console.warn(`Skipping invalid unified session evidence for run ${runId}`);
           }
           sessions.set(key, evidence);
+          const state = coverage.get(identity) ?? { runId, attempt: run.run_attempt ?? 1, usage: false, session: false };
+          state.usage ||= await downloadedUsage(runDirectory);
+          coverage.set(identity, state);
         }
         const evidence = sessions.get(key);
         if (!graders.has(key)) {
           graders.set(key, await graderEvidence(
-            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository, evidence?.graders
+            runDirectory, runId, run.run_attempt ?? 1, repository, evidence?.graders
           ));
         }
         const results = graders.get(key);
         if (evidence && results) evidence.graders = results;
         if (!evidence?.experiments && !experiments.has(key)) {
           experiments.set(key, await experimentEvidence(
-            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository
+            runDirectory, runId, run.run_attempt ?? 1, repository
           ));
         }
         const observedAt = run.updated_at ?? run.created_at;
         if (!evidence?.evals && !evals.has(key)) {
           evals.set(key, await evalEvidence(
-            path.join(logDirectory, `run-${runId}`), runId, run.run_attempt ?? 1, repository, observedAt
+            runDirectory, runId, run.run_attempt ?? 1, repository, observedAt
           ));
         }
         let runChanged = false;
@@ -255,6 +338,7 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
           runChanged = true;
         }
         if (runChanged) enriched += 1;
+        coverage.get(identity).session ||= Boolean(run.cao_unified_session);
       }
       output.push(JSON.stringify(envelope));
     }
@@ -268,7 +352,19 @@ export async function enrichSessionEvidence(logDirectory, shardPrefix, repositor
       }
     }
   }
-  return { enriched };
+  let missingSessions = 0;
+  for (const state of coverage.values()) {
+    if (!state.usage || state.session) continue;
+    if (missingSessions < 10) {
+      const attempt = Number(state.attempt);
+      console.warn(`Downloaded usage has no unified session evidence for run ${state.runId} attempt ${Number.isSafeInteger(attempt) && attempt > 0 ? attempt : 'unknown'}`);
+    }
+    missingSessions += 1;
+  }
+  if (missingSessions) {
+    console.warn(`Unified session evidence incomplete: ${missingSessions} distinct run attempts with downloaded usage; missing evidence is not zero activity`);
+  }
+  return { enriched, missingSessions };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
