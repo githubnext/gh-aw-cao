@@ -3,13 +3,12 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-Install CAO, connect one repository, and open a dashboard of its existing
-GitHub Agentic Workflow runs, costs, and outcomes where evidence is available.
+Monitor one repository's existing GitHub Agentic Workflow runs, costs, and
+outcomes where evidenced.
 
 **Estimated time: 15 minutes**, plus credential approval and Actions deployment time.
 
-This guide sets up **monitoring only**. It does not install or run a campaign
-or start new agentic work.
+**Monitoring only:** no campaign installation or new agentic work.
 
 :::note[Video TODO]
 **CAO setup walkthrough — recording not yet available.** Video TODO: demonstrate
@@ -69,8 +68,7 @@ see [other topologies](deployment-and-governance.md).
 <details>
 <summary>No control checkout yet? Explicitly create or clone one.</summary>
 
-Run this outside a Git checkout, replacing `OWNER/CONTROL_REPOSITORY` with the
-exact repository you want to create:
+Outside a checkout, replace `OWNER/CONTROL_REPOSITORY` with your exact repository:
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone

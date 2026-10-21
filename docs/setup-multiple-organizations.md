@@ -6,7 +6,7 @@ description: Install a CAO control plane across organizations using enterprise-o
 You need permission to create enterprise GitHub Apps and install them separately on every enrolled organization.
 
 > [!IMPORTANT]
-> Permission does not authorize setup. A coding agent must ask before creating or reusing the control repository, running the installer, creating either App, storing variables or secrets, committing, or pushing.
+> Permission does not authorize setup. A coding agent must ask before creating or reusing the control repository, installing the extension/runtime, creating either App, storing variables or secrets, committing, or pushing.
 
 ## Install
 
@@ -15,24 +15,21 @@ CONTROL_REPO="platform/central-agentic-ops"
 TARGET_REPO="acme/example-service"
 
 gh auth status
+gh extension install githubnext/gh-cao
+```
+
+Enter an existing clean default-branch control checkout. To create a new
+repository instead, choose visibility explicitly:
+
+```bash
 gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
-
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash
 ```
 
-In `.github/workflows/cao.json`, add only the required owners and exact repositories:
-
-```json
-"scope": {
-  "allowed-owners": ["platform", "acme"],
-  "allowed-repositories": [
-    "acme/example-service"
-  ]
-}
-```
+To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
+creating one. Prepare the approved App pair below before running guided setup.
+No separate `init`, installer, or local Node.js is required. See the
+[primary setup guide](setup-quickstarts.md) for the release requirement.
 
 ## Create and Install the Apps
 
@@ -47,6 +44,23 @@ In enterprise settings:
 Enterprise ownership alone grants no repository access.
 
 ## Configure the Control Repository
+
+From the control checkout:
+
+```bash
+gh cao setup
+```
+
+At **Repositories**, enter the exact value of `$TARGET_REPO`; the control
+repository stays included. Choose **`enterprise-app`** when prompted.
+Guided setup accepts the approved App client IDs, prompts securely for keys and
+verifies that all repositories belong to the same enterprise.
+Setup prepares Activity, Dashboard, validation, shared runtime and missing
+baseline policy, then configures scoped authentication and Pages.
+A private repository does not guarantee private Pages: require restricted
+access for non-public evidence and decline public publication otherwise.
+
+For credential-only changes after setup, inspect a dry run before applying:
 
 ```bash
 gh cao setup auth enterprise-app \
@@ -75,13 +89,19 @@ Ensure every dispatched worker admits the write App's `APP-SLUG[bot]` login.
 ## Validate and Commit
 
 ```bash
-node -e \
-  'const fs=require("node:fs"); JSON.parse(fs.readFileSync(".github/workflows/cao.json","utf8"))'
+gh cao doctor
 gh aw doctor --repo "$CONTROL_REPO" --dir .
 git diff --check
 ```
 
-Review the diff. After explicit approval:
+Initial guided setup separately offers **“Commit and push these CAO monitoring
+changes? [y/N]”** after review. Approval requires a synchronized default branch,
+matching origin and empty index. It publishes only reviewed CAO files and
+returns deployment-pending links immediately, without waiting for Actions.
+Declining, blocked publication, or unattended setup leaves files local.
+
+If not published, review the diff and stage only CAO files. The following assumes
+these paths contain no unrelated edits. After explicit approval:
 
 ```bash
 git add .github activity dashboard

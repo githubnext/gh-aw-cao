@@ -67,10 +67,10 @@ gh cao setup
 ```
 
 Create/clone explicitly with `gh repo create` or `gh repo clone`; choose visibility
-with the user. Setup prepares missing runtime and policy without prior `init`
-or local Node.js. A separate default-No prompt can publish reviewed CAO files;
-declining/CI leaves them local. A push returns deployment-pending links, not a wait.
-Check auth requirements, including shared enterprise membership, before approval.
+with the user. Setup prepares missing runtime/policy without `init` or local Node.js
+and offers authentication choices based on that scope.
+A separate default-No prompt can publish reviewed CAO files; declining/CI stays
+local. Push returns deployment-pending links without waiting.
 
 ## Agent procedure
 

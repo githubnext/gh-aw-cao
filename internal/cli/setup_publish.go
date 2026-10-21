@@ -241,7 +241,7 @@ func setupPublish(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPrompt, r
 		return nil, err
 	}
 	if stagedTree != tree {
-		return nil, errors.New("Git index changed after review; files remain staged, but setup did not commit or push")
+		return nil, errors.New("the Git index changed after review; files remain staged, but setup did not commit or push")
 	}
 	if _, err := setupGit(cmd, "", "commit", "-m", "Set up CAO monitoring"); err != nil {
 		return nil, fmt.Errorf("CAO commit failed; inspect staged files before retrying publication: %w", err)
@@ -317,7 +317,7 @@ func setupPublishUnchanged(cmd *cobra.Command, index, head, remoteHead, branch, 
 		return err
 	}
 	if staged != "" || currentHead != head || currentRemote != remoteHead || strings.TrimSpace(currentBranch) != branch {
-		return errors.New("Git state changed after review; setup did not commit or push")
+		return errors.New("the Git state changed after review; setup did not commit or push")
 	}
 	for _, filename := range files {
 		if _, err := setupDestination(filename); err != nil {

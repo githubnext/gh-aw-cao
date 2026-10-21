@@ -452,9 +452,13 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(activity, /node activity\/control-settings\.mjs \\\n\s+\.github\/workflows\/shared\/control\.mjs/);
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
-  assert.match(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
+  assert.match(quickstart, /gh extension install githubnext\/gh-cao/);
+  assert.doesNotMatch(quickstart, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.match(quickstart, /gh cao setup/);
-  assert.match(quickstart, /installs no campaign and runs no workflow/);
+  assert.match(quickstart, /No campaigns or agentic work are installed/);
+  assert.match(quickstart, /Commit and push these CAO monitoring changes\? \[y\/N\]/);
+  assert.match(quickstart, /deployment pending.*links immediately/);
+  assert.match(quickstart, /Declining, blocked, or unattended setup stays local/);
   const campaignWalkthrough = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
   assert.match(campaignWalkthrough, /gh cao campaigns add githubnext\/gh-cao\/repo-assist/);
   assert.match(campaignWalkthrough, /gh aw run repo-assist/);
@@ -474,6 +478,31 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
   assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
   assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
+});
+
+test("authentication setup guides share unified onboarding and explicit publication", () => {
+  for (const [guide, profile] of [
+    ["setup-one-organization.md", "github-app"],
+    ["setup-multiple-organizations.md", "enterprise-app"],
+    ["setup-fine-grained-pat.md", "token"],
+  ]) {
+    const document = readFileSync(join(root, "docs", guide), "utf8");
+    assert.match(document, /gh extension install githubnext\/gh-cao/, guide);
+    assert.match(document, /\ngh cao setup\n/, guide);
+    assert.match(document, /gh repo create "\$CONTROL_REPO" --private --clone/, guide);
+    assert.match(document, /gh repo clone "\$CONTROL_REPO"/, guide);
+    assert.match(document, /No separate `init`, installer, or local Node\.js is required/, guide);
+    assert.ok(document.includes(`**\`${profile}\`**`), guide);
+    assert.match(document, /exact value of `\$TARGET_REPO`; the control\s+repository stays included/, guide);
+    assert.match(document, /require restricted\s+access for non-public evidence/, guide);
+    assert.match(document, /credential-only changes after setup/, guide);
+    assert.match(document, /gh cao setup auth/, guide);
+    assert.match(document, /gh cao doctor/, guide);
+    assert.match(document, /Commit and push these CAO monitoring\s+changes\? \[y\/N\]/, guide);
+    assert.match(document, /deployment-pending links immediately, without waiting for Actions/, guide);
+    assert.match(document, /Declining, blocked publication, or unattended setup leaves files local/, guide);
+    assert.doesNotMatch(document, /curl --|raw\.githubusercontent\.com.*install\.sh|\bgh cao init\b|node -e/, guide);
+  }
 });
 
 test("root campaign composes its operational campaigns through manifests", () => {
@@ -655,7 +684,13 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupQuickstart, /Confirmed all-public scope[\s\S]*automatically uses `public-only`/);
   assert.match(setupQuickstart, /Nonpublic scope requires credentials;[\s\S]*authentication\.md#choose-cross-repository-authentication/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
-  assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
+  assert.match(setupSkill, /gh extension install githubnext\/gh-cao/);
+  assert.match(setupSkill, /prepares missing runtime\/policy without `init` or local Node\.js/);
+  assert.match(setupSkill, /separate default-No prompt can publish reviewed CAO files/);
+  assert.match(setupSkill, /declining\/CI stays\s+local/);
+  assert.match(setupSkill, /deployment-pending links without waiting/);
+  assert.doesNotMatch(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
+  assert.match(setupReferences["implementation-details"], /compatibility|legacy installer/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);

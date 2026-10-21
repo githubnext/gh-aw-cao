@@ -12,8 +12,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/githubnext/gh-cao/internal/ghcli"
 	"github.com/spf13/cobra"
+
+	"github.com/githubnext/gh-cao/internal/ghcli"
 )
 
 var setupRuntimeFiles = []string{

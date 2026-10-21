@@ -48,14 +48,14 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Dependabot campaign, pairing a central orchestrator with one-target workers/);
   assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
   assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
-  assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
+  assert.match(terminalText, /gh extension install githubnext\/gh-cao/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
   assert.match(terminalText, /Add the Dependabot campaign to CAO/);
-  assert.match(terminalText, /CAO runtime materialized and verified/);
+  assert.match(terminalText, /Installed extension githubnext\/gh-cao/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /then review, commit and push the installed files/);
-  assert.match(terminalText, /Monitoring configured\. Automation is optional; no workflows run/);
+  assert.match(terminalText, /Monitoring configured locally\. No commit or push was performed/);
   assert.match(terminalText, /Example agent request — not a CLI command/);
   assert.match(terminal, /data-terminal-request="integration"/);
   assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
@@ -137,10 +137,14 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
   assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
 });
 
-test("terminal output excerpts remain grounded in the production installer and CLI", () => {
-  const installer = readFileSync("install.sh", "utf8");
+test("terminal follows extension onboarding and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
-  assert.ok(installer.includes('"CAO runtime materialized and verified."'));
+  const installation = "gh extension install githubnext/gh-cao";
+  assert.ok(terminal.replace(/<[^>]*>/g, "").includes(installation));
+  assert.ok(readFileSync("README.md", "utf8").includes(installation));
+  assert.doesNotMatch(terminal, /raw\.githubusercontent\.com.*install\.sh|\bgh cao init\b/);
+  assert.match(terminal, /existing control repository checkout/);
+  assert.match(terminal, /separately offer reviewed publication; declining leaves files local/);
   const setupExcerpt = terminal.match(/data-terminal-output="setup">([^<]+)<\/pre>/)?.[1];
   assert.ok(setupExcerpt, "terminal demo must include setup completion output");
   assert.ok(setup.includes(`${setupExcerpt.replaceAll("\n", "\\n")}\\n`),
@@ -478,6 +482,6 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /--terminal-bg: #0d1117/);
   assert.match(terminal, /background: var\(--terminal-bg\)/);
   assert.match(terminal, /class="syntax-command"/);
-  assert.match(terminal, /class="syntax-option"/);
+  assert.match(terminal, /class="syntax-command">gh<\/span> extension install/);
   assert.match(terminal, /class="syntax-url"/);
 });
