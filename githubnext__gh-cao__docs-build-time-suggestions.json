@@ -1,35 +1,7 @@
 {
-  "source_sha": "6c350917c00cd579d508623d3495de39304aa095",
+  "source_sha": "5842dcc462511debfd45354ba006d3dc083a5c51",
   "next_category": "Astro documentation generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T17:23:40Z",
-      "worker_run_id": "39465162756",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        39465386739,
-        39462547132,
-        39461123850,
-        39461104891,
-        39460801866,
-        39459216524,
-        39458834966,
-        39457478091,
-        39457473301,
-        39455317461,
-        39453828481,
-        39451796799,
-        39449842682,
-        39448017239,
-        39447662756,
-        39444611896,
-        39442826835,
-        39440727596,
-        39438956620,
-        39438578838
-      ],
-      "outcome": "no-op: the 2026-10-20T14:22:09Z to 2026-10-20T17:21:40Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run. The cancelled push was excluded. Six successful builds were comparable (four schedule, one push, and one workflow_run, across five source SHAs): median/p90 end-to-end 140/217 seconds, initial queue or concurrency wait 4/70 seconds, queue-excluded execution 131/171 seconds, build job 87/102 seconds, deploy job 18.5/33.5 seconds, and Pages artifact upload 11.5/13 seconds. docs.yml has no dashboard job because generation is reusable work in cao-dashboard.yml. Trusted logs confirmed all six builds restored the same 57 MiB dashboard cache in 2-4 seconds, skipped dashboard artifact lookup/download, and uploaded a 68.9 MB Pages artifact in 9-14 seconds. Packaging is only 8.8% of median queue-excluded execution and even eliminating it would save neither 60 seconds nor 15%. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. The push run's 136-second concurrency wait and deployment variance were disclosed rather than attributed to packaging."
-    },
     {
       "evaluated_at": "2026-10-20T17:37:32Z",
       "worker_run_id": "39467212761",
@@ -778,6 +750,34 @@
       "category": "Astro documentation generation",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T05:55:12Z",
+      "worker_run_id": "39552028425",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39551738630,
+        39550561377,
+        39550501189,
+        39550479102,
+        39549396817,
+        39549111547,
+        39547226325,
+        39546518801,
+        39545634138,
+        39544196110,
+        39543958781,
+        39541805110,
+        39540374141,
+        39538758802,
+        39538490423,
+        39537187987,
+        39537150554,
+        39536780359,
+        39535737919,
+        39534698674
+      ],
+      "outcome": "incomplete: the 2026-10-21T02:44:34Z to 2026-10-21T05:49:37Z latest-20 window contained 16 successful, three skipped, and one cancelled completed docs.yml run. The cancelled schedule run was excluded. Only four successful runs executed both build and deploy (three push and one workflow_run, across three source SHAs), below the required minimum of five comparable successful builds. Trusted job metadata for the seven newly observed successful runs confirmed that two executed build and deploy while five schedule runs freshness-checked and skipped both jobs; recent stored evaluations establish the other two builds remaining in the window. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements and repeated cache verification therefore cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
