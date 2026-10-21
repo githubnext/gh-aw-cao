@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 )
 
 func localEnvironment(t *testing.T) {
@@ -268,5 +270,23 @@ func TestLocalStartupDoesNotCreateRelativeDatabase(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("invalid configuration created a database", err)
+	}
+}
+
+func TestSummarizeLocalQueue(t *testing.T) {
+	summary, pending := summarizeLocalQueue(map[wg.JobState]int64{
+		wg.Succeeded: 3, wg.Ambiguous: 1, wg.Rejected: 2, wg.Failed: 4, wg.Expired: 5, wg.Cancelled: 6,
+		wg.Ready: 7, wg.Claimed: 8, wg.Dispatching: 9,
+	})
+	const want = "Simulated queue: succeeded=3 ambiguous=1 rejected=2 failed=4 expired=5 cancelled=6 pending=24"
+	if summary != want || pending != 24 {
+		t.Fatalf("summary = %q pending = %d", summary, pending)
+	}
+}
+
+func TestSummarizeLocalQueueEmpty(t *testing.T) {
+	summary, pending := summarizeLocalQueue(nil)
+	if pending != 0 || !strings.HasSuffix(summary, "cancelled=0 pending=0") {
+		t.Fatalf("summary = %q pending = %d", summary, pending)
 	}
 }

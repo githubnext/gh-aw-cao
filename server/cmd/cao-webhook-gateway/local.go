@@ -10,10 +10,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/operational/sqlite"
 	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 	"github.com/githubnext/gh-cao/server/internal/webhookgatewaylocal"
 )
+
+var localLog = logger.New("cao:webhook-gateway:local")
 
 type localOptions struct {
 	repository, path, apiURL string
@@ -133,13 +136,21 @@ func reportLocal(ctx context.Context, queue *sqlite.Queue, output io.Writer) err
 	if err != nil {
 		return err
 	}
-	pending := counts[wg.Ready] + counts[wg.Claimed] + counts[wg.Dispatching]
-	if _, err := fmt.Fprintf(output, "Simulated queue: succeeded=%d ambiguous=%d rejected=%d failed=%d expired=%d cancelled=%d pending=%d\n",
-		counts[wg.Succeeded], counts[wg.Ambiguous], counts[wg.Rejected], counts[wg.Failed], counts[wg.Expired], counts[wg.Cancelled], pending); err != nil {
+	summary, pending := summarizeLocalQueue(counts)
+	if _, err := fmt.Fprintln(output, summary); err != nil {
 		return err
 	}
+	localLog.Printf("local simulation queue reported: pending=%d", pending)
 	if pending > 0 {
 		return errors.New("local simulation is incomplete: retained work is deferred by leases or budgets")
 	}
 	return nil
+}
+
+// summarizeLocalQueue renders the simulated queue counts and returns the
+// number of jobs still pending (ready, claimed or dispatching).
+func summarizeLocalQueue(counts map[wg.JobState]int64) (string, int64) {
+	pending := counts[wg.Ready] + counts[wg.Claimed] + counts[wg.Dispatching]
+	return fmt.Sprintf("Simulated queue: succeeded=%d ambiguous=%d rejected=%d failed=%d expired=%d cancelled=%d pending=%d",
+		counts[wg.Succeeded], counts[wg.Ambiguous], counts[wg.Rejected], counts[wg.Failed], counts[wg.Expired], counts[wg.Cancelled], pending), pending
 }
