@@ -5,7 +5,7 @@ export class PolicyError extends Error {}
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "publishing", "marketplace"];
+const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "publishing", "marketplace", "webhook-gateway"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const ACTIVITY_KEYS = ["repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -279,6 +279,193 @@ function validateControlPlane(control) {
   }
   if ("publishing" in control) validatePublishing(control.publishing);
   if ("marketplace" in control) validateMarketplace(control.marketplace);
+  if ("webhook-gateway" in control) validateWebhookGateway(control["webhook-gateway"], control.scope);
+}
+
+function validateWebhookGateway(gateway, scope) {
+  const path = "control-plane.webhook-gateway";
+  assertMapping(gateway, path);
+  assertKeys(gateway, ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "queue", "workers", "discovery", "projectAssignments", "externalSources"], path);
+  assertInteger(gateway.version, `${path}.version`, 1, 1);
+  assertBoolean(gateway.enabled, `${path}.enabled`);
+  for (const key of ["revision", "receivingAppId", "dispatchAppId"]) assertInteger(gateway[key], `${path}.${key}`, 1);
+  if (gateway.receivingAppId === gateway.dispatchAppId) throw new PolicyError(`${path} requires distinct App identities`);
+  assertInteger(gateway.workers, `${path}.workers`, 1, 32);
+  assertString(gateway.namespace, `${path}.namespace`, /^[A-Za-z0-9._-]{1,128}$/);
+  for (const key of ["artifacts", "grants"]) {
+    if (!Array.isArray(gateway[key]) || gateway[key].length > 1024) throw new PolicyError(`${path}.${key} must contain at most 1024 entries`);
+  }
+  for (const artifact of gateway.artifacts) {
+    assertMapping(artifact, `${path}.artifacts`);
+    assertKeys(artifact, ["path", "sha256", "repositoryId", "commitSha", "compilerId"], `${path}.artifacts`);
+    assertString(artifact.path, `${path}.artifacts.path`, SAFE_REGISTRY_PATH_PATTERN);
+    if (!artifact.path) throw new PolicyError(`${path}.artifacts.path is required`);
+    assertString(artifact.sha256, `${path}.artifacts.sha256`, /^[a-f0-9]{64}$/);
+    assertString(artifact.commitSha, `${path}.artifacts.commitSha`, /^[a-f0-9]{40}$/);
+    assertString(artifact.compilerId, `${path}.artifacts.compilerId`, /^.{1,128}$/);
+    assertInteger(artifact.repositoryId, `${path}.artifacts.repositoryId`, 1);
+  }
+  const grants = new Set();
+  const discoveryRepositories = new Set();
+  if ("discovery" in gateway) {
+    const d = gateway.discovery;
+    assertMapping(d, `${path}.discovery`);
+    assertKeys(d, ["repositories", "intervalSeconds", "activateSecurity", "activateCommands", "activateNotifications", "serverUrl"], `${path}.discovery`);
+    assertBoolean(d.activateSecurity, `${path}.discovery.activateSecurity`);
+    if ("activateCommands" in d) assertBoolean(d.activateCommands, `${path}.discovery.activateCommands`);
+    if ("activateNotifications" in d) assertBoolean(d.activateNotifications, `${path}.discovery.activateNotifications`);
+    if ("serverUrl" in d) {
+      assertString(d.serverUrl, `${path}.discovery.serverUrl`, /^https:\/\/[a-z0-9.-]+(?::[1-9][0-9]*)?(?:\/[a-zA-Z0-9._~%+-]+)*$/);
+      const port = /^https:\/\/[^/]+:(\d+)(?:\/|$)/.exec(d.serverUrl)?.[1];
+      if (port && (!Number.isSafeInteger(Number(port)) || Number(port) > 65535 || port === "443")) {
+        throw new PolicyError(`${path}.discovery.serverUrl requires a valid non-default port`);
+      }
+      const origin = new URL(d.serverUrl);
+      let canonicalPath;
+      try {
+        canonicalPath = encodeURI(decodeURI(origin.pathname));
+      } catch {
+        throw new PolicyError(`${path}.discovery.serverUrl has invalid path encoding`);
+      }
+      if (origin.origin + (origin.pathname === "/" ? "" : origin.pathname) !== d.serverUrl || origin.port === "443") {
+        throw new PolicyError(`${path}.discovery.serverUrl requires a canonical HTTPS server URL`);
+      }
+      if (canonicalPath !== origin.pathname) throw new PolicyError(`${path}.discovery.serverUrl has a noncanonical path`);
+    }
+    if ("intervalSeconds" in d) assertInteger(d.intervalSeconds, `${path}.discovery.intervalSeconds`, 30, 3600);
+    if (!Array.isArray(d.repositories) || d.repositories.length < 1 || d.repositories.length > 64) {
+      throw new PolicyError(`${path}.discovery.repositories requires 1 to 64 explicit repositories`);
+    }
+    const names = new Set();
+    const allowed = (scope?.["allowed-repositories"] ?? []).map(value => value.toLowerCase());
+    const owners = (scope?.["allowed-owners"] ?? []).map(value => value.toLowerCase());
+    for (const repository of d.repositories) {
+      assertMapping(repository, `${path}.discovery.repositories`);
+      assertKeys(repository, ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId", "allowLabelRemoval"], `${path}.discovery.repositories`);
+      if ("allowLabelRemoval" in repository) {
+        assertBoolean(repository.allowLabelRemoval, `${path}.discovery.repositories.allowLabelRemoval`);
+        if (repository.allowLabelRemoval && !d.activateCommands) throw new PolicyError(`${path}.discovery label removal requires explicit command activation`);
+      }
+      assertString(repository.repository, `${path}.discovery.repositories.repository`, REPOSITORY_PATTERN);
+      if ([".", ".."].includes(repository.repository.split("/")[1])) {
+        throw new PolicyError(`${path}.discovery repository name is invalid`);
+      }
+      for (const key of ["repositoryId", "receivingInstallationId", "dispatchInstallationId"]) {
+        assertInteger(repository[key], `${path}.discovery.repositories.${key}`, 1);
+      }
+      const name = repository.repository.toLowerCase();
+      if (names.has(name) || discoveryRepositories.has(repository.repositoryId)) {
+        throw new PolicyError(`${path}.discovery.repositories contains duplicate identity`);
+      }
+      if ((!allowed.length && !owners.length) || (allowed.length && !allowed.includes(name)) ||
+          (owners.length && !owners.includes(name.split("/")[0]))) {
+        throw new PolicyError(`${path}.discovery repository is outside control-plane.scope`);
+      }
+      names.add(name);
+      discoveryRepositories.add(repository.repositoryId);
+    }
+  }
+  if ("externalSources" in gateway) validateGatewayExternalSources(gateway.externalSources, discoveryRepositories, `${path}.externalSources`);
+  if ("projectAssignments" in gateway) {
+    if (!Array.isArray(gateway.projectAssignments) || gateway.projectAssignments.length > 128) {
+      throw new PolicyError(`${path}.projectAssignments must contain at most 128 entries`);
+    }
+    const projects = new Set();
+    for (const assignment of gateway.projectAssignments) {
+      assertMapping(assignment, `${path}.projectAssignments`);
+      assertKeys(assignment, ["projectId", "organizationId", "repositoryId"], `${path}.projectAssignments`);
+      assertString(assignment.projectId, `${path}.projectAssignments.projectId`, /^[A-Za-z0-9_+/=-]{1,256}$/);
+      for (const key of ["organizationId", "repositoryId"]) assertInteger(assignment[key], `${path}.projectAssignments.${key}`, 1);
+      if (projects.has(assignment.projectId) || !discoveryRepositories.has(assignment.repositoryId)) {
+        throw new PolicyError(`${path}.projectAssignments requires a unique project and an enrolled repository`);
+      }
+      projects.add(assignment.projectId);
+    }
+  }
+  for (const grant of gateway.grants) {
+    assertMapping(grant, `${path}.grants`);
+    assertKeys(grant, ["subscriptionId", "digest", "sourceInstallationId", "sourceRepositoryId", "sourceOrganizationId", "projectIds",
+      "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId", "dispatchKind", "allowVisibilityTransfer", "expiresAt", "revoked"], `${path}.grants`);
+    assertString(grant.subscriptionId, `${path}.grants.subscriptionId`, /^[A-Za-z0-9._-]{1,200}$/);
+    if (grants.has(grant.subscriptionId)) throw new PolicyError(`${path}.grants contains duplicate approval`);
+    grants.add(grant.subscriptionId);
+    assertString(grant.digest, `${path}.grants.digest`, /^[a-f0-9]{64}$/);
+    for (const key of ["sourceInstallationId", "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId"]) {
+      assertInteger(grant[key], `${path}.grants.${key}`, 1);
+    }
+    for (const key of ["sourceRepositoryId", "sourceOrganizationId"]) assertInteger(grant[key], `${path}.grants.${key}`, 0);
+    if (!grant.sourceRepositoryId && !grant.sourceOrganizationId) throw new PolicyError(`${path}.grants requires an explicit source`);
+    if (grant.sourceInstallationId !== grant.receivingInstallationId) throw new PolicyError(`${path}.grants receiving installation mismatch`);
+    if ("projectIds" in grant) assertUniqueStrings(grant.projectIds, `${path}.grants.projectIds`, /^[A-Za-z0-9_+/=-]{1,256}$/);
+    assertOneOf(grant.dispatchKind, `${path}.grants.dispatchKind`, ["workflow_dispatch", "repository_dispatch"]);
+    for (const key of ["allowVisibilityTransfer", "revoked"]) if (key in grant) assertBoolean(grant[key], `${path}.grants.${key}`);
+    assertString(grant.expiresAt, `${path}.grants.expiresAt`, /^\d{4}-\d{2}-\d{2}T/);
+    if (!Number.isFinite(Date.parse(grant.expiresAt))) throw new PolicyError(`${path}.grants.expiresAt must be a timestamp`);
+  }
+  if ("queue" in gateway) {
+    assertMapping(gateway.queue, `${path}.queue`);
+    assertKeys(gateway.queue, ["maxRows", "maxBytes", "maxTenantRows", "maxTenantBytes", "maxSourceRows", "maxSourceBytes",
+      "maxDestinationRows", "maxDestinationBytes", "maxPayloadBytes", "maxBatch", "maxConcurrency", "maxAge",
+      "dedupWindow", "terminalRetention", "leaseDuration", "rates"], `${path}.queue`);
+    for (const [key, value] of Object.entries(gateway.queue)) {
+      if (key !== "rates") assertInteger(value, `${path}.queue.${key}`, 1);
+    }
+    if ("rates" in gateway.queue) {
+      assertMapping(gateway.queue.rates, `${path}.queue.rates`);
+      assertKeys(gateway.queue.rates, ["global", "app", "tenant", "destination", "workflow"], `${path}.queue.rates`);
+      for (const rate of Object.values(gateway.queue.rates)) {
+        assertMapping(rate, `${path}.queue.rates`);
+        assertKeys(rate, ["capacity", "period"], `${path}.queue.rates`);
+        assertInteger(rate.capacity, `${path}.queue.rates.capacity`, 1);
+        assertInteger(rate.period, `${path}.queue.rates.period`, 1);
+      }
+    }
+  }
+}
+
+function validateGatewayExternalSources(sources, repositories, path) {
+  if (!Array.isArray(sources) || sources.length > 64) throw new PolicyError(`${path} must contain at most 64 sources`);
+  const ids = new Set(), secrets = new Set();
+  for (const source of sources) {
+    assertMapping(source, path);
+    assertKeys(source, ["id", "event", "resourceUrlPrefix", "scope", "collectionId", "secretEnv", "destinationRepositoryIds", "expiresAt"], path);
+    assertString(source.id, `${path}.id`, /^[A-Za-z0-9._-]{1,64}$/);
+    assertOneOf(source.event, `${path}.event`, ["jira_issue", "linear_issue", "azure_devops_issue"]);
+    assertString(source.secretEnv, `${path}.secretEnv`, /^CAO_GATEWAY_SOURCE_[A-Z0-9_]+$/);
+    if (["compiler", ".", ".."].includes(source.id) || ids.has(source.id) || secrets.has(source.secretEnv) ||
+        source.secretEnv.length > 128 || source.secretEnv.endsWith("_PREVIOUS")) {
+      throw new PolicyError(`${path} requires distinct source and receive-only secret identities`);
+    }
+    ids.add(source.id);
+    secrets.add(source.secretEnv);
+    assertString(source.expiresAt, `${path}.expiresAt`, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/);
+    if (!Number.isFinite(Date.parse(source.expiresAt))) throw new PolicyError(`${path}.expiresAt must be a timestamp`);
+    if (!Array.isArray(source.destinationRepositoryIds) || source.destinationRepositoryIds.length < 1 ||
+        source.destinationRepositoryIds.length > 64 || new Set(source.destinationRepositoryIds).size !== source.destinationRepositoryIds.length ||
+        source.destinationRepositoryIds.some(id => !Number.isSafeInteger(id) || !repositories.has(id))) {
+      throw new PolicyError(`${path} requires explicitly enrolled destination repositories`);
+    }
+    assertString(source.resourceUrlPrefix, `${path}.resourceUrlPrefix`, /^https:\/\/.{1,2040}\/$/);
+    let prefix;
+    try { prefix = new URL(source.resourceUrlPrefix); } catch { throw new PolicyError(`${path} requires a canonical HTTPS resource prefix`); }
+    if (source.resourceUrlPrefix.length > 2048 || prefix.href !== source.resourceUrlPrefix || prefix.username || prefix.password || prefix.search || prefix.hash ||
+        /[?#\\\s]/.test(source.resourceUrlPrefix)) throw new PolicyError(`${path} requires a canonical HTTPS resource prefix`);
+    assertString(source.scope, `${path}.scope`, /^.{1,256}$/);
+    if (!source.scope.trim()) throw new PolicyError(`${path} requires explicit provider scope`);
+    if (source.event === "azure_devops_issue") {
+      assertString(source.collectionId, `${path}.collectionId`, /^.{1,256}$/);
+      if (!source.collectionId.trim() || !(prefix.hostname === "dev.azure.com" || /^[A-Za-z0-9-]+\.visualstudio\.com$/.test(prefix.hostname)) ||
+          !/^\/[A-Za-z0-9_-]+(?:\/(?:[A-Za-z0-9_.-]|%[0-9A-Fa-f]{2})+)?\/_apis\/wit\/work[Ii]tems\/$/.test(prefix.pathname)) {
+        throw new PolicyError(`${path} requires an enrolled Azure collection work item prefix`);
+      }
+    } else if ("collectionId" in source) {
+      throw new PolicyError(`${path}.collectionId is Azure-only`);
+    }
+    if (source.event === "jira_issue" && !/^\/rest\/api\/[23]\/issue\/$/.test(prefix.pathname)) throw new PolicyError(`${path} requires a Jira REST issue prefix`);
+    if (source.event === "linear_issue" && (prefix.origin !== "https://linear.app" || !/^\/[A-Za-z0-9_-]+\/issue\/$/.test(prefix.pathname) || prefix.pathname.startsWith("/issue/"))) {
+      throw new PolicyError(`${path} requires a workspace-qualified Linear issue prefix`);
+    }
+  }
 }
 
 function validateMarketplace(marketplace) {

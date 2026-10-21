@@ -13,6 +13,9 @@ REVOKE ALL ON TABLE
     :"schema".cao_operational_cli_commands,
     :"schema".cao_operational_cli_executions,
     :"schema".cao_operational_cli_output,
+    :"schema".cao_operational_webhook_queues,
+    :"schema".cao_operational_webhook_deliveries,
+    :"schema".cao_operational_webhook_jobs,
     :"schema".cao_operational_audit_events
     FROM PUBLIC, :"runtime", :"retention", :"reader";
 REVOKE ALL (namespace, version, config, protected_bytes, protected_entries)
@@ -27,7 +30,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
     :"schema".cao_operational_cli_queues,
     :"schema".cao_operational_cli_commands,
     :"schema".cao_operational_cli_executions,
-    :"schema".cao_operational_cli_output TO :"runtime";
+    :"schema".cao_operational_cli_output,
+    :"schema".cao_operational_webhook_queues,
+    :"schema".cao_operational_webhook_deliveries,
+    :"schema".cao_operational_webhook_jobs TO :"runtime";
 GRANT USAGE ON SEQUENCE
     :"schema".cao_operational_records_position_seq,
     :"schema".cao_operational_cache_position_seq,

@@ -508,6 +508,127 @@
         }
       }
     },
+    "webhookExternalSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "event", "resourceUrlPrefix", "scope", "secretEnv", "destinationRepositoryIds", "expiresAt"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$", "not": { "enum": ["compiler", ".", ".."] } },
+        "event": { "enum": ["jira_issue", "linear_issue", "azure_devops_issue"] },
+        "resourceUrlPrefix": { "type": "string", "format": "uri", "maxLength": 2048, "pattern": "^https://[^?#]+/$" },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "collectionId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "secretEnv": { "type": "string", "maxLength": 128, "pattern": "^CAO_GATEWAY_SOURCE_[A-Z0-9_]+$", "not": { "pattern": "_PREVIOUS$" } },
+        "destinationRepositoryIds": { "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": { "type": "integer", "minimum": 1 } },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "event": { "const": "azure_devops_issue" } } },
+          "then": { "required": ["collectionId"] },
+          "else": { "not": { "required": ["collectionId"] } }
+        }
+      ]
+    },
+    "webhookGateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "enabled", "revision", "receivingAppId", "dispatchAppId", "namespace", "artifacts", "grants", "workers"],
+      "properties": {
+        "version": { "const": 1 },
+        "enabled": { "type": "boolean", "default": false },
+        "revision": { "type": "integer", "minimum": 1 },
+        "receivingAppId": { "type": "integer", "minimum": 1 },
+        "dispatchAppId": { "type": "integer", "minimum": 1 },
+        "namespace": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+        "workers": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "externalSources": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/webhookExternalSource" } },
+        "discovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repositories", "activateSecurity"],
+          "properties": {
+            "activateSecurity": { "type": "boolean", "default": false },
+            "activateCommands": { "type": "boolean", "default": false },
+            "activateNotifications": { "type": "boolean", "default": false },
+            "serverUrl": { "type": "string", "pattern": "^https://[a-z0-9.-]+(:[1-9][0-9]*)?(/[a-zA-Z0-9._~%+-]+)*$", "default": "https://github.com" },
+            "intervalSeconds": { "type": "integer", "minimum": 30, "maximum": 3600, "default": 300 },
+            "repositories": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["repository", "repositoryId", "receivingInstallationId", "dispatchInstallationId"],
+                "properties": {
+                  "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$" },
+                  "repositoryId": { "type": "integer", "minimum": 1 },
+                  "receivingInstallationId": { "type": "integer", "minimum": 1 },
+                  "dispatchInstallationId": { "type": "integer", "minimum": 1 },
+                  "allowLabelRemoval": { "type": "boolean", "default": false }
+                }
+              }
+            }
+          }
+        },
+        "projectAssignments": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["projectId", "organizationId", "repositoryId"],
+            "properties": {
+              "projectId": { "type": "string", "pattern": "^[A-Za-z0-9_+/=-]{1,256}$" },
+              "organizationId": { "type": "integer", "minimum": 1 },
+              "repositoryId": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "repositoryId", "commitSha", "compilerId"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "repositoryId": { "type": "integer", "minimum": 1 },
+              "commitSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+              "compilerId": { "type": "string", "minLength": 1, "maxLength": 128 }
+            }
+          }
+        },
+        "grants": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subscriptionId", "digest", "sourceInstallationId", "sourceRepositoryId", "sourceOrganizationId", "receivingInstallationId", "destinationInstallationId", "destinationRepositoryId", "dispatchKind", "expiresAt"],
+            "properties": {
+              "subscriptionId": { "type": "string", "minLength": 1 },
+              "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "sourceInstallationId": { "type": "integer", "minimum": 1 },
+              "sourceRepositoryId": { "type": "integer", "minimum": 0 },
+              "sourceOrganizationId": { "type": "integer", "minimum": 0 },
+              "projectIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9_+/=-]{1,256}$" } },
+              "receivingInstallationId": { "type": "integer", "minimum": 1 },
+              "destinationInstallationId": { "type": "integer", "minimum": 1 },
+              "destinationRepositoryId": { "type": "integer", "minimum": 1 },
+              "dispatchKind": { "enum": ["workflow_dispatch", "repository_dispatch"] },
+              "allowVisibilityTransfer": { "type": "boolean", "default": false },
+              "expiresAt": { "type": "string", "format": "date-time" },
+              "revoked": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "queue": { "type": "object", "description": "Strict bounded QueueOptions contract validated by the gateway at startup; see RFC-033." }
+      }
+    },
     "controlPlane": {
       "type": "object",
       "additionalProperties": false,
@@ -520,7 +641,8 @@
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
         "workflows": { "$ref": "#/$defs/controlWorkflows" },
         "publishing": { "$ref": "#/$defs/publishing" },
-        "marketplace": { "$ref": "#/$defs/marketplace" }
+        "marketplace": { "$ref": "#/$defs/marketplace" },
+        "webhook-gateway": { "$ref": "#/$defs/webhookGateway" }
       }
     },
     "targetCampaign": {

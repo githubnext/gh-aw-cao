@@ -28,6 +28,7 @@
   "server/azure/provision.sql",
   "server/cmd/cao-dashboard/",
   "server/cmd/cao-functions/",
+  "server/cmd/cao-webhook-gateway/",
   "server/go.mod",
   "server/go.sum",
   "server/internal/",

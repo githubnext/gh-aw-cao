@@ -1,0 +1,89 @@
+{
+  "sources": [
+    {
+      "id": "jira",
+      "event": "jira_issue",
+      "resourceUrlPrefix": "https://example.atlassian.net/rest/api/3/issue/",
+      "scope": "APP",
+      "secretEnv": "CAO_GATEWAY_SOURCE_JIRA",
+      "destinationRepositoryIds": [11],
+      "expiresAt": "2030-01-01T00:00:00Z"
+    },
+    {
+      "id": "linear",
+      "event": "linear_issue",
+      "resourceUrlPrefix": "https://linear.app/acme/issue/",
+      "scope": "linear-org",
+      "secretEnv": "CAO_GATEWAY_SOURCE_LINEAR",
+      "destinationRepositoryIds": [11],
+      "expiresAt": "2030-01-01T00:00:00Z"
+    },
+    {
+      "id": "azure",
+      "event": "azure_devops_issue",
+      "resourceUrlPrefix": "https://dev.azure.com/acme/_apis/wit/workItems/",
+      "scope": "azure-project",
+      "collectionId": "azure-collection",
+      "secretEnv": "CAO_GATEWAY_SOURCE_AZURE",
+      "destinationRepositoryIds": [11],
+      "expiresAt": "2030-01-01T00:00:00Z"
+    }
+  ],
+  "deliveries": [
+    {
+      "sourceId": "jira",
+      "payload": {
+        "webhookEvent": "jira:issue_updated",
+        "issue": {
+          "id": "10001",
+          "self": "https://example.atlassian.net/rest/api/3/issue/10001",
+          "fields": {"project": {"key": "APP"}, "labels": ["urgent"], "summary": "MUST-NOT-PERSIST"}
+        },
+        "changelog": {"items": [
+          {"fieldtype": "jira", "field": "resolution", "from": null, "to": "1"},
+          {"fieldtype": "jira", "field": "labels", "fromString": null, "toString": "urgent"}
+        ]}
+      },
+      "expected": {"url": "https://example.atlassian.net/rest/api/3/issue/10001", "type": ["closed", "edited", "labeled"], "filters": {"project": ["APP"]}}
+    },
+    {
+      "sourceId": "linear",
+      "payload": {
+        "type": "Issue",
+        "action": "update",
+        "organizationId": "linear-org",
+        "webhookTimestamp": 0,
+        "data": {
+          "id": "issue-id",
+          "url": "https://linear.app/acme/issue/APP-42/fix",
+          "completedAt": "2026-10-18T12:00:00Z",
+          "canceledAt": null,
+          "labelIds": ["urgent"],
+          "title": "MUST-NOT-PERSIST"
+        },
+        "updatedFrom": {"completedAt": null, "labelIds": []}
+      },
+      "expected": {"url": "https://linear.app/acme/issue/APP-42/fix", "type": ["closed", "edited", "labeled"], "filters": {"organization-id": ["linear-org"]}}
+    },
+    {
+      "sourceId": "azure",
+      "payload": {
+        "id": "azure-delivery",
+        "eventType": "workitem.updated",
+        "resourceVersion": "2.0",
+        "resourceContainers": {"collection": {"id": "azure-collection"}, "project": {"id": "azure-project"}},
+        "resource": {
+          "id": 999,
+          "workItemId": 42,
+          "url": "https://dev.azure.com/acme/_apis/wit/workItems/42/updates/999",
+          "fields": {
+            "System.State": {"oldValue": "Active", "newValue": "Done"},
+            "System.Tags": {"oldValue": "legacy;", "newValue": "urgent;"},
+            "System.Title": {"oldValue": "old", "newValue": "MUST-NOT-PERSIST"}
+          }
+        }
+      },
+      "expected": {"url": "https://dev.azure.com/acme/_apis/wit/workItems/42", "type": ["closed", "edited", "labeled", "unlabeled"], "filters": {"project_id": ["azure-project"], "closed-states": ["Done"]}}
+    }
+  ]
+}

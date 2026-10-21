@@ -1,7 +1,8 @@
 # Cooperative workflow admission
 
-The hosted server optionally implements `POST /api/admission` from the
-[gh-aw admission specification](https://github.com/github/gh-aw/blob/be70cb4ec4317135a1ab21d5b830b6fae7d5be4a/docs/src/content/docs/specs/admission-service-specification.md).
+The hosted server optionally implements `POST /api/admission` and the isolated
+`conclusion_admission` job's `POST /api/conclusion` callback from the
+[gh-aw admission specification](https://github.com/github/gh-aw/blob/b2707604dd52732afa66ff7ae270bda96cf6c9fd/docs/src/content/docs/specs/admission-service-specification.md).
 Its safety contract follows the
 [activation TLA+ model](https://github.com/github/gh-aw/blob/be70cb4ec4317135a1ab21d5b830b6fae7d5be4a/specs/workflow-security/ActivationAdmission.tla):
 verified invocation identity, stable retry allowances, private denial reasons,
@@ -20,7 +21,7 @@ variables, or omitting the helper can bypass it.
 
 ## Protocol revision and compatibility
 
-This implementation supports the v1.2 wire contract merged in
+Activation supports the unchanged v1.2 wire contract merged in
 [github/gh-aw#70429](https://github.com/github/gh-aw/pull/70429), checked against
 commit `be70cb4ec4317135a1ab21d5b830b6fae7d5be4a`. The upstream document retains
 its draft version label; this pin identifies the actual merged implementation.
@@ -47,12 +48,118 @@ negotiation, legacy fallback, or implicit protocol selection. Deploy only with
 a client implementing the pinned v1.2 wire contract; the fact that the original
 proposal merged does not make an older client compatible.
 
+Conclusion delivery is pinned to the published v1.4 draft at
+`b2707604dd52732afa66ff7ae270bda96cf6c9fd`, including its actual
+`conclusion_admission.cjs`, `check_admission.cjs`, `admission_protocol.cjs` and
+`compact_unified_session.cjs`. The activation parser is byte-identical to the
+earlier pin above. The callback job name is not a route: the HTTP path is
+`/api/conclusion`, not `/api/conclusion_admission`.
+
 This is a restricted supported profile, not a claim of full upstream acceptance
 coverage. Enterprise issuers, reusable invocation disambiguation, policy use of
 the rerun initiator, backend App provisioning, trusted usage collection and
 automatic replay-record garbage collection remain unsupported or
 deployment-owned as described below. No deployment or live acceptance is
-established by the automated fixtures.
+established by the automated fixtures. Full-session retrieval is not implemented;
+the callback populates the canonical database from bounded compact evidence only.
+
+## Conclusion ingestion
+
+Both operations are enabled by the same explicit server settings below. The
+client derives `/api/conclusion` on the configured admission origin, preserving
+its explicit port, and uses the **same audience** as admission. There is no new
+managed variable, separate destination, credential grant or activation switch.
+The compiler owns artifact-first ordering and fresh callback-job OIDC; a token
+does not itself prove that a particular helper ran.
+
+The server independently verifies the same GitHub.com signature, audience,
+immutable repository/workflow revision, original actor and invocation bindings.
+It rechecks current exact enrollment, subjects, workflow SHA, event and actor
+IDs before accepting each notification. It does **not** require an earlier
+admission record or reapply spend thresholds/accounting freshness: runs allowed
+by an ignored activation outage, exhausted budgets and unsuccessful agents can
+still report completion. The protected snapshot must remain readable and
+structurally valid; disabled enrollment or a removed workflow revision denies
+delivery. Missing policy or storage is a transient failure, never acceptance.
+
+The body contains exactly the ten admission identity strings, `session`,
+`session_compaction` and `usage_artifact_ids`, at most **65,536 UTF-8 bytes**.
+Identity is independently limited to 8 KiB. Compact profile 1 accepts at most
+**128 records / 16,384 UTF-8 bytes**, one LF per JSON record, and only the
+[pinned compact metadata vocabulary](https://github.com/github/gh-aw/blob/b2707604dd52732afa66ff7ae270bda96cf6c9fd/docs/src/content/docs/specs/unified-agent-session-specification.md#38-compact-unified-session-normative).
+Unknown fields, messages, prompts, tool data, invalid Unicode, duplicate JSON
+members, nonfinite/non-scalar values and strings over 256 UTF-8 bytes reject;
+the receiver never silently projects away disallowed content. Coverage has
+exactly six fields with nonnegative safe-integer counters and the supplied
+record count must match the JSONL. An empty compact stream is valid, not proof
+of zero activity. False truncation flags never certify complete accounting.
+Artifact locators are at most two unique positive-decimal strings of up to
+20 digits, retry ID first; an empty array preserves unavailable publication.
+
+Before returning an **empty `204`**, the server durably records the verified
+identity, compact request and first observation time, publishes typed canonical
+dashboard facts, and durably marks the receipt populated. The receipt key includes the same verified
+issuer, repository/owner, run/attempt, workflow reference/SHA and original actor
+as activation, but lives in a separate operation namespace. Retries, token
+renewal and another replica acknowledge an identical decoded request again.
+A pending receipt resumes canonical publication after an outage; publication
+and its revision are idempotent, including a crash between canonical commit and
+the separate operational completion marker. A completed receipt skips publication.
+Conflicting payloads return the same empty `403` without
+overwriting anything. JSON envelope member order/escaping does not change the
+receipt; compact JSONL bytes and artifact order remain part of the snapshot.
+No admission decision, allowance, GitHub run outcome or billing state changes.
+
+Canonical population uses existing query sources, not a separate session table:
+the verified repository/workflow/run relationship and available engine/model
+and usage scalars populate `runs`; bounded native events and compaction coverage
+populate `audits`; individually identified grader results populate `graders`
+and `graderObservations`. Untimed events carry `observedAt`, never a made-up
+event clock. Missing metrics stay unknown, while explicit numeric zero survives.
+Usage selection follows the canonical session adapter independently per phase
+and dimension: measured reports outrank firewall copies and the latest root
+snapshot; cumulative AIC is not added to per-record AIC. Overflowed aggregates
+remain unknown and emit a metadata-only diagnostic. These are partial observed
+measures, not complete usage or settlement.
+
+Canonical publication shares replacement ingestion's namespace lock and commits
+the Run, relationships, records, partial quality and revision atomically. Existing
+API-only Runs are enriched without replacing their known fields. Older attempts
+cannot overwrite a newer observation or mix their run-owned records; collected
+session evidence at the winning attempt supersedes the compact preview.
+Unrelated and API-only replacement snapshots preserve/enrich callback evidence.
+The callback itself proves neither admission approval nor the final GitHub
+workflow status, conclusion or completion time; those fields are not invented.
+
+Sensitive payloads have a **fixed 24-hour retention** from first acceptance.
+Reads exclude expired payloads; existing bounded operational maintenance
+physically removes them. Retries never extend retention or recreate expired
+payloads. Digest/completion receipts have no TTL or automatic garbage collection, so
+late identical retries can acknowledge without reprocessing and conflicts stay
+denied. A never-completed pending receipt expires rather than recreating work
+after its payload-retention window. Canonical typed facts use the ordinary
+dashboard evidence retention, independently of compact-request retention.
+Both operational records consume the namespace's protected byte/entry budgets;
+capacity exhaustion rolls back both and returns `503`, never evicts a receipt.
+Operators must monitor capacity and run existing maintenance; physical deletion
+and backup retention remain deployment responsibilities. There is no public
+session-read endpoint, body logging, trace payload capture or automatic export.
+
+Acceptance means durable receipt **and completed compact canonical population**,
+not full-session retrieval. Artifact IDs remain untrusted locators. This implementation makes
+no GitHub artifact requests and gains no App/Actions credential. A future
+consumer must separately authenticate and bind repository, run, attempt and
+executing workflow identity; validate full-session identity/schema and bound
+download/archive resources. Until then full-session evidence is explicitly
+unavailable, never replaced by the compact preview. Session observations are
+untrusted and overlapping usage is never summed or settled as billing.
+
+The route shares activation's five-second deadline, proxy boundary,
+spend-independent peer probe limit, sanitized caller tracing and body-free
+`403`/`429`/`503` responses. Every response is `no-store` without trace,
+quota, reason or redirect headers. Conclusion failures are best-effort warnings
+in the gh-aw client under both outage policies; they do not alter completed
+workflow results.
 
 ## Enable the service
 
@@ -393,7 +500,7 @@ separately opt-in (`CAO_OTEL_LOGS_ENABLED=true`) and debug-category gated, not a
 required source of admission diagnostics.
 
 The ordinary `http.server.request.duration` histogram captures admission status
-and latency using the fixed `http.route=/api/admission` label, including durable
+and latency using fixed `/api/admission` or `/api/conclusion` route labels, including durable
 denials, operational throttles and unavailability. It carries no trace, actor,
 repository or policy identifiers as dimensions. Stage spans are fixed names:
 
@@ -405,6 +512,9 @@ repository or policy identifiers as dimensions. Stage spans are fixed names:
 | `cao_dashboard.admission.decision.resolve` | Durable first-decision/revocation transition |
 | `cao_dashboard.admission.replay.check` | Retained eligibility check during a dependency outage |
 | `cao_dashboard.admission.run.publish` | Idempotent sparse canonical Run publication after approval |
+| `cao_dashboard.admission.conclusion.authorize` | Current exact completion enrollment without spend gating |
+| `cao_dashboard.admission.conclusion.record` | Atomic immutable compact-session receipt |
+| `cao_dashboard.admission.conclusion.publish` | Idempotent canonical population and durable completion marker |
 
 Dependency failures have only a generic unavailable status; telemetry never
 records raw exceptions, tokens, claims, request bodies, allowance values or
@@ -426,9 +536,16 @@ probes can still reveal eligibility changes, as with any cooperative gate.
 protocol/claim fixtures and the full handler's authentication, response,
 tracing, probe-limit and timeout boundaries. Set `POSTGRES_URL` to a disposable,
 owner-accessible local PostgreSQL database and run
-`go -C server test ./internal/operational/postgres -run ActivationAdmission`
+`go -C server test ./internal/operational/postgres -run 'ActivationAdmission|Conclusion'`
 for real cross-replica retry, revocation, expiry, outage recovery and capacity
 checks. All credentials and accounting in these tests are synthetic.
+Conclusion checks include cross-replica concurrency, conflicting delivery,
+rollback at capacity, non-sliding retention, maintenance and late-replay receipts.
+With the same disposable database,
+`go -C server test ./internal/postgresx -run 'Conclusion|AdmittedRun'` exercises
+the production Dashboard Language query boundary, compact Run/Audit/grader
+facts, absent-versus-zero measures, canonical adapter usage parity, atomic
+rollback/recovery, repeated ingestion and collected/attempt precedence.
 
 `TestAdmissionClientTraceparentExportedThroughFullHandler` inspects exported
 server and dependency spans for sampled/unsampled callers, retries, malformed,
@@ -449,6 +566,20 @@ parses every allowance combination and integer boundaries using that client.
 Without the explicit fixture path it skips; ordinary Go tests need no Node
 runtime or network fetch. Do not use sanitized `gh api` raw-terminal output as
 parser source: decode the contents API's `content` field and verify its bytes.
+For actual published conclusion-client conformance, materialize
+`actions/setup/js/` from `b2707604dd52732afa66ff7ae270bda96cf6c9fd` and run:
+
+```sh
+GH_AW_CONCLUSION_RUNTIME_DIR=/absolute/path/actions/setup/js \
+  go -C server test ./internal/admission -run TestPublishedConclusionClientConformance
+```
+
+This opt-in test verifies the four core module digests, executes the actual
+shared projector and callback against the production Go service, and checks
+synthetic OIDC, same-audience route derivation, retry-first artifact IDs,
+large decimal IDs, filtering, coverage, lost acknowledgements and delivery under
+both outage policies. Ordinary Go tests remain offline and skip this fixture
+unless explicitly selected.
 The OTel tests also export protobuf to an isolated HTTP collector and verify
 shutdown flush, service resource identity, caller trace continuity and
 redaction. Separate metric checks cover denial/throttle/unavailability routing;

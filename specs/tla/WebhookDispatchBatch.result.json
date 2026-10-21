@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "rfc": "RFC-033",
+  "status": "passed",
+  "checked_at_utc": "2026-10-18T02:32:43Z",
+  "elapsed_seconds": 6.887,
+  "command": [
+    "java",
+    "-Djava.io.tmpdir=$TLC_WORK_DIR",
+    "-XX:+UseParallelGC",
+    "-Xmx768m",
+    "-cp",
+    "$TLA2TOOLS_JAR",
+    "tlc2.TLC",
+    "-workers",
+    "2",
+    "-fp",
+    "0",
+    "-seed",
+    "33",
+    "-metadir",
+    "$TLC_WORK_DIR/states",
+    "-config",
+    "specs/tla/WebhookDispatchBatch.cfg",
+    "specs/tla/WebhookDispatchBatch.tla"
+  ],
+  "command_is_template": true,
+  "reproduce_command": "python3 scripts/check-webhook-gateway-model.py --jar \"$TLA2TOOLS_JAR\" --model specs/tla/WebhookDispatchBatch.tla --config specs/tla/WebhookDispatchBatch.cfg",
+  "tool": {
+    "release": "v1.7.4",
+    "url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+    "sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+    "version_line": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)"
+  },
+  "inputs": {
+    "specs/tla/WebhookDispatchBatch.tla": "170caeddbff1604bd5ccf14c6040bb2ca74501fbde39c4a65edd8adb83065f73",
+    "specs/tla/WebhookDispatchBatch.cfg": "fdfccb70bf72c4ee7d41b3d2ee9f4b8e98b0913746e654144fcafbe5c7e849c8"
+  },
+  "bounds": {
+    "jobs": 3,
+    "workers": 2,
+    "max_time": 1,
+    "max_generation": 1,
+    "max_batch": 2,
+    "budget": 2
+  },
+  "specification": "Spec",
+  "invariants": [
+    "TypeOK",
+    "BoundedUniformBatches",
+    "ReplicaExclusion",
+    "UniqueCompleteContexts",
+    "OneChargePerReservation",
+    "AcceptedNeverRetried",
+    "SuccessRequiresAcceptance"
+  ],
+  "action_properties": [
+    "AtomicReservations",
+    "FencedReservations",
+    "NoReservationAfterObservation",
+    "TerminalStable"
+  ],
+  "temporal_properties": [],
+  "fairness_assumptions": [],
+  "states_generated": 399217,
+  "distinct_states": 108272,
+  "states_remaining": 0,
+  "stdout_sha256": "098f2de2b0d5d408beb9e9fbe2410d9812835a50644f68f2f36ad3797e9ced99",
+  "evidence": [
+    "Model checking completed. No error has been found.",
+    "  Estimates of the probability that TLC did not check all reachable states",
+    "  because two distinct states had the same fingerprint:",
+    "  calculated (optimistic):  val = 1.7E-9",
+    "  based on the actual fingerprints:  val = 6.0E-10",
+    "399217 states generated, 108272 distinct states found, 0 states left on queue.",
+    "The depth of the complete state graph search is 17.",
+    "The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 12 and the 95th percentile is 3).",
+    "Finished in 06s at (2026-10-17 19:32:43)"
+  ],
+  "temporal_check_evidence": [],
+  "limitations": [
+    "Finite model; no unbounded proof or implementation conformance claim.",
+    "Settlement liveness requires the listed clock/maintenance fairness; success is not guaranteed.",
+    "Unobserved authorization changes may race with external acceptance."
+  ]
+}

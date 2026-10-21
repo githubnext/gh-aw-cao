@@ -2,9 +2,11 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,7 +18,49 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/operational/postgres"
 	"github.com/githubnext/gh-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-cao/server/internal/query"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
+	"github.com/githubnext/gh-cao/server/internal/webhookgatewaylocal"
 )
+
+func TestPostgresWebhookRuntimePrivilegeBoundary(t *testing.T) {
+	f := newPostgresRoles(t)
+	store, err := postgres.Open(t.Context(), f.runtimeDSN, f.namespace, postgres.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	rate := gateway.RateBudget{Capacity: 100, Period: time.Hour}
+	queue, err := store.OpenWebhookQueue(t.Context(), "webhooks", gateway.QueueOptions{
+		MaxRows: 128, MaxBytes: 2 << 20, MaxTenantRows: 128, MaxTenantBytes: 2 << 20,
+		MaxSourceRows: 128, MaxSourceBytes: 2 << 20, MaxDestinationRows: 128, MaxDestinationBytes: 2 << 20,
+		MaxPayloadBytes: 65536, MaxBatch: 16, MaxConcurrency: 8,
+		MaxAge: time.Hour, DedupWindow: time.Hour, TerminalRetention: 2 * time.Hour, LeaseDuration: time.Minute,
+		Rates: gateway.RateBudgets{Global: rate, App: rate, Tenant: rate, Destination: rate, Workflow: rate},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.ApplyRevision(t.Context(), gateway.PolicyRevision{
+		Revision: 1, Digest: strings.Repeat("a", 64), Enabled: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if job, err := queue.Claim(t.Context(), gateway.ClaimRequest{Owner: "worker", LeaseDuration: time.Minute}); err != nil || job != nil {
+		t.Fatalf("empty gateway queue claim: %v %v", job, err)
+	}
+	runtimeDB, readerDB := roleDB(t, f.runtimeDSN), roleDB(t, f.readerDSN)
+	for _, table := range []string{"cao_operational_webhook_queues", "cao_operational_webhook_deliveries", "cao_operational_webhook_jobs"} {
+		for _, privilege := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			var allowed bool
+			if err := runtimeDB.QueryRowContext(t.Context(), `SELECT has_table_privilege(current_user,$1,$2)`, table, privilege).Scan(&allowed); err != nil || !allowed {
+				t.Fatalf("gateway runtime lacks %s on %s: %v", privilege, table, err)
+			}
+		}
+		qualified := pgx.Identifier{f.schema, table}.Sanitize()
+		assertSQLDenied(t, runtimeDB, "ALTER TABLE "+qualified+" ADD COLUMN forbidden int")
+		assertSQLDenied(t, readerDB, "SELECT * FROM "+qualified)
+	}
+}
 
 func roleDB(t *testing.T, dsn string) *sql.DB {
 	t.Helper()
@@ -91,6 +135,7 @@ func TestPostgresRuntimePrivilegeBoundary(t *testing.T) {
 	if err := s.Maintain(ctx); err != nil {
 		t.Fatalf("runtime maintenance requires elevated privileges: %v", err)
 	}
+	testWebhookRuntime(t, f)
 	health, err := s.Health(ctx)
 	if err != nil || !health.Ready || health.Entries < 1 {
 		t.Fatalf("protected state accounting: %+v %v", health, err)
@@ -163,6 +208,92 @@ func TestPostgresRuntimePrivilegeBoundary(t *testing.T) {
 	}
 	testCanonicalRuntime(t, f)
 	testAuditReader(t, f)
+}
+
+func testWebhookRuntime(t *testing.T, f postgresRoles) {
+	t.Helper()
+	ctx := t.Context()
+	store, err := postgres.Open(ctx, f.runtimeDSN, f.namespace, postgres.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	repository := webhookgatewaylocal.Repository{ID: 42, FullName: "octo/repo"}
+	repository.Owner.ID, repository.Owner.Type = 7, "Organization"
+	simulation, err := webhookgatewaylocal.NewSimulation(repository, []string{"issues"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := simulation.Load(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queue, err := store.OpenWebhookQueue(ctx, "webhooks", policy.Policy.Queue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := queue.ApplyRevision(ctx, policy.Revision); err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte(`{"action":"opened","installation":{"id":1},"repository":{"id":42},"organization":{"id":7}}`)
+	event, err := gateway.ParseEvent("delivery", "issues", payload, gateway.DefaultLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	event.SourceID = "local"
+	subscription := policy.Subscriptions[0]
+	job, err := gateway.NewJob(time.Now().Add(-time.Second), "input", event, subscription, policy.Revisions[subscription.ID].Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var request map[string]any
+	if err := json.Unmarshal(job.Payload, &request); err != nil {
+		t.Fatal(err)
+	}
+	request["client_payload"].(map[string]any)["_gateway"] = map[string]any{
+		"version": "cao.webhook/v1", "sourceId": event.SourceID, "deliveryId": event.DeliveryID,
+		"subscriptionId": subscription.ID, "revision": policy.Revisions[subscription.ID],
+	}
+	job.Payload, err = json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	job.QueueRevision = policy.Revision
+	if _, err := queue.AdmitBatch(ctx, gateway.Admission{
+		Revision: policy.Revision, DeliveryID: event.DeliveryID, DeliveryDigest: gateway.MetadataDigest(payload),
+		Jobs: []gateway.Job{job},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	worker := gateway.Worker{Policies: simulation, Queue: queue, Authorizer: simulation, Dispatcher: simulation,
+		Owner: "runtime-role", HTTPTimeout: time.Second, LeaseDuration: time.Minute}
+	if worked, err := worker.RunOnce(ctx); err != nil || !worked {
+		t.Fatal("restricted runtime could not process gateway work", worked, err)
+	}
+	db := roleDB(t, f.runtimeDSN)
+	var state string
+	if err := db.QueryRowContext(ctx, `SELECT state FROM cao_operational_webhook_jobs WHERE namespace=$1 AND queue='webhooks'`, f.namespace).Scan(&state); err != nil || state != "succeeded" {
+		t.Fatal("restricted runtime did not persist gateway acceptance", state, err)
+	}
+	next := policy.Revision
+	next.Revision++
+	next.Digest = strings.Repeat("a", 64)
+	if err := queue.ApplyRevision(ctx, next); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := queue.Maintain(ctx, 100); err != nil {
+		t.Fatal(err)
+	}
+	registry := queue.(gateway.RegistryStore)
+	bound, err := registry.BindRegistry(ctx, next)
+	if err != nil {
+		t.Fatal("restricted runtime could not bind subscription registry", err)
+	}
+	published, err := registry.ReplaceRegistry(ctx, next, bound.Version,
+		[]gateway.RepositoryInventory{{RepositoryID: 42, Dirty: true}})
+	if err != nil || published.Version <= bound.Version {
+		t.Fatal("restricted runtime could not atomically invalidate subscription inventory", err)
+	}
 }
 
 func testCanonicalRuntime(t *testing.T, f postgresRoles) {

@@ -1,0 +1,167 @@
+package webhookgatewayhost
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	"github.com/githubnext/gh-cao/server/internal/githubquota"
+	"github.com/githubnext/gh-cao/server/internal/operational"
+	gateway "github.com/githubnext/gh-cao/server/internal/webhookgateway"
+)
+
+type quotaFake struct {
+	released, committed, parked int
+	err                         error
+	observed                    []githubquota.BucketID
+	parkedBuckets               []githubquota.BucketID
+}
+
+func (q *quotaFake) Observe(_ context.Context, bucket githubquota.BucketID, _ githubquota.Observation) error {
+	q.observed = append(q.observed, bucket)
+	return q.err
+}
+func (q *quotaFake) Reserve(_ context.Context, bucket githubquota.BucketID, _ githubquota.ReservationRequest) (githubquota.Reservation, error) {
+	return githubquota.Reservation{ID: "reservation", Bucket: bucket, Amount: 2}, q.err
+}
+func (q *quotaFake) Commit(context.Context, githubquota.Reservation, githubquota.Observation) error {
+	q.committed++
+	return q.err
+}
+func (q *quotaFake) Release(context.Context, githubquota.Reservation) error {
+	q.released++
+	return q.err
+}
+func (q *quotaFake) Park(_ context.Context, bucket githubquota.BucketID, _ time.Time, _ string) error {
+	q.parked++
+	q.parkedBuckets = append(q.parkedBuckets, bucket)
+	return q.err
+}
+
+type quotaReader struct{ observation bool }
+
+func (q quotaReader) QuotaRateLimit(context.Context, int64) (githubquota.ResponseQuota, error) {
+	return githubquota.ResponseQuota{HasResponse: true, HasObservation: q.observation,
+		Observation: githubquota.Observation{Limit: 5000, Remaining: 4999, ResetAt: time.Now().Add(time.Hour)}}, nil
+}
+
+type quotaDispatch struct{ unknown bool }
+
+func (q quotaDispatch) DispatchWithQuota(_ context.Context, s gateway.Subscription, _ json.RawMessage) (gateway.DispatchResponse, githubquota.ResponseQuota) {
+	if q.unknown {
+		return gateway.DispatchResponse{Kind: s.Destination.Kind, TransportOutcome: "unknown"}, githubquota.ResponseQuota{}
+	}
+	return gateway.DispatchResponse{Kind: s.Destination.Kind, StatusCode: 204, TransportOutcome: "response"},
+		githubquota.ResponseQuota{HasResponse: true, HasObservation: true,
+			Observation: githubquota.Observation{Limit: 5000, Remaining: 4997, ResetAt: time.Now().Add(time.Hour)}}
+}
+
+func TestQuotaGateReservesBeforeDispatchAndPreservesAmbiguity(t *testing.T) {
+	for _, scenario := range []string{"not-sent", "accepted", "unknown", "unknown-budget"} {
+		t.Run(scenario, func(t *testing.T) {
+			quota := &quotaFake{}
+			job := gateway.Job{Subscription: gateway.Subscription{ID: "subscription",
+				Destination: gateway.Destination{Kind: "repository_dispatch", InstallationID: 20}}}
+			gate := &QuotaGate{Service: quota, Reader: quotaReader{scenario != "unknown-budget"},
+				Dispatcher: quotaDispatch{scenario == "unknown"}, AppID: 2}
+			release, err := gate.Acquire(t.Context(), job)
+			if scenario == "unknown-budget" {
+				if err == nil {
+					t.Fatal("unknown quota admitted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if scenario != "not-sent" {
+				gate.Dispatch(t.Context(), job.Subscription, json.RawMessage(`{}`))
+			}
+			release()
+			if scenario == "not-sent" && quota.released != 1 {
+				t.Fatal("unused reservation was not returned")
+			}
+			if scenario == "accepted" && (quota.committed != 1 || quota.released != 0) {
+				t.Fatal("accepted reservation not committed exactly once")
+			}
+			if scenario == "unknown" && (quota.parked != 1 || quota.released != 0) {
+				t.Fatal("uncertain request quota was refunded")
+			}
+		})
+	}
+}
+
+type apiLimiter struct{ allowed bool }
+
+func (l apiLimiter) TakeRateLimitToken(context.Context, string, int, time.Duration) (operational.RateLimitResult, error) {
+	return operational.RateLimitResult{Allowed: l.allowed}, nil
+}
+func (l apiLimiter) TakeRateLimitTokens(context.Context, string, int, time.Duration, int) (operational.RateLimitResult, error) {
+	return operational.RateLimitResult{Allowed: l.allowed}, nil
+}
+
+type transportFunc func(*http.Request) (*http.Response, error)
+
+func (f transportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestAPIBudgetStopsHTTPBeforeSending(t *testing.T) {
+	calls := 0
+	transport := BudgetTransport{Limiter: apiLimiter{false}, Next: transportFunc(func(*http.Request) (*http.Response, error) {
+		calls++
+		return &http.Response{StatusCode: 204, Body: io.NopCloser(strings.NewReader(""))}, nil
+	})}
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://api.github.com/rate_limit", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := transport.RoundTrip(request)
+	if response != nil {
+		if closeErr := response.Body.Close(); closeErr != nil {
+			t.Fatal(closeErr)
+		}
+	}
+	if !errors.Is(err, ErrAPIBudget) || !errors.Is(err, gateway.ErrRequestNotSent) || calls != 0 {
+		t.Fatal("exhausted distributed budget made an HTTP call")
+	}
+}
+
+type dispatchAPILimiter struct {
+	apiLimiter
+	remaining int
+}
+
+func (l *dispatchAPILimiter) TakeRateLimitToken(_ context.Context, _ string, _ int, _ time.Duration) (operational.RateLimitResult, error) {
+	l.remaining--
+	return operational.RateLimitResult{Allowed: l.remaining >= 0}, nil
+}
+
+func TestDispatchAPIBudgetRefusalIsKnownNotSent(t *testing.T) {
+	limiter := &dispatchAPILimiter{remaining: 2}
+	client, calls := demoDispatchClient(t, BudgetTransport{Limiter: limiter})
+	subscription := gateway.Subscription{SchemaVersion: "gh-aw.webhook-subscription/v1", Provider: "github", AppID: 2,
+		ID: "budget", TenantID: "tenant", Source: gateway.Source{ID: "source", Event: "issues", InstallationID: 10, RepositoryID: 11},
+		Delivery: gateway.DeliveryPolicy{TTLSeconds: 600, LeaseSeconds: 60, MaxAttempts: 3, RetryDelaySeconds: 1},
+		Destination: gateway.Destination{Kind: "workflow_dispatch", InstallationID: 20, RepositoryID: 21,
+			Workflow: "project-change.yml", Ref: "main", GatewayInput: true, BatchInput: true}}
+	provenance, _ := json.Marshal(map[string]any{"version": "cao.webhook-batch/v1", "sourceId": "source",
+		"subscriptionId": "budget", "batchId": strings.Repeat("b", 64), "revision": gateway.Revision{
+			RepositoryID: 21, CommitSHA: strings.Repeat("c", 40), MetadataPath: "subscription.json",
+			Digest: strings.Repeat("a", 64), CompilerID: "fixture"}})
+	payload, _ := json.Marshal(map[string]any{"ref": "main", "inputs": map[string]any{
+		"schema_version": "2", "event": "issues", "delivery_ids": `["delivery"]`, "aw_context": `[{}]`, "_gateway": string(provenance)}})
+	response := (githubapp.WebhookGatewayDispatcher{Client: client}).Dispatch(t.Context(), subscription,
+		payload)
+	if limiter.remaining != -1 || calls.Load() != 0 || response.TransportOutcome != "not-sent" || response.StatusCode != 0 {
+		t.Fatalf("local budget refusal was not classified as unsent: %+v", response)
+	}
+	result, err := gateway.ClassifyDispatchResponse(time.Now(), response)
+	if err != nil || result.Outcome != "retry" {
+		t.Fatalf("proven unsent request became terminal: %+v %v", result, err)
+	}
+}

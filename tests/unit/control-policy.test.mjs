@@ -24,6 +24,163 @@ function validate(policy) {
   });
 }
 
+test("control policy recognizes an isolated, opt-in webhook gateway without enabling campaigns", () => {
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.4",
+    "control-plane": {
+      scope: { "allowed-repositories": ["acme/control"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "webhook-gateway", workers: 1, artifacts: [], grants: [],
+      },
+    },
+  };
+  const result = validate(JSON.stringify(document));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].enabled, false);
+  assert.equal(schema.$defs.controlPlane.properties["webhook-gateway"].$ref, "#/$defs/webhookGateway");
+  const projects = structuredClone(document);
+  const projectIds = ["PVT_base64+/=", "a".repeat(256)];
+  projects["control-plane"]["webhook-gateway"].grants.push({
+    subscriptionId: "projects", digest: "a".repeat(64), projectIds,
+    sourceInstallationId: 1, sourceRepositoryId: 0, sourceOrganizationId: 7,
+    receivingInstallationId: 1, destinationInstallationId: 2, destinationRepositoryId: 42,
+    dispatchKind: "repository_dispatch", expiresAt: "2027-01-01T00:00:00Z",
+  });
+  const approved = validate(JSON.stringify(projects));
+  assert.equal(approved.status, 0, approved.stderr);
+  for (const ids of [["a".repeat(257)], ["PVT_bad!"], ["PVT_duplicate", "PVT_duplicate"]]) {
+    const invalid = structuredClone(projects);
+    invalid["control-plane"]["webhook-gateway"].grants[0].projectIds = ids;
+    assert.notEqual(validate(JSON.stringify(invalid)).status, 0);
+  }
+  for (const mutate of [
+    (gateway) => { gateway.dispatchAppId = gateway.receivingAppId; },
+    (gateway) => { gateway.enabled = "live"; },
+    (gateway) => { gateway.privateKey = "not-allowed"; },
+    (gateway) => { gateway.queue = { unknown: 1 }; },
+    (gateway) => { gateway.queue = { rates: { global: { capacity: 1, period: -1 } } }; },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.notEqual(validate(JSON.stringify(invalid)).status, 0);
+  }
+});
+
+test("webhook discovery is explicitly scoped and projects bind one enrolled repository", () => {
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.5",
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/private"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "gateway", workers: 1, artifacts: [], grants: [],
+        discovery: { activateSecurity: true, intervalSeconds: 300, repositories: [
+          { repository: "acme/private", repositoryId: 42, receivingInstallationId: 7, dispatchInstallationId: 8 },
+        ] },
+        projectAssignments: [{ projectId: "PVT_project", organizationId: 99, repositoryId: 42 }],
+      },
+    },
+  };
+  const parsed = parsePolicy(JSON.stringify(document));
+  assert.equal(parsed["control-plane"]["webhook-gateway"].enabled, false);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateSecurity, true);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateCommands, undefined);
+  assert.equal(parsed["control-plane"]["webhook-gateway"].discovery.activateNotifications, undefined);
+  const notifications = structuredClone(document);
+  notifications["control-plane"]["webhook-gateway"].discovery.activateNotifications = true;
+  assert.equal(parsePolicy(JSON.stringify(notifications))["control-plane"]["webhook-gateway"].discovery.activateNotifications, true);
+  const commands = structuredClone(document);
+  commands["control-plane"]["webhook-gateway"].discovery.activateCommands = true;
+  commands["control-plane"]["webhook-gateway"].discovery.serverUrl = "https://github.com";
+  commands["control-plane"]["webhook-gateway"].discovery.repositories[0].allowLabelRemoval = true;
+  assert.equal(parsePolicy(JSON.stringify(commands))["control-plane"]["webhook-gateway"].discovery.repositories[0].allowLabelRemoval, true);
+  commands["control-plane"]["webhook-gateway"].discovery.serverUrl = "https://github.example:8443/github/base";
+  assert.equal(parsePolicy(JSON.stringify(commands))["control-plane"]["webhook-gateway"].discovery.serverUrl, "https://github.example:8443/github/base");
+  for (const mutate of [
+    g => { delete g.discovery.activateSecurity; },
+    g => { g.discovery.activateSecurity = null; },
+    g => { g.discovery.intervalSeconds = 0; },
+    g => { g.discovery.repositories = []; },
+    g => { g.discovery.repositories[0].repository = "unapproved/private"; },
+    g => { g.discovery.repositories[0].repository = "acme/other"; },
+    g => { g.discovery.repositories[0].receivingInstallationId = 0; },
+    g => { g.discovery.repositories.push({ ...g.discovery.repositories[0] }); },
+    g => { g.projectAssignments[0].repositoryId = 100; },
+    g => { g.projectAssignments.push({ ...g.projectAssignments[0] }); },
+    g => { g.projectAssignments[0].projectId = "PVT_bad!"; },
+    g => { g.discovery.extraAuthority = true; },
+    g => { g.discovery.activateCommands = null; },
+    g => { g.discovery.activateCommands = "true"; },
+    g => { g.discovery.activateNotifications = null; },
+    g => { g.discovery.activateNotifications = "true"; },
+    g => { g.discovery.repositories[0].allowLabelRemoval = true; },
+    g => { g.discovery.repositories[0].allowLabelRemoval = null; },
+    g => { g.discovery.serverUrl = "https://github.com/"; },
+    g => { g.discovery.serverUrl = "https://github.com:443"; },
+    g => { g.discovery.serverUrl = "https://github.com:99999"; },
+    g => { g.discovery.serverUrl = "https://token@github.com"; },
+    g => { g.discovery.serverUrl = "http://github.com"; },
+    g => { g.discovery.serverUrl = "https://github.com?query"; },
+    g => { g.discovery.serverUrl = "https://github.example/a/../b"; },
+    g => { g.discovery.serverUrl = "https://github.example/a//b"; },
+    g => { g.discovery.serverUrl = "https://github.example/%61"; },
+    g => { g.discovery.serverUrl = "https://github.example/%"; },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.throws(() => parsePolicy(JSON.stringify(invalid)), undefined, String(mutate));
+  }
+});
+
+test("external webhook sources require reviewed destination, native scope, and receive-only secret bindings", () => {
+  const sources = JSON.parse(readFileSync(join(root, "specs/fixtures/webhook-external-deliveries-v2.json"), "utf8")).sources;
+  const document = {
+    version: 1, "gh-aw-version": "v0.92.5",
+    "control-plane": {
+      scope: { "allowed-repositories": ["acme/private"] },
+      "webhook-gateway": {
+        version: 1, enabled: false, revision: 1, receivingAppId: 1, dispatchAppId: 2,
+        namespace: "gateway", workers: 1, artifacts: [], grants: [], externalSources: sources,
+        discovery: { activateSecurity: false, repositories: [
+          { repository: "acme/private", repositoryId: 11, receivingInstallationId: 7, dispatchInstallationId: 8 },
+        ] },
+      },
+    },
+  };
+  assert.equal(parsePolicy(JSON.stringify(document))["control-plane"]["webhook-gateway"].externalSources.length, 3);
+  assert.equal(schema.$defs.webhookGateway.properties.externalSources.items.$ref, "#/$defs/webhookExternalSource");
+  for (const mutate of [
+    g => { delete g.discovery; },
+    g => { g.externalSources = null; },
+    g => { g.externalSources.push(structuredClone(g.externalSources[0])); },
+    g => { g.externalSources[0].secret = "forbidden"; },
+    g => { g.externalSources[0].id = "compiler"; },
+    g => { g.externalSources[0].secretEnv = "GH_TOKEN"; },
+    g => { g.externalSources[0].secretEnv += "_PREVIOUS"; },
+    g => { g.externalSources[1].secretEnv = g.externalSources[0].secretEnv; },
+    g => { g.externalSources[0].expiresAt = null; },
+    g => { g.externalSources[0].destinationRepositoryIds = [99]; },
+    g => { g.externalSources[0].destinationRepositoryIds = [11, 11]; },
+    g => { g.externalSources[0].resourceUrlPrefix = "http://example.atlassian.net/rest/api/3/issue/"; },
+    g => { g.externalSources[0].resourceUrlPrefix = "https://user@example.atlassian.net/rest/api/3/issue/"; },
+    g => { g.externalSources[0].resourceUrlPrefix += "?token=forbidden"; },
+    g => { g.externalSources[0].resourceUrlPrefix = "https://example.atlassian.net/issue/"; },
+    g => { g.externalSources[0].scope = ""; },
+    g => { g.externalSources[0].types = []; },
+    g => { g.externalSources[1].resourceUrlPrefix = "https://linear.app/issue/"; },
+    g => { delete g.externalSources[2].collectionId; },
+    g => { g.externalSources[2].resourceUrlPrefix = "https://unapproved.example/_apis/wit/workItems/"; },
+    g => { g.externalSources[0].event = "webhook"; },
+    g => { g.externalSources[0].types = ["com.example.release"]; },
+    g => { g.externalSources[0].urlPath = "/data/url"; },
+  ]) {
+    const invalid = structuredClone(document);
+    mutate(invalid["control-plane"]["webhook-gateway"]);
+    assert.throws(() => parsePolicy(JSON.stringify(invalid)), undefined, String(mutate));
+  }
+});
+
 function effective(policy, {
   campaignName = "dependabot",
   role = "orchestrator",

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "LG-Q01", "steps": [{"op": "admit"}, {"op": "restart"}, {"op": "admit", "duplicate": true}, {"op": "counts", "state": "ready", "count": 1}]},
+    {"id": "LG-Q02", "rows": 2, "steps": [{"op": "admit", "batch": 2, "error": "capacity"}, {"op": "restart"}, {"op": "counts", "state": "ready", "count": 0}, {"op": "admit"}, {"op": "counts", "state": "ready", "count": 1}]},
+    {"id": "LG-Q03", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "renew"}, {"op": "begin-stale", "error": "conflict"}, {"op": "begin"}, {"op": "finish", "state": "succeeded"}, {"op": "counts", "state": "succeeded", "count": 1}]},
+    {"id": "LG-Q04", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "elapse-lease"}, {"op": "maintain"}, {"op": "counts", "state": "ready", "count": 1}, {"op": "claim"}, {"op": "finish-stale", "state": "succeeded", "error": "conflict"}]},
+    {"id": "LG-Q05", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "begin"}, {"op": "elapse-lease"}, {"op": "restart"}, {"op": "maintain"}, {"op": "counts", "state": "ambiguous", "count": 1}, {"op": "admit", "duplicate": true}, {"op": "claim", "empty": true}]},
+    {"id": "LG-Q06", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "disable"}, {"op": "begin", "error": "conflict"}, {"op": "counts", "state": "cancelled", "count": 1}, {"op": "admit", "error": "unauthorized"}]},
+    {"id": "LG-Q07", "steps": [{"op": "revision-conflict", "error": "conflict"}, {"op": "advance-revision"}, {"op": "revision-rollback", "error": "conflict"}]},
+    {"id": "LG-Q08", "rate": 2, "workflowRate": 1, "steps": [{"op": "admit"}, {"op": "admit", "delivery": "second"}, {"op": "claim"}, {"op": "begin"}, {"op": "finish", "state": "succeeded"}, {"op": "restart"}, {"op": "claim"}, {"op": "mark-budget"}, {"op": "begin", "error": "capacity"}, {"op": "budget-unchanged"}, {"op": "attempts", "count": 0}, {"op": "counts", "state": "claimed", "count": 1}]},
+    {"id": "LG-Q09", "steps": [{"op": "admit"}, {"op": "elapse-ttl"}, {"op": "maintain"}, {"op": "counts", "state": "expired", "count": 1}, {"op": "elapse-retention"}, {"op": "maintain"}, {"op": "counts", "state": "expired", "count": 0}, {"op": "admit"}]},
+    {"id": "LG-Q10", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "finish", "state": "succeeded", "error": "conflict"}]},
+    {"id": "LG-Q11", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "begin"}, {"op": "finish", "state": "ready", "reason": "transport-unknown", "error": "invalid"}, {"op": "elapse-lease"}, {"op": "maintain"}, {"op": "counts", "state": "ambiguous", "count": 1}]},
+    {"id": "LG-Q12", "steps": [{"op": "admit"}, {"op": "claim"}, {"op": "begin"}, {"op": "finish", "state": "ready", "reason": "not-sent"}, {"op": "counts", "state": "ready", "count": 1}, {"op": "claim", "empty": true}]},
+    {"id": "LG-Q13", "steps": [{"op": "admit"}, {"op": "admit-conflict", "error": "conflict"}, {"op": "counts", "state": "ready", "count": 1}]}
+  ]
+}

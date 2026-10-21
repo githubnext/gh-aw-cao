@@ -25,6 +25,9 @@ import (
 //go:embed schema.sql
 var schema string
 
+//go:embed webhook_schema.sql
+var webhookSchema string
+
 var ErrInvalid = errors.New("invalid postgres operational input")
 
 type Config struct {
@@ -129,6 +132,9 @@ func (s *Store) initialize(ctx context.Context) error {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, strings.ReplaceAll(schema, "{{schema}}", pgx.Identifier{schemaName}.Sanitize())); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, webhookSchema); err != nil {
 		return err
 	}
 	config, err := json.Marshal(s.config)

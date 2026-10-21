@@ -604,10 +604,12 @@ func sendDelivery(ctx context.Context, client *http.Client, endpoint, secret str
 	return false
 }
 
-func sendDeliveryOnce(ctx context.Context, client *http.Client, endpoint, secret string, delivery Delivery) (int, time.Duration) {
+// SignedRequest constructs the same HMAC-authenticated request used by network
+// simulation and by the local gateway's in-process HTTP ingress.
+func SignedRequest(ctx context.Context, endpoint, secret string, delivery Delivery) (*http.Request, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(delivery.Payload))
 	if err != nil {
-		return 0, 0
+		return nil, err
 	}
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write(delivery.Payload)
@@ -615,6 +617,14 @@ func sendDeliveryOnce(ctx context.Context, client *http.Client, endpoint, secret
 	request.Header.Set("X-GitHub-Event", delivery.Event)
 	request.Header.Set("X-GitHub-Delivery", delivery.ID)
 	request.Header.Set("X-Hub-Signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
+	return request, nil
+}
+
+func sendDeliveryOnce(ctx context.Context, client *http.Client, endpoint, secret string, delivery Delivery) (int, time.Duration) {
+	request, err := SignedRequest(ctx, endpoint, secret, delivery)
+	if err != nil {
+		return 0, 0
+	}
 	response, err := client.Do(request)
 	if err != nil {
 		return 0, 0

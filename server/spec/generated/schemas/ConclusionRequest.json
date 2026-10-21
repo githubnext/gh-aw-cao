@@ -1,0 +1,130 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "ConclusionRequest.json",
+    "type": "object",
+    "properties": {
+        "repo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 140,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9_.-]{1,100}$"
+        },
+        "workflow_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+        },
+        "workflow_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}:[0-9a-f]{64}$"
+        },
+        "workflow_call_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1400,
+            "description": "Exactly run_id + \"-\" + run_attempt + \":\" + workflow_id."
+        },
+        "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+        },
+        "run_attempt": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[1-9][0-9]*$"
+        },
+        "ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+        },
+        "event_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "triggering_actor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Informational only; the initial server profile never authorizes or attributes spend from this unsigned value."
+        },
+        "session": {
+            "type": "string",
+            "maxLength": 16384,
+            "description": "Compact profile 1 JSONL: at most 128 allowlisted records and 16384 UTF-8 bytes including one LF per record. Only the pinned compact metadata vocabulary and eligible finite-number/boolean/256-byte scalar strings are accepted; no prompts, messages, tool arguments/results or arbitrary nested data. Empty is valid, not proof of zero activity."
+        },
+        "session_compaction": {
+            "$ref": "SessionCompaction.json"
+        },
+        "usage_artifact_ids": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/UsageArtifactID"
+            },
+            "maxItems": 2,
+            "description": "At most two unique canonical decimal strings, retry upload first. Locators only: this service records them but performs no artifact retrieval or hydration. Missing full sessions remain unavailable."
+        }
+    },
+    "required": [
+        "repo",
+        "workflow_id",
+        "workflow_hash",
+        "workflow_call_id",
+        "run_id",
+        "run_attempt",
+        "ref",
+        "event_type",
+        "actor",
+        "triggering_actor",
+        "session",
+        "session_compaction",
+        "usage_artifact_ids"
+    ],
+    "unevaluatedProperties": {
+        "not": {}
+    },
+    "examples": [
+        {
+            "repo": "acme/project",
+            "workflow_id": "acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "workflow_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "workflow_call_id": "1234-2:acme/project/.github/workflows/triage.lock.yml@refs/heads/main",
+            "run_id": "1234",
+            "run_attempt": "2",
+            "ref": "refs/heads/main",
+            "event_type": "workflow_dispatch",
+            "actor": "octocat",
+            "triggering_actor": "hubot",
+            "session": "{\"type\":\"session.format\",\"data\":{\"version\":1}}\n",
+            "session_compaction": {
+                "version": 1,
+                "included_events": 1,
+                "omitted_events": 0,
+                "oversized_lines": 0,
+                "scan_truncated": false,
+                "truncated": false
+            },
+            "usage_artifact_ids": [
+                "8123"
+            ]
+        }
+    ],
+    "description": "Exactly the ten admission identity strings plus these three fields. Maximum 65536 UTF-8 request bytes, with an independently bounded 8192-byte identity. Unknown/duplicate members, invalid Unicode, unsafe counters, malformed JSONL and out-of-profile metadata are denied. Session content and artifact IDs are untrusted evidence, never authority or complete accounting.",
+    "$defs": {
+        "UsageArtifactID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[1-9][0-9]{0,19}$"
+        }
+    }
+}

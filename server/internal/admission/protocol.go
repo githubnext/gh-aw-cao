@@ -1,4 +1,4 @@
-// Package admission implements the cooperative, activation-only gh-aw gate.
+// Package admission implements the cooperative gh-aw gate and completion receipt.
 // It never grants runtime credentials, reserves funds, or mutates billing state.
 package admission
 
@@ -177,6 +177,12 @@ func (r Request) valid() bool {
 	return repository.MatchString(r.Repo) && decimal.MatchString(r.RunID) &&
 		decimal.MatchString(r.RunAttempt) && workflowHash.MatchString(r.WorkflowHash) &&
 		r.WorkflowCallID == r.RunID+"-"+r.RunAttempt+":"+r.WorkflowID
+}
+
+func (r Request) matches(i Identity) bool {
+	return r.Repo == i.Repository && r.WorkflowID == i.WorkflowRef &&
+		r.RunID == i.RunID && r.RunAttempt == i.RunAttempt &&
+		r.Ref == i.Ref && r.EventType == i.Event && r.Actor == i.Actor
 }
 
 func decodeRequest(data []byte) (Request, error) {

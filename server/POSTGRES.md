@@ -3,7 +3,8 @@
 Production startup opens existing state; it does not provision tables, replace
 functions/triggers, create namespaces, retain audit history, or maintain
 canonical partitions. This applies to `serve`, `serve-hosted`, external hosts,
-`ingest`, `collect`, and `execute-cli`. Provision before deploying this version.
+`ingest`, `collect`, `execute-cli`, and production `cao-webhook-gateway` roles.
+Provision before deploying this version.
 There is no automatic privileged fallback. The local SQLite hosted-CLI backend
 can exercise the same explicit bootstrap, runtime, retention, and evidence-reader
 lifecycle below, but is not a production substitute.

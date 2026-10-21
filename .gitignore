@@ -9,6 +9,7 @@ public/cao/
 
 # Go test binaries written by profiling runs (for example, the stress harness)
 /server/*.test
+/server/cao-webhook-gateway
 
 # Local GitHub CLI extension binary
 /gh-cao

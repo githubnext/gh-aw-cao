@@ -18,6 +18,12 @@ import (
 )
 
 func TestAdmissionHTTPMetricsAndSpansStayBounded(t *testing.T) {
+	for _, path := range []string{"/api/admission", "/api/conclusion"} {
+		t.Run(path, func(t *testing.T) { testAdmissionHTTPMetricsAndSpans(t, path) })
+	}
+}
+
+func testAdmissionHTTPMetricsAndSpans(t *testing.T, path string) {
 	reader := sdkmetric.NewManualReader()
 	meter := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 	exporter := tracetest.NewInMemoryExporter()
@@ -50,7 +56,7 @@ func TestAdmissionHTTPMetricsAndSpansStayBounded(t *testing.T) {
 		if n == 61 {
 			app.Drain()
 		}
-		request := httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example/api/admission?PRIVATE_QUERY=private-value", strings.NewReader(`{"private":"PRIVATE_BODY"}`))
+		request := httptest.NewRequestWithContext(t.Context(), "POST", "https://admission.example"+path+"?PRIVATE_QUERY=private-value", strings.NewReader(`{"private":"PRIVATE_BODY"}`))
 		request.Header.Set("Authorization", "Bearer PRIVATE_CREDENTIAL")
 		request.Header.Set("Baggage", "private=PRIVATE_BAGGAGE")
 		request.Header.Set("Traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
@@ -69,7 +75,7 @@ func TestAdmissionHTTPMetricsAndSpansStayBounded(t *testing.T) {
 			}
 			for _, point := range instrument.Data.(metricdata.Histogram[float64]).DataPoints {
 				attrs := spanAttributes(point.Attributes.ToSlice())
-				if attrs["http.route"] != "/api/admission" || attrs["http.request.method"] != "POST" {
+				if attrs["http.route"] != path || attrs["http.request.method"] != "POST" {
 					t.Fatalf("unbounded or missing route dimensions: %v", attrs)
 				}
 				status, ok := attrs["http.response.status_code"].(int64)

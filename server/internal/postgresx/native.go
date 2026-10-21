@@ -629,6 +629,13 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		w.store.namespace); err != nil {
 		return State{}, err
 	}
+	if _, err := w.tx.Exec(ctx, `UPDATE cao_quality SET completeness='partial',freshness='unknown'
+		WHERE namespace=$1 AND availability='available'
+		AND collection IN ('$runs','$workflows','$repositories','$audits','$graders','$graderObservations')
+		AND EXISTS(SELECT 1 FROM audits WHERE namespace=$1 AND source='conclusion-admission' AND source_sequence=0)`,
+		w.store.namespace); err != nil {
+		return State{}, err
+	}
 	if err := w.tx.QueryRow(ctx, `UPDATE cao_state SET revision=revision+1,data_revision=$1,evaluated_at=$2,schema_version=$3
 		WHERE namespace=$4 RETURNING revision`, dataRevision, w.evaluatedAt, model.SchemaVersion, w.store.namespace).Scan(&state.Revision); err != nil {
 		return State{}, err

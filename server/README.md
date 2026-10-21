@@ -33,7 +33,11 @@ The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
 The optional [cooperative activation-admission service](ADMISSION.md) exposes
-the gh-aw OIDC-only `POST /api/admission` protocol on that same hosted origin.
+the gh-aw OIDC-only `POST /api/admission` and compact-session
+`POST /api/conclusion` protocols on that same hosted origin. Completion populates
+canonical Run/Audit and available grader data as partial evidence before
+acknowledgement, with durable invocation deduplication and retry repair. It neither settles billing nor
+automatically fetch full-session artifacts.
 It requires explicit enrollment, fresh protected accounting input, and durable
 PostgreSQL replay records; it is disabled by default and does not replace CAO
 control-policy authorization.
@@ -325,6 +329,677 @@ Run `POSTGRES_URL=... go -C server test -race ./internal/operational/...` agains
 a disposable local PostgreSQL database for shared adapter conformance and
 cross-connection durability, isolation, cancellation, and capacity checks.
 Tests create random namespaces and remove their operational state afterward.
+
+## Webhook gateway operations
+
+The [RFC-033 contract and executed queue model](../specs/rfc-033-webhook-gateway.md)
+describe a separate, opt-in gateway, not the dashboard collector's webhook
+endpoint. It is disabled by default. This change does **not** activate the
+gateway in the root policy, enroll repositories, approve subscriptions, or grant
+Actions write access.
+
+### Local SQLite and GitHub polling
+
+The [RFC-034 local simulation contract](../specs/rfc-034-local-webhook-gateway.md)
+defines the local profile, TLA+ model, and specification-derived conformance
+suites. No PostgreSQL, App installation, webhook registration, compiler emitter,
+or dispatch/write token is required:
+
+```bash
+# From the repository root; the parent directory must already exist and be private.
+# Optional GH_TOKEN supplies read-only access for private repositories/rate limits.
+go -C server run ./cmd/cao-webhook-gateway --role=local \
+  --repository=OWNER/REPO --sqlite="$PWD/local-gateway.sqlite" --once
+
+# Omit --once for a cancellation-scoped polling worker (Ctrl-C stops and joins it).
+go -C server run ./cmd/cao-webhook-gateway --role=local \
+  --repository=OWNER/REPO --sqlite="$PWD/local-gateway.sqlite" \
+  --events=issues,issue_comment,pull_request --poll-interval=60s
+
+# Inspect aggregate simulated outcomes without exposing projected payloads.
+sqlite3 local-gateway.sqlite 'SELECT state,count(*) FROM jobs GROUP BY state;'
+```
+
+The local client makes only GETs to that repository's metadata and Events API.
+`--api-url` supports an explicit HTTPS enterprise API base (including `/api/v3`);
+numeric-loopback HTTP is allowed for fixture servers, never hostname-based
+plaintext or redirects. The queue identity binds the API base, immutable
+repository/owner identities, and selected subscriptions. Reuse the same file and
+event selection to replay safely; use a different private file for a different
+configuration. Files must be private regular files (0600); SQLite WAL and durable
+receipts retain deduplication and fenced state across restart.
+
+Each newly observed event becomes an HMAC-signed **in-process HTTP request** to the real ingress;
+there is no local network listener. The real worker claims, renews, authorizes,
+reserves budgets, and finishes against SQLite. Only authorization evidence and
+dispatch acceptance are synthetic: the dispatcher cannot send GitHub writes.
+Startup/output explicitly say simulation; `succeeded` does not mean a remote
+workflow ran. The generated fixture projects only `simulation: true` and ingress
+provenance. This CLI does not load `--policy` or arbitrary compiler subscriptions
+and does not replace the production authorization/filter test suites.
+
+Do not provide `CAO_GATEWAY_RECEIVE_KEY_FILE`, `CAO_GATEWAY_DISPATCH_KEY_FILE`,
+`CAO_GATEWAY_WEBHOOK_SECRET`, or `CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET` to local
+mode; startup rejects production credentials. `GH_TOKEN` is optional and is never
+printed or persisted. The local fixture does not grant production authority or
+modify `cao.json`.
+
+Polling reads at most 300 visible events per pass, honors GitHub's
+`X-Poll-Interval`, and stops explicitly on API/admission failures. Restart retries
+the retained snapshot safely; an ETag advances only after all selected deliveries
+are admitted. Retained SQLite receipts recognize known event IDs even if GitHub
+changes their feed payloads; existing jobs are neither replaced nor replayed.
+New deliveries still undergo the ingress's body-digest conflict checks.
+There is no high-water ID cursor that skips late events.
+This is a delayed, bounded, best-effort feed, **not a lossless webhook journal**.
+It cannot recover feed gaps or simulate Projects v2 webhooks. Missing actions,
+filter operands, or transition data are not invented. Supported families are
+listed in RFC-034; one-shot mode reports deferred leased/rate-limited work as
+incomplete rather than claiming it was dispatched. Continuous mode waits for
+rate-budget recovery instead of stopping the host on normal backpressure.
+Malformed feeds, including JSON `null` instead of an array, do not advance
+polling progress.
+
+### Isolated production roles
+
+Run two isolated deployments of `server/cmd/cao-webhook-gateway`: a public
+receive role and a private dispatch role. Each uses an absolute path to its
+reviewed `cao.json` and the same durable PostgreSQL operational namespace. The
+commands below show separate process roles; they are not evidence that a live
+deployment or compiler integration was tested:
+
+```bash
+# Receive deployment only: webhook ingress; no private App keys.
+go -C server run ./cmd/cao-webhook-gateway \
+  --role=receive --policy=/etc/cao/cao.json
+
+# Separate dispatch deployment: source-read and destination dispatch credentials.
+go -C server run ./cmd/cao-webhook-gateway \
+  --role=dispatch --policy=/etc/cao/cao.json
+```
+
+Before starting either role, an operator must run
+`cao-dashboard database bootstrap --store operational --namespace NAMESPACE`
+with separate `CAO_DATABASE_ADMIN_URL` credentials and apply the runtime grants
+in [POSTGRES.md](POSTGRES.md). Use the exact namespace from the reviewed gateway
+policy. Gateway startup opens existing state only; it cannot provision or repair
+tables. Mount only the runtime `CAO_POSTGRES_URL` in the gateway processes.
+
+The role has no permissive default: an unset role fails closed. For a lean
+container without Node or dashboard assets, build the dedicated nonroot
+(UID 65532) target; the Dockerfile's default final dashboard image is unchanged:
+
+```bash
+docker build -f server/Dockerfile --target webhook-gateway-runtime \
+  -t cao-webhook-gateway .
+```
+
+Mount the reviewed policy and role-specific secrets read-only in independently
+configured receive/dispatch deployments. Plain HTTP ingress is allowed only on
+a numeric loopback listener; non-loopback receive listeners require both
+`--tls-cert` and `--tls-key`. Do not assume a public plaintext listener or
+forwarded headers satisfy this requirement.
+
+The receive listener exposes `GET /healthz` (204) and `GET /readyz` (204 only
+when the current policy is valid/enabled, its revision is applied, and queue
+depth is reachable; otherwise 503). These routes do not consume webhook-handler
+slots. A shared limit of 64 simultaneous webhook handlers rejects excess work
+with 503 **before reading the body**. Accepted handlers have an 8-second context
+deadline; HTTP ReadTimeout and WriteTimeout are both 10 seconds.
+
+Keep `CAO_POSTGRES_URL` in each deployment's secret environment. Give only the
+receive deployment `CAO_GATEWAY_WEBHOOK_SECRET` and, during bounded rotation overlap,
+`CAO_GATEWAY_PREVIOUS_WEBHOOK_SECRET`. Give only the dispatch deployment
+`CAO_GATEWAY_RECEIVE_KEY_FILE` and `CAO_GATEWAY_DISPATCH_KEY_FILE`.
+The receive process MUST NOT have either private App key.
+Startup rejects either App key-file environment variable in receive mode and
+rejects current/previous webhook secrets in dispatch mode.
+Key-file variables point to mounted secret
+files; never put key contents or webhook secrets in policy. Receiving and
+dispatch App IDs come from reviewed policy (`receivingAppId` and
+`dispatchAppId`), not a `CAO_GATEWAY_RECEIVE_APP_ID` environment override.
+The dispatch process uses the receiver App only for narrowly scoped source
+authorization reads and the dispatch App for approved destination dispatches.
+Rotate each private key independently by replacing its mounted secret file and
+restarting the dispatch role; do not combine private-key rotation with webhook
+HMAC rotation. For webhook rollover, install the new current secret and bounded
+previous-secret overlap in the receive deployment, restart that role, then remove
+the previous secret after the approved overlap and restart again.
+
+The dispatch role publishes short-lived authorization proofs (30 seconds) to
+the existing operational `StateStore`, using one bounded fixed key per
+subscription ID. Its proof primer runs even when the queue is empty.
+The primer rotates across deadline-limited rounds so slow subscriptions cannot
+always starve later routes; incomplete refreshes are reported with
+`DEBUG=cao:webhook-gateway:authority`.
+Receive admits only with a fresh proof bound to both the current queue policy revision
+and the exact trusted subscription revision;
+missing, expired, mismatched, or incomplete proofs fail closed. No private key is
+delegated to ingress. Before each outbound attempt, dispatch always performs
+fresh live installation/repository checks for both source and destination,
+current root-policy scope checks, and grant validation; admission proofs are not
+an egress authorization cache.
+An omitted source `repositoryId` binds only organization-level deliveries
+without a repository envelope. It is not an organization-wide repository
+wildcard: repository-bearing events require an exact approved source ID.
+Quota-observation storage failures during final preflight block the POST;
+failures after a known HTTP acceptance never convert it into a retry.
+
+The queue stores only payload-free `Job.Event` identity and bounded compiled
+`Job.Payload` dispatch JSON, never original matched or filtered event bodies.
+Ingress evaluates filters/constraints on ephemeral authenticated bytes, builds
+the approved leaf allowlist plus reserved provenance, then discards raw input.
+Workers authorize against stored identity and immutable approved metadata and
+combine compatible immutable projections into one bounded batch; they never
+parse compiled JSON as a source event or rerun ingress filters.
+The original delivery hash remains admission dedup evidence, independent of
+projected payload bytes. Restrict database access, require deployment-provided
+encryption at rest, and enforce reviewed byte/retention bounds. Raw events must
+never be persisted, forwarded, or logged.
+**Handlers always receive batches, including singleton flushes.** Compiler v2
+uses exactly `client_payload:{schema_version:2,aw_context:{webhook:{event,
+deliveries:[{delivery_id,payload},...]}}}`. All distinct deliveries are retained;
+the compiler derives the unique affected-resource array at `aw_context.items`.
+It does not trust a supplied item list or infer latest state. Compiler security
+payloads require `{"url":"<canonical GitHub API alert URL>","type":["<original action>"]}`
+plus only declared matching `filters` when predicates exist,
+under the required `resource-url-types-filters/v2` projection policy. Native alert bodies,
+URL-only legacy payloads, and additional resource details are rejected.
+Approved artifact revision
+evidence stays in immutable durable provenance and the typed compiler-dispatch
+argument, never additional wire fields. Missing evidence/capability blocks send.
+
+Generic approved repository-dispatch routes use a separate contract, not a
+compiler-runtime fallback, with five properties: `schema_version: 2`,
+the original `event` kind, sorted unique `delivery_ids`, a nonempty `aw_context`
+array of unique approved projections, and runtime-owned `_gateway` provenance.
+Delivery IDs do not participate in context uniqueness, so repeated equivalent
+contexts collapse without losing delivery provenance. Distinct context/activity
+values remain distinct; this is not a latest-state or chronological event feed.
+Only events sharing the complete subscription, revision, source identity and
+event kind can batch together.
+
+Provenance carries `version: "cao.webhook-batch/v1"`, source/subscription IDs,
+the complete approved Revision, and a SHA-256 batch identity over sorted durable
+job IDs. It is an object for repository dispatch. Workflow dispatch uses the
+same five properties under `inputs`, JSON-encoding all but `event` as strings.
+Its metadata must assert both `destination.gatewayInput: true` and
+`destination.batchInput: true`, confirming all reserved inputs exist. Missing
+batch capability or legacy singleton envelopes fail closed, without a
+one-workflow-per-event fallback. The internal stored member projection retains
+`cao.webhook/v1` provenance but is never sent as the wire envelope.
+
+Long-running roles coalesce for two seconds before a route's oldest eligible
+event can be claimed; singletons then flush subject to quota/authority. Local
+one-shot mode immediately batches its already-polled backlog. Each batch has
+at most 64 jobs and must fit under 64 KiB, including provenance and framing,
+plus compiler byte ceilings where applicable. Overflow stays queued.
+The durable cursor rotates between `(tenant, subscription)` workflow routes.
+Replica claims are exclusive, and concurrency measures batches rather than
+member rows. This lets the server balance workflow dispatch across replicas.
+Every member fence/authorization is checked before one atomic reservation and
+one rate charge per external request. Completion is atomic for every member;
+unknown/lost acceptance makes all reserved members ambiguous, never automatic
+per-event replay.
+Both dispatch endpoints explicitly pin REST API `2026-03-10`; workflow acceptance
+supports HTTP 200 and legacy 204. Safe queue outcomes retain accepted HTTP status and a validated numeric
+workflow-run ID when returned, not the raw response body or run URLs. A
+bodyless legacy response need not provide an ID; acceptance is not execution
+success.
+Production workers must receive the shared-quota `Budget` adapter even though
+the shell allows it to be absent in pure tests. Its acquire/release lifecycle
+wraps durable dispatch reservation; the paired dispatcher reconciles actual
+GitHub response quota without changing a known accepted dispatch into a retry.
+Cancellation after a known response or a proven unsent request preserves that
+observation; only an uncertain transport outcome becomes `ambiguous`.
+
+The reviewed `control-plane.webhook-gateway` section binds enabled state,
+monotonic revision, App identities, namespace, queue/worker bounds, explicit
+administrator grants, and approved compiler artifacts. Each artifact is pinned
+by its exact SHA-256 digest plus repository identity, commit SHA, and compiler
+identity. Discovered metadata is untrusted and cannot approve itself. Source,
+destination, workflow, visibility, and project constraints must agree with the
+reviewed grant and immutable subscription revision. Repository names and event
+names do not create authority.
+Root `control-plane.scope.allowed-repositories` and `allowed-owners` constrain
+gateway scope by **intersection**, never union. Recognizing the gateway in the
+shared policy loader/schema does not enable it. Root-scope changes must also
+bump the gateway revision; changing the effective digest at the same revision
+conflicts rather than silently replacing authority.
+Subscription metadata requires explicit `provider: "github"`; missing or
+unsupported providers are rejected. The configured source route ID is separate
+from provider identity.
+Project IDs are GraphQL node-ID strings (`projectIds: ["PVT_..."]`), not numeric
+IDs; compiler-declared generic constraints must bind the exact approved set to
+`/projects_v2_item/project_node_id`, not the item's `node_id`.
+Current authenticated GraphQL authorization checks exact project identity and
+organization ownership only, without fetching project content or enriching
+missing filter values. User-owned/unverifiable project nodes fail closed.
+The dispatch role records project responses in the receiving App installation's
+shared `graphql` quota bucket, including backoff; unavailable quota storage
+defers authorization.
+For Projects item edited events, GitHub's published field-change example includes
+`changes.field_value.field_name`, `field_type`, and single-select `from.name` /
+`to.name`. The manifest mapper preserves complete transition pairs and requires
+delivered operands. Missing status/label/transition operands remain nonmatches;
+do not invent fields or fetch missing values to make a subscription match.
+
+Read policy afresh for every ingress/dispatch decision. Metadata may be cached
+only as immutable bytes bound to its exact approved digest; cached metadata
+does not replace fresh policy/grant checks.
+Adding static source routes, adding/removing managed discovery, or changing
+namespace, App IDs, queue capacity options, or worker count requires a role
+restart. The immutable configuration cache fails
+closed on incompatible changes; do not expect a hot reload to rebuild topology.
+Missing, changed, invalid, inaccessible, disabled, or unsupported configuration
+fails closed; there is no last-known-good authority fallback. Apply the loaded
+`QueueRevision` through the durable queue's `ApplyRevision` before admission or
+worker action. Database comparison rejects older revisions and conflicting
+equal revisions, so a stale replica cannot revert an already-applied
+revocation. A newer revision conservatively cancels older ready/claimed jobs.
+External GitHub revocation is observed through authorization calls and signed
+repository/update invalidation hints; a
+30-second admission proof and even a fresh egress check cannot eliminate the
+remote check-to-send race. Do not promise immediate global revocation.
+Dispatching is an irreversible local reservation: it cannot be recalled by a
+later revoke, and unknown outcomes become terminal `ambiguous`, not a replay.
+Only positively known nonacceptance, including an explicit rate-limit refusal,
+can retry within the original deadline and bounded attempts.
+
+### Gateway observability and alerts
+
+Reuse the server's existing OpenTelemetry setup:
+`OTEL_EXPORTER_OTLP_ENDPOINT` (or signal-specific endpoints), role-specific
+`OTEL_SERVICE_NAME`, and the existing collector/export pipeline. An absent
+endpoint or `OTEL_SDK_DISABLED=true` means no exported telemetry; instrumentation
+alone does not establish monitoring. When unset, `OTEL_SERVICE_NAME` defaults to
+`cao-webhook-gateway`; deployments MAY override it to distinguish roles.
+The gateway's actual OTel instrument names
+are:
+
+- `cao_webhookgateway.operation.count` and
+  `cao_webhookgateway.operation.duration` (seconds), labeled by
+  `cao_webhookgateway.stage`, `cao_webhookgateway.event_family`, and
+  `cao_webhookgateway.outcome`;
+- `cao_webhookgateway.queue.age` (seconds);
+- `cao_webhookgateway.queue.depth`;
+- `cao_webhookgateway.retry.count`.
+
+When the queue provides aggregate `QueueStatsProvider` observations, the worker
+also emits `cao_webhookgateway.queue.retained.rows`,
+`cao_webhookgateway.queue.retained.bytes`,
+`cao_webhookgateway.queue.oldest_age` (seconds),
+`cao_webhookgateway.workers.active`,
+`cao_webhookgateway.workers.utilization` (ratio), and
+`cao_webhookgateway.tenant.utilization` (ratio histogram without tenant labels).
+Bounded maintenance reports feed `cao_webhookgateway.lease.expiration.count`
+and `cao_webhookgateway.queue.recovered.count`,
+`cao_webhookgateway.queue.expired.count`,
+`cao_webhookgateway.queue.ambiguous.count`, and
+`cao_webhookgateway.queue.deleted.count`. Metrics/observer failures do not widen
+authority or change durable dispatch outcomes.
+
+Spans use `cao_webhookgateway.<stage>`, including `ingress`, `signature`,
+`matching`, `admission_authorization`, `admission`, `worker`, `claim`, `authorization`,
+`quota`, `renewal`, `begin_dispatch`, `dispatch`, and `finish`.
+For Prometheus, export these through the existing OTel Collector pipeline and
+confirm its dot/underscore and counter-suffix normalization before writing
+PromQL; do not assume a new gateway `/metrics` listener exists.
+Queue depth is emitted only when the composed queue implements optional
+`QueueStatsProvider` or `QueueDepthProvider`; absent samples are not a zero-depth
+guarantee.
+
+Alert on any `operation.count` increase with stage `finish` and outcome
+`ambiguous`; investigate before any manually approved redrive. Alert on sustained
+error outcomes in authorization, quota, admission, or dispatch, increasing retry
+count, queue depth approaching the reviewed capacity, and queue-age histogram
+tails approaching the original job expiry. Also alert on absent telemetry or
+unhealthy role/storage dependencies, rather than interpreting missing samples
+as an empty queue. Queue age is sampled on work observation, not a proof that
+every stalled job is being measured. Keep delivery/job identities in approved
+traces only, never metric labels; never export webhook bodies, secrets, tokens,
+private titles, or arbitrary payload attributes.
+Also investigate sustained `auth_denied`, `auth_deferred`, `capacity`, and
+`unavailable` outcomes. These are operational recommendations; this change does
+not install Prometheus alert rules or other alert resources.
+
+### Compiler bridge and validation limits
+
+Trigger discovery reads `webhook_subscriptions` from the single-line
+`# gh-aw-manifest: {...}` header proposed by
+[github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772), inspected at
+`5113c42dda961e53fb08fdb92a84fb46dc87aa1f`:
+
+```bash
+go -C server run ./cmd/cao-webhook-gateway --role=discover \
+  --workflow="$PWD/.github/workflows/example.lock.yml"
+```
+
+Repeat `--workflow` for each explicitly selected compiled workflow in one
+repository. The read-only, offline role emits a deterministic
+`cao.webhook-trigger-mapping/v1` event-to-workflow index with
+`discoveryOnly: true`, complete typed declarations, paired `any_of` groups,
+dispatch/context paths and limits, and whole-lock SHA-256 identities.
+Native-only workflows contribute no webhook routes. Invalid, conflicting, or
+over-budget inputs reject the entire inventory. It reads no workflow steps or
+frontmatter and rejects production gateway App/HMAC credentials and mixed-role options.
+Bounds and matching semantics are specified in RFC-033 section 6.1.
+
+Offline discovery is **not activation**. Production activation is a separate,
+explicitly reviewed delegation for private repositories. Merge a configuration
+like this fragment into `control-plane.webhook-gateway`, replace the illustrative
+identities with verified IDs, and increment its reviewed `revision`:
+
+```json
+{
+  "discovery": {
+    "activateSecurity": true,
+    "intervalSeconds": 300,
+    "repositories": [
+      {
+        "repository": "acme/private-repo",
+        "repositoryId": 42,
+        "receivingInstallationId": 7,
+        "dispatchInstallationId": 8
+      }
+    ]
+  },
+  "projectAssignments": [
+    {
+      "projectId": "PVT_example",
+      "organizationId": 99,
+      "repositoryId": 42
+    }
+  ]
+}
+```
+
+This fragment does not replace the required gateway identity, queue, artifact,
+grant, root scope, or enablement configuration. No checked-in rollout is changed.
+Both owner and repository allowlists intersect when present. Public and internal
+repositories are denied at live admission/egress checks; RFC-034 local simulation
+remains non-authoritative and may read a public Events API.
+
+The dispatch role backfills only these repositories and routinely scans their
+current default branch using fresh repository-restricted receiving-App tokens.
+It reads regular top-level compiled locks at one exact commit and rechecks the
+head before publication. The default rescan threshold is 300 seconds
+(30–3600 configurable). Ten-second wakeups process at most eight due repositories
+per round, with 30 seconds per repository; backpressure can delay completion.
+Private inventories expire after twice their configured interval.
+Failures suspend routes rather than retain indefinitely active old metadata.
+Directory and lock-size/count bounds are specified in RFC-033 section 6.2.
+
+Configure the receiving App's webhook URL as `/webhooks/compiler`, subscribing
+to `push`, `repository`, and the selected security families. The route exists
+before any lock is discovered. Signed lock-update and repository-change hints
+atomically invalidate the enrolled repository before HTTP 202; storage failure
+returns a failure response. Hints never supply a fetch URL, ref, or authority.
+The receiver still holds no App private keys; its database invalidation wakes
+the dispatch role through routine polling. CAS publication fences in-flight
+older scans, including repeated hints on already-dirty records.
+
+With gateway enablement and `activateSecurity: true`, valid **batch-capable v2**
+discovered `dependabot_alert` and `code_scanning_alert` declarations
+become subscriptions with bounded expiring grants and workflow-specific compiler
+dispatch routes. Without `repos`, activation remains same-repository. An explicit
+compiler declaration can select multiple source repositories:
+
+```yaml
+on:
+  gateway-dispatch:
+    repos:
+      - bar/baz
+      - foo/*
+    security-alerts: {}
+```
+
+The upstream compiler places all gateway declarations under `on.gateway-dispatch`;
+roles/bots and other non-trigger settings remain outside that mapping under `on`.
+Gateway dispatch is exclusive: all other workflow triggers are rejected.
+Shared `repos` belongs inside `gateway-dispatch`, not inside a trigger, and
+applies to GitHub notifications, code-scanning/Dependabot and native command subscriptions.
+The repository still independently requires `"gateway-dispatch": true` in
+`.github/workflows/aw.json`.
+These are compilation gates, not gateway activation or dispatch authority.
+The former workflow `on.webhook-gateway` flag, flat triggers, obsolete `on.gateway`,
+singular Projects/security spellings, and old repository `webhook-triggers` opt-in
+are rejected. Explicit `workflow_dispatch` or `repository_dispatch` declarations
+cannot accompany `gateway-dispatch`; a shared-`repos`-only mapping is also invalid.
+For the supported security families, this authoring change leaves the normalized
+lock manifest and closed v2 dispatch envelope unchanged; the runtime conformance
+pin below does not claim installed-compiler emission of this syntax.
+
+Selectors are lowercase, sorted, unique exact names or literal-owner `/*`
+patterns, intersected with reviewed `discovery.repositories` and root scope.
+They never enroll repositories or broaden authority. Both source and workflow
+repository need fresh private inventories; an authenticated source inventory
+may have no workflows. Each source receives an independent grant and batch
+route to the declaring workflow, expiring at the earlier inventory bound.
+An empty `security-alerts: {}` with shared `repos` selects both supported security
+families; explicit `sources` narrows them. CAO reads only the compiled manifest.
+
+The receiving App needs contents-read
+and the corresponding security-event read permission; the independent dispatch
+App needs contents-write. Each projected security payload contains exactly its
+canonical GitHub API `url` and `type` array containing the original action,
+plus only explicitly selected matching filter literals, never raw alerts or
+unselected resource details. Filters run
+against the authenticated original delivery before projection. The bridge checks
+the signed source identity at ingress and binds every URL to the authenticated
+current source repository before dispatch, and reapplies selectors. Cross-source
+events never share one batch. Source preflight uses the receiving App while
+the destination's approved workflow artifact uses the dispatch App; source or
+destination access loss blocks sending. API origins other than
+`https://api.github.com` are not supported. Both compiler byte limits apply to
+the complete framed request before deduplication.
+
+Declaration v2 must specify `dispatch.batch:{mode:"same-event",
+deduplicate_by:"delivery_id"}`, exactly
+`dispatch.payload_projection:{"policy":"resource-url-types-filters/v2"}`, and the fixed
+context paths in RFC-033 §6.1. Missing/unknown projection policies do not activate.
+All additional resource data must be retrieved inside the workflow through
+configured provider-authenticated readers; notification URLs do not grant access
+or justify attaching credentials to arbitrary origins.
+Legacy declaration v1 remains discoverable but cannot activate. The bridge
+matches [github/gh-aw#69772](https://github.com/github/gh-aw/pull/69772) at
+`fe4f420f3f4f40bb1ebbcca85af0903d3a967bf3`; optional interoperability tests
+execute that commit's actual runtime validator/normalizer, including exact and
+wildcard source selection, projected filter evidence, and rejection of any out-of-selector delivery. An installed
+compiler emitting v2 is still required. Secret-scanning triggers are not
+supported by that compiler and do not autoactivate. See RFC-033 §13.1 for the
+wire contract, test reproduction, and bounded TLA+ result.
+Every delivery now follows `resource-url-types-filters/v2`: `url` and `type` are
+required, and `filters` is required when predicates or a selected Azure lifecycle
+match exist. Its flat keys are compiled condition names, plus the applicable Azure
+`closed-states` key, and its values are nonempty distinct homogeneous scalar
+arrays containing only matching literals actually observed in that delivery.
+Include all shared conditions and one complete matching `any_of` group, never
+cross-combined transition pairs or unselected source-array elements. With no
+predicates or a selected Azure lifecycle match, omit `filters` except for command
+subscriptions' explicit event/token or label evidence below. Both old
+`resource-url-types/v1` and `resource-url-types-filters/v1` inventories are
+nonactivating. Severity remains an ordinary compiled condition; only matching
+literals appear in `filters.severity`.
+
+Optional shared `on.gateway-dispatch.orgs` selects GitHub organizations with
+literal names or `*` patterns (case-insensitive, 1–39 ASCII letters/digits/hyphens/
+stars, no leading/trailing hyphen). Compiled selectors are lowercase/sorted/unique.
+They intersect `repos`, reviewed enrollment and project scope; `*` grants nothing.
+Activation and egress verify actual Organization owner type/ID through authenticated
+source binding, not merely a URL owner name. External triggers ignore this shared
+authoring option and do not receive `orgs` metadata.
+
+### Native slash and label commands
+
+The bridge consumes compiled `on.gateway-dispatch.slash-command` and
+`label-command` declarations from the pinned runtime above. It filters original,
+authenticated GitHub deliveries, including issue/PR comment splitting,
+position-zero slash tokens, exact/catch-all/trailing-star command matching, and
+exact label matching. Native command strategies are retained metadata, not
+authority to create listeners or routes. Shared `repos` and `orgs` intersect
+reviewed source enrollment and private inventories.
+
+Activation requires a separately reviewed `discovery.activateCommands:true`;
+omission remains off. Optional `discovery.serverUrl` defaults to
+`https://github.com` and binds the receiving API client's HTTPS origin and clean
+base path. Original HTML item links have no anchor; comment links require the
+catalog's exact original `#issuecomment-N`, `#discussion_rN`, or
+`#discussioncomment-N`. Reviews, submitted/ready-for-review/review-requested
+events, and arbitrary anchors never qualify. See RFC-033 §6.2.3 for the catalog.
+
+Wire payloads contain only `url`, selected singleton `type`, and
+`filters:{"event":["<semantic source>"],"command":["<actual token>"]}` or the
+equivalent exact `label` literal. No command body/arguments are stored or
+forwarded. `gateway.events` is compiler-local access to normalized deliveries,
+not another wire field or an authority channel.
+
+Gateway label commands require compiled `remove_label:true`; false metadata is
+rejected, not a read-only activation option. Authoring omission defaults to true.
+The pinned published contract rejects nonconsuming gateway labels.
+Compiled `remove_label:true` alone cannot write. The exact source row must also
+have independently reviewed `allowLabelRemoval:true`, and the receiving App
+must currently have the selected event category's write permission. This does
+not change checked-in rollout policy. Only the dispatch role receives the label
+consumer; receive and local simulation acquire no mutation capability.
+Consumption follows atomic durable batch admission and a fresh authority/quota
+check, using authenticated REST for issues/PRs or minimal GraphQL for discussions.
+Protected attempt markers and expiring confirmed receipts prevent repeated
+removal across retries/restarts. Ambiguous outcomes never retry a mutation or
+dispatch the workflow, protecting a subsequently reapplied label.
+
+`TestCommandPublishedRuntimeInteroperability` runs actual pinned validator and
+normalizer code for all seven slash sources and three label sources, including
+approved enterprise base paths and whole-batch rejection of unselected
+literals/extra fields/old policies. This is local conformance, not deployed or
+hosted interoperability.
+
+### GitHub notifications
+
+The published ten-family catalog covers issues, pull requests, discussions,
+issue/PR conversation comments, PR reviews, review comments, review threads,
+discussion comments and commit comments. Activation requires separately reviewed
+`discovery.activateNotifications:true`; omission remains off, independently of
+security and command activation. Source permissions are read-only and neither
+notifications nor their metadata grant label writes.
+
+The receiver checks original event/action, exact typed catalog filters and
+issue-versus-PR source evidence. It binds canonical original HTML URLs to the
+authenticated source repository, parent number or commit SHA, original comment/
+review ID, configured GitHub origin and exact Enterprise base path. Required
+anchors include `issuecomment-N`, `pullrequestreview-N`, `discussion_rN`,
+`discussioncomment-N` and `commitcomment-N`. Review threads require
+`thread.comments[0].html_url` and its original ID; missing evidence never causes
+hydration. Payloads retain only `url`, the selected singleton action in `type`,
+and actual matching declared literals in `filters` when predicates exist.
+
+`ready_for_review`, `review_requested` and submitted reviews are notifications,
+not slash-command sources. The embedded catalog's semantic fields and all actions
+are checked against the actual pinned validator/normalizer in
+`TestNotificationPublishedRuntimeInteroperability`, with public and Enterprise
+base-path cases. These local checks do not claim deployment or hosted acceptance.
+
+### Enrolled Jira, Linear, and Azure DevOps sources
+
+The same compiler-v2 path supports `jira_issue`, `linear_issue`,
+`azure_devops_issue` declarations. Each requires independent
+reviewed `control-plane.webhook-gateway.externalSources` enrollment, managed
+discovery, gateway enablement, and a fresh compiled declaration in an explicitly
+enrolled private destination. This is separate from `activateSecurity`; that flag
+does not grant external source authority. No provider registration or rollout is
+automatic.
+
+Each source has a unique `id` (its `/webhooks/<id>` endpoint), `event`,
+canonical HTTPS `resourceUrlPrefix` ending `/`, `secretEnv`,
+`destinationRepositoryIds` selected only from `discovery.repositories`, and
+`expiresAt`. Provider sources additionally require:
+
+| Family | Reviewed source binding | Native authentication |
+| --- | --- | --- |
+| `jira_issue` | `scope`: project key; prefix `https://TENANT.atlassian.net/rest/api/3/issue/` (API 2 also supported) | `X-Hub-Signature: sha256=<hex HMAC-SHA256 of raw body>`; `X-Atlassian-Webhook-Identifier` |
+| `linear_issue` | `scope`: organization ID; prefix `https://linear.app/WORKSPACE/issue/` | `Linear-Signature` raw hex HMAC-SHA256; `Linear-Delivery`; signed `webhookTimestamp` within one minute |
+| `azure_devops_issue` | `scope`: project ID; `collectionId`: collection ID; collection-qualified canonical work item API prefix | Service-hook HTTPS Basic authentication, username `cao`, password from `secretEnv`; HTTPS-authenticated body `id` |
+
+Azure uses native `workItemId` for updates, never the update/revision ID; version-1
+snapshot fallback requires the upstream contract's snapshot evidence. Azure native
+bodies are protected by HTTPS and Basic authentication, not a claimed provider HMAC.
+Jira resolution/label changelogs, Linear `updatedFrom`, and Azure state/tag deltas
+are interpreted only in the receiver under the compiled normalization policy.
+Normalization derives all established activities, including `edited` for updates,
+then retains only the subscription's selected types. Every forwarded type must
+be selected; an empty intersection or contradictory closed/reopened evidence
+cannot qualify. Missing or
+ambiguous evidence does not imply a lifecycle transition. Native bodies are
+discarded; only the reference, activities and declared matching literals persist.
+For selected Azure `closed`/`reopened`, `filters["closed-states"]` contains exactly
+one configured terminal name: entered for closure, departed for reopening.
+It never contains the unmatched nonterminal side or the complete configured set,
+and is omitted without a selected lifecycle activity. `closed_states` is
+normalization metadata, not a source-path equality condition.
+
+Custom/arbitrary webhooks are excluded from this published revision. Compiler
+`event:"webhook"`, authoring `webhooks` arrays and generic `externalSources`
+enrollment reject, including persisted old enrollments. No compatibility fallback
+to a full-body or separately approved manual route is provided.
+
+Secret names must use `CAO_GATEWAY_SOURCE_...`; put values (32–512 bytes) only in
+the receive process environment. Optional `<secretEnv>_PREVIOUS` permits rotation.
+Dispatch, discover and local roles reject provider secret variables. All source
+routes require HTTPS outside numeric loopback; configure native webhook setup
+explicitly in each provider. Source additions require receiver restart; removal,
+expiry, revision changes and inventory invalidation revoke/fence queued authority.
+Linear responds HTTP 200 only after successful durable admission or filtering;
+storage/policy/authority failures never receive a success acknowledgement.
+
+External source authority is current reviewed enrollment plus native
+authentication, **not** a provider resource-access or visibility probe. References
+are conservatively restricted/private, destinations remain private and freshly
+authorized, and workflows must fetch all other data using authenticated provider
+readers. URLs are neither credentials nor permission grants. See
+`specs/fixtures/webhook-external-deliveries-v2.json` for all four illustrative
+enrollments and `TestExternalGatewayPostgresConformance` for durable local coverage;
+neither establishes hosted provider delivery or deployment.
+
+`projectAssignments` maps an organization project to exactly one enrolled
+repository. It constrains separately approved project subscriptions at admission
+and egress; it does **not** automatically activate compiler Projects declarations.
+Keep their explicit artifacts/grants and project identity constraints.
+
+The shared PostgreSQL operational registry atomically publishes inventory with
+a separately monotonic effective queue revision. Policy changes clear discovered
+authority; routing changes cancel older ready/claimed jobs. Freshness-only
+refreshes advance registry CAS without cancelling valid work. Protected-record
+storage needs no new schema/table. Production roles must use the registry loader's
+effective `QueueRevision`, never apply the reviewed file's numeric counter
+directly after binding the registry.
+
+After upgrading from an obsolete projection contract, incompatible persisted
+inventories fail closed at the current policy revision. A higher reviewed gateway
+policy revision atomically revokes the old inventory and ready/claimed work,
+then permits fresh bounded discovery within the same enrollment. It does not
+reinterpret old payloads or grant new authority; this change does not edit rollout
+policy automatically.
+
+Both receiving-side authority and final dispatch preflight recheck the current
+head and whole-lock digest. Repository dispatch still runs GitHub's default
+branch; preflight does **not** guarantee immutable execution across a later ref
+change. Establish trust in the reviewed/protected default branch and complete
+deployment acceptance before enabling dispatch. The hand-authored fixture,
+mock GitHub tests, local simulations, and TLC results do not prove actual
+compiler emission or live signed delivery-to-workflow execution.
+
+The host demonstration uses real PostgreSQL, signed HMAC ingress, and mock
+GitHub HTTP—not live GitHub or a real subscription compiler. Its targeted command
+is:
+
+```bash
+# Set POSTGRES_URL to a disposable local PostgreSQL database first.
+go -C server test -p 1 ./internal/webhookgatewayhost \
+  -run '^TestProjectsV2GatewayPostgresDemonstration$'
+```
+
+The command is an operational recipe, not a claim that this documentation change
+ran the demonstration or established production end-to-end readiness.
 
 ## Offline query validation
 

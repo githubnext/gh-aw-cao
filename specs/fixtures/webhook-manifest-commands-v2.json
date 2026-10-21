@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "webhook_subscriptions": [
+    {
+      "schema_version": 2,
+      "event": "slash_command",
+      "native_events": ["discussion", "discussion_comment", "issue_comment", "issues", "pull_request", "pull_request_review_comment"],
+      "types": ["created", "edited", "opened", "reopened"],
+      "conditions": [],
+      "command_filter": {
+        "policy": "slash-command/v1",
+        "names": ["bot-*", "review"],
+        "events": ["discussion", "discussion_comment", "issue_comment", "issues", "pull_request", "pull_request_comment", "pull_request_review_comment"],
+        "strategy": "inline"
+      },
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
+        "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "payload_projection": {"policy":"resource-url-types-filters/v2"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    },
+    {
+      "schema_version": 2,
+      "event": "label_command",
+      "native_events": ["discussion", "issues", "pull_request"],
+      "types": ["labeled"],
+      "conditions": [],
+      "command_filter": {
+        "policy": "label-command/v1",
+        "names": ["ready", "ready / deploy"],
+        "events": ["discussion", "issues", "pull_request"],
+        "strategy": "inline",
+        "remove_label": true
+      },
+      "dispatch": {
+        "repository": "${{ github.repository }}",
+        "method": "repository_dispatch",
+        "event_type": "gh-aw-webhook-9f86d081884c7d659a2feaa0",
+        "workflow": ".github/workflows/test.lock.yml",
+        "context": {"envelope":"github.event.client_payload","aw_context":"github.event.client_payload.aw_context","event":"github.event.client_payload.aw_context.webhook.event","deliveries":"github.event.client_payload.aw_context.webhook.deliveries","items":"aw_context.items"},
+        "batch": {"mode":"same-event","deduplicate_by":"delivery_id"},
+        "payload_projection": {"policy":"resource-url-types-filters/v2"},
+        "max_payload_bytes": 65535,
+        "max_request_bytes": 65535
+      }
+    }
+  ]
+}
