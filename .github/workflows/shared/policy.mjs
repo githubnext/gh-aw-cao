@@ -7,7 +7,7 @@ const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.gi
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
 const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "operations", "publishing", "marketplace", "webhook-gateway"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
-const ACTIVITY_KEYS = ["repositories"];
+const ACTIVITY_KEYS = ["repositories", "public-only"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
 const WEB_KEYS = ["experimental", "favicon", "host"];
 const HOST_KEYS = ["target", "redis", "operational-store", "cors"];
@@ -544,6 +544,7 @@ function validateActivity(activity, scope = {}) {
   const path = "control-plane.activity";
   assertMapping(activity, path);
   assertKeys(activity, ACTIVITY_KEYS, path);
+  if ("public-only" in activity) assertBoolean(activity["public-only"], `${path}.public-only`);
   if (!("repositories" in activity)) throw new PolicyError(`${path}.repositories is required`);
   assertUniqueStrings(activity.repositories, `${path}.repositories`, REPOSITORY_PATTERN);
   if (activity.repositories.length === 0) {
@@ -1062,7 +1063,10 @@ export function controlSettings(document, controlRepository) {
   return {
     allowed_owners: scope["allowed-owners"] ?? [controlRepository.split("/", 1)[0]],
     allowed_repositories: scope["allowed-repositories"] ?? [],
-    ...(control.activity ? { activity_repositories: control.activity.repositories } : {}),
+    ...(control.activity ? {
+      activity_repositories: control.activity.repositories,
+      ...(control.activity["public-only"] !== undefined ? { activity_public_only: control.activity["public-only"] } : {}),
+    } : {}),
     web: {
       experimental: web.experimental ?? false,
       favicon: web.favicon ?? "./favicon.svg",

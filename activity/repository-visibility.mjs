@@ -19,6 +19,13 @@ function isPublic(repository) {
     : repository.private !== true;
 }
 
+export function assertPublicRepository(metadata, repository) {
+  if (metadata?.visibility !== "public" || metadata?.private !== false
+    || metadata?.full_name?.toLowerCase() !== repository.toLowerCase()) {
+    throw new Error(`Public-only Activity requires verified public visibility and unchanged identity for ${repository}`);
+  }
+}
+
 async function ownerRepositories(paginate, owner) {
   try {
     return await paginate("GET /orgs/{org}/repos", {
@@ -51,10 +58,21 @@ async function ownerRepositories(paginate, owner) {
 export async function validateRepositoryVisibility({
   controlRepository,
   allowedRepositories,
+  publicOnly = false,
   request,
   paginate,
 }) {
   const control = await repositoryMetadata(request, repositoryName(controlRepository));
+  if (publicOnly) {
+    if (!Array.isArray(allowedRepositories) || allowedRepositories.length === 0) {
+      throw new Error("Public-only Activity requires an exact nonempty repository scope");
+    }
+    assertPublicRepository(control, controlRepository);
+    for (const repository of new Set(allowedRepositories.map(repositoryName))) {
+      assertPublicRepository(await repositoryMetadata(request, repository), repository);
+    }
+    return;
+  }
   if (!isPublic(control)) return;
 
   let repositories;
@@ -86,6 +104,7 @@ export async function main(actions = {}, args) {
     await validateRepositoryVisibility({
       controlRepository: process.env.ACTIVITY_VISIBILITY_REPOSITORY || process.env.GITHUB_REPOSITORY || "",
       allowedRepositories: settings.allowed_repositories || [],
+      publicOnly: settings.activity_public_only === true,
       request: actions.github.request,
       paginate: actions.github.paginate,
     });

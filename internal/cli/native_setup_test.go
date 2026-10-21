@@ -194,6 +194,75 @@ func TestNativeSetupNonInteractive(t *testing.T) {
 	}
 }
 
+func TestNativeSetupPublicMonitoring(t *testing.T) {
+	for _, visibility := range []string{"PUBLIC", "PRIVATE", "INTERNAL"} {
+		t.Run(visibility, func(t *testing.T) {
+			nativeSetupTestDirectory(t)
+			nativeSetupTestSave(t, nativeSetupTestPolicy())
+			before, _ := os.ReadFile(policyPath)
+			cmd := nativeSetupTestCommand()
+			cmd.Flags().StringArray("repository", []string{"other/*"}, "")
+			var mutations []string
+			gh := func(_ context.Context, args ...string) (string, string, error) {
+				call := strings.Join(args, " ")
+				switch call {
+				case "auth status":
+					return "", "", nil
+				case "repo view --json nameWithOwner --jq .nameWithOwner":
+					return "org/control", "", nil
+				case "repo view org/control --json nameWithOwner,visibility":
+					return fmt.Sprintf(`{"nameWithOwner":"org/control","visibility":%q}`, visibility), "", nil
+				case "repo list other --json nameWithOwner,visibility --limit 1000":
+					return `[{"nameWithOwner":"other/public","visibility":"PUBLIC"},{"nameWithOwner":"other/private","visibility":"PRIVATE"},{"nameWithOwner":"other/internal","visibility":"INTERNAL"}]`, "", nil
+				case "repo view other/public --json nameWithOwner,visibility":
+					return `{"nameWithOwner":"other/public","visibility":"PUBLIC"}`, "", nil
+				case "api repos/org/control/pages":
+					return `{"build_type":"workflow","public":true}`, "", nil
+				case "variable set GH_AW_GITHUB_AUTH_MODE --repo org/control --body workflow-token":
+					mutations = append(mutations, call)
+					return "", "", nil
+				}
+				t.Fatalf("unexpected command (no App/PAT or target mutations allowed): %s", call)
+				return "", "", nil
+			}
+			result, err := nativeSetupControl(cmd, gh, nil)
+			if visibility != "PUBLIC" {
+				after, _ := os.ReadFile(policyPath)
+				if err == nil || len(mutations) != 0 || !bytes.Equal(before, after) {
+					t.Fatalf("non-public setup did not fail before mutation: %v", err)
+				}
+				return
+			}
+			if err != nil || result["profile"] != "public-only" {
+				t.Fatalf("result=%#v err=%v", result, err)
+			}
+			want := []string{"org/control", "other/public"}
+			if !reflect.DeepEqual(result["repositories"], want) {
+				t.Fatalf("scope=%v want=%v", result["repositories"], want)
+			}
+			saved, err := readPolicy()
+			if err != nil {
+				t.Fatal(err)
+			}
+			control := nativeSetupMap(saved["control-plane"])
+			if nativeSetupMap(control["activity"])["public-only"] != true || len(nativeSetupMap(control["campaigns"])) != 0 {
+				t.Fatalf("wrong observation-only policy: %#v", control)
+			}
+			// Rerunning without scope arguments preserves and revalidates enrollment.
+			repeated, err := nativeSetupControl(nativeSetupTestCommand(), gh, nil)
+			if err != nil || !reflect.DeepEqual(repeated["repositories"], want) {
+				t.Fatalf("repeat result=%#v err=%v", repeated, err)
+			}
+			guided, err := nativeSetupControl(nativeSetupTestCommand(), gh, &nativeSetupTestPrompt{
+				texts: []string{"other/public", "public-only"}, confirms: []bool{true, true},
+			})
+			if err != nil || guided["profile"] != "public-only" || !reflect.DeepEqual(guided["repositories"], want) {
+				t.Fatalf("guided result=%#v err=%v", guided, err)
+			}
+		})
+	}
+}
+
 type nativeSetupTestPrompt struct {
 	texts    []string
 	confirms []bool

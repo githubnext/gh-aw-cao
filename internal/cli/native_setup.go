@@ -340,6 +340,11 @@ func nativeSetupBoundedPolicy(policy map[string]any, repo string) error {
 }
 
 func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPrompt) (result map[string]any, err error) {
+	requested, _ := cmd.Flags().GetStringArray("repository")
+	publicOnly := len(requested) > 0
+	if publicOnly {
+		prompt = nil
+	}
 	if prompt == nil {
 		if err := nativeSetupNote(cmd, "Applying non-interactive setup defaults for the current public control repository.\n"); err != nil {
 			return nil, err
@@ -365,6 +370,9 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		return nil, fmt.Errorf("CAO policy is missing or invalid; run gh cao init or fix the policy: %w", err)
 	}
 	control := nativeSetupMap(policy["control-plane"])
+	if prompt == nil && nativeSetupMap(control["activity"])["public-only"] == true {
+		publicOnly = true
+	}
 	campaigns := nativeSetupMap(control["campaigns"])
 	if campaigns == nil || len(campaigns) != 0 {
 		return nil, errors.New("setup only configures a bare control plane with no declared campaigns")
@@ -388,8 +396,30 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if controlRepo.Visibility != "public" {
 			return nil, fmt.Errorf("non-interactive setup requires a public control repository; %s is %s", repo, controlRepo.Visibility)
 		}
-		if err = nativeSetupBoundedPolicy(policy, controlRepo.Repository); err != nil {
+		if err = nativeSetupBoundedPolicy(policy, controlRepo.Repository); err != nil && (!publicOnly || nativeSetupMap(control["activity"])["public-only"] != true) {
 			return nil, err
+		}
+		if publicOnly {
+			if len(requested) == 0 && nativeSetupMap(control["activity"])["public-only"] == true {
+				requested, _ = nativeSetupStrings(nativeSetupMap(control["activity"])["repositories"])
+			}
+			inspected, e := nativeSetupExpand(cmd, gh, controlRepo, strings.Join(requested, ","), true)
+			if e != nil {
+				return nil, e
+			}
+			repositories, owners = []string{}, []string{}
+			for _, candidate := range inspected {
+				if candidate.Visibility != "public" {
+					return nil, fmt.Errorf("public-only monitoring cannot include %s (%s)", candidate.Repository, candidate.Visibility)
+				}
+				repositories = append(repositories, candidate.Repository)
+				owners = append(owners, strings.Split(candidate.Repository, "/")[0])
+			}
+			owners = nativeSetupUnique(owners, true)
+			profile = "public-only"
+			if err := nativeSetupNote(cmd, "Public-only monitoring scope: %s\nPublic Pages publication accepted by the public monitoring quickstart. No App/PAT or agent execution.\n", strings.Join(repositories, ", ")); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		if err := nativeSetupNote(cmd, "Control repository: %s (%s). Monitoring only; no agentic operation will be enabled or run.\nWildcard patterns are expanded now; only exact names are saved.\n", repo, controlRepo.Visibility); err != nil {
@@ -412,15 +442,23 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 			owners = append(owners, strings.Split(inspectedRepo.Repository, "/")[0])
 		}
 		owners = nativeSetupUnique(owners, false)
-		recommended := "github-app"
+		appProfile := "github-app"
 		if len(owners) != 1 {
-			recommended = "enterprise-app"
+			appProfile = "enterprise-app"
 		}
-		profile, e = prompt.Text("Authentication: "+recommended+", approved-app, or token", recommended)
+		recommended := appProfile
+		allPublic := true
+		for _, candidate := range inspected {
+			allPublic = allPublic && candidate.Visibility == "public"
+		}
+		if allPublic {
+			recommended = "public-only"
+		}
+		profile, e = prompt.Text("Authentication: "+recommended+", "+appProfile+", approved-app, or token", recommended)
 		if e != nil {
 			return nil, e
 		}
-		if profile != recommended && profile != "approved-app" && profile != "token" {
+		if profile != recommended && profile != appProfile && profile != "approved-app" && profile != "token" {
 			return nil, fmt.Errorf("authentication profile is not available for this repository scope: %s", profile)
 		}
 		authOptions = nativeSetupAuthOptions{repo: repo, policy: policyPath, write: []string{repo}, expires: "30"}
@@ -435,7 +473,11 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 				return nil, errors.New("existing App setup requires both client IDs")
 			}
 		}
-		if err := nativeSetupNote(cmd, "Read scope: %s\nReview output write scope: %s\nAuthentication: %s\nCampaigns: none\nPages settings and credentials may change; no commit or push is made.\n", strings.Join(repositories, ", "), repo, profile); err != nil {
+		writeScope := repo
+		if profile == "public-only" {
+			writeScope = "none (monitoring only)"
+		}
+		if err := nativeSetupNote(cmd, "Read scope: %s\nReview output write scope: %s\nAuthentication: %s\nCampaigns: none\nPages settings and credentials may change; no commit or push is made.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
 			return nil, err
 		}
 		apply, e := prompt.Confirm("Apply this setup?", false)
@@ -485,7 +527,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	}
 	stage = "credentials"
 	authentication := map[string]any{"mode": "workflow-token", "repository": repo}
-	if prompt == nil {
+	if prompt == nil || profile == "public-only" {
 		if _, err = nativeSetupGH(cmd, gh, "variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", repo, "--body", "workflow-token"); err != nil {
 			return nil, err
 		}
@@ -506,13 +548,19 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	}
 	stage = "policy"
 	control["scope"] = map[string]any{"allowed-owners": owners, "allowed-repositories": repositories}
-	if prompt == nil {
+	if prompt == nil || profile == "public-only" {
 		activity := nativeSetupMap(control["activity"])
 		if activity == nil {
 			activity = map[string]any{}
 		}
 		activity["repositories"] = repositories
+		if profile == "public-only" {
+			activity["public-only"] = true
+		}
 		control["activity"] = activity
+	} else if activity := nativeSetupMap(control["activity"]); activity["public-only"] == true {
+		activity["repositories"] = repositories
+		delete(activity, "public-only")
 	}
 	if err = writePolicy(policy, false); err != nil {
 		return nil, err
@@ -529,7 +577,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	}
 	if prompt == nil {
 		result["nonInteractive"] = true
-		if err := nativeSetupNote(cmd, "Non-interactive setup applied to %s.\nRead and Activity scope: %s\nAuthentication: repository GITHUB_TOKEN (workflow-token)\nDashboard Pages: public%s\nCampaigns: none\n", repo, repo, func() string {
+		if err := nativeSetupNote(cmd, "Non-interactive setup applied to %s.\nRead and Activity scope: %s\nAuthentication: repository GITHUB_TOKEN (workflow-token)\nDashboard Pages: public%s\nCampaigns: none\n", repo, strings.Join(repositories, ", "), func() string {
 			if pages.URL == "" {
 				return ""
 			}
@@ -548,7 +596,7 @@ func nativeSetupMatches(pattern, repo string) bool {
 	return matched
 }
 
-func nativeSetupExpand(cmd *cobra.Command, gh ghExecutor, control nativeSetupRepository, answer string) ([]nativeSetupRepository, error) {
+func nativeSetupExpand(cmd *cobra.Command, gh ghExecutor, control nativeSetupRepository, answer string, publicOnly ...bool) ([]nativeSetupRepository, error) {
 	result := []nativeSetupRepository{control}
 	var organizations []string
 	organizationsLoaded := false
@@ -563,6 +611,9 @@ func nativeSetupExpand(cmd *cobra.Command, gh ghExecutor, control nativeSetupRep
 		}
 		if !nativeSetupRepositoryPattern.MatchString(pattern) {
 			return nil, fmt.Errorf("repository must use owner/repository format with optional * wildcards: %s", pattern)
+		}
+		if len(publicOnly) > 0 && publicOnly[0] && strings.Contains(strings.Split(pattern, "/")[0], "*") {
+			return nil, errors.New("public-only quickstart accepts exact OWNER/REPO or OWNER/* patterns")
 		}
 		if !strings.Contains(pattern, "*") {
 			if !strings.EqualFold(pattern, control.Repository) {
@@ -631,7 +682,7 @@ func nativeSetupExpand(cmd *cobra.Command, gh ghExecutor, control nativeSetupRep
 				cache[key] = repos
 			}
 			for _, repo := range repos {
-				if nativeSetupMatches(pattern, repo.Repository) {
+				if nativeSetupMatches(pattern, repo.Repository) && (len(publicOnly) == 0 || !publicOnly[0] || repo.Visibility == "public") {
 					matches = append(matches, repo)
 				}
 			}

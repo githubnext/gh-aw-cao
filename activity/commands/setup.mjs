@@ -1,3 +1,5 @@
+import { parseOptions, rejectUnknownOptions } from '../cli/options.mjs';
+
 export function runSetup({
   arguments_,
   setupCaoControlPlane,
@@ -5,11 +7,12 @@ export function runSetup({
   UsageError,
   input,
 }) {
-  for (const argument of arguments_) {
-    if (argument !== '--json') throw new UsageError(`Unexpected argument: ${argument}`);
-  }
+  const options = parseOptions(arguments_);
+  rejectUnknownOptions(options, ['json', 'repository']);
   return setupCaoControlPlane({
     input,
+    publicOnly: options.repository !== undefined,
+    repositories: options.repository ?? [],
     UsageError,
     setupAuthentication: setupCaoAuthentication,
   });

@@ -24,7 +24,8 @@ test('workflow collection uses sorted repository-owned compiled paths across eve
 });
 
 async function fixture(t, { response = '[{"workflows":[{"path":".github/workflows/remote-experiment.lock.yml"}]}]',
-  discoveryStatus = 0, collectionStatus = 0, collectionDelay = 0, stderr = '' } = {}) {
+  discoveryStatus = 0, collectionStatus = 0, collectionDelay = 0, stderr = '',
+  metadata = { full_name: 'octo/api', private: false, visibility: 'public' } } = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'cao-workflow-logs-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const binary = path.join(directory, 'gh');
@@ -34,6 +35,10 @@ const fs = require('node:fs');
 const args = process.argv.slice(2);
 fs.appendFileSync(${JSON.stringify(calls)}, JSON.stringify(args) + '\\n');
 if (args[0] === 'api') {
+  if (args[1] === 'repos/octo/api') {
+    console.log(${JSON.stringify(JSON.stringify(metadata))});
+    process.exit(0);
+  }
   process.stdout.write(${JSON.stringify(response)});
   process.stderr.write(${JSON.stringify(stderr)});
   process.exit(${discoveryStatus});
@@ -64,6 +69,27 @@ test('an empty remote workflow catalog never falls back to checkout-local workfl
   const result = await execute(process.execPath, f.args);
   assert.match(result.stdout, /No agentic workflows found for octo\/api/);
   assert.equal((await f.calls()).length, 1);
+});
+
+test('public-only collection rechecks visibility and marks inaccessible discovery or artifacts as incomplete', async (t) => {
+  for (const options of [{}, { discoveryStatus: 1 }, { collectionStatus: 1 }]) {
+    const f = await fixture(t, options);
+    const [, binary, ...args] = f.args;
+    assert.equal(await collectWorkflowLogs(binary, args, { publicOnly: true }),
+      options.discoveryStatus || options.collectionStatus ? 76 : 0);
+    assert.deepEqual((await f.calls())[0], ['api', 'repos/octo/api']);
+  }
+  for (const metadata of [
+    { full_name: 'octo/api', private: true, visibility: 'private' },
+    { full_name: 'octo/api', private: false, visibility: 'internal' },
+    { full_name: 'octo/api' },
+    { full_name: 'octo/moved', private: false, visibility: 'public' },
+  ]) {
+    const f = await fixture(t, { metadata });
+    const [, binary, ...args] = f.args;
+    await assert.rejects(collectWorkflowLogs(binary, args, { publicOnly: true }), /verified public visibility/);
+    assert.equal((await f.calls()).length, 1);
+  }
 });
 
 test('discovery fails closed without exposing upstream errors or invoking local workflow discovery', async (t) => {

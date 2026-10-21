@@ -319,7 +319,8 @@ partial external changes rather than imply rollback. Setup MUST NOT install
 campaigns, dispatch workflows, commit, or push. The UI and its license notices
 MUST be bundled so installed setup does not need npm or consumer node_modules.
 
-Without an interactive terminal or when `CI` is set, setup MUST apply only a
+Without explicit repository arguments, setup without an interactive terminal
+or with `CI` set MUST apply only a
 deterministic public-control-repository profile. It MUST require the control
 repository to be public, require an empty campaign map, and require existing
 scope to be absent or already exactly the control repository. It MUST configure
@@ -329,7 +330,8 @@ self-only Activity scope, preserve unrelated policy fields, and write policy
 last. It MUST fail before external mutation for private/internal repositories,
 broader existing scope, or non-empty campaigns. It MUST use plain unstyled
 output and MUST NOT prompt, open a browser, install a campaign, dispatch,
-commit, or push.
+commit, or push. The explicit public-monitoring shortcut below and a previously
+saved public-only scope MAY select a wider exact public collection scope.
 
 Operational campaigns MUST remain separate from installation and setup.
 Operators install campaigns with `gh cao campaigns add`, review and commit
@@ -344,6 +346,24 @@ repository coordinates, contain at least one entry, remain within
 present, be its subset. Activity authentication MUST use that declared
 collection subset instead of silently narrowing broader rollout scope. Without
 the field, existing fail-closed authentication behavior remains unchanged.
+
+`control-plane.activity.public-only: true` MUST require an explicit exact
+Activity scope and workflow-token authentication. It MUST NOT change campaign,
+worker, operation, safe-output or live authority. Collection MUST verify the
+control repository and selected repositories are public with unchanged identity
+before discovery and recheck each target before collecting logs. Missing or
+non-public visibility MUST block publication, including after a visibility
+change. Restricted public evidence MUST remain explicitly partial, not complete
+or zero; public-only collection MUST NOT invoke new operational-value collectors
+or authenticated issue-status enrichment.
+
+Guided setup SHOULD recommend public-only monitoring for an all-public scope.
+`gh cao setup --repository OWNER/REPO|OWNER/*` MAY configure
+that profile without prompts; this shortcut accepts public Pages
+publication. Wildcards MUST resolve only currently public repositories to saved
+exact names, and exact non-public selections MUST fail before mutation. Setup
+MUST remain bare, with no campaign or agent execution, and MUST write policy
+last. No user-supplied App/PAT is required.
 
 `cao update` without a ref MUST retain release-based selection. An explicit
 `main`, `master`, `latest`, or commit SHA MUST resolve once to a full catalog

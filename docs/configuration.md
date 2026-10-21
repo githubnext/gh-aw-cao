@@ -57,6 +57,7 @@ The schema defaults are:
 | `control-plane.scope.allowed-owners` | Control repository owner | Owner names |
 | `control-plane.scope.allowed-repositories` | All repositories under an allowed owner | Exact `owner/repository` names |
 | `control-plane.activity.repositories` | Global scope | Nonempty exact collection subset admitted by owner and repository scope |
+| `control-plane.activity.public-only` | `false` | Explicit observation-only collection of verified public repositories with `GITHUB_TOKEN`; evidence stays partial |
 | `control-plane.inventory.max-scan-repositories` | `1000` | `1` through `100000` |
 | `control-plane.inventory.cell-count` | `1` | `1` through `1000` |
 | `control-plane.inventory.cell-index` | `0` | Less than `cell-count` |
@@ -79,6 +80,16 @@ an exact repository admitted by `allowed-owners` and, when an exact
 `allowed-repositories` list is present, must appear there. The field does not
 grant campaign authority or credential reach. When omitted, Activity uses the
 global scope and preserves its fail-closed authentication checks.
+
+For public-only monitoring without App/PAT configuration, `gh cao setup`
+recommends the built-in-token profile when every selected repository is public.
+For scripts, use `gh cao setup --repository 'OWNER/*'`; it accepts
+public Pages publication and saves only currently public exact repository names.
+The reviewed `activity.public-only: true` setting requires an explicit Activity
+repository list and workflow-token authentication. Runtime visibility changes
+stop publication. This is observation only, not permission to activate campaigns,
+execute agents, or write to targets. See the
+[public-only quickstart](authentication.md#public-only-monitoring-quickstart).
 
 The optional `control-plane.web` section configures deterministic web surfaces without changing rollout authority. Dashboard views declared in experimental navigation sections are omitted by default; set `experimental` to `true` to include them. Set `favicon` to an absolute HTTPS URL without credentials, query, or fragment, or to a non-traversing `./` relative path available in the generated site. The dashboard campaign ships `./favicon.svg` as its default.
 
@@ -337,7 +348,10 @@ behavior, troubleshooting, and the read-only dashboard flow.
 
 ## Credentials
 
-Configure a GitHub App or fine-grained PAT profile for every cross-repository scope, including public targets. The repository-provided token remains available only for bounded control-repository operations and compatibility.
+Configure a GitHub App or fine-grained PAT profile for cross-repository access
+that requires authenticated evidence or writes. For public-only monitoring,
+guided setup can use the built-in Actions token with the explicit reviewed
+collection policy described above; unavailable evidence remains partial.
 
 | Name | Required | Purpose |
 | --- | --- | --- |

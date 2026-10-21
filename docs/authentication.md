@@ -19,7 +19,10 @@ Use a private control repository whenever the target or required evidence is pri
 | Targets across organizations in one enterprise | Enterprise-owned private GitHub Apps |
 | Apps are unavailable and the required APIs are PAT-compatible | One fine-grained PAT pair per resource owner |
 
-Interactive setup always configures an App or PAT profile that can authenticate to every selected repository. The repository-provided `GITHUB_TOKEN` remains a bounded runtime fallback for control-repository operations; it is not a cross-repository authentication profile.
+For an all-public monitoring scope, interactive setup recommends **Public-only
+monitoring (no App or PAT)**. Private/internal evidence or authenticated operations
+still require an App or PAT profile. Public monitoring uses the built-in Actions
+`GITHUB_TOKEN`; it does not grant cross-repository execution or writes.
 
 :::tip[Prefer GitHub Apps]
 Apps use short-lived, installation-scoped tokens and do not depend on one person's continued access. CAO separates a read-only App from a write-capable App.
@@ -51,7 +54,8 @@ The supported control-plane credentials are:
 
 `GH_AW_GITHUB_AUTH_MODE` explicitly selects `app`, `pat`, or the repository-local
 `workflow-token` mode. With no mode configured, Activity uses `GITHUB_TOKEN`
-when the exact collection scope contains only the control repository. An
+when the exact collection scope contains only the control repository, or when
+reviewed policy explicitly enables public-only monitoring. An
 explicit `control-plane.activity.repositories` list narrows evidence collection
 within the global allowed-repository scope without narrowing campaign rollout
 authority. GitHub App setup
@@ -71,7 +75,62 @@ The committed root `aw.yml` intentionally has no `config` block so normal instal
 
 ### Repository-provided token fallback
 
-The repository-provided `GITHUB_TOKEN` is not offered by setup as an authentication profile. It remains available for bounded control-repository operations and compatibility when no explicit mode has been configured. Public visibility alone does not make it a reliable credential for another repository's Actions logs, security data, issues, pull requests, or write APIs.
+The repository-provided `GITHUB_TOKEN` supports bounded control-repository
+operations and the public-only monitoring profile below. Public visibility alone
+does not guarantee access to another repository's logs, artifacts, security
+data, authenticated enrichments, or write APIs.
+
+### Public-only monitoring quickstart
+
+After installing the bare runtime in a public control repository, run
+`gh cao setup` and select the public repositories to observe. Setup recommends
+the no-App/no-PAT profile for an all-public scope. For unattended setup:
+
+```bash
+gh cao setup --repository 'my-monalisa-org/*'
+```
+
+The `--repository` quickstart selects public-only monitoring, accepts a public
+Pages dashboard and skips credential and confirmation prompts. No separate
+authentication-mode flag is needed. The existing GitHub CLI sign-in still needs permission
+to configure **the control repository's** Pages and Actions variable. No
+user-supplied automation PAT or App is created or stored. Wildcards select only
+currently public repositories and save their exact names, not a pattern; future
+repositories are not enrolled. Exact private/internal inputs fail. Setup changes
+only the control repository's configuration and local policy, never targets,
+campaign activation, agent execution, safe outputs, or live authority.
+Review, commit and push the installed files and policy to publish the setup.
+
+The policy records the independently bounded Activity scope:
+
+```json
+{
+  "control-plane": {
+    "scope": {
+      "allowed-owners": ["my-monalisa-org"],
+      "allowed-repositories": ["my-monalisa-org/cao", "my-monalisa-org/example"]
+    },
+    "activity": {
+      "repositories": ["my-monalisa-org/cao", "my-monalisa-org/example"],
+      "public-only": true
+    },
+    "campaigns": {}
+  }
+}
+```
+
+Activity requires workflow-token mode (setup selects it), verifies public
+visibility and unchanged repository identity before discovery and again before
+log collection, and blocks publication if visibility cannot be verified or
+changes to private/internal. There is no App/PAT fallback or owner-wide discovery
+at collection time. GitHub's REST API exposes
+[public workflow metadata](https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository);
+the existing gh-aw collector attempts available logs and artifacts with the
+job token. Restricted or missing evidence remains **partial**, with a reason in
+the inventory metadata and Actions summary, even when the collector exits zero.
+Public-only collection skips issue-status GraphQL enrichment and new
+operational-value collectors. It observes existing gh-aw workflows; it does not
+execute new agentic work. No runs observed is not proof of zero activity.
 
 For a fresh repository-local installation, keep
 `control-plane.scope.allowed-repositories` set to the control repository.
@@ -81,9 +140,9 @@ Activity needs no App, PAT, secret, or authentication variable: an unset
 with no agentic runs and publishes an explicit empty snapshot for the dashboard.
 Collection and operational-value reads reserve 100 core API requests rather
 than the larger App/PAT reserves, so they fit the standard 1,000-request
-workflow-token quota. Owner-wide or cross-repository Activity scopes require
-`app` or `pat`; Activity rejects those scopes rather than silently collecting
-only the control repository.
+workflow-token quota. Other owner-wide or cross-repository Activity scopes require
+`app` or `pat`; without the explicit public-only policy, Activity rejects those
+scopes rather than silently collecting only the control repository.
 
 A Repo Assist campaign can have broader rollout scope while its agentic
 workflows run in the control repository. To collect only that repository's

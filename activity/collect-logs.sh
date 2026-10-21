@@ -70,6 +70,7 @@ fi
 echo "Activity log collection: ${#repositories[@]} repositories; window=${window_days}d; run limit=${run_limit}; download timeout=${download_timeout_minutes}m; storage limit=${max_storage}MB"
 
 exit_code=0
+unavailable_repositories=()
 drain3_args=()
 if [[ -n "$drain3_weights_path" && -f "$drain3_weights_path" ]]; then
   drain3_args+=(--drain3-weights "$drain3_weights_path")
@@ -168,10 +169,14 @@ for index in "${!repositories[@]}"; do
     mv "$generated_weights" "$drain3_weights_path"
     drain3_args=(--drain3-weights "$drain3_weights_path")
   fi
-  if [[ $repository_exit_code -ne 0 && $repository_exit_code -ne 75 ]]; then
+  if [[ $repository_exit_code -ne 0 && $repository_exit_code -ne 75 && ! ( "${REPORT_PUBLIC_ONLY:-false}" == "true" && $repository_exit_code -eq 76 ) ]]; then
     echo "Activity log collection: $target_repository failed; stopping before the next repository" >&2
     exit_code=$repository_exit_code
     break
+  fi
+  if [[ $repository_exit_code -eq 76 ]]; then
+    unavailable_repositories+=("$target_repository")
+    echo "::warning::Public workflow evidence is unavailable for $target_repository; retaining partial evidence."
   fi
   if ! node activity/session-evidence.mjs "$output_directory/$cache_name" "$shard_prefix" "$target_repository"; then
     echo "Activity log collection: unified session ingestion failed for $target_repository" >&2
@@ -190,6 +195,35 @@ for index in "${!repositories[@]}"; do
     }
 done
 
+if [[ $exit_code -eq 0 && "${REPORT_PUBLIC_ONLY:-false}" == "true" ]]; then
+  if [[ -n "${REPORT_INVENTORY_SOURCES:-}" ]]; then
+    REPORT_UNAVAILABLE_REPOSITORIES="$(printf '%s\n' "${unavailable_repositories[@]:-}")" \
+      node --input-type=module - "$REPORT_INVENTORY_SOURCES" "${repositories[@]}" <<'EOF'
+import { readFile, writeFile } from "node:fs/promises";
+import { markInventoryCollectionPartial } from "./activity/inventory-sources.mjs";
+const [filename, ...repositories] = process.argv.slice(2);
+const sources = JSON.parse(await readFile(filename, "utf8"));
+markInventoryCollectionPartial(sources, repositories,
+  "Public-only monitoring: workflow metadata is observable, but logs, artifacts, security evidence and authenticated enrichments may be unavailable. Retained evidence is not proof of current or complete coverage.");
+const unavailable = new Set(process.env.REPORT_UNAVAILABLE_REPOSITORIES.split("\n").filter(Boolean));
+for (const name of ["repositories", "workflows"]) {
+  for (const failure of sources[name].metadata["repository-failures"]) {
+    if (unavailable.has(failure.repository)) {
+      failure.state = "unavailable";
+      failure.reason = "Public workflow evidence could not be collected; retained runs may be stale. Missing evidence is not zero activity.";
+    }
+  }
+}
+await writeFile(filename, `${JSON.stringify(sources, null, 2)}\n`);
+EOF
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then printf 'evidence-partial=true\n' >> "$GITHUB_OUTPUT"; fi
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    printf '### Public-only Activity collection\n\nObservation only. Public workflow metadata was requested; logs and artifacts may be unavailable. Security evidence, issue-status enrichment and new operational-value collection are not included. Missing evidence is not zero activity or complete coverage.\n' >> "$GITHUB_STEP_SUMMARY"
+  fi
+  echo "::warning::Public-only Activity evidence is partial; unavailable logs and artifacts are not zero activity."
+fi
+
 collection_exit_code=$exit_code
 if [[ $exit_code -eq 0 || $exit_code -eq 75 ]]; then
   exit_code=0
@@ -203,7 +237,7 @@ if [[ $exit_code -eq 0 || $exit_code -eq 75 ]]; then
       --retention-days "$detail_window_days" \
       --run-retention-days "$window_days" || exit_code=$?
   fi
-  if [[ $exit_code -eq 0 && $collection_exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" ]]; then
+  if [[ $exit_code -eq 0 && $collection_exit_code -eq 0 && -n "$activity_database" && "${REPORT_DEFER_ISSUE_STATUS:-0}" != "1" && "${REPORT_PUBLIC_ONLY:-false}" != "true" ]]; then
     echo "Activity log collection: enriching issue statuses"
     node "$cao_script" issue-status \
       --database "$activity_database" \
