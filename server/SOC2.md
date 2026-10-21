@@ -33,11 +33,14 @@ assessment MUST NOT be described as having a clean overall validation gate.
 
 The reusable procedure is
 [soc2-server-assessment](../.github/skills/soc2-server-assessment/SKILL.md).
-The maintained [assessment specification](../specs/server-soc2-compliance.md)
-defines the evidence and decision contract; the append-only
+The maintained [assessment specification, RFC-035](../specs/server-soc2-compliance.md)
+defines the evidence and decision contract using BCP 14 requirement language,
+stable `S2-` requirement IDs and role-specific conformance classes; the append-only
 [assessment changelog](SOC2-CHANGELOG.md) records changes and dispositions.
 This register uses specification version 1. Component reports and later
 operator decisions MUST update this register and append a changelog event.
+RFC conversion is editorial: existing finding/status/decision history and
+the established specification path remain unchanged.
 The authoritative security intent remains [SECURITY.md](SECURITY.md) and the
 referenced specifications. This inventory does not change the architecture.
 

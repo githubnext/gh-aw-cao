@@ -366,3 +366,21 @@ Dates are UTC. Corrections are new events; original observations remain.
   development-only apply controls when regenerating OPS-02/03 ARM.
 - Decision/lifecycle: all `remediate` / `in-progress`, unmerged/undeployed;
   validation is session-reported, not whole-system or historical assurance.
+
+## 2026-10-21 - SOC2-LOG-016 - Assessment specification converted to RFC form
+
+- Type: user-directed specification format and conformance clarification.
+- Authorization: operator directed "sco2 spec should be written in RFC mode".
+- Specification: RFC-035 at the existing
+  `specs/server-soc2-compliance.md` path; record schema version remains 1.
+- Added RFC status/scope/safety metadata, abstract, BCP 14 / RFC 2119 and
+  RFC 8174 keyword interpretation, role-specific conformance classes,
+  terminology, stable `S2-` requirement identifiers, security/privacy and
+  compatibility considerations, acceptance criteria, references and open
+  dependencies.
+- Preserved existing evidence/decision/lifecycle enums, finding identifiers,
+  section-8 routing and historical observations/authorizations. Updated
+  register and skill references to the RFC; no runtime/workflow/policy or
+  deployment authority change.
+- Limitations: RFC editorial/process conformance is not certification,
+  engagement approval, deployed control evidence or finding closure.
