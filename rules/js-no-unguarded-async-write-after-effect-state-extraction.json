@@ -149,6 +149,24 @@
       "target_repo": "github/gh-aw"
     },
     {
+      "classification_counts": {
+        "false_negative": 0,
+        "false_positive": 0,
+        "missing_suppression_or_configuration_behaviour": 0,
+        "performance_regression": 0,
+        "unclear_diagnostic": 0,
+        "unsafe_or_incomplete_autofix": 0
+      },
+      "false_negative_count": 0,
+      "false_positive_count": 0,
+      "readiness_for_target": "not-applicable",
+      "reason": "Re-confirmed on HEAD e80a8f5: grep for createFactoryScope() and scope.signal.aborted across all .js/.cjs/.mjs/.ts sources returns no reactive.js component idiom; no dashboard/site directory exists in github/gh-aw. No drift since refiner-38122972949-1.",
+      "target_commit": "e80a8f5e0939b76f7d19a46f06c227aa6e8f2c6d",
+      "true_positive_count": 0,
+      "txn_id": "refiner-39534717716-1",
+      "target_repo": "github/gh-aw"
+    },
+    {
       "evaluation_method": "Searched all 1220 .ts/.js/.mjs/.cjs sources (excluding node_modules/dist) under github/gh-aw-firewall at HEAD b179fef8 for the rule's reactive.js component idiom: createFactoryScope(), state(), effect({signal:...}), and reactive.js/factory-elements.js imports, plus a broader grep for any .set(...) write pattern paired with awaited async callbacks.",
       "false_negative_count": 0,
       "false_positive_count": 0,
