@@ -293,3 +293,25 @@ Dates are UTC. Corrections are new events; original observations remain.
   telemetry templates; regenerate combined ARM.
 - Decision/lifecycle: both `remediate` / `in-progress`, unmerged and
   undeployed. No production assurance/effectiveness or prior finding closed.
+
+## 2026-10-21 - SOC2-LOG-013 - Durable erasure follow-up proposal received
+
+- Type: DATA-03 draft remediation and durable-backend local verification.
+- Source/evidence: commit `79830714dd4b40453b0c15eefa1bf6569c475af7`,
+  draft [#19322](https://github.com/githubnext/gh-cao/pull/19322).
+  Coordinator verified open/draft/head/base and five-file scope.
+- Specification version: 1.
+- Proposal: one erasure helper persists follow-up before ACK; separate
+  requested/completed generations consume only captured intent after
+  canonical commit, retaining concurrent and interrupted work.
+- Session-reported validation: full collector race suite with isolated Redis
+  and PostgreSQL, 260 passing test/subtest events and zero failures/skips;
+  failure/cancel/reclaim/rollback/crash-equivalent/concurrent-publication
+  cases covered. Loaded-host timeout in initial existing parity test was
+  resolved by unchanged bounded-concurrency rerun, not weakened assertions.
+  Server lint/format/build, collector vet and workflow compile passed.
+- Integration: preserve DATA-01/02 cancellation-aware ForgetContext in the
+  new single helper; no duplicate identity/shared-evidence scope.
+- Decision/lifecycle: `remediate` / `in-progress`; proposal unmerged,
+  undeployed, no finding closed. Provider power-loss, actual recovery,
+  principal/encryption and period evidence remain separately unverified.

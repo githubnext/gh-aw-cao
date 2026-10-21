@@ -196,7 +196,7 @@ remain coordinator-owned to avoid conflicting edits.
 | --- | --- | --- |
 | DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Remediation launched |
 | DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Remediation launched |
-| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Remediation launched |
+| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Draft [#19322](https://github.com/githubnext/gh-cao/pull/19322); durable follow-up proposal, not merged/closed |
 | IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Remediation launched |
 | IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | Draft [#19318](https://github.com/githubnext/gh-cao/pull/19318); bounded-stream proposal, not merged/closed |
 | EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Remediation launched |
@@ -343,6 +343,38 @@ context/status hashes are not signed atomic provenance. Production remains
 unsupported by this apply route without a separate reviewed target-specific
 scan/disposition/SBOM/provenance/promotion gate. OPS-02 must preserve these
 image parameters when reconciling telemetry template changes.
+
+#### DATA-03 proposal received 2026-10-21
+
+Draft [#19322](https://github.com/githubnext/gh-cao/pull/19322), commit
+`79830714dd4b40453b0c15eefa1bf6569c475af7`, changes five files:
+collector worker/projector, two test files and README. Coordinator verified
+open/draft/head/base and scope. Decision **remediate**, lifecycle
+**in-progress**; original design-gap is not closed by the unmerged proposal.
+
+Both erasure branches use one `processErasure` helper: remove shards, persist
+projection intent, then ACK. Failed/cancelled marker writes leave the original
+lease reclaimable. Requested/completed projection generations are separate;
+completion is recorded only after canonical ingestion commits, and cannot
+consume newer intent. Existing backend StateStore/queue/lease and canonical
+transaction contracts are preserved.
+
+The session reports the full collector race suite on isolated Redis and
+PostgreSQL passing 260 test/subtest events, zero failures/skips:
+`GOMAXPROCS=2 go -C server test -p 1 -race ./internal/collect -count=1 -json`.
+Coverage includes both durable adapters, marker failure/cancel/reclaim,
+canonical removed/kept rows, rollback, pre/post-commit crash-equivalent panics,
+completion failure and newer concurrent intent. An initial loaded-host run
+hit an existing 30-second parity-test deadline; the unchanged bounded-concurrency
+rerun passed. Server lint/format/build, collector vet and workflow compile
+also reportedly passed. Final artifact:
+`/Users/peli/.copilot/session-state/fcb3024f-e955-4995-89c0-9a3234795319/files/data03-collect-race-final.jsonl`.
+
+This is controlled local backend evidence, not provider power-loss/OS-kill,
+deployed recovery-objective, principal-isolation or encryption proof. Services
+were stopped. DATA-01/02 remain separate; integration must use their
+`ForgetContext(ctx, lease.Task.Repository)` within the new single helper,
+not restore the former duplicated branches.
 
 #### OPS-04 remediation proposal received 2026-10-21
 
@@ -642,7 +674,7 @@ Organizational/deployment/period evidence remains pending. Scoped repository
 remediation is underway and the daily worker is proposed as listed above;
 OPS-04 and DATA-08 technical corrections are integrated and locally checked
 on this assessment branch, but default-branch/deployment closure is pending.
-IAM-002 and OPS-03 are separately validated draft proposals awaiting review,
-not integrated fixes.
+IAM-002, OPS-03 and DATA-03 are separately validated draft proposals awaiting
+review, not integrated fixes.
 The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
