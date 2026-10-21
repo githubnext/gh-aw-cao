@@ -43,6 +43,9 @@ type fakeAzureApply struct {
 	concurrent           bool
 	httpCalls            int
 	polls                int
+	restarted            bool
+	referencesStuck      bool
+	referencePolls       int
 	transientARMFailures int
 	deploymentOutputs    map[string]any
 }
@@ -159,6 +162,25 @@ func (f *fakeAzureApply) Run(ctx context.Context, args ...string) (azcli.Result,
 		return azcli.Result{Stdout: fmt.Sprintf(`{"name":%q,"properties":{"status":%q}}`, flag("--job-execution-name"), status)}, nil
 	case "containerapp job replica list":
 		return azcli.Result{Stdout: `[{"name":"replica","properties":{"initContainers":[{"name":"bootstrap-canonical","runningState":"Terminated","runningStateDetails":"bootstrap permission denied"}]}}]`}, nil
+	case "functionapp restart":
+		f.restarted = true
+		return azcli.Result{}, nil
+	case "rest":
+		if flag("--method") != "get" || !strings.HasSuffix(strings.SplitN(flag("--url"), "?", 2)[0], "/sites/fa-synthetic-test/config/configreferences/appsettings") {
+			f.t.Fatalf("unexpected rest call: %q", args)
+		}
+		if !f.restarted {
+			f.t.Fatal("Key Vault references polled before restart")
+		}
+		f.referencePolls++
+		denied := f.referencesStuck || f.referencePolls == 1
+		status := "Resolved"
+		if denied {
+			status = "AccessToKeyVaultDenied"
+		}
+		return azcli.Result{Stdout: `{"value":[` +
+			`{"name":"fa-synthetic-test/CAO_POSTGRES_URL","properties":{"reference":"@Microsoft.KeyVault(SecretUri=https://kv/secrets/pg)","status":"Resolved","details":"` + testDeployClientSecret + `"}},` +
+			`{"name":"fa-synthetic-test/CAO_SESSION_SECRET","properties":{"reference":"@Microsoft.KeyVault(SecretUri=https://kv/secrets/session)","status":"` + status + `"}}]}`}, nil
 	case "functionapp show":
 		return azcli.Result{Stdout: `{"publicNetworkAccess":"Disabled"}`}, nil
 	case "webapp config access-restriction show":
@@ -213,6 +235,13 @@ func testAzureApplySetup(t *testing.T) (*fakeAzureApply, deployAzureDeps, string
 
 func TestDeployAzureApplyHappyPathExactOrderingWithHeterogeneousOutputs(t *testing.T) {
 	fake, deps, config, plan, options := testAzureApplySetup(t)
+	verifyTransport := deps.http.Transport
+	deps.http = &http.Client{Transport: testAzureTransport(func(request *http.Request) (*http.Response, error) {
+		if fake.referencePolls < 2 {
+			t.Fatal("verification started before Key Vault references resolved after restart")
+		}
+		return verifyTransport.RoundTrip(request)
+	})}
 	if err := deployAzureApply(context.Background(), deps, config, testDeployTemplatePath(t), plan, options); err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +258,8 @@ func TestDeployAzureApplyHappyPathExactOrderingWithHeterogeneousOutputs(t *testi
 		"deployment group create", "containerapp job execution list", "containerapp job start",
 		"containerapp job execution show", "containerapp job execution show",
 		"containerapp job execution list", "containerapp job start",
-		"containerapp job execution show", "containerapp job execution show"}
+		"containerapp job execution show", "containerapp job execution show",
+		"functionapp restart", "rest", "rest"}
 	if !slices.Equal(writes, want) {
 		t.Fatalf("apply verb ordering = %q, want %q", writes, want)
 	}
@@ -301,6 +331,7 @@ func TestDeployAzureApplyStopsOnFailures(t *testing.T) {
 		{"drift", "plan drift", func(fake *fakeAzureApply) { fake.plan.whatIf = `{"status":"Succeeded","changes":[]}` }},
 		{"build", "ACR build target", func(fake *fakeAzureApply) { fake.failBuild = true }},
 		{"bootstrap", "init/bootstrap container bootstrap-canonical", func(fake *fakeAzureApply) { fake.failJob = true }},
+		{"bootstrap-log-hint", "--container bootstrap-canonical", func(fake *fakeAzureApply) { fake.failJob = true }},
 		{"concurrent", "concurrent ingestion execution", func(fake *fakeAzureApply) { fake.concurrent = true }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -523,5 +554,115 @@ func TestDeployAzureBuildMetadataSeparatesTagsFromSemanticVersions(t *testing.T)
 		} else if version != tag {
 			t.Fatalf("reviewed release version changed: %s", version)
 		}
+	}
+}
+
+type testRestrictiveAzureBuildSource struct{}
+
+func (testRestrictiveAzureBuildSource) Materialize(_ context.Context, directory string) (string, error) {
+	nested := filepath.Join(directory, "server", "azure")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(nested, "provision.sql"), []byte("select 1;"), 0o600); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(nested, "provision.sh"), []byte("#!/bin/sh\n"), 0o700); err != nil {
+		return "", err
+	}
+	return strings.Repeat("b", 40), nil
+}
+
+// Remote ACR builds preserve context modes and CAO images run as a non-root
+// user, so owner-only context files become unreadable inside the image.
+func TestDeployAzureBuildContextIsReadableByNonRootImageUser(t *testing.T) {
+	_, _, _, _, options := testAzureApplySetup(t)
+	workspace, err := newDeployAzureWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(workspace.directory) }()
+	build, err := prepareDeployAzureBuild(context.Background(), testRestrictiveAzureBuildSource{}, workspace, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(workspace.directory); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("private workspace must stay owner-only: %v %v", info.Mode(), err)
+	}
+	for name, want := range map[string]os.FileMode{
+		".":                                0o755,
+		"server":                           0o755,
+		"server/azure":                     0o755,
+		"server/azure/provision.sql":       0o644,
+		"server/azure/provision.sh":        0o755,
+		".github/workflows":                0o755,
+		".github/workflows/cao.json":       0o644,
+		".github/workflows/cao.azure.json": 0o644,
+	} {
+		info, err := os.Stat(filepath.Join(build.Directory, filepath.FromSlash(name)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != want {
+			t.Fatalf("%s mode %v, want %v", name, info.Mode().Perm(), want)
+		}
+	}
+}
+
+func TestDeployAzureVerifyReportsHealthSignals(t *testing.T) {
+	for body, want := range map[string]string{
+		`<html>Application Error</html>`:                                                "may not have started",
+		`{"status":"unhealthy","redis":{"connected":false},"data":{"available":false}}`: "operational cache is disconnected",
+		`{"status":"unhealthy","redis":{"connected":true},"data":{"available":false}}`:  "dashboard data unavailable",
+	} {
+		fake, deps, configPath, _, _ := testAzureApplySetup(t)
+		config, err := loadDeployAzureConfig(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deps.http = &http.Client{Transport: testAzureTransport(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 503, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body))}, nil
+		})}
+		_, err = deployAzureVerify(context.Background(), deps, fake, config.config, "fa-synthetic-test.azurewebsites.net")
+		if err == nil || !strings.Contains(err.Error(), "health returned HTTP 503") || !strings.Contains(err.Error(), want) {
+			t.Fatalf("body %q: missing health signal %q: %v", body, want, err)
+		}
+	}
+}
+
+func TestDeployAzureApplyFailsClosedWhenKeyVaultReferencesStayUnresolved(t *testing.T) {
+	fake, deps, config, plan, options := testAzureApplySetup(t)
+	fake.referencesStuck = true
+	pauses := 0
+	deps.pause = func(ctx context.Context, _ time.Duration) error {
+		if pauses++; pauses > 4 {
+			return context.DeadlineExceeded
+		}
+		return ctx.Err()
+	}
+	err := deployAzureApply(context.Background(), deps, config, testDeployTemplatePath(t), plan, options)
+	if err == nil || !strings.Contains(err.Error(), "CAO_SESSION_SECRET=AccessToKeyVaultDenied") || strings.Contains(err.Error(), "CAO_POSTGRES_URL") {
+		t.Fatalf("unresolved reference error = %v", err)
+	}
+	for _, leak := range append(testDeploySecrets(), "SecretUri", "@Microsoft.KeyVault") {
+		if strings.Contains(err.Error(), leak) {
+			t.Fatalf("reference failure leaked %q: %v", leak, err)
+		}
+	}
+	if !fake.restarted || fake.httpCalls != 0 {
+		t.Fatalf("restart=%v verification requests=%d; want restart and no verification", fake.restarted, fake.httpCalls)
+	}
+	if _, statErr := os.Stat(options.ReceiptPath); !os.IsNotExist(statErr) {
+		t.Fatal("receipt written after unresolved Key Vault references")
+	}
+}
+
+func TestDeployAzureUnresolvedReferencesReportsNamesAndStatusesOnly(t *testing.T) {
+	pending, err := deployAzureUnresolvedReferences(`{"value":[{"name":"app/B","properties":{"reference":"@Microsoft.KeyVault(SecretUri=https://kv/secrets/b)","status":"Resolved"}},{"name":"app/A","properties":{"status":""}}]}`)
+	if err != nil || !slices.Equal(pending, []string{"A=Unknown"}) {
+		t.Fatalf("pending = %q, %v", pending, err)
+	}
+	if _, err := deployAzureUnresolvedReferences(`{"value":[]}`); err == nil {
+		t.Fatal("empty reference list must not count as resolved")
 	}
 }

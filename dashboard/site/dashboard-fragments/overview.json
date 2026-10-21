@@ -1217,129 +1217,6 @@
       ]
     },
     {
-      "name": "campaign-cost-totals",
-      "subject": "Sum observed AI Credit cost across declared campaign orchestrators and workers.",
-      "objective": "Attribute retained workflow AIC totals to centrally managed campaigns without computing unrelated inventory metrics.",
-      "acceptance": "Sum only positive recorded orchestrator and worker workflow AIC by campaign; exclude workflows with zero or missing costs rather than treating them as free execution.",
-      "from": "workflows",
-      "joins": [
-        {
-          "source": "workflow-aic-totals",
-          "type": "inner",
-          "on": [
-            { "left": "organization", "right": "organization" },
-            { "left": "repository", "right": "repository" },
-            { "left": "workflow", "right": "workflow" }
-          ],
-          "fields": [
-            { "field": "aic", "as": "observed-aic" }
-          ]
-        }
-      ],
-      "filter": {
-        "predicates": [
-          { "field": "workflow-role", "in": ["orchestrator", "worker"] }
-        ]
-      },
-      "compute": [
-        {
-          "as": "aic",
-          "function": "coalesce",
-          "args": [
-            { "field": "observed-aic" },
-            { "value": 0 }
-          ]
-        }
-      ],
-      "aggregate": {
-        "by": ["campaign"],
-        "values": [
-          { "field": "aic", "as": "aic", "reducer": "sum" }
-        ]
-      }
-    },
-    {
-      "name": "cost-by-campaign",
-      "subject": "Present observed AI Credit cost grouped by centrally managed campaign.",
-      "objective": "Identify campaigns whose observed AI Credit usage warrants inspection alongside their run evidence.",
-      "acceptance": "Rows preserve positive recorded native aic values and descending order; exclude campaigns without recorded positive costs rather than inferring free execution, savings, or value.",
-      "objective": "Identify campaigns whose observed AI Credit use needs investigation.",
-      "from": "campaigns",
-      "joins": [
-        {
-          "source": "campaign-cost-totals",
-          "type": "inner",
-          "on": [
-            { "left": "campaign", "right": "campaign" }
-          ],
-          "fields": [
-            { "field": "aic", "as": "observed-aic" }
-          ]
-        }
-      ],
-      "compute": [
-        {
-          "as": "aic",
-          "function": "coalesce",
-          "args": [
-            { "field": "observed-aic" },
-            { "value": 0 }
-          ]
-        },
-        {
-          "as": "encoded-campaign",
-          "function": "url-encode",
-          "args": [
-            { "field": "campaign" }
-          ]
-        },
-        {
-          "as": "campaign-dashboard-href",
-          "function": "concat",
-          "args": [
-            { "value": "#page-campaign-insights?campaign=" },
-            { "field": "encoded-campaign" }
-          ]
-        },
-        {
-          "as": "campaign-dashboard-label",
-          "function": "concat",
-          "args": [
-            { "value": "View " },
-            { "field": "campaign-name" },
-            { "value": " campaign dashboard" }
-          ]
-        },
-        {
-          "as": "campaign-dashboard-link",
-          "function": "dashboard-link",
-          "args": [
-            { "value": "" },
-            { "field": "campaign-dashboard-href" },
-            { "field": "campaign-dashboard-label" },
-            { "field": "campaign" }
-          ]
-        }
-      ],
-      "select": [
-        {
-          "field": "campaign-name"
-        },
-        {
-          "field": "campaign-dashboard-link"
-        },
-        {
-          "field": "aic"
-        }
-      ],
-      "order-by": [
-        {
-          "field": "aic",
-          "direction": "desc"
-        }
-      ]
-    },
-    {
       "name": "cost-by-repository",
       "subject": "Present observed AI Credit cost grouped by repository.",
       "objective": "Locate repositories with higher observed AI Credit totals for evidence-led investigation.",
@@ -1776,37 +1653,6 @@
       "description": "Identify the strongest concentration of observed AI Credit usage for investigation.",
       "views": [
         {
-          "id": "cost-by-campaign",
-          "title": "Cost per campaign",
-          "description": "The share of observed AI Credit cost attributed to each centrally managed campaign.",
-          "subject": "Compare the campaign shares in the selected scope and time window.",
-          "objective": "Identify campaigns whose observed AI Credit cost merits inspection.",
-          "acceptance": "Any unusual campaign cost is explained using fresh observations.",
-          "data": {
-            "source": "cost-by-campaign"
-          },
-          "mark": "chart",
-          "chart": "pie",
-          "layout": "full",
-          "empty-message": "No campaign AI Credit cost was observed.",
-          "encoding": {
-            "x": {
-              "field": "campaign-name",
-              "type": "nominal",
-              "title": "Campaign"
-            },
-            "y": {
-              "field": "aic",
-              "type": "quantitative",
-              "title": "AIC cost",
-              "unit": "aic"
-            },
-            "href": {
-              "field": "campaign-dashboard-link"
-            }
-          }
-        },
-        {
           "id": "cost-by-repository",
           "title": "Cost per repository",
           "subject": "Compare observed AI Credit cost across repositories in the selected scope and time window.",
@@ -1901,7 +1747,7 @@
           "mark": "chart",
           "chart": "horizontal-bar",
           "layout": "full",
-          "disclosure": "supplemental",
+          "disclosure": "essential",
           "empty-message": "No workflow AI Credit cost per run was observed.",
           "encoding": {
             "x": {

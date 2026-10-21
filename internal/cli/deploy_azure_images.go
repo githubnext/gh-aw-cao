@@ -149,16 +149,23 @@ func copyDeployAzureFile(source, destination string) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("build input is not a regular file: %s", source)
 	}
-	if err := os.MkdirAll(filepath.Dir(destination), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return err
 	}
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, deployAzureContextFileMode(info.Mode()))
 	if err != nil {
 		return err
 	}
 	_, copyErr := io.Copy(output, input)
 	closeErr := output.Close()
 	return errors.Join(copyErr, closeErr)
+}
+
+func deployAzureContextFileMode(source os.FileMode) os.FileMode {
+	if source&0o111 != 0 {
+		return 0o755
+	}
+	return 0o644
 }
 
 func prepareDeployAzureBuild(ctx context.Context, source deployAzureBuildSource, workspace *deployAzureWorkspace, options deployAzureApplyOptions) (deployAzureBuildContext, error) {
@@ -213,8 +220,17 @@ func prepareDeployAzureBuild(ctx context.Context, source deployAzureBuildSource,
 		if err != nil {
 			return err
 		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		// Remote builds preserve context modes, and images run as a non-root
+		// user; the private parent workspace still protects the context on disk.
 		if entry.IsDir() {
-			return nil
+			return os.Chmod(path, 0o755)
+		}
+		if err := os.Chmod(path, deployAzureContextFileMode(info.Mode())); err != nil {
+			return err
 		}
 		name, err := filepath.Rel(build.Directory, path)
 		if err != nil {

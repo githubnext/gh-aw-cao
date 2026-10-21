@@ -378,6 +378,7 @@ describe('dashboard document validation', () => {
     const workflowCost = costPage.views.find(
       (/** @type {{ id: string }} */ view) => view.id === 'cost-by-workflow'
     );
+    const workflowCostIndex = costPage.views.indexOf(workflowCost);
 
     expect(workflowCost.encoding.section).toMatchObject({
       field: 'repository-coordinate',
@@ -391,7 +392,7 @@ describe('dashboard document validation', () => {
       expect(wrongChart.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section`
+          path: `$.dashboard.pages[${costPageIndex}].views[${workflowCostIndex}].encoding.section`
         })
       ]));
     }
@@ -404,7 +405,7 @@ describe('dashboard document validation', () => {
       expect(wrongType.errors).toEqual(expect.arrayContaining([
         expect.objectContaining({
           code: 'DLS-E010',
-          path: `$.dashboard.pages[${costPageIndex}].views[2].encoding.section.type`
+          path: `$.dashboard.pages[${costPageIndex}].views[${workflowCostIndex}].encoding.section.type`
         })
       ]));
     }

@@ -193,6 +193,9 @@ func deployAzureExecute(ctx context.Context, deps deployAzureDeps, loaded deploy
 	if err != nil {
 		return err
 	}
+	if err := deployAzureRestartAndAwaitReferences(ctx, deps, az, config); err != nil {
+		return err
+	}
 	receipt.Verification, err = deployAzureVerify(ctx, deps, az, config, host)
 	if err != nil {
 		return err

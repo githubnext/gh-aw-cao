@@ -102,6 +102,7 @@ func deployAzureRunJob(ctx context.Context, deps deployAzureDeps, az azcli.Execu
 func deployAzureJobFailure(ctx context.Context, run func([]string, ...string) (azcli.Result, error), config deployAzureConfig, job, execution, status string) error {
 	result, err := run([]string{"containerapp", "job", "replica", "list"}, "--execution", execution)
 	diagnostic := "replica diagnostics unavailable"
+	var containers []string
 	if err == nil {
 		var replicas []struct {
 			Name       string `json:"name"`
@@ -125,9 +126,11 @@ func deployAzureJobFailure(ctx context.Context, run func([]string, ...string) (a
 			for _, replica := range replicas {
 				for _, container := range replica.Properties.InitContainers {
 					failures = append(failures, fmt.Sprintf("init/bootstrap container %s: %s (%s)", container.Name, container.RunningState, container.RunningStateInfo))
+					containers = append(containers, container.Name)
 				}
 				for _, container := range replica.Properties.Containers {
 					failures = append(failures, fmt.Sprintf("container %s: %s (%s)", container.Name, container.RunningState, container.RunningStateInfo))
+					containers = append(containers, container.Name)
 				}
 			}
 			if len(failures) > 0 {
@@ -137,6 +140,14 @@ func deployAzureJobFailure(ctx context.Context, run func([]string, ...string) (a
 	} else {
 		diagnostic += ": " + err.Error()
 	}
-	return fmt.Errorf("ingestion execution %s %s: %s; inspect az containerapp job logs show --subscription %s --resource-group %s --name %s --execution %s --container bootstrap-canonical (and bootstrap-operational); check Key Vault/ACR role propagation and database bootstrap permissions; verification was not attempted",
-		execution, status, diagnostic, config.Subscription, config.ResourceGroup, job, execution)
+	inspect := "inspect the execution's console logs in the environment's Log Analytics workspace"
+	if len(containers) > 0 {
+		inspect = fmt.Sprintf("inspect az containerapp job logs show --subscription %s --resource-group %s --name %s --execution %s --container %s",
+			config.Subscription, config.ResourceGroup, job, execution, strings.Join(containers, " (and --container "))
+		if len(containers) > 1 {
+			inspect += strings.Repeat(")", len(containers)-1)
+		}
+	}
+	return fmt.Errorf("job execution %s %s: %s; %s; check Key Vault/ACR role propagation, PostgreSQL network reachability and database bootstrap permissions; verification was not attempted",
+		execution, status, diagnostic, inspect)
 }

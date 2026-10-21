@@ -54,13 +54,16 @@ func deployAzureVerify(ctx context.Context, deps deployAzureDeps, az azcli.Execu
 				// Do not expose transport errors that could contain redirect state.
 				lastError = fmt.Errorf("%s: HTTPS request failed", check.name)
 			} else {
-				_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
+				body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 				_ = response.Body.Close()
 				cancel()
 				if response.StatusCode == http.StatusForbidden && check.host == host {
 					return checks, deployAzureCheckIngress(ctx, az, config)
 				}
 				lastError = fmt.Errorf("%s returned HTTP %d, want %d", check.name, response.StatusCode, check.status)
+				if response.StatusCode != check.status && (check.name == "health" || check.name == "readiness") {
+					lastError = fmt.Errorf("%w (%s)", lastError, deployAzureHealthSignals(body))
+				}
 				if response.StatusCode == check.status {
 					switch check.name {
 					case "root-login":
@@ -134,4 +137,28 @@ func deployAzureCheckIngress(ctx context.Context, az azcli.Executor, config depl
 			access.PublicNetworkAccess, restrictions.DefaultAction, custom)
 	}
 	return errors.New("main site returned HTTP 403 although read-back is public Enabled/Allow with no custom rules; investigate Azure ingress; no ingress changes were attempted")
+}
+
+// deployAzureHealthSignals summarizes only the boolean, signed-out health
+// fields so a failed verification is actionable without echoing the body.
+func deployAzureHealthSignals(body []byte) string {
+	var payload struct {
+		Redis *struct {
+			Connected bool `json:"connected"`
+		} `json:"redis"`
+		Data *struct {
+			Available bool `json:"available"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil || payload.Redis == nil || payload.Data == nil {
+		return "response is not CAO health JSON; the Function App container may not have started, check its image pull and startup logs"
+	}
+	switch {
+	case !payload.Redis.Connected:
+		return "CAO reports its operational cache is disconnected"
+	case !payload.Data.Available:
+		return "CAO is running but reports dashboard data unavailable; check PostgreSQL runtime access and the ingestion job"
+	default:
+		return "CAO reports cache connected and data available"
+	}
 }
