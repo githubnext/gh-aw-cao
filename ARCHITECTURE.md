@@ -1111,8 +1111,8 @@ mixing names or retrying another asset after verification failure.
 For a newly initialized policy only, it aligns the former catalog's schema URI
 from an older extension with the installed catalog's canonical schema URI,
 rejecting unknown mismatches without rewriting authority fields or existing policy.
-Initialization and setup invoke `gh cao`. Node.js remains an installation/pipeline
-prerequisite, not a dependency of Go extension commands.
+Initialization and setup invoke `gh cao`. Node.js remains a legacy-installer/pipeline
+prerequisite, not a dependency of native setup or other Go extension commands.
 
 Campaign manifests are the catalog's source of truth for installed workflows and
 the trusted materializer bootstrap. The materializer copies executable resources
@@ -1208,7 +1208,29 @@ registry access, but does not create credentials or dispatch workflows.
 
 ### Operator onboarding
 
-`install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+The primary path installs the native extension with
+`gh extension install githubnext/gh-cao`, enters an existing GitHub control
+checkout, and runs `gh cao setup` without a prerequisite `init` or installer.
+Repository creation and cloning remain explicit `gh repo create` and
+`gh repo clone` operations, not setup effects. Native
+`internal/cli/native_setup.go` owns guided scope and authentication; runtime
+preparation lives in `internal/cli/setup_runtime.go`. Setup distinguishes absent
+policy from malformed policy, constructs only a missing exact campaign-free
+baseline with the same helper as policy-only `gh cao init`, and saves it last.
+After approval and before Pages or credential changes, missing runtime is
+prepared by gh-aw in an isolated checkout at the selected stable release, then
+materialized from the exact-SHA attested runtime using shared acquisition,
+extraction, and verification helpers. All destinations are preflighted; matching
+files are retained, missing files added, conflicts rejected, and unrelated
+files preserved. Complete installations are reused rather than upgraded.
+Missing gh-aw is installed at the release manifest's minimum version; existing
+older or broken extensions require explicit repair. Native setup needs no local
+Node.js and never changes the process working directory. Failures can leave
+prepared runtime files but never claim policy or external settings were rolled
+back. Repository creation, commits, pushes, campaign enrollment and execution
+are never implicit setup effects.
+
+The compatibility `install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with
@@ -1222,7 +1244,9 @@ installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
 
-`activity/setup.mjs` owns scope resolution and authentication orchestration.
+The internal Node parity implementation `activity/setup.mjs` retains scope
+resolution and authentication orchestration for runtime tests, not a second
+operator entry point.
 `activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
 Node terminal primitives. It provides keyboard prompts, inline validation,
 cancellation, and restrained elapsed progress; terminals without styling

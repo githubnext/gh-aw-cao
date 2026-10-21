@@ -6,9 +6,9 @@ agent:
   prominent: true
 ---
 
-Use this reference when operating CAO or adding a CLI command. The installer
-downloads the compiled Go extension as `gh cao` and installs the Node.js runtime
-for Activity and Dashboard Actions. Invoke it explicitly as
+Use this reference when operating CAO or adding a CLI command. GitHub CLI
+installs the compiled Go extension as `gh cao`; guided setup prepares the
+repository runtime for Activity and Dashboard Actions. Invoke that runtime as
 `node activity/cao.mjs <command>`; there is no shell launcher. Agents
 using the CLI should follow the
 [`cao-cli` skill](https://github.com/githubnext/gh-cao/blob/main/skills/cao-cli/SKILL.md);
@@ -28,46 +28,68 @@ reference. Request command-specific help with `gh cao COMMAND --help`.
 
 ## GitHub CLI extension
 
-Install or refresh the extension together with the control-plane runtime:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
-gh cao --version
-```
-
-### GitHub CLI release discovery
-
-`gh extension install githubnext/gh-cao` currently fails because GitHub's
-latest stable release, `v0.1.19`, contains only the CAO runtime archive and
-its checksum, not extension binaries. Newer published prereleases contain
-the binaries, but GitHub CLI first classifies the extension using
-`releases/latest`, **before** selecting a `--pin` tag. Therefore
-`gh extension install githubnext/gh-cao --pin v0.1.22` fails too.
-There is intentionally no root executable script: CAO ships a standalone Go
-binary, not a source-building or Node.js launcher.
-
-Use the installer above from a control-repository checkout while the latest
-stable release is runtime-only. Unlike GitHub CLI's discovery, it supports
-published prereleases and verifies binary checksums and the embedded version.
-It also installs the control-plane runtime; it is not an extension-only install.
-
-Maintainers must publish a complete native-binary prerelease from the corrected
-release workflow, then promote it through **Promote prerelease to latest** with
-independent approval. Merging source changes alone does not repair the public
-command. Do not modify an immutable historical release or promote a release
-without its required validation evidence.
-
-After a compatible release is latest, extension-only installs can use:
+Install the extension, enter an existing control-repository checkout, and run
+the single guided entry point:
 
 ```bash
 gh extension install githubnext/gh-cao
 gh cao --version
+# From the control repository root:
+gh cao setup
 ```
 
-These binary installs are managed by `gh extension upgrade gh-cao` (unless
-pinned); they do not install the control-repository runtime or `gh-aw`.
+### GitHub CLI release discovery
 
-### Control-plane installer
+The latest stable release includes native binaries for GitHub CLI discovery
+(verified with `v0.1.24`). There is intentionally no root executable script:
+CAO ships a standalone Go binary, not a source-building or Node.js launcher.
+GitHub CLI classifies the extension using `releases/latest` before selecting a
+`--pin` tag, so maintainers must keep complete native assets in the latest stable
+release. Do not modify immutable historical releases to repair discovery.
+
+Refresh a GitHub-CLI-managed extension with:
+
+```bash
+gh extension upgrade gh-cao
+gh cao --version
+```
+
+Extension installation alone does not install the control-repository runtime
+or `gh-aw`. `gh cao setup` prepares them as needed. In `v0.1.24`, setup still
+requires prior runtime and policy preparation; unified setup requires a newer
+extension release containing this change. Merging source does not update an
+already installed binary.
+
+### Guided runtime preparation
+
+`gh cao setup` runs from an existing GitHub checkout's root. It prepares missing
+monitoring runtime files and missing baseline policy, then configures exact
+repository scope, authentication, and Actions-backed Pages. It stages the root
+package with gh-aw in an isolated checkout, verifies the selected stable
+release's exact runtime provenance and file checksums, and checks all
+destinations before adding files. Existing policy is read, not replaced with a
+baseline. Invalid policy and conflicting runtime files fail closed. Complete
+runtime installs are reused; use `gh cao update --campaign root` for upgrades.
+
+Missing `gh-aw` is installed at the selected catalog's minimum version. Setup
+never silently upgrades an existing older or broken extension. It does not need
+Node.js locally. `gh cao init` remains an optional, policy-only local preparation
+command for scripting; it is not a prerequisite and does not configure remote
+settings. Both paths construct the same exact, campaign-free baseline policy.
+
+Create or clone repositories explicitly with `gh repo create` or `gh repo clone`
+before setup. Setup never creates repositories, commits, pushes, enrolls
+campaigns, or dispatches workflows. Review all prepared files and publish them
+yourself. A failed or cancelled setup can leave prepared runtime files and
+already applied Pages or credential settings; inspect them before retrying.
+
+### Legacy control-plane installer
+
+The compatibility installer remains available for existing scripts:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+```
 
 The installer registers `gh cao` directly in GitHub CLI's data directory,
 following the gh-aw installer pattern, without requiring Go or a repository
@@ -84,8 +106,8 @@ extension tag, including a published prerelease with that tag; otherwise the
 installer selects the latest published CAO `vX.Y.Z` release, including prereleases
 but excluding drafts. Main/SHA and local catalog
 sources still select their own runtime revision independently.
-Node.js 24+ remains required for installing the repository's pipeline runtime,
-but not for running the Go operator commands afterward.
+Node.js 24+ remains required by this legacy installer, but not by native setup
+or the other Go operator commands.
 
 For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-cao/blob/main/CONTRIBUTING.md#go-extension-development)
@@ -119,7 +141,6 @@ an explicitly prepared projection. Policy mutations still operate on the current
 control checkout; the executable does not grant rollout authority.
 
 ```bash
-gh cao init
 gh cao setup
 gh cao setup --repository 'my-monalisa-org/*'
 gh cao setup auth github-app --help
@@ -172,7 +193,7 @@ local catalog checkout. It replaces the selected campaign's resources, refreshes
 its intelligence metadata, and merges declared workers while preserving existing
 enablement, mode ceilings, campaign settings, and repository scope. It does not
 reinstall the control-plane runtime or plugin. Missing policy is initialized for
-the exact current control repository. Install the root package with `install.sh`,
+the exact current control repository. Prepare the root runtime with `gh cao setup`,
 not `gh cao campaigns add`; review and commit generated workflows and policy together.
 
 `gh cao doctor` is deliberately **not** `node activity/cao.mjs doctor`: use the latter for
@@ -293,8 +314,8 @@ gh aw run dependabot --ref main \
 
 | Command | Use it to |
 | --- | --- |
-| `gh cao setup` | Interactively choose repository scope, inspect visibility and ownership, and configure a compatible authentication profile. |
-| `gh cao init` | Create a minimal review-safe policy when one does not exist. It refuses to overwrite an existing policy. |
+| `gh cao setup` | Prepare missing bare runtime and baseline policy, then guide scope, authentication, and Pages. No prior `init` is required. |
+| `gh cao init` | Optionally create only a local minimal review-safe policy for scripting. No runtime installation or remote configuration; refuses existing policy. |
 | `gh cao setup admission --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure non-secret admission variables (OIDC requires no workflow secret); `--dry-run` previews changes. |
 | `gh cao admission setup --repo OWNER/REPO --url HTTPS_URL [--dry-run]` | Configure repository admission variables for an already deployed authority; default audience is the URL and outage policy is `block`. |
 | `gh cao admission status --repo OWNER/REPO [--json]` | Read effective admission settings, including repository overrides of inherited organization variables. |

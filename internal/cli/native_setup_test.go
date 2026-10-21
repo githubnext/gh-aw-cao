@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -44,6 +45,9 @@ func nativeSetupTestDirectory(t *testing.T) string {
 		}
 	})
 	t.Chdir(absolute)
+	if output, err := exec.Command("git", "init", "--quiet", ".").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %s: %v", output, err)
+	}
 	return absolute
 }
 
@@ -66,6 +70,9 @@ func nativeSetupTestPolicy() map[string]any {
 
 func nativeSetupTestSave(t *testing.T, policy map[string]any) {
 	t.Helper()
+	for _, name := range append(append([]string{}, setupRuntimeFiles...), nativeRuntimeRequiredFiles...) {
+		writeTestFile(t, name, "installed runtime: "+name)
+	}
 	if err := os.MkdirAll(filepath.Dir(policyPath), 0o755); err != nil {
 		t.Fatal(err)
 	}

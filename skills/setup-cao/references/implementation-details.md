@@ -3,6 +3,21 @@
 Load this reference only to inspect installer behavior, runtime layout, source
 versus generated files, or steering files.
 
+The primary operator path is `gh extension install githubnext/gh-cao`, enter an
+existing control checkout, then `gh cao setup`. Native setup prepares missing
+runtime through gh-aw in an isolated checkout and verifies the selected stable
+release's exact-SHA attested archive and file inventory before preflighting
+local destinations. It adds missing files without replacing existing content,
+preserves unrelated files and policy, and refuses malformed policy or conflicts.
+Complete installations are reused, not upgraded. Missing gh-aw is installed at
+the catalog minimum; older or broken existing installations require explicit
+repair. Setup constructs missing baseline policy through the same helper as
+optional policy-only `gh cao init`, saving it only after external setup succeeds.
+No local Node.js, separate init, installer, repository creation, commit, push, or
+agent execution is part of this path. Repository creation belongs to `gh repo
+create`, cloning to `gh repo clone`.
+
+The following legacy installer remains available for compatible scripts.
 The root `install.sh` downloads and verifies the platform-specific Go extension
 from a published release, installs or upgrades the required gh-aw version,
 installs the root CAO package when runtime files are absent, materializes the runtime,

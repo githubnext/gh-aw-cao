@@ -7,13 +7,16 @@ second setup flow.
 ## No user available
 
 Take the safe default without asking questions or waiting for input. Bare
-installation may use `install.sh` without `--setup` and leaves exact
-control-repository scope with no campaigns. Explicit `--setup` may apply only
+policy preparation may use optional `gh cao init` and leaves exact
+control-repository scope with no campaigns, without installing runtime or changing
+remote settings. `gh cao setup` prepares missing runtime and policy itself and may apply only
 when the control repository is public, the campaign map is empty, and existing
 scope is absent or already exactly the control repository. It configures public
 Actions-backed Pages, selects repository `GITHUB_TOKEN` (`workflow-token`),
 and records Activity scope for exactly the control repository. It preserves all
-other policy fields and writes policy only after external settings succeed.
+other policy fields and writes policy only after external settings succeed. Native setup requires no
+local Node.js. Missing gh-aw may be installed at the selected catalog's minimum;
+an existing older version requires explicit upgrade.
 
 During setup, do not create a repository without an explicitly authorized
 exact coordinate, open a browser, commit, push, install or enable campaigns, or dispatch

@@ -18,8 +18,9 @@ install → connect → dashboard. Follow the written steps below.
 
 ## Prerequisites
 
-- **Tools:** Git, Bash, `curl`, Node.js 24+, and [GitHub CLI](https://cli.github.com)
-  2.68+. Linux, macOS, or Windows with WSL.
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS,
+  or Windows. Native setup does not require Node.js, Bash, or `curl`;
+  Activity and Dashboard Actions provide their own Node.js runtime.
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
@@ -33,26 +34,11 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-Use an existing repository you have permission to configure, or create a new,
-empty one. A dedicated control repository is recommended. Clone it and enter its
-root directory before installing CAO. Enable Actions. For targets in one
-organization, prefer owning the control repository there; see
-[other topologies](deployment-and-governance.md).
-
 Install the **`gh cao` GitHub CLI extension**:
 
 ```bash
 gh extension install githubnext/gh-cao
 ```
-
-Then, from a clean default-branch checkout, install the **repository runtime**
-and required `gh-aw` extension:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
-```
-
-The runtime installer verifies checksums and versions.
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -69,20 +55,41 @@ GitHub CLI extension installation requires GitHub CLI sign-in.
 gh cao --version
 ```
 
-**Ready:** `gh cao` prints its version; runtime installed.
+**Ready:** `gh cao` prints its version. Extension installation does not yet
+change a repository.
+
+:::note[Release availability]
+Unified setup requires a release newer than `v0.1.24` containing this fix;
+see [release compatibility](cao-cli.md#github-cli-release-discovery).
+:::
+
+Use a clean default-branch checkout you may configure and enable Actions.
+Prefer a dedicated control repository in your targets' organization;
+see [other topologies](deployment-and-governance.md).
 
 <details>
-<summary>No control repository yet? Create one during installation.</summary>
+<summary>No control checkout yet? Explicitly create or clone one.</summary>
 
 Run this outside a Git checkout, replacing `OWNER/CONTROL_REPOSITORY` with the
 exact repository you want to create:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- --create-repo OWNER/CONTROL_REPOSITORY
+gh repo create OWNER/CONTROL_REPOSITORY --private --clone
+cd CONTROL_REPOSITORY
 ```
 
-Enter the new checkout and run `gh cao --version`.
+Choose visibility explicitly: use `--public` instead only for public evidence.
+A private control repository requires guided authentication even for public
+targets; unattended public-only setup cannot include it.
+
+To use an existing remote repository instead:
+
+```bash
+gh repo clone OWNER/CONTROL_REPOSITORY
+cd CONTROL_REPOSITORY
+```
+
+CAO does not create repositories.
 
 </details>
 
@@ -90,11 +97,16 @@ Enter the new checkout and run `gh cao --version`.
 
 ## Step 2 - Connect one repository
 
-After Step 1, run in an **interactive terminal** at the **control repository's root**:
+In an **interactive terminal** at the **control repository's root**:
 
 ```bash
 gh cao setup
 ```
+
+No `init` or installer is required. Setup adds missing runtime and policy from
+a verified release, preserving existing files and refusing conflicts or malformed
+policy. Complete runtime is reused. Missing `gh-aw` is installed; older versions
+need explicit upgrade. See [details](cao-cli.md#guided-runtime-preparation).
 
 1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.
@@ -108,11 +120,11 @@ gh cao setup
 4. Complete any credential prompts. Let setup store secrets in Actions, never
    in policy or committed files. Credential reach does not expand your scope.
 
-**Ready:** repository scope and authentication are configured.
+**Ready:** runtime, repository scope, Pages, and authentication are configured.
 Setup installs no campaign and runs no workflow; it does not commit or push.
 
-If setup stops, inspect its error and any changed Pages or credential settings
-before retrying; do not publish an incomplete setup. For unattended public-only
+If setup stops, inspect its error, local files, and Pages or credential changes
+before retrying; do not publish incomplete setup. For unattended public-only
 setup, see [Authentication](authentication.md#public-only-monitoring-quickstart).
 
 <span id="step-3---review-and-publish-your-configuration"></span>
@@ -132,7 +144,7 @@ and that `control-plane.campaigns` is `{}`. Keep `control-plane.workflows` and
 `control-plane.operations` absent or `{}` too: monitoring does not enroll
 execution. Do not publish private evidence to a public dashboard.
 
-Review and include other installer-created files shown by `git status`, not
+Review and include other setup-created files shown by `git status`, not
 unrelated files or secrets. Commit and push to the control repository's default branch:
 
 ```bash

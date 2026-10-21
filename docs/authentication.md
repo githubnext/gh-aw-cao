@@ -83,7 +83,9 @@ data, authenticated enrichments, or write APIs.
 
 ### Public-only monitoring quickstart
 
-After installing the bare runtime, run `gh cao setup`. Confirmed all-public
+Install `gh cao` with `gh extension install githubnext/gh-cao`, then run
+`gh cao setup` from an existing control-repository checkout; it prepares missing
+bare runtime and policy itself. Confirmed all-public
 scope skips authentication selection, not review or public Pages consent.
 Unknown visibility or failed lookups never qualify. For unattended setup:
 
@@ -101,6 +103,9 @@ repositories are not enrolled. Exact private/internal inputs fail. Setup changes
 only the control repository's configuration and local policy, never targets,
 campaign activation, agent execution, safe outputs, or live authority.
 Review, commit and push the installed files and policy to publish the setup.
+A private control repository cannot use this shortcut, even with public-only
+targets: the control repository is always included. Use interactive setup and
+explicit authentication instead.
 
 The policy records the independently bounded Activity scope:
 
