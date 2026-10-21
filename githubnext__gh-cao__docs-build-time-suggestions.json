@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T11:54:05Z",
-      "worker_run_id": "39417952522",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39417494838,
-        39415907323,
-        39414590932,
-        39414237559,
-        39412052909,
-        39410478515,
-        39409078842,
-        39408919999,
-        39407527074,
-        39407194981,
-        39404935529,
-        39403590816,
-        39402236283,
-        39400711523,
-        39398865390,
-        39397756747,
-        39396576266,
-        39394069863,
-        39393719815,
-        39390537827
-      ],
-      "outcome": "incomplete: during the 2026-10-20T08:02:17Z to 2026-10-20T11:47:53Z evidence window, the latest 20 completed docs.yml runs contained 16 successful runs and four skipped workflow_run entries. Only push run 39409078842 executed successful build and deploy jobs; the other 15 successful runs were schedule freshness checks that skipped build and deploy. The sole comparable build queued for 4 seconds, completed in 111 seconds end to end, ran build for 84 seconds and deploy for 18 seconds, installed dependencies in 30 seconds, built documentation in 11 seconds, restored the dashboard cache (cache-miss lookup and artifact download were skipped), and uploaded the Pages artifact in 10 seconds. One build sample cannot establish required median/p90 build and deploy timings or repeated dependency-cache effectiveness; docs.yml has no dashboard job. Fewer than five comparable successful build samples were available, so the evaluation is incomplete and the category remains next."
-    },
-    {
       "evaluated_at": "2026-10-20T12:29:54Z",
       "worker_run_id": "39422378884",
       "category": "dependency installation and caching",
@@ -799,6 +771,34 @@
         39495125880
       ],
       "outcome": "incomplete: the 2026-10-20T20:48:30Z to 2026-10-21T00:04:22Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (two push, one schedule, and one workflow_run, across three source SHAs), below the required minimum of five comparable successful builds. Trusted job metadata for the newly observed schedule run 39519012782 showed a 7-second schedule-freshness job with a 3-second freshness check and skipped build and deploy jobs, so it did not add a build sample. Required median/p90 workflow, queue, build, deploy, and Astro-generation measurements cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T01:17:51Z",
+      "worker_run_id": "39526236091",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39526297225,
+        39524098898,
+        39523832163,
+        39519012782,
+        39517127441,
+        39516414092,
+        39516401425,
+        39515612526,
+        39514408681,
+        39514007733,
+        39512188837,
+        39510444217,
+        39508887305,
+        39507632316,
+        39507308747,
+        39504989291,
+        39503217685,
+        39502971923,
+        39501354413,
+        39499956441
+      ],
+      "outcome": "incomplete: the 2026-10-20T21:23:27Z to 2026-10-21T01:16:06Z latest-20 window contained 17 successful and three skipped completed docs.yml runs. Only four successful runs executed both build and deploy (two push, one schedule, and one workflow_run, across three source SHAs), below the required minimum of five comparable successful builds. The two newest schedule runs completed in 10 and 12 seconds and freshness-checked without adding build samples. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
