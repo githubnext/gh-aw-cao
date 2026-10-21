@@ -35,6 +35,7 @@ const (
 func testDeployConfig() map[string]any {
 	return map[string]any{
 		"schemaVersion": 1,
+		"environment":   "development",
 		"subscription":  testDeploySubscription,
 		"resourceGroup": "rg-synthetic-test",
 		"location":      "westus3",

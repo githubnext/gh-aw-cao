@@ -29,8 +29,15 @@ flowchart LR
 
 ### Native fresh-deployment command
 
-`gh cao deploy azure` supports **fresh deployments only**. Review the non-secret
-deployment config, run `--plan`, then apply that exact plan. Apply repeats
+`gh cao deploy azure --apply` supports **fresh development deployments only**.
+Set `"environment": "development"` in the reviewed non-secret deployment config,
+then regenerate and review the plan. Missing environment declarations, old plans
+without that declaration, and `"environment": "production"` fail closed before
+any Azure call during apply. Read-only planning still permits an omitted or
+production environment; a successful plan does not authorize production apply.
+The declaration is an operator commitment, not automatic classification of an
+Azure subscription: never label production resources as development to bypass it.
+Review the non-secret deployment config, run `--plan`, then apply that exact plan. Apply repeats
 preflight and what-if and refuses any change-set drift before writing to Azure.
 Updates, resuming a partially created deployment, and upgrades are follow-up
 work; a subsequent `--plan` against a successfully deployed instance must fail
@@ -74,7 +81,12 @@ it never silently substitutes for a missing or invalid snapshot.
 Apply creates the resource group if necessary, deploys the exact template ACR
 resource, builds the Functions, database-provisioning, and ingestion Dockerfile targets, records their
 digests, and locks the version-plus-config-hash tags against writes and deletes.
-It then deploys the full template.
+It then deploys the full template with separate Functions, provisioning, and
+ingestion digest parameters, not those tags. After deployment it reads back the
+configured digest references for all three targets before starting either job;
+missing, mismatched, or additional job containers fail closed. Regenerate
+`server/azure/main.json` from the current Bicep source before planning: apply
+rejects templates without the three digest parameters before any Azure call.
 New managed-identity Key Vault grants can take time to propagate. Apply retries
 the exact reviewed ARM request at most three times only when every nested
 failure is the recognized job secret-fetch error in the ingestion or
@@ -102,9 +114,39 @@ read-back and a distinct diagnostic if tenant automation changed the settings;
 the command never fights or repairs such changes. `--timeout` bounds the overall
 apply (default 45 minutes). The secret-free receipt defaults to
 `.cao/deploy-azure-receipt.json` and records the reviewed plan digest, deployment
-identity, source/context identity, immutable image references, exact job
-execution, verification results, and timestamps. Existing receipts are not
+identity, source/context identity, immutable image references, configured image
+read-back, exact job execution, verification results, and timestamps. Existing receipts are not
 overwritten.
+
+#### Development image assurance boundary
+
+Source-built Azure images are **not production-assured**. The receipt explicitly
+records `environment: development`,
+`imageAssurance: not-evaluated-development-only`, and per-target scan (`not-performed`), SBOM
+(`not-generated`), and provenance (`local-context-not-attested`) dispositions.
+These are absence-of-assurance records, not passing gates or vulnerability
+waivers. No receipt or approval-file option enables production promotion.
+
+`sourceRevision` identifies the development checkout's base commit, not a claim
+that the uploaded files equal that commit. `sourceWorktree` records its observed
+clean/dirty state (including untracked files, which are not uploaded).
+`contextSha256` binds the copied allowlisted product files, operator policy,
+selected evidence, and normalized executable modes. Dirty inputs therefore have
+their own context identity even when the base commit stays unchanged. Status and
+revision changes detected during copying abort the build; use a stable checkout
+because local status observations are not signed, atomic source attestations.
+Configured digest read-back is not measurement of the platform's running image.
+
+Production promotion requires a separately reviewed independent pipeline binding
+**each exact Functions, ingestion, and provisioning digest** to source/context
+provenance (including dirty-context handling), scan policy and results with
+reviewed dispositions, an SBOM, approval, and deployed digest read-back. The
+official package workflow's Trivy/Grype/Dockle gates, SPDX SBOM, sealed candidate,
+and publish attestations provide prior art; neither its published server image
+nor the Azure asset-bundle attestation covers subsequent ACR target rebuilds.
+Selecting scanner policy, vulnerability exceptions, evidence retention, approvers,
+and enforcement in the production subscription remains the operator's
+responsibility. This CLI neither implements nor accepts that independent gate.
 
 Key Vault purge protection remains enabled by default. Only explicitly
 disposable environments should set `"keyVault": {"purgeProtection": false}` in

@@ -74,7 +74,9 @@ secret-free plan file. --preflight runs only the preflight checks (tools,
 login, permissions, resource providers, name availability, location, existing
 instance, ingress drift, and retention read-back), prints every result, and
 fails if any check failed; it writes no plan file. Only fresh deployments are
-supported: existing resources fail closed. --apply rechecks a reviewed plan, builds immutable images,
+supported: existing resources fail closed. --apply requires environment: development
+in the reviewed config; production source-build deployment is not supported.
+It rechecks a reviewed plan, builds immutable images,
 deploys, ingests the explicitly selected evidence, and verifies public OAuth ingress.
 Updates to existing instances are not supported.`,
 		Args: cobra.NoArgs,
@@ -84,7 +86,7 @@ Updates to existing instances are not supported.`,
 	flags.Bool("plan", false, "Preview with read-only checks and what-if (default mode)")
 	flags.Bool("preflight", false, "Run read-only preflight checks only; writes no plan file")
 	flags.Bool("json", false, "Print preflight results as JSON (with --preflight)")
-	flags.Bool("apply", false, "Apply a reviewed plan to a fresh deployment")
+	flags.Bool("apply", false, "Apply a reviewed plan to a fresh development deployment (not production-assured)")
 	flags.String("plan-file", "", "Reviewed plan file required by --apply")
 	flags.String("template", "", "Compiled ARM template (development source until assets are distributed)")
 	flags.String("out", defaultDeployAzurePlanPath, "Plan file to write")
@@ -122,7 +124,7 @@ Updates to existing instances are not supported.`,
 			if err := deployAzureApply(ctx, applyDeps, configPath, templatePath, planFile, options); err != nil {
 				return err
 			}
-			_, err := fmt.Fprintf(cmd.OutOrStdout(), "Azure deployment verified; receipt written to %s\n", options.ReceiptPath)
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "Azure development deployment verified (images not production-assured); receipt written to %s\n", options.ReceiptPath)
 			return err
 		}
 		if flags.Changed("plan-file") {
@@ -154,6 +156,7 @@ type deployAzurePlan struct {
 	TenantID            string                   `json:"tenantId"`
 	ResourceGroup       string                   `json:"resourceGroup"`
 	Location            string                   `json:"location"`
+	Environment         string                   `json:"environment"`
 	ResourceGroupExists bool                     `json:"resourceGroupExists"`
 	Scope               string                   `json:"scope"`
 	Parameters          map[string]any           `json:"parameters"`
@@ -271,6 +274,7 @@ func deployAzurePlanRun(ctx context.Context, stdout io.Writer, deps deployAzureD
 		TenantID:            account.TenantID,
 		ResourceGroup:       config.ResourceGroup,
 		Location:            config.Location,
+		Environment:         config.Environment,
 		ResourceGroupExists: groupExists,
 		Scope:               scope,
 		Parameters:          parameters,
@@ -287,7 +291,7 @@ func deployAzurePlanRun(ctx context.Context, stdout io.Writer, deps deployAzureD
 	for _, kind := range sortedKeys(summary.Counts) {
 		counts = append(counts, fmt.Sprintf("%s=%d", kind, summary.Counts[kind]))
 	}
-	_, err = fmt.Fprintf(stdout, "\nAzure deployment plan written to %s\nsubscription: %s\nresource group: %s (exists: %t)\nwhat-if: %s\nReview the plan, then run gh cao deploy azure --apply --plan-file %s\n",
+	_, err = fmt.Fprintf(stdout, "\nAzure deployment plan written to %s\nsubscription: %s\nresource group: %s (exists: %t)\nwhat-if: %s\nApply supports only reviewed environment: development configs, without production image assurance.\nReview the plan, then run gh cao deploy azure --apply --plan-file %s\n",
 		out, plan.Subscription, plan.ResourceGroup, groupExists, strings.Join(counts, ", "), out)
 	return err
 }

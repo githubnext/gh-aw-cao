@@ -50,6 +50,26 @@ test('Key Vault purge protection remains default-on with an explicit disposable 
   assert.match(bicep, /enablePurgeProtection: keyVaultPurgeProtection \? true : null/);
 });
 
+test('Native source-build digest selectors bind each distinct runtime and job target', () => {
+  for (const role of ['function', 'ingestion', 'provisioning']) {
+    assert.equal(generated.parameters[`${role}ImageDigest`].type, 'string');
+    assert.equal(generated.parameters[`${role}ImageDigest`].defaultValue, '');
+    assert.equal(generated.variables[`${role}ImageSelector`],
+      `[if(empty(parameters('${role}ImageDigest')), format(':{0}', parameters('${role}ImageTag')), format('@{0}', parameters('${role}ImageDigest')))]`);
+  }
+  const app = resources.find((resource) => resource.type === 'Microsoft.Web/sites');
+  assert.match(app.properties.siteConfig.linuxFxVersion, /variables\('functionImageSelector'\)/);
+  assert.match(generated.outputs.functionContainerImage.value, /variables\('functionImageSelector'\)/);
+  for (const [moduleName, role] of [['snapshot-ingestion', 'ingestion'], ['database-provisioning', 'provisioning']]) {
+    const module = resources.find((resource) => resource.name === moduleName);
+    assert.match(module.properties.parameters[`${role}Image`].value, new RegExp(`variables\\('${role}ImageSelector'\\)`));
+    assert.match(module.properties.parameters[`${role}Image`].value, new RegExp(`parameters\\('${role}ImageRepository'\\)`));
+    const job = Object.values(module.properties.template.resources).find((resource) => resource.type === 'Microsoft.App/jobs');
+    assert.equal(job.properties.template.containers.length, 1);
+    assert.equal(job.properties.template.containers[0].image, `[parameters('${role}Image')]`);
+  }
+});
+
 test('Documented bootstrap supplies required inputs and explicit reviewed retention', () => {
   const command = deploymentDocs.match(/```bash\n(\s*az deployment group create[\s\S]*?)```/)?.[1];
   assert.ok(command, 'expected the documented bootstrap command');

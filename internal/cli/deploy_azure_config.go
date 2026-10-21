@@ -20,6 +20,7 @@ const defaultDeployAzureConfigPath = ".github/cao/deploy-azure.json"
 // `gh cao deploy azure`. Field names map to server/azure/main.bicep parameters.
 type deployAzureConfig struct {
 	SchemaVersion int                      `json:"schemaVersion"`
+	Environment   string                   `json:"environment,omitempty"`
 	Subscription  string                   `json:"subscription"`
 	ResourceGroup string                   `json:"resourceGroup"`
 	Location      string                   `json:"location"`
@@ -302,6 +303,9 @@ var (
 func (c deployAzureConfig) validate() error {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+	if c.Environment != "" && c.Environment != "development" && c.Environment != "production" {
+		add("environment must be development or production")
+	}
 	require := func(field, value string, pattern *regexp.Regexp, rule string) {
 		switch {
 		case value == "":

@@ -53,6 +53,9 @@ param functionImageRepository string = 'cao-functions'
 @description('Immutable or reviewed tag of the CAO Azure Functions runtime image.')
 param functionImageTag string
 
+@description('Exact Functions image digest, including sha256:. When supplied, takes precedence over the tag. Does not establish scan or production assurance.')
+param functionImageDigest string = ''
+
 @description('Key Vault name used for GitHub OAuth, session, PostgreSQL, and collection secrets.')
 param keyVaultName string
 
@@ -100,10 +103,20 @@ param provisioningImageRepository string = 'cao-db-provision'
 
 param provisioningImageTag string = functionImageTag
 
+@description('Exact database-provisioning image digest, including sha256:. When supplied, takes precedence over the tag.')
+param provisioningImageDigest string = ''
+
 @description('Repository of an explicitly built snapshot or empty ingestion image in this deployment registry.')
 param ingestionImageRepository string = 'cao-ingest'
 
 param ingestionImageTag string = functionImageTag
+
+@description('Exact ingestion image digest, including sha256:. When supplied, takes precedence over the tag.')
+param ingestionImageDigest string = ''
+
+var functionImageSelector = empty(functionImageDigest) ? ':${functionImageTag}' : '@${functionImageDigest}'
+var ingestionImageSelector = empty(ingestionImageDigest) ? ':${ingestionImageTag}' : '@${ingestionImageDigest}'
+var provisioningImageSelector = empty(provisioningImageDigest) ? ':${provisioningImageTag}' : '@${provisioningImageDigest}'
 
 @minValue(1)
 @description('Maximum bytes retained in the disposable operational cache.')
@@ -444,7 +457,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
-      linuxFxVersion: 'DOCKER|${registry.properties.loginServer}/${functionImageRepository}:${functionImageTag}'
+      linuxFxVersion: 'DOCKER|${registry.properties.loginServer}/${functionImageRepository}${functionImageSelector}'
       acrUseManagedIdentityCreds: true
       appSettings: concat([
         {
@@ -661,7 +674,7 @@ module ingestion 'ingestion.bicep' = {
     environmentName: containerEnvironment.name
     containerRegistryName: registry.name
     keyVaultName: keyVault.name
-    ingestionImage: '${registry.properties.loginServer}/${ingestionImageRepository}:${ingestionImageTag}'
+    ingestionImage: '${registry.properties.loginServer}/${ingestionImageRepository}${ingestionImageSelector}'
     postgresRunRetentionDays: postgresRunRetentionDays
     postgresUrlSecretName: postgresUrlSecretName
     canonicalNamespace: 'azure-dashboard'
@@ -677,7 +690,7 @@ module provisioning 'provisioning.bicep' = {
     environmentName: containerEnvironment.name
     containerRegistryName: registry.name
     keyVaultName: keyVault.name
-    provisioningImage: '${registry.properties.loginServer}/${provisioningImageRepository}:${provisioningImageTag}'
+    provisioningImage: '${registry.properties.loginServer}/${provisioningImageRepository}${provisioningImageSelector}'
     postgresUrlSecretName: postgresUrlSecretName
     postgresHostName: network.outputs.postgresHostName
     postgresDatabaseName: network.outputs.databaseName
@@ -693,7 +706,7 @@ module provisioning 'provisioning.bicep' = {
 
 output collectionEnabled bool = collectionEnabled
 output containerRegistryLoginServer string = registry.properties.loginServer
-output functionContainerImage string = '${registry.properties.loginServer}/${functionImageRepository}:${functionImageTag}'
+output functionContainerImage string = '${registry.properties.loginServer}/${functionImageRepository}${functionImageSelector}'
 output functionHostName string = functionApp.properties.defaultHostName
 output githubOAuthRedirectUri string = githubRedirectUri
 output keyVaultUri string = keyVault.properties.vaultUri
