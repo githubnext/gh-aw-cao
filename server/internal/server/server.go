@@ -1107,9 +1107,15 @@ func (a *App) writeAdminDenied(response http.ResponseWriter, request *http.Reque
 		if ok && a.adminListed(session) {
 			reason = "step_up_required"
 		}
-		_ = a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
+		if err := a.config.Audit.Record(request.Context(), "admin.denied", audit.Denied,
 			slog.String("actor", session.Login), slog.String("reason", reason),
-			slog.String("method", request.Method), slog.String("path", request.URL.Path))
+			slog.String("method", request.Method), slog.String("path", request.URL.Path)); err != nil {
+			serverLog.Printf("administrator denial audit unavailable")
+			if errors.Is(err, audit.ErrUnavailable) || !a.config.Audit.Durable() {
+				writeError(response, http.StatusServiceUnavailable, "administrator denial audit is unavailable")
+				return
+			}
+		}
 		if reason == "step_up_required" {
 			maxAge := int(a.oauth.adminReauthenticationMaxAge() / time.Second)
 			response.Header().Set("WWW-Authenticate", fmt.Sprintf(`CAO-Step-Up realm="admin", max_age=%d`, maxAge))

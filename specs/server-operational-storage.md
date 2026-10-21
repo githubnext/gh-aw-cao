@@ -130,6 +130,57 @@ write the file; the hash chain still detects edits that do not rewrite every
 later hash. `specs/server-hosted-cli.md` §2 restricts it to loopback
 listeners.
 
+## Administrative rebuild evidence
+
+Hosted administrative rebuilds MUST require a durable `AuditLog`, in addition
+to existing access, administrator step-up and CSRF checks. Redis and memory
+alone do not supply this service: their hosted rebuild endpoint MUST return
+unavailable, not substitute a JSON log for durable admission. This restriction
+does not change automatic collection, webhook reconciliation, startup ingestion,
+or their existing coordination/publication rules. Loopback bearer rebuilds MAY
+retain the local non-durable exception; `local-bearer` identifies a capability,
+not a verified person, and status MUST NOT claim durable evidence.
+
+After acquiring the existing owner-checked rebuild lease and reading canonical
+revision state, the handler MUST record `admin.rebuild.admitted` before
+persisting running status or admitting background work. The worker MUST record
+`admin.rebuild.started` before calling its reconciler. Either audit failure MUST
+prevent reconciliation. Every admitted lifecycle MUST attempt a bounded,
+cancellation-independent `admin.rebuild.completed` append, including status
+admission failure, service drain, start-audit failure, reconciliation failure,
+timeout, cancellation, and success. Events MUST retain the initiating
+authenticated login, a fresh server-generated `rebuild_id` independent of the
+private lease token, prior revision, timestamps, state, fixed reason code and
+returned revision/data revision on success. Active trace correlation MUST
+survive asynchronous execution. Events MUST NOT include credentials, request
+payloads, source rows, collection counts, or raw errors.
+
+Denied hosted administrator decisions MUST continue to record `admin.denied`
+with actor, reason and available trace correlation. Audit failure MUST leave
+access denied and return unavailable; a confirmed durable append with a
+mirror-only failure MAY retain the normal denied response.
+
+Canonical publication, operational status and audit history are separate
+commits, not one cross-store transaction. A terminal audit failure after
+publication MUST NOT roll back canonical data, suppress revision notification,
+or retry ingestion. Status MUST distinguish the operation's outcome from its
+`auditState`: `pending`, `recorded` (durable), `local` (no durable guarantee),
+or `unavailable`. Status write failures MUST be logged and independently
+attempt `admin.rebuild.status_failed`; audit failures MUST be logged and flow
+through existing audit failure telemetry. Confirmed durable appends MUST NOT
+be invalidated by mirror-only failures; joined storage/mirror failures MUST NOT
+be treated as mirror-only success.
+
+Replaceable status is not the historical trail. Operators MUST forward and
+verify committed audit rows through the existing independent evidence reader,
+export/delivery and external-anchor facilities. Process death, uncertain audit
+commit errors, and simultaneous store outages can leave an admitted/started ID
+without terminal evidence. No automatic replay or read-time status repair may
+invent its outcome. Operators MUST reconcile these IDs against canonical
+revision state and independent telemetry, preserve the resulting incident
+evidence, and monitor `stored=false` audit events and missing terminal events.
+A subsequent rebuild MUST use a new ID and MUST NOT erase retained history.
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose
