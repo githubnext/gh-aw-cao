@@ -9,8 +9,8 @@ agent:
   type: overview
   prominent: true
 hero:
-  title: Monitor and control GitHub Agentic Workflows at scale.
-  tagline: Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy.
+  title: Monitor and govern GitHub Agentic Workflows at scale.
+  tagline: Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently.
   actions:
     - text: Explore CAO
       link: /gh-cao/architecture-at-a-glance/
