@@ -203,8 +203,8 @@ remain coordinator-owned to avoid conflicting edits.
 | OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Remediation launched |
 | OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
-| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304); validated proposal, not merged/closed |
-| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Draft [#19305](https://github.com/githubnext/gh-cao/pull/19305); validated test-only proposal, not merged/closed |
+| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Open non-draft [#19304](https://github.com/githubnext/gh-cao/pull/19304); CI blocked by baseline DATA-08; not merged/closed |
+| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Open non-draft [#19305](https://github.com/githubnext/gh-cao/pull/19305); validated test-only proposal, not merged/closed |
 | Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
 
 The recurring worker must follow
@@ -216,6 +216,15 @@ merged and installed on the applicable default branch.
 The following report sections preserve initial observations and initial
 pending decisions. This current authorization table supersedes only those
 decision/lifecycle fields explicitly listed above. A draft PR is not closure.
+
+On 2026-10-21 at approximately 15:39 UTC the coordinator refreshed GitHub:
+OPS-04 and DATA-08 PRs are both open and non-draft with unchanged heads.
+Their initial draft creation is preserved in history; the current review
+state was not overridden. OPS-04's Go CI fails on the existing DATA-08
+temporal query assertion, according to the remediation session's log review
+and baseline-tree comparison. The coordinator verified the failing check and
+the separate DATA-08 correction PR; it has not merged/copied either fix or
+declared the affected integration gate clean.
 
 #### OPS-04 remediation proposal received 2026-10-21
 

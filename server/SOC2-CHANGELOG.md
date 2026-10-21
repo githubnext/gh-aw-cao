@@ -199,3 +199,21 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: `remediate` / `in-progress`; review/integration and
   post-integration gate evidence pending. Historical baseline failure is
   preserved and no other provider/period evidence is closed.
+
+## 2026-10-21 - SOC2-LOG-009 - Review-state refresh and DATA-08 CI dependency
+
+- Type: current review state and integration limitation.
+- Source/evidence: GitHub refresh around 15:39 UTC reports
+  [#19304](https://github.com/githubnext/gh-cao/pull/19304) and
+  [#19305](https://github.com/githubnext/gh-cao/pull/19305) open/non-draft;
+  original proposal head commits remain unchanged. Initial draft-creation
+  events remain accurate history; no review-state changes were made here.
+- Specification version: 1. Related findings: OPS-04 and DATA-08.
+- OPS-04 Go CI has one failing completed check. Its session's log review
+  and query/fixture baseline tree comparison attribute failure to the
+  pre-existing DATA-08 temporal assertion, not the doctor change.
+  The separate DATA-08 correction is proposed in #19305.
+- Decision/lifecycle: both remain `remediate` / `in-progress`.
+  No cross-PR code copy, merge, CI rerun or closure authorized/performed.
+  Integration must resolve the known dependency and produce clean relevant
+  gate evidence before closure; provider/period limitations remain.
