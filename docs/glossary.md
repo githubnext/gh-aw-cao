@@ -22,6 +22,10 @@ The shared `explore`, `propose`, or `operate` classification applied to every da
 
 A hosted-server requirement that every administrator operation comes from a fresh, assured interactive GitHub OAuth authentication. Fresh means within `CAO_ADMIN_REAUTH_MAX_AGE`, which defaults to 15 minutes. Assured means GitHub explicitly reported two-factor authentication, or the user's membership was confirmed in an operator-attested SAML SSO organization. Token refresh never extends step-up. See the [hosted CLI actions specification](https://github.com/githubnext/gh-cao/blob/main/specs/server-hosted-cli.md).
 
+## Admission gate
+
+The optional hosted-server check, served at `POST /api/admission`, that decides whether a participating gh-aw execution may start. It authenticates the isolated admission job with GitHub Actions OIDC, requires reviewed workflow enrollment and fresh AI Credit accounting, and returns policy-defined allowances. It is a cooperative start-time check, not a billing API or reservation system, and it never enables a campaign, widens repository scope, promotes review to live, or grants writes; those remain control-policy decisions. See [Set up the admission gate](admission-gate.md).
+
 ## Agent catalog
 
 The protocol-independent listing of agent-facing dashboard pages and named Dashboard Language queries, derived once from the dashboard page definitions and shared by every agent transport (the `cao` CLI, the read-only CAO MCP server, and WebMCP) so none of them maintains a second catalog. See [Agent analysis](agent-analysis.md).
