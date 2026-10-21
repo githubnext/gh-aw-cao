@@ -1,5 +1,7 @@
+import { createDebug } from '../../debug.js';
 import { repositoryCoordinateId, workflowCoordinateId } from './ids.js';
 
+const debugEvidence = createDebug('operational-value-evidence');
 const kinds = new Set(['contract', 'intent-source', 'requirement', 'output', 'output-implementation',
   'output-evidence', 'implementation', 'implementation-evidence', 'implementation-lineage',
   'snapshot', 'snapshot-item', 'quality-check', 'coverage', 'limitation']);
@@ -165,12 +167,16 @@ export function mergeOperationalValueEvidence(previous, incoming) {
   validateOperationalValueEvidence(incoming);
   if (!previous) return incoming;
   if (previous.contractDigest !== incoming.contractDigest) {
+    debugEvidence({ event: 'merge', outcome: 'contract-changed' });
     throw new TypeError('Frozen evidence contract changed without a metric version change');
   }
   if (Date.parse(previous.observedAt) === Date.parse(incoming.observedAt)
     && ['windowStart', 'windowEnd', 'sourcePath', 'repository', 'workflow', 'facts']
       .some((field) => JSON.stringify(previous[field]) !== JSON.stringify(incoming[field]))) {
+    debugEvidence({ event: 'merge', outcome: 'conflict' });
     throw new TypeError('Conflicting evidence packet at the same capture time');
   }
-  return Date.parse(previous.observedAt) > Date.parse(incoming.observedAt) ? previous : incoming;
+  const keepPrevious = Date.parse(previous.observedAt) > Date.parse(incoming.observedAt);
+  debugEvidence({ event: 'merge', outcome: keepPrevious ? 'kept-previous' : 'replaced', factCount: incoming.facts.length });
+  return keepPrevious ? previous : incoming;
 }
