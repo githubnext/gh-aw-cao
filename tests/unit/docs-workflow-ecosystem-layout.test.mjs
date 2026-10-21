@@ -55,7 +55,14 @@ test("parents are centered over their children with evenly spaced organizations"
     assert.equal(center(parent), (Math.min(...children) + Math.max(...children)) / 2);
   }
   for (const { id } of repositories) {
-    assert.equal(nodes.find((node) => node.id === id).height, 184);
+    assert.equal(nodes.find((node) => node.id === id).height, 160);
+  }
+});
+
+test("workflow ecosystem keeps its three desktop tiers within a compact height budget", () => {
+  assert.ok(ecosystemLayout.height <= 500);
+  for (const id of ["enterprise", ...organizations.map(({ id }) => id)]) {
+    assert.equal(nodes.find((node) => node.id === id).height, 120);
   }
 });
 

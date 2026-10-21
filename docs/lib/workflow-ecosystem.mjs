@@ -51,8 +51,8 @@ export const ecosystemLayout = await new ELK().layout({
     "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
     "elk.layered.crossingMinimization.forceNodeModelOrder": "true",
     "elk.layered.nodePlacement.strategy": "INTERACTIVE",
-    "elk.layered.spacing.nodeNodeBetweenLayers": "64",
-    "elk.layered.spacing.edgeNodeBetweenLayers": "32",
+    "elk.layered.spacing.nodeNodeBetweenLayers": "48",
+    "elk.layered.spacing.edgeNodeBetweenLayers": "24",
     "elk.layered.spacing.edgeEdgeBetweenLayers": "12",
     "elk.spacing.nodeNode": String(nodeGap),
     "elk.spacing.edgeNode": "20",
@@ -60,18 +60,18 @@ export const ecosystemLayout = await new ELK().layout({
     "elk.padding": "[top=0,left=24,bottom=0,right=24]",
   },
   children: [
-    node("enterprise", 420, 144, 0, [
+    node("enterprise", 420, 120, 0, [
       port("enterprise-scope", "SOUTH"),
     ]),
     ...organizations.flatMap((organization, index) => [
       ...(index === 2 ? [node("more-orgs", 24, 24, 1, [port("more-orgs-in", "NORTH"), port("more-orgs-out", "SOUTH")])] : []),
-      node(organization.id, organizationWidth, 144, 1, [
+      node(organization.id, organizationWidth, 120, 1, [
         port(`${organization.id}-in`, "NORTH"), port(`${organization.id}-out`, "SOUTH"),
       ]),
     ]),
     ...repositories.flatMap((repository, index) => [
       ...(index === 3 ? [node("more-repos", 24, 24, 2, [port("more-repos-in", "NORTH")])] : []),
-      node(repository.id, repositoryWidth, 184, 2, [
+      node(repository.id, repositoryWidth, 160, 2, [
         port(`${repository.id}-org`, "NORTH"),
       ]),
     ]),

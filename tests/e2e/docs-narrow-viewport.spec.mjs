@@ -455,7 +455,7 @@ for (const colorScheme of ["light", "dark"]) {
         await expect(ecosystem.locator(".mobile-continuation")).toBeVisible();
         await expect(ecosystem.locator(".mobile-continuation")).toHaveText("... Org N / Repo N");
         await expect(ecosystem.locator(".continuation-point:visible")).toHaveCount(0);
-        expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(780);
+        expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(680);
       } else {
         await expect(ecosystem.getByText("Org 2", { exact: true })).toBeVisible();
         await expect(ecosystem.getByText("Org N", { exact: true })).toBeVisible();
@@ -463,7 +463,10 @@ for (const colorScheme of ["light", "dark"]) {
         await expect(ecosystem.getByRole("img", { name: "More organizations", exact: true })).toBeVisible();
         await expect(ecosystem.getByRole("img", { name: "More repositories", exact: true })).toBeVisible();
         await expect(ecosystem.locator(".mobile-continuation")).toBeHidden();
+        expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(500);
       }
+      await expect(ecosystem.locator(".enterprise-node header")).toHaveCSS("font-size", "16px");
+      await expect(ecosystem.locator(".enterprise-node .workflow-run")).toHaveCSS("height", "44px");
       for (const repository of await ecosystem.locator(".repository-node:visible").all()) {
         const order = await repository.evaluate((element) => {
           const workflow = element.querySelector(".local-workflows");
@@ -530,7 +533,7 @@ for (const colorScheme of ["light", "dark"]) {
           (icons) => icons.map((icon) => icon.getBoundingClientRect().top),
         );
         expect(Math.max(...outputRows) - Math.min(...outputRows)).toBeLessThan(1);
-        if (width >= 1280) await expect(repository).toHaveCSS("height", "184px");
+        if (width >= 1280) await expect(repository).toHaveCSS("height", "160px");
         await expect(repository.locator(".local-workflows .status.complete")).toHaveCSS("opacity", "1");
       }
       expect(await page.locator("html").evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
