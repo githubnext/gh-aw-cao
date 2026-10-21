@@ -49,7 +49,7 @@ func TestExecutorKeepsUnconfirmedContainerClaimAcrossRestart(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			invocation := operational.CLICommandInvocation{ActionID: "test", Command: "gh aw upgrade --repo octo/app --create-pull-request", Repository: "octo/app", Actor: "mona"}
+			invocation := operational.CLICommandInvocation{ActionID: "test", Command: "gh aw upgrade --repo octo/app --create-pull-request", Repository: "octo/app", Actor: "mona", ActorID: 101}
 			first, err := queue.Enqueue(ctx, invocation, "", 0)
 			if err != nil {
 				t.Fatal(err)

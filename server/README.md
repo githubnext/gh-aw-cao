@@ -1788,6 +1788,24 @@ execution claim prevents another replica from claiming an already-running
 command. The configured concurrency limit applies across executor replicas.
 Command deadlines and queue state survive process restarts.
 
+Queued commands retain the requester's numeric GitHub account ID as well as
+the admission login. Before prefetching or handing out any work token, the
+executor requires the live collaborator-permission response to identify that
+same account with write/admin access. The login remains attribution, not
+identity proof: a reused login, absent provider ID, inaccessible renamed login,
+or revoked writer fails closed.
+
+For an upgrade from login-only queue records, pause admissions, stop and
+reconcile old executors, and upgrade every web and executor replica together
+before resuming. The invocation JSON is additive; there is no SQL schema or
+namespace-version migration. Do not backfill IDs by looking up current logins.
+Legacy pending commands without IDs remain readable and become explicit failed
+commands without starting work or minting credentials. Review them and, if still
+intended, sign in and explicitly retry through fresh admission. The retry
+records the current requester ID and ancestry without rewriting the original
+attribution. Normal terminal retention still applies; this is not authorization
+to delete pending work or deploy a production migration.
+
 If an executor crashes or loses its lease while a subprocess may still be
 running, the replacement marks the outcome interrupted and blocks new claims.
 It will not replay the command automatically because external side effects may

@@ -208,11 +208,13 @@ func (c *Client) FindRepositoryInstallation(ctx context.Context, repository stri
 }
 
 // CollaboratorPermission reads a user's effective base permission on repository
-// using a scoped token that has at least metadata read access.
-func (c *Client) CollaboratorPermission(ctx context.Context, token ScopedToken, repository, login string) (string, error) {
+// using a scoped token that has at least metadata read access. The same
+// response must bind the permission to the account admitted by the caller;
+// a mutable login alone is never authorization evidence.
+func (c *Client) CollaboratorPermission(ctx context.Context, token ScopedToken, repository, login string, accountID int64) (string, error) {
 	owner, name, found := strings.Cut(strings.TrimSpace(repository), "/")
-	if !found || owner == "" || name == "" || login == "" {
-		return "", errors.New("repository and login are required")
+	if !found || owner == "" || name == "" || login == "" || accountID <= 0 {
+		return "", errors.New("repository, login, and account ID are required")
 	}
 	client, err := c.tokenClient(token.value)
 	if err != nil {
@@ -224,6 +226,9 @@ func (c *Client) CollaboratorPermission(ctx context.Context, token ScopedToken, 
 	}
 	if err != nil {
 		return "", fmt.Errorf("read collaborator permission: %w", redactGitHubError(err))
+	}
+	if level.GetUser().GetID() != accountID {
+		return "", errors.New("collaborator permission account identity could not be verified")
 	}
 	// The base permission (admin, write, read, none) is stable across custom
 	// repository roles, unlike role_name.

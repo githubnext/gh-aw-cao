@@ -811,16 +811,25 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   resolves the request only against a catalog-declared action, plans the
   command for exactly one target repository, and confirms the requester's own
   `admin`, `maintain`, or `push` permission with their OAuth token. The web
-  process never holds the App private key.
+  process never holds the App private key. Admission persists the authenticated
+  numeric account ID with the login used for attribution; clients cannot set it.
 - **Execution** happens in the `execute-cli` process, which holds the single
   queue lease. Other replicas stand by. Before issuing any work, it re-plans
   the command and rechecks the actor's live `admin` or `write` collaborator
   permission with a separate `metadata: read` token that is revoked at once.
+  The same permission response must identify the admitted numeric account ID.
+  A matching login with a different or absent ID cannot authorize work.
   No work-scoped token is minted, pooled, or pre-minted for a requester who
   fails that check, and cancel also requires the requester's write access to
   the command's repository. Step-up is not rechecked at run time: admission is the
   authorization point, and the recheck and command deadline (default 15
   minutes) bound execution.
+- **Legacy requester identity** is never inferred from a current login lookup.
+  Commands without an admitted account ID fail explicitly before token issuance
+  or subprocess startup and remain available for review and fresh, explicit
+  retry. All web/executor replicas must be upgraded together with admissions
+  paused and old executors stopped/reconciled; old executors ignore the new ID.
+  See the [upgrade contract](../specs/server-hosted-cli.md#42-queued-identity-continuity-and-upgrades).
 - **Durability and replica coordination** use one shared PostgreSQL operational
   namespace. The transactionally acquired, fenced queue lease elects one
   executor replica; persisted execution claims and the configured concurrency

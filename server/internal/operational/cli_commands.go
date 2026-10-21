@@ -98,10 +98,11 @@ type CLICommandInvocation struct {
 	Arguments map[string]bool   `json:"arguments,omitempty"`
 	Values    map[string]string `json:"values,omitempty"`
 	Input     *string           `json:"input,omitempty"`
-	// Actor and Repository attribute hosted executions. Actor is the GitHub
-	// login authenticated by OAuth at enqueue time; Repository is the single
-	// owner/name target the execution credential is scoped to.
+	// Actor is the attribution login at admission; ActorID is the immutable
+	// GitHub account ID that must match the live permission response.
+	// Repository is the single owner/name target of the execution credential.
 	Actor      string `json:"actor,omitempty"`
+	ActorID    int64  `json:"actorId,omitempty"`
 	Repository string `json:"repository,omitempty"`
 }
 
@@ -164,6 +165,7 @@ func (i CLICommandInvocation) validate() (string, error) {
 	if i.ActionID == "" || len(i.ActionID) > 256 || strings.TrimSpace(i.Command) == "" ||
 		(i.Input != nil && utf8.RuneCountInString(*i.Input) > 100000) ||
 		(i.Actor != "" && !cliActor.MatchString(i.Actor)) ||
+		i.ActorID < 0 || (i.Actor != "" && i.ActorID == 0) || (i.Actor == "" && i.ActorID != 0) ||
 		(i.Repository != "" && !cliRepository.MatchString(i.Repository)) {
 		return cliRejectShape, ErrCLICommandInput
 	}

@@ -333,7 +333,7 @@ func TestWindowsSandboxExecutorUsesPinnedBundleIdentity(t *testing.T) {
 	}
 	command, err := queue.Enqueue(t.Context(), operational.CLICommandInvocation{
 		ActionID: "run", Command: "gh workflow run collect.yml --repo octo/app",
-		Actor: "octocat", Repository: "octo/app",
+		Actor: "octocat", ActorID: 101, Repository: "octo/app",
 	}, "windows-run", 0)
 	if err != nil {
 		t.Fatal(err)
