@@ -3,7 +3,11 @@ title: Deployment and Governance
 description: Choose a control-plane topology and define ownership, enrollment, provenance, and policy boundaries.
 ---
 
-Use this page when deciding where control repositories run, who owns each layer, and how target repositories consent to live operation. For the architectural summary, start with the [Architecture](architecture.md). To choose where the dashboard is hosted, see [Deployment options](deployment.md).
+Use this page when deciding where control repositories run, who owns each layer,
+and how target repositories consent to live operation. Start with
+[repository roles and records](architecture.md#repository-roles-and-records)
+for the architectural model. To choose where the dashboard is hosted, see
+[Deployment options](deployment.md).
 
 ## Deployment Topologies
 
@@ -33,7 +37,8 @@ A single control repository can address an explicitly named repository in anothe
 | --- | --- | --- |
 | **Enterprise shared AW** | Enterprise platform, security, or automation governance | Runs in the enterprise central control repository and dispatches per-repository worker workflows against configured targets across organizations. |
 | **Organization shared AW** | Organization platform or repository operations team | Runs in an organization central control repository and dispatches per-repository worker workflows against configured targets in that organization. |
-| **Standalone AW** | Repository maintainers | Runs in its own repository and remains outside this control plane unless explicitly enrolled. |
+| **Repository-local AW** | Repository maintainers | Runs under its repository's own permissions; observation does not integrate it with CAO policy. |
+| **Governed standalone AW** | Control-repository maintainers | Explicitly imports shared control and runs directly against a bounded admitted set without dispatching workers. |
 
 "Enterprise-shared" and "organization-shared" identify both governance scope and runtime ownership. They do not mean that Agentic Workflow definitions are installed into downstream target repositories. In the CentralRepoOps pattern, Orchestrator and worker workflow definitions stay together in their owning central repository; each worker workflow checks out one target and sends declared cross-repository safe outputs to the configured destination.
 
@@ -84,21 +89,15 @@ An allowed owner and a reachable credential are security boundaries, not evidenc
 
 Store this evidence in an enterprise- or organization-approved inventory, such as governed custom properties or a reviewed registry. The current workflows do not query or reconcile that inventory automatically. Until they do, scope the GitHub App installation or fine-grained PAT to enrolled repositories and treat broad owner discovery as review-only. Owner allowlists remain mandatory but are not sufficient for live enrollment.
 
-The target repository enforces its live mutation authority in `.github/workflows/cao.json`:
-
-```json
-{
-  "version": 1,
-  "target-authority": {
-    "campaigns": {
-      "dependabot": { "authority": "acme/central-ops" },
-      "optimization": { "authority": "acme/central-ops" }
-    }
-  }
-}
-```
-
-Protect this file on the default branch with a ruleset and CODEOWNERS approval from the target repository owner. A live worker resolves that branch to an exact commit SHA; missing, malformed, or mismatched authority fails closed before the agent starts. The file records consent and authority only; keep credentials in Actions secrets and control policy in the control repository's JSON document. Review runs do not require target authority because they cannot mutate the target.
+The control repository's reviewed `.github/workflows/cao.json` records the
+assigned live mutation authority and scope. Workers resolve that policy at the
+exact workflow revision; a target-side file cannot grant, narrow, or veto the
+decision. Protect control policy through the control repository's review
+requirements, and record target-owner consent separately in the approved
+inventory. See [Authority and admission](architecture.md#authority-and-admission)
+for the boundary and [Live Authority](configuration.md#live-authority) for the
+policy fields. Review runs do not require live authority because they cannot
+mutate the target.
 
 ## Downstream Fan-Out and Provenance
 
@@ -129,10 +128,13 @@ Operational-value opportunities are deduplicated within `(subject_repository, op
 
 ## Governance Boundary
 
-Central Agentic Ops controls the catalog workflows that participate in it. It defines their authentication, rollout, repository selection, dispatch, routing, and safe-output behavior. It is not a general enforcement boundary for all automation in an enterprise.
+CAO governs explicitly integrated standalone workflows and campaigns, not only
+catalog installations. The [Architecture](architecture.md#core-safety-properties)
+summarizes the shared boundary. The controls below explain what operators must
+enforce outside that boundary.
 
 :::caution[The control plane is not a universal policy boundary]
-Use GitHub rulesets, Actions policy, protected environments, CODEOWNERS, and credential scoping to govern automation outside participating catalog workflows.
+Use GitHub rulesets, Actions policy, protected environments, CODEOWNERS, and credential scoping to govern automation outside explicitly integrated workflows.
 :::
 
 The control plane does not:

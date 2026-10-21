@@ -39,10 +39,38 @@ flowchart LR
   activity -->|"Collected snapshot"| evidence["Dashboard and reports"]
 ```
 
+Activity collects once so dashboards, reports, local tools, and agents can reuse
+the same bounded snapshot instead of independently fetching workflow history.
+The cache is evictable, not a historical authority. Consumers must check their
+own freshness, completeness, and scope requirements. See [CAO Activity](activity.md)
+for collection limits and the cache contract.
+
+## Read activity and follow outputs
+
+In the [Repositories view](https://githubnext.github.io/gh-cao/cao/#page-repositories),
+start with the configured repositories, compare their retained runs, then
+inspect the available issue outputs and follow links back to GitHub. Wait for
+the initial import to finish before interpreting record-dependent charts.
+
+A central workflow can run in the control repository, analyze a different
+repository, and create its proposal in a review repository. Keep those three
+identities separate: **where the workflow ran**, **which repository it
+analyzed**, and **where its output was delivered**. Campaign membership is
+another dimension, not a requirement for evidence to appear in a repository
+view. See [repository outcome projection](deployment-and-governance.md#repository-outcome-projection).
+
 The dashboard is a view of collected evidence, not proof of current GitHub
-state. Collection can be partial or stale. An empty chart does not establish
-that no workflows ran. See [CAO Activity](activity.md) for collection limits and
-data-quality behavior.
+state. Check the evidence quality before acting:
+
+- **Empty** means available evidence has no matching records, not that no work
+  ever ran.
+- **Unavailable** means required evidence could not be obtained.
+- **Partial** means some relevant evidence is missing or still importing.
+- **Stale** means newer activity may not be represented yet.
+
+An empty chart does not establish inactivity, and missing cost evidence is not
+zero cost. The [dashboard guide](dashboard.md#read-a-result) explains how to
+read these states.
 
 ## Evaluate what the work produced
 
@@ -57,14 +85,26 @@ usefulness, define the intended result and evaluate it against acceptance and
 independent repository evidence. See [Define and measure workflow
 value](operational-value-how-to.md).
 
+For example, an issue proposing a change is not the delivered improvement.
+Follow an explicit link to its accepted implementation and check the intended
+repository outcome. Repository state and the contribution of one accepted
+change are separate measurements; timing alone does not prove causation.
+[Intelligence](intelligence.md) can highlight conditions for review, but its
+recommendations do not authorize execution.
+
 ## Opt shared work into controlled execution
 
 Monitoring is useful on its own; enabling shared automation is a separate
 decision. Participating workflows run from the control repository, where
 reviewed `.github/workflows/cao.json` policy defines whether and where they may
-operate. Policy is resolved at the exact workflow revision. Credentials and
-compiled workflow capabilities can further restrict that authority, never
-expand it.
+operate. The [Architecture](architecture.md#authority-and-admission) explains
+how policy, credentials, and compiled capabilities bound that authority.
+
+Before an agent starts, admission checks the workflow identity and requested
+limits. Authorized-run precompute then resolves the bounded repository set,
+output routing, access, and worker availability where applicable. A denied
+request or missing required fact stops or skips execution rather than widening
+scope. See [Admission Gates](admission.md) for the individual checks.
 
 CAO supports two explicit integration patterns:
 
@@ -91,6 +131,24 @@ executes and which capabilities it has.
 See [standalone workflow configuration](configuration.md#standalone-agentic-workflows),
 [Orchestrators and Workers](orchestrators-and-workers.md), and
 [Rollout and Routing](rollout-and-routing.md) for the integration details.
+
+## Review, promote, and recover
+
+Start with one explicit target in `review`. Inspect the proposal and verify that
+the review destination changed while the target did not. Review is real agent
+execution and may create review outputs; it is not a no-write simulation.
+
+When ready, explicitly authorize one low-risk target for `live` output in
+reviewed control-repository policy. Verify the delivered output and downstream
+checks before increasing scope or enabling scheduled live work. Promote from
+observed evidence, not elapsed time; each standalone workflow or campaign keeps
+its own rollout decision.
+
+If scope, routing, quality, cost, or credentials become uncertain, disable the
+affected work and cancel active runs as needed. Correct the issue and resume
+in review. Changing policy alone does not cancel work already in flight.
+Follow [Roll Out a Campaign Safely](rollout-and-routing.md) for promotion
+procedures and [Emergency stop](operations.md#emergency-stop) for incident actions.
 
 ## Choose your next step
 

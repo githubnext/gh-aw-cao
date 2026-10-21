@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: Understand the control plane's purpose, execution boundary, and core safety properties.
+description: Understand repository roles, evidence and execution boundaries, authority, and dashboard hosting.
 prev:
   link: /gh-cao/how-cao-works/
   label: How does CAO work?
@@ -9,29 +9,33 @@ agent:
   prominent: true
 ---
 
-CAO separates evidence collection from execution authority. You can observe
-existing repository-local workflows without changing where they run or who owns
-them. This page focuses on the control-plane architecture for workflows that
-explicitly opt into governed execution; for the broader operating flow, read
-[How does CAO work?](how-cao-works.md).
-
-Read this page when evaluating the control plane or changing how participating
-workflows are authorized and dispatched. For authorization changes, continue to
-[Control Policy](control-policy-specification.md), then the
-[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
-and `.github/workflows/shared/control.md`. For installation steps, begin with
-[Set Up CAO](setup-quickstarts.md).
+CAO separates evidence collection from execution authority. Observing a workflow
+does not change where it runs or who owns it. Explicitly integrated workflows
+use the control plane for policy-governed execution.
+[How does CAO work?](how-cao-works.md) follows the operating flow; this page
+explains the components and trust boundaries behind it.
 
 ## Objectives
 
-The control plane is designed to:
+- Monitor repository-local and centrally executed agentic work together.
+- Govern shared work without transferring ownership of target repositories.
+- Keep policy, credentials, execution capabilities, and evidence distinct.
+- Fail closed when required authority, access, routing, or evidence is missing.
 
-- operate enterprise-wide and organization-wide workflows from private central repositories;
-- promote campaigns independently without coupling their release schedules;
-- keep credentials and common policy centralized;
-- separate repository selection from repository mutation;
-- make every dispatched action attributable to a control-plane run;
-- fail closed when routing, credentials, or worker eligibility are incomplete.
+## Control plane and dashboard
+
+The **control plane** runs participating workflows in GitHub Actions from a
+control repository. It owns admission, bounded execution, rollout, and output
+routing. CAO Activity is a separate collection pipeline: it supplies evidence
+without granting execution authority.
+
+The **dashboard** presents that evidence. Where it is hosted does not change
+workflow policy or target authority. The published dashboard is not the
+control plane: viewing a result does not start work, approve an output, or
+promote a workflow.
+
+See [dashboard hosting](#evidence-and-dashboard-hosting) below and
+[Deployment options](deployment.md) for infrastructure choices.
 
 ## Mental Model
 
@@ -41,70 +45,132 @@ The control plane is designed to:
   <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-cao/assets/control-plane-mental-model-light.svg">
 </picture>
 
+The diagram shows the campaign pattern. A governed standalone workflow instead
+performs its mission directly against a bounded admitted set, without an
+orchestrator or downstream workers. Campaigns are a packaging and rollout
+pattern, not a requirement for monitoring or governed standalone execution.
+
+### Repository roles and records
+
+| Role | Owns | Does not grant |
+| --- | --- | --- |
+| Catalog | Versioned campaign source, manifests, and releases | Installation credentials or runtime authority |
+| Control repository | Reviewed policy, Actions secrets, installed or source-managed workflows, and runs | Ownership of target code or merge acceptance |
+| Target repository | Source evidence, repository protections, local automation, and acceptance of changes | Control-plane authority through its own files |
+| Review repository | Declared proposals and review artifacts | Permission to mutate the target |
+
 :::note[Three records, three jobs]
-The catalog release proves what was installed. The control repository owns operating policy and credentials. Target-owner enrollment records document consent for live operation; target files do not grant, narrow, or veto control-plane authority. None of these records replaces the others.
+Campaign manifests record what was published and installed. The control
+repository owns operating policy and credential references. Target-owner
+enrollment records document consent for live operation. These records do not
+replace one another; target files do not grant, narrow, or veto control-plane
+authority.
 :::
 
-The execution boundary is the key architectural fact: orchestrators and workers run from the control repository. A worker checks out and analyzes one target at a time. Remote target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
+Any repository can explicitly be a source-managed control plane for workflows
+it maintains in-tree. A catalog can also use that topology for dogfooding, but
+catalog files alone do not activate the control role. In either case, workflow
+sources and generated locks are the runtime payload; policy remains a separate
+reviewed record. See [Deployment and Governance](deployment-and-governance.md)
+for runtime ownership, multi-organization topologies, and enrollment procedures.
 
-Any repository may explicitly operate as a source-managed control plane for workflows it maintains in-tree. The reviewed workflow sources and generated locks are the runtime payload, while `.github/workflows/cao.json` remains the separate rollout-policy authority. When a catalog uses this topology to run its own workflows, it is dogfooding: the repository applies both catalog and control-plane safety rules. In every source-managed topology, repository visibility governs run metadata, dashboards, and review outputs, and source files alone never activate the control role.
+## Authority and admission
 
-## How It Works
+The control repository's `.github/workflows/cao.json` is the sole persistent
+non-secret rollout policy. Runs resolve it at the exact workflow revision, so
+policy and workflow changes belong in one reviewed commit. Credentials stay
+in Actions secrets; steering Markdown may refine the mission but cannot grant
+scope or capabilities.
 
-1. A schedule or manual dispatch starts a campaign orchestrator in the control repository.
-2. Shared control resolves mode, routing, candidate repositories, limits, and eligible workers.
-3. The orchestrator ranks candidates and dispatches one worker run per selected target.
-4. Each worker analyzes only its dispatched target and emits only declared safe outputs.
-5. Outputs are sent to a review repository in review mode or processed against the target in live mode.
+A run's effective authority is the intersection of reviewed policy, the
+request, worker ceilings, credential reach, and gh-aw-compiled capabilities.
+No input can widen another. Manual requests may narrow an authorized run,
+not promote its mode or expand its limits.
 
-The orchestrator owns rollout and selection. Workers enforce the dispatched control envelope without escalating mode, discovering additional repositories, or duplicating credentials.
+Admission validates identity, policy, requested limits, and API capacity
+before agent execution. Authorized-run precompute resolves repository
+inventory, routing, access, and eligible workers. The agent receives a validated
+non-secret control artifact, not the policy credentials used for precompute.
+GitHub Agentic Workflows owns how the authorized workflow executes and which
+tools, permissions, and safe outputs it can use.
 
-This is the campaign execution pattern. An explicitly integrated standalone
-workflow instead runs its mission directly against a precomputed admitted set
-without an orchestrator or downstream workers. Both patterns use shared
-admission and bounded rollout; neither automatically governs observed workflows.
+See [Admission Gates](admission.md), [Configuration](configuration.md), and the
+[control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
+for the exact contracts.
 
-CAO Activity separately collects bounded workflow and run evidence into one
-shared snapshot for dashboards and reports. It is supporting infrastructure,
-not an execution or authority layer. See [CAO Activity](activity.md) for the
-collection flow and data-quality behavior.
+<span id="how-it-works"></span>
+
+## Execution boundaries
+
+Campaign orchestrators and workers run from the control repository. The
+orchestrator selects and dispatches within resolved policy; each worker checks
+out and analyzes only its assigned target. Targets receive only declared safe
+outputs, not control-plane workflow definitions. Standalone workflows execute
+directly against their admitted set and cannot discover extra targets or
+dispatch more work.
+
+Dispatch carries target, mode, output destination, and correlation metadata,
+never credentials. Workers revalidate their authority and may only narrow it.
+Run URLs and correlation IDs support investigation; they are not independent
+proof that a particular orchestrator issued a request. See
+[Execution and Safety](execution-and-safety.md) for the handoff, invariants,
+and failure behavior.
+
+## Evidence and dashboard hosting
+
+Activity collects bounded workflow evidence once for reuse by dashboards,
+reports, local tools, and agents. Published data and query stores are
+rebuildable projections, not rollout authority or a substitute for current
+GitHub state. Derived intelligence is advisory, not permission to execute.
+
+| Dashboard deployment | Presentation and query boundary |
+| --- | --- |
+| Static GitHub Pages | The browser downloads the published snapshot; a data Web Worker prepares it and runs queries against browser-local storage. |
+| Hosted Go server | The same Go handler serves the UI, assets, sign-in, query API, and revision events; dashboard queries run server-side over PostgreSQL. |
+
+Hosted mode is not a Pages frontend with a separate API. It does not fall back
+to browser storage or static shards when the hosted service fails.
+[Deployment options](deployment.md) compares the profiles;
+[CAO Activity](activity.md) describes collection and retention, and
+[Data ingestion](dashboard-data-ingestion.md) follows the evidence into queries.
+
+Repository visibility and dashboard visibility are separate decisions. Use a
+public control repository only when policy, run metadata, evidence, dashboard
+data, and review outputs can all be public. A private repository does not
+guarantee private Pages; [setup](setup-quickstarts.md) checks publication
+visibility.
 
 ## Core Safety Properties
 
-- review mode is the default;
-- target selection and dispatch are bounded;
-- owners, targets, and review destinations must pass explicit trust checks;
-- every live `(target repository, campaign)` pair has one mutation authority assigned in reviewed control-repository policy, with target-owner enrollment recorded separately;
-- workers accept only declared targets and eligible generated-workflow paths;
-- GitHub tools are read-only, while writes use declared safe-output primitives;
-- credentials are resolved inside each run and never carried in dispatch inputs;
-- missing authority, authentication, routing, or eligibility fails closed.
+- `review` is the default; live output requires explicit reviewed authorization.
+- Target selection, execution, and dispatch are bounded.
+- Each live target/campaign pair has one assigned control-repository mutation
+  authority; target-owner consent is recorded separately.
+- Orchestrators select work but do not mutate targets directly.
+- Workers cannot discover extra targets, dispatch further work, or widen mode.
+- GitHub tools are read-only; repository writes use declared safe outputs.
+- Credentials are resolved inside runs, never carried in dispatch inputs.
+- Missing authority, authentication, routing, eligibility, or required evidence
+  fails closed.
 
 :::caution[The control plane is not a universal policy boundary]
-Central Agentic Ops governs explicitly integrated workflows, not every observed workflow
-or every workflow in a target repository. Merely hosting a workflow in the
-control repository does not apply CAO rollout policy. Use GitHub rulesets,
-Actions policy, protected environments, CODEOWNERS, and credential scoping to
-govern other automation.
-
-Standalone scheduled, event-driven, or manually invoked AWs can opt in through
-`shared/control.md` with `role: standalone` and their own
-`control-plane.workflows` entry. They receive the same admission gates and
-bounded rollout without requiring an orchestrator/worker pair. Their mission
-runs directly against the precomputed admitted set. This is explicit
-integration, not automatic governance of observed workflows.
-See [standalone workflow configuration](configuration.md#standalone-agentic-workflows).
-AW remains responsible for execution capabilities and safe outputs.
+CAO governs explicitly integrated standalone workflows and campaigns, not
+every observed workflow or every workflow hosted in a control repository.
+GitHub rulesets, Actions policy, protected environments, CODEOWNERS, credential
+scoping, and repository review requirements remain separate controls.
+Independent control repositories do not share cancellation or execution locks.
+See [Governance Boundary](deployment-and-governance.md#governance-boundary).
 :::
 
 ## Detailed References
 
-| Read | When you need to understand |
+| Read | When you need |
 | --- | --- |
-| [What is Central Agentic Ops?](architecture-at-a-glance.md) | CAO's purpose and available capabilities |
-| [How does CAO work?](how-cao-works.md) | The flow from observing existing workflows to evaluating evidence and opting into controlled execution |
-| [Deployment and Governance](deployment-and-governance.md) | Organization and enterprise topologies, ownership, target enrollment, provenance, reporting identity, and the broader governance boundary |
-| [Execution and Safety](execution-and-safety.md) | Layer responsibilities, the full execution flow, dispatch fields, invariants, failure behavior, and implemented controls |
-| [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign-specific authority, worker enforcement, eligibility, and worker ceilings |
-| [Rollout and Routing](rollout-and-routing.md) | Review-to-live promotion; review destinations; authority checks; and rollback |
-| [CAO Activity](activity.md) | Shared evidence collection, retained-snapshot behavior, and dashboard inputs |
+| [What is Central Agentic Ops?](architecture-at-a-glance.md) | Purpose, capabilities, and a short example |
+| [How does CAO work?](how-cao-works.md) | Collection, evidence interpretation, execution, promotion, and recovery |
+| [Deployment and Governance](deployment-and-governance.md) | Topologies, ownership, enrollment, and reporting identities |
+| [Admission Gates](admission.md) | Pre-activation and authorized-run checks |
+| [Execution and Safety](execution-and-safety.md) | Dispatch fields, invariants, and fail-closed behavior |
+| [Orchestrators and Workers](orchestrators-and-workers.md) | Campaign selection and single-target enforcement |
+| [Rollout and Routing](rollout-and-routing.md) | Review-to-live procedures and rollback |
+| [Deployment options](deployment.md) | Dashboard hosting and infrastructure choices |

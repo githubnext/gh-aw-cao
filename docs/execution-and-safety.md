@@ -3,7 +3,10 @@ title: Execution and Safety
 description: Follow the control envelope, execution invariants, and fail-closed behavior used by orchestrators and workers.
 ---
 
-Use this page when implementing or reviewing control-plane behavior. For the architectural summary, start with the [Architecture](architecture.md).
+Use this page when implementing or reviewing control-plane behavior. Start with
+[Execution boundaries](architecture.md#execution-boundaries) for the architectural
+model or [How does CAO work?](how-cao-works.md#opt-shared-work-into-controlled-execution)
+for the operating flow; this reference supplies the exact handoff and invariants.
 
 ## Responsibility Model
 
@@ -18,7 +21,7 @@ The orchestrator workflow is the rollout authority. worker workflows are enforce
 
 ## Execution Flow
 
-The execution boundary is the key architectural fact: orchestrators and workers run from the private central control repository. A worker checks out and analyzes one remote target at a time. Target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
+The execution boundary is the key architectural fact: orchestrators and workers run from the control repository. A worker checks out and analyzes one remote target at a time. Target repositories receive only declared safe outputs; they do not receive or run the control-plane workflow definitions.
 
 ![The control plane contains rollout policy and campaigns. Central orchestrators and workers inspect remote targets, emit declared safe outputs across the repository boundary, and correlate results with the originating central run.](assets/central-execution-how-it-works.svg)
 

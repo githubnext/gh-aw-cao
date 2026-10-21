@@ -8,10 +8,10 @@ description: Compare the ways you can host the Central Agentic Ops dashboard, an
 
 ## About deployment options
 
-Central Agentic Ops (CAO) has two parts that you deploy separately:
-
-- **The control plane.** The [control plane](architecture.md) always runs in GitHub Actions. Its [orchestrators and workers](orchestrators-and-workers.md) and the [CAO Activity](activity.md) collector are workflows in your control repository.
-- **The dashboard.** The [dashboard](dashboard.md) is a read-only view of the evidence that the control plane collects. A deployment option decides where the dashboard is served and where its query data lives.
+The [control plane and dashboard](architecture.md#control-plane-and-dashboard)
+are deployed separately. The control plane runs in GitHub Actions; this guide
+compares where to serve the dashboard and run its queries. For the evidence
+flow before choosing infrastructure, read [How does CAO work?](how-cao-works.md).
 
 Choosing a deployment option never changes campaign policy, rollout mode, credentials, or target authority. Those settings stay in the reviewed `.github/workflows/cao.json` file in your control repository. For more information, see [Control policy](configuration.md#control-policy) and [Roll out a campaign](rollout-and-routing.md).
 

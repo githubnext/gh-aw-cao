@@ -5,6 +5,10 @@ description: Promote one campaign from review through limited and scheduled live
 
 Roll out each campaign independently. Begin with one explicit target in `review`, inspect the proposal in the private review repository, and allow target writes only after that bounded scenario succeeds.
 
+For the overall lifecycle, start with
+[Review, promote, and recover](how-cao-works.md#review-promote-and-recover).
+This page supplies the campaign-specific policy fields and procedures.
+
 ## Promotion at a Glance
 
 1. Run the installed campaign in `review` against one target.
@@ -122,7 +126,7 @@ Promote each campaign independently:
 
 1. **Installed in review**: credentials and repository access are configured; proposals route to the private review destination without target writes.
 2. **Review verified**: run against one representative repository; inspect selection, prompts, permissions, correlation data, and the actionable proposal. For a Pages report, also verify that the access-controlled review site updates and production Pages does not.
-3. **Enrolled**: record target-owner approval and commit the assigned control repository to the target's protected `.github/workflows/cao.json`.
+3. **Enrolled**: record target-owner approval separately and commit the assigned live authority and explicit target scope in the control repository's reviewed `.github/workflows/cao.json`.
 4. **Limited live**: confirm no other control repository has live authority for the same campaign, then manually target one low-risk repository and verify the resulting safe output and downstream CI. For a Pages report, verify the production site update independently of the review site.
 5. **Scheduled live**: enable the scheduled campaign with `max_repos` kept small, then increase limits only from observed evidence.
 
