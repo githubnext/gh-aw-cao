@@ -71,10 +71,12 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /including its Pages deployment/);
   assert.match(monitoring, /authentication\.md#public-only-monitoring-quickstart/);
   const nativeSetup = readFileSync("internal/cli/native_setup.go", "utf8");
-  for (const prompt of ["Repositories CAO should read", "Authentication", "Apply this setup?"]) {
+  for (const prompt of ["Repositories", "Authentication", "Apply this setup?"]) {
     assert.ok(nativeSetup.includes(prompt) && monitoring.includes(`**${prompt}`), prompt);
   }
   assert.match(monitoring, /public-only[\s\S]*GITHUB_TOKEN/);
+  assert.match(monitoring, /Choose \*\*Authentication\*\* only if prompted/);
+  assert.match(monitoring, /Confirmed all-public scope[\s\S]*automatically uses `public-only`/);
   assert.match(monitoring, /Decline for non-public evidence/);
   assert.match(monitoring, /before retrying; do not publish an incomplete setup/);
   assert.doesNotMatch(monitoring, /gh cao validate/);
@@ -102,8 +104,14 @@ test("extension installation guidance distinguishes discovery, promotion, and ru
 test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {
   for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
     const source = readFileSync(filename, "utf8");
-    assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
-    assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
+    assert.ok(source.includes("https://githubnext.github.io/gh-cao/operation-patterns/"));
+    if (filename.endsWith(".go")) {
+      assert.ok(source.includes("Monitoring configured. Automation is optional; no workflows run."));
+      assert.ok(source.includes("Optional automation:"));
+    } else {
+      assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
+      assert.ok(source.includes("Describe the outcome, target scope, and execution requirements:"));
+    }
     assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
   }
   const skill = readFileSync("skills/setup-cao/SKILL.md", "utf8");
@@ -173,7 +181,7 @@ test("Node-only command documentation uses explicit runtime entry points without
   assert.match(docs, /gh cao setup --help/);
   const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
   assert.match(demo, /gh cao<\/span> setup/);
-  assert.match(demo, /data-terminal-output="setup">Next: gh cao doctor/);
+  assert.match(demo, /data-terminal-output="setup">Monitoring configured\.[\s\S]*Next: gh cao doctor/);
   assert.doesNotMatch(demo, /cao\.sh|<\/span> validate/);
 });
 

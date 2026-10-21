@@ -54,8 +54,8 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /Add the Dependabot campaign to CAO/);
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
-  assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
-  assert.match(terminalText, /Monitoring is configured; executing operations is optional/);
+  assert.match(terminalText, /then review, commit and push the installed files/);
+  assert.match(terminalText, /Monitoring configured\. Automation is optional; no workflows run/);
   assert.match(terminalText, /Example agent request — not a CLI command/);
   assert.match(terminal, /data-terminal-request="integration"/);
   assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
@@ -141,7 +141,10 @@ test("terminal output excerpts remain grounded in the production installer and C
   const installer = readFileSync("install.sh", "utf8");
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   assert.ok(installer.includes('"CAO runtime materialized and verified."'));
-  assert.ok(setup.includes("Next: gh cao doctor\\nThen review git diff and git status, commit, and push the installed files."));
+  const setupExcerpt = terminal.match(/data-terminal-output="setup">([^<]+)<\/pre>/)?.[1];
+  assert.ok(setupExcerpt, "terminal demo must include setup completion output");
+  assert.ok(setup.includes(`${setupExcerpt.replaceAll("\n", "\\n")}\\n`),
+    "setup excerpt must match the production CLI completion output");
   const integration = readFileSync("docs/configuration.md", "utf8");
   for (const requirement of [
     "Daily Repo Status from Agentics", "role: standalone", "enabled: false", "max-mode: review", "max-repositories: 1",

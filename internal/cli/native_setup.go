@@ -323,7 +323,7 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	if result["cancelled"] == true {
 		return nil
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured. No workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\n")
+	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured. Automation is optional; no workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/\n")
 	return err
 }
 

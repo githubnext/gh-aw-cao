@@ -651,7 +651,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /gh cao setup/);
   assert.match(setupSkill, /offers authentication choices\s+based on that scope/);
   assert.match(setupSkill, /setup fails after approved mutations[\s\S]*credential configuration metadata/);
-  assert.match(setupQuickstart, /offers authentication choices based on that scope[\s\S]*profile's\s+prerequisites/);
+  assert.match(setupQuickstart, /Choose \*\*Authentication\*\* only if prompted/);
+  assert.match(setupQuickstart, /Confirmed all-public scope[\s\S]*automatically uses `public-only`/);
+  assert.match(setupQuickstart, /Nonpublic scope requires credentials;[\s\S]*authentication\.md#choose-cross-repository-authentication/);
   assert.doesNotMatch(setupSkill, /workflow-token/);
   assert.match(setupSkill, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
