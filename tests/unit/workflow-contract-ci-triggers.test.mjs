@@ -128,6 +128,12 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "go.sum",
       "package.json",
       "package-lock.json",
+      "aw.yml",
+      "server/internal/simulator/setup_integration_test.go",
+      "server/internal/simulator/bootstrap_integration_test.go",
+      "server/go.mod",
+      "server/go.sum",
+      "tests/unit/workflow-contract-ci-triggers.test.mjs",
     ]) {
       assert.ok(runsForFile("go-extension.yml", event, file), `${event}: ${file}`);
     }
@@ -201,6 +207,37 @@ test("Go extension keeps authenticated doctor integration separate from unit and
   assert.equal(auth.if, undefined);
   assert.equal(auth["continue-on-error"], undefined);
   assert.equal(auth.run, "make authtests");
+});
+
+test("Go extension setup simulator runs independently without live credentials", () => {
+  const source = workflow("go-extension.yml");
+  const { jobs, permissions } = parse(source);
+  const job = jobs["extension-setup-simulator"];
+  const steps = job.steps;
+  const checkout = steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+  const go = steps.find((step) => step.uses?.startsWith("actions/setup-go@"));
+  const install = steps.find((step) => step.uses === "./.github/actions/setup-gh-aw");
+  const run = steps.find((step) => step.run === "npm run test:integration:setup");
+  assert.deepEqual(permissions, { contents: "read" });
+  assert.equal(checkout.with["persist-credentials"], false);
+  assert.equal(go.with["go-version-file"], "go.mod");
+  assert.ok(go.with["cache-dependency-path"].includes("server/go.sum"));
+  assert.ok(install);
+  assert.ok(steps.indexOf(install) < steps.indexOf(run));
+  assert.deepEqual(run.env, {
+    GH_TOKEN: "",
+    GITHUB_TOKEN: "",
+    GH_ENTERPRISE_TOKEN: "",
+    GITHUB_ENTERPRISE_TOKEN: "",
+  });
+  assert.equal(job.env, undefined);
+  assert.equal(job.if, undefined);
+  assert.equal(job.needs, undefined);
+  assert.equal(run["continue-on-error"], undefined);
+  assert.doesNotMatch(JSON.stringify(job), /secrets\.|github\.token|id-token/);
+  const { scripts } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  assert.match(scripts["test:integration:setup"], /CAO_SETUP_INTEGRATION=1 go -C server test -race/);
+  assert.match(scripts["test:integration:setup"], /-run '\^TestCAOSetupIntegration\$'/);
 });
 
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {

@@ -9,6 +9,10 @@ on:
       - .golangci.yml
       - cmd/**
       - internal/**
+      - server/internal/simulator/**
+      - server/go.mod
+      - server/go.sum
+      - aw.yml
       - dashboard/catalog.go
       - go.mod
       - go.sum
@@ -17,6 +21,7 @@ on:
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
+      - tests/unit/workflow-contract-ci-triggers.test.mjs
       - tests/integration/gh-extension-installation.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
@@ -34,6 +39,10 @@ on:
       - .golangci.yml
       - cmd/**
       - internal/**
+      - server/internal/simulator/**
+      - server/go.mod
+      - server/go.sum
+      - aw.yml
       - dashboard/catalog.go
       - go.mod
       - go.sum
@@ -42,6 +51,7 @@ on:
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
+      - tests/unit/workflow-contract-ci-triggers.test.mjs
       - tests/integration/gh-extension-installation.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
@@ -114,6 +124,33 @@ jobs:
           ./gh-cao setup auth enterprise-app --help
           ./gh-cao setup auth token --help
           ./gh-cao pages --json > /dev/null
+
+  extension-setup-simulator:
+    name: Setup options against local GitHub simulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            server/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+      - name: Install policy-pinned gh-aw prerequisite
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
+      - name: Run offline setup integration tests
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+          GH_ENTERPRISE_TOKEN: ""
+          GITHUB_ENTERPRISE_TOKEN: ""
+        run: npm run test:integration:setup
 
   extension-authtests:
     name: Doctor authenticated integration tests
