@@ -61,6 +61,17 @@ Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
 explicit organization or team authorization, and an exact trusted-host policy.
 Administrative rebuilds additionally require an explicit GitHub login in
 `CAO_GITHUB_ADMIN_USERS`.
+Hosted rebuilds additionally require durable audit admission/start evidence.
+Their `admin.rebuild.*` events retain the initiating actor and independent
+rebuild correlation through terminal success, failure or cancellation.
+An audit outage before reconciliation prevents the rebuild; a terminal outage
+cannot undo an already committed canonical revision and is reported separately
+through status `auditState` and audit failure telemetry. JSON mirrors alone do
+not satisfy the hosted requirement. Local loopback rebuilds retain the explicit
+capability-only, non-durable exception. Operators must independently preserve
+committed audit rows and reconcile lifecycle IDs missing terminal evidence after
+crashes/outages; see the
+[runtime contract](../specs/server-operational-storage.md#administrative-rebuild-evidence).
 Mutating browser requests require the session-bound CSRF token. The webhook
 route is exempt from browser authentication only because it independently
 requires a valid `X-Hub-Signature-256` signature and delivery identity.

@@ -2326,6 +2326,33 @@ administrators may call `POST /api/admin/rebuild`; it validates input and
 atomically replaces current Postgres sources and state. A failed replacement
 leaves the previous committed state intact.
 
+Hosted rebuild admission and worker start require the durable operational audit
+service. Redis or volatile-memory hosting without a separately supplied durable
+audit service returns `503` for this administrative action; automatic collection,
+startup ingestion and signed webhook reconciliation are unchanged. The loopback
+bearer profile remains compatible, identifying the actor as `local-bearer`
+(capability attribution, not a verified person).
+
+`admin.rebuild.admitted`, `admin.rebuild.started` and `admin.rebuild.completed`
+retain the authenticated actor, a fresh `rebuild_id`, prior revision, timestamps,
+fixed outcome/reason and successful revision/data revision. `rebuildId` joins
+the `202` receipt and replaceable status to independent retained audit history;
+it is not the private lease token. Status `auditState` is `pending`, `recorded`
+(durable), `local` (no durability guarantee), or `unavailable`. A successful
+publication with unavailable terminal evidence is still published and notified,
+not rolled back or automatically retried. Status persistence failures separately
+attempt `admin.rebuild.status_failed`. Store and mirror errors are logged without
+payloads or raw source errors; mirror-only failures do not invalidate confirmed
+durable evidence.
+
+Forward committed rows with the existing audit export/delivery facilities and
+verify them with independent read-only access and external anchors. Alert on
+audit `stored=false`, status-write failures and admitted/started IDs without a
+terminal event. A crash or simultaneous outage can leave an incomplete
+lifecycle: reconcile canonical revision state and independent logs manually;
+neither status reads nor a later rebuild reconstruct a missing outcome.
+See [administrative rebuild evidence](../specs/server-operational-storage.md#administrative-rebuild-evidence).
+
 `POST /api/v1/value` publishes one prepared operational-value evidence envelope
 (JSON or one JSONL record, at most 8 MiB). It requires PostgreSQL and an already
 observed repository/workflow; it neither enrolls targets nor runs uploaded code.
