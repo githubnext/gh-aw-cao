@@ -12,11 +12,11 @@ For the short intent → output → Git evidence flow, see
 Research and replay details are in the
 [blog article](/gh-cao/blog/measuring-agent-work-value/).
 
-The dashboard's **Repository measurements** view starts with repositories. Select a repository to see its retained outcome measurements across campaigns and standalone workflows; campaign registration is not required. Each repository appears once in the overview, while workflow, measure, native unit, direction, and evaluator boundaries remain separate in history and comparisons. **Evidence** lists repository coverage and the latest native values. Missing measurements are not zero value. Native run-scoped gh-aw operational-grader results are separate evidence and are not included in this repository-outcome view.
-
 Open **Value** in the sidebar (the trophy icon) to see evidence-backed workflow
-result cards. **Repository measurements** preserves the existing repository-first
-view; a workflow's **Value** tab is also a shortcut to its reports.
+result cards; a workflow's **Value** tab is also a shortcut to its reports.
+The legacy **Operational Value** page and its **Repository measurements** tab
+have been removed. Existing native observations remain in the canonical data
+model; missing measurements are not zero value.
 A result card appears when a validated report packet has been published.
 For example, **↑ +38 files · Worse** means the
 independently measured repository population increased by 38 since its displayed

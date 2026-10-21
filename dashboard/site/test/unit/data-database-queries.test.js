@@ -14,7 +14,6 @@ import {
   queryIndexedDatabaseSources
 } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
-import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { createDashboardQueryBudget, executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
@@ -376,7 +375,7 @@ describe('canonical view sources', () => {
     })]);
   });
 
-  it('renders campaignless repository outcomes from canonical storage through worker view payloads', async () => {
+  it('retains campaignless repository observations through the canonical worker boundary', async () => {
     await processDataRequest({ operation: 'query-canonical-database-diagnostics' });
     const records = [];
     for (const [index, value] of [4, 0].entries()) {
@@ -399,28 +398,20 @@ describe('canonical view sources', () => {
     await ingestCachedGhAwJsonl(indexedDB, `${records.map(row => JSON.stringify(row)).join('\n')}\n`, {
       now: Date.parse(metadata['as-of'])
     });
-    const projected = await queryCanonicalViewSources(indexedDB, sources, ['repositories', 'operational-values']);
-    for (const [pageId, viewId, expected] of [
-      ['operational-value', 'operational-value-signals', {
-        'repository-coordinate': 'octo/standalone', signal: 'Improving', 'measured-goals': 1
-      }],
-      ['operational-value-repository', 'repository-outcome-comparison', {
-        'operational-value': 0, 'native-change': -4, movement: 'Improving', 'value-workflow': 'standalone'
-      }]
-    ]) {
-      const page = authoritativeDashboard.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === pageId);
-      const payload = compileDashboardViewPayloadQueries(page, String(pageId), {
-        viewId: String(viewId), queries: dashboardQueries,
-        routeParameters: { organization: 'octo', repository: 'standalone' },
-        evaluatedAt: metadata['as-of']
-      });
-      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
-        operation: 'execute-dashboard-queries', queries: payload.queries,
-        sourceNames: payload.aliases, sources: projected
-      }));
-      expect(result[payload.aliases[0]].metadata?.availability).toBe('available');
-      expect(result[payload.aliases[0]].rows).toMatchObject([expected]);
-    }
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'query-canonical-dashboard', sourceNames: ['operational-values'],
+      context: { queries: dashboardQueries, pages: authoritativeDashboard.dashboard.pages }
+    }));
+    expect(result['operational-values'].metadata?.availability).toBe('available');
+    expect(result['operational-values'].rows).toHaveLength(2);
+    expect(result['operational-values'].rows).toEqual(expect.arrayContaining(
+      [4, 0].map(value => expect.objectContaining({
+        organization: 'octo', repository: 'standalone', 'workflow-slug': 'standalone',
+        'operational-value-definition': 'remaining-alerts', 'operational-value': value,
+        'operational-value-unit': 'alerts', 'operational-value-direction': 'decrease',
+        'evaluator-digest': 'a'.repeat(64), 'coverage-status': 'complete'
+      }))
+    ));
   });
 
   it('projects safe-output links declaratively for issues and pull requests', async () => {

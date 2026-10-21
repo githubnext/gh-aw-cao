@@ -6,6 +6,7 @@ import { dashboardQueryOutputFields } from '../../src/data/queries/declarative.j
 import { TABLE_FIELDS } from '../../src/specification.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/detail-query-contracts.json' with { type: 'json' };
+import nativeMeasureHistoryQuery from '../fixtures/native-measure-history-query.json' with { type: 'json' };
 
 const dashboard = authoritativeDashboard.dashboard;
 /** @type {import('../../src/presenter.js').SourceMetadata} */
@@ -153,7 +154,7 @@ describe('bounded element query contracts', () => {
   });
 
   it('projects ordered metric panels and preserves duplicate observations and individual run links', () => {
-    const definition = dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === 'operational-value-plot-series');
+    const definition = /** @type {import('../../src/data/queries/declarative.js').DashboardQuery} */ (nativeMeasureHistoryQuery);
     expect(dashboardQueryOutputFields(definition, () => TABLE_FIELDS['operational-values'])).toEqual(contract.temporalPanelFields);
     const base = {
       campaign: 'selected', organization: 'org', repository: 'z',
@@ -162,8 +163,13 @@ describe('bounded element query contracts', () => {
     };
     const links = [1, 2, 3].map((run) => ({ relation: 'run', href: `https://github.com/org/repo/actions/runs/${run}` }));
     const payload = compileDashboardViewPayloadQueries(
-      dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'operational-value-repository'), 'operational-value-repository',
-      { queries: dashboard.queries, viewId: 'repository-outcome-history',
+      { id: 'measurement-query', kind: 'custom', views: [{
+        id: 'repository-outcome-history', mark: 'table',
+        data: { source: 'operational-value-plot-series', arguments: [
+          { name: 'organization', field: 'organization' }, { name: 'repository', field: 'repository' }
+        ] }
+      }] }, 'measurement-query',
+      { queries: [nativeMeasureHistoryQuery], viewId: 'repository-outcome-history',
         sourceNames: ['operational-value-plot-series'], routeParameters: { organization: 'org', repository: 'z' } }
     );
     const result = execute(payload, sources({

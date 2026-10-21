@@ -2712,7 +2712,10 @@ treated as durable evidence.
 
 ## 31.1 Campaign outcome signals
 
-The Operational Value overview SHALL derive campaign signals from retained,
+The legacy Operational Value overview and repository drill-downs are no longer
+shipped. The built-in **Value** page uses the report evidence in Section 31.2.
+Canonical observations and their storage/retention semantics remain unchanged.
+The comparison requirements below apply when authoring queries over retained,
 repository-scoped primary Operational Value observations, not run conclusions.
 SQL and IndexedDB query execution SHALL use the same Dashboard Language queries.
 This presentation introduces no derived-result store or interactive acquisition.
