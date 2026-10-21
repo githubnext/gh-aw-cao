@@ -97,10 +97,21 @@ control matrix, findings, limitations and operator decision requests.
 
 | Workstream | Working criteria focus | Initial state |
 | --- | --- | --- |
-| IAM: identity and HTTP access | CC6, CC7; authorization, sessions, transport and resource admission | Pending investigation |
-| DATA: persistence and data handling | CC6, CC7; candidate C1, PI1 and A1; storage, integrity, retention and recovery | Pending investigation |
-| EXEC: admission, gateway and execution | CC6, CC7, CC8; candidate PI1; bounded authority and privileged side effects | Pending investigation |
-| OPS: audit, operations and releases | CC7, CC8, CC9; candidate A1; evidence integrity and operational dependencies | Pending investigation |
+| IAM: identity and HTTP access | CC6, CC7; authorization, sessions, transport and resource admission | Launched; report pending |
+| DATA: persistence and data handling | CC6, CC7; candidate C1, PI1 and A1; storage, integrity, retention and recovery | Launched; report pending |
+| EXEC: admission, gateway and execution | CC6, CC7, CC8; candidate PI1; bounded authority and privileged side effects | Launched; report pending |
+| OPS: audit, operations and releases | CC7, CC8, CC9; candidate A1; evidence integrity and operational dependencies | Launched; report pending |
+
+The investigation baseline, including the shared assessment procedure, is
+`e3daa5d7ad4fa537e6432359076b44f4a90be171`. It changes documentation only
+relative to the runtime revision above. Coordinated session identifiers:
+
+| Workstream | Session ID |
+| --- | --- |
+| IAM | `0cab34cf-451f-469b-88d8-6c3727a86702` |
+| DATA | `3665e605-4134-497a-b22a-08335594f363` |
+| EXEC | `295a6967-1963-4ef9-80a1-ec87bee9f18b` |
+| OPS | `76a730cd-672d-4c67-9e03-cb2c3c0460fe` |
 
 These are working mappings, not conclusions about whole criteria.
 Cross-cutting CC1-CC5 governance and risk assessment remain coordinator-owned
