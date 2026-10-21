@@ -107,6 +107,14 @@ the complete application, not just `/api/`. Do not deploy the frontend separatel
 to Pages, a static website host, or an object-storage website endpoint.
 Pages is a different deployment mode whose browser owns ingestion and queries.
 
+Hosted revision streams reconnect before membership authorization, token-refresh
+eligibility or administrator health entitlement expires. A 20-second session
+check also closes revoked sessions and fails closed on session-store outages.
+Reconnection uses ordinary OAuth authentication and can renew cookies; an
+already-flushed stream cannot. See [stream authorization bounds](SECURITY.md)
+for revocation latency and proxy-delivery limitations. Local bearer streams
+remain open until cancellation or server drain.
+
 ## Local SQLite snapshot serving
 
 Build the dashboard once, then run the local server without PostgreSQL, Redis,
