@@ -181,3 +181,22 @@ func TestFromEnvAppendsWithPrivateMode(t *testing.T) {
 		t.Fatalf("mode = %v", info.Mode().Perm())
 	}
 }
+
+func TestMergeStoredAttrsKeepsCallerValuesAndAddsAuthoritativeOnes(t *testing.T) {
+	caller := []slog.Attr{slog.String("actor", "alice"), slog.String("queue", "caller")}
+	merged := mergeStoredAttrs(caller, map[string]string{"queue": "store", "command": "run"})
+	got := map[string]string{}
+	for _, attr := range merged {
+		got[attr.Key] = attr.Value.String()
+	}
+	if len(merged) != 3 || got["queue"] != "caller" || got["command"] != "run" || got["actor"] != "alice" {
+		t.Fatalf("merged attributes = %v", got)
+	}
+}
+
+func TestMergeStoredAttrsWithoutStoredAttributesIsUnchanged(t *testing.T) {
+	caller := []slog.Attr{slog.String("k", "v")}
+	if merged := mergeStoredAttrs(caller, nil); len(merged) != 1 || merged[0].Key != "k" {
+		t.Fatalf("merged = %v", merged)
+	}
+}

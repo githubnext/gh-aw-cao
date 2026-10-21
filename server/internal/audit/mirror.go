@@ -23,7 +23,12 @@ func (m *mirror) write(ctx context.Context, fields []slog.Attr) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, MirrorWriteTimeout)
 	defer cancel()
 	reason := "success"
-	defer func() { observeMirror(context.WithoutCancel(ctx), reason) }()
+	defer func() {
+		if reason != "success" {
+			auditLog.Printf("mirror write unconfirmed: reason=%s", reason)
+		}
+		observeMirror(context.WithoutCancel(ctx), reason)
+	}()
 	select {
 	case m.active <- struct{}{}:
 	case <-ctx.Done():
