@@ -32,6 +32,39 @@ the focused contracts.
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
 
+## Local GitHub bootstrap integration
+
+Run `npm run test:integration:bootstrap` from the repository root with Go,
+Node.js 24 or newer, Git, Bash, curl, GitHub CLI, and the root manifest's
+minimum gh-aw version installed. Set `CAO_BOOTSTRAP_GH_AW_BINARY` if gh-aw is
+not in the standard GitHub CLI extension directory.
+The `cao-bootstrap.yml` workflow runs this test daily, on relevant pull
+requests, and manually, retaining the test log for 14 days.
+
+The test builds the current CAO CLI as a local release fixture, then runs the
+unmodified `install.sh --create-repo` and `install.sh --setup`, real `gh`
+commands, and HTTPS Git push/clone against `simulator.BootstrapAPI`. Its
+stateful surface implements repository creation and visibility, the GraphQL
+selections used by gh, release metadata and checksum-verified asset downloads,
+workflow-sourced Pages, and Actions variables. Unknown routes and fields fail
+explicitly. The root campaign is installed and materialized from the current
+checkout, not a published CAO revision.
+
+An allowlisted CONNECT proxy maps the installer's fixed `github.com` and
+`api.github.com` URLs to one loopback simulator with an ephemeral trusted
+certificate. It never forwards to GitHub. A local Git HTTP backend receives
+the committed files, and a fresh clone must contain the exact verified policy.
+The test checks that private non-interactive setup fails without changing
+policy, repeated public monitoring setup is idempotent, and no campaign or
+agent operation is enabled. Home, Git configuration, CLI extensions, and
+credentials are isolated; only a synthetic token is used in the test.
+
+This covers control-repository bootstrap and publication, not execution of
+GitHub Actions jobs, rendering of a deployed Pages site, GitHub App consent,
+or Azure infrastructure provisioning. The fast bootstrap API regression tests
+also run with the ordinary simulator unit suite; the external-tool integration
+is opt-in outside its dedicated npm command and CI job.
+
 ## Secret-free fleet stress simulation
 
 Run `npm run test:stress:cao` from the repository root. The dedicated
