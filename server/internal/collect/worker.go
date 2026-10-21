@@ -240,7 +240,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 				return false
 			}
 		case installationID == 0:
-			if err := w.Runner.Lake.Forget(task.Repository); err != nil {
+			if err := w.Runner.Lake.ForgetContext(ctx, task.Repository); err != nil {
 				workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
 				if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
 					workerLog.Printf("task retry failed repository=%s", task.Repository)
@@ -257,7 +257,7 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 		}
 	}
 	if task.Erase {
-		if err := w.Runner.Lake.Forget(task.Repository); err != nil {
+		if err := w.Runner.Lake.ForgetContext(ctx, task.Repository); err != nil {
 			workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
 			if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
 				workerLog.Printf("task retry failed repository=%s", task.Repository)

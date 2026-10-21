@@ -86,9 +86,6 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 			}
 			cursor = next
 		}
-		if err := detectAmbiguousShardPrefixes(b.Lake, fresh, previous); err != nil {
-			return err
-		}
 		for _, s := range scopes {
 			if err := b.Enrollment.addRepositories(ctx, s.installation.ID, s.names); err != nil {
 				return err
@@ -109,7 +106,7 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 				_, err = b.Enrollment.removeRepositories(ctx, owner, []string{name})
 			}
 			if err == nil {
-				err = b.Lake.Forget(name)
+				err = b.Lake.ForgetContext(ctx, name)
 			}
 			unlockCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 			unlockErr := b.Queue.UnlockRepository(unlockCtx, name, token)
@@ -141,35 +138,6 @@ func (b Backfill) reconstructScope(ctx context.Context) (repositories []enrolled
 	})
 	volatileRecoveryLog.Printf("scope reconstruction completed installations=%d failures=%d err=%t", installations, failures, err != nil)
 	return
-}
-
-// detectAmbiguousShardPrefixes reports whether any two distinct repository
-// names across fresh and previous scope collide on the same evidence-lake
-// shard prefix. It is a pure function extracted from reconstructScope's
-// inline closure so prefix collisions are independently testable against
-// plain repository-name sets, without constructing a Backfill or mutating
-// enrollment state.
-func detectAmbiguousShardPrefixes(lake Lake, fresh map[string]int64, previous map[string]struct{}) error {
-	prefixes := make(map[string]string, len(previous)+len(fresh))
-	checkPrefix := func(name string) error {
-		prefix := lake.ShardPrefix(name)
-		if owner, exists := prefixes[prefix]; exists && owner != name {
-			return errors.New("ambiguous retained shard prefixes prevent safe scope recovery")
-		}
-		prefixes[prefix] = name
-		return nil
-	}
-	for name := range fresh {
-		if err := checkPrefix(name); err != nil {
-			return err
-		}
-	}
-	for name := range previous {
-		if err := checkPrefix(name); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // withdrawnRepositories reports the previously retained repository names that
@@ -213,7 +181,8 @@ func (l Lake) RetainedRepositories(ctx context.Context, limit int) ([]string, er
 		if err != nil {
 			return nil, err
 		}
-		if !strings.HasPrefix(entry.Name(), l.ShardPrefix(name)) {
+		if !strings.HasPrefix(entry.Name(), l.ShardPrefix(name)) &&
+			!strings.HasPrefix(entry.Name(), legacyShardPrefix(name)) {
 			return nil, errors.New("retained shard filename does not match its authoritative identity")
 		}
 		seen[name] = struct{}{}

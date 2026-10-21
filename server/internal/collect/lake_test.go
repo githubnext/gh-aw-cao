@@ -1,10 +1,208 @@
 package collect
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestShardPrefixesAreDistinctAndPrefixFree(t *testing.T) {
+	lake := Lake{}
+	repositories := []string{"octo-a/b", "octo/a-b", "octo/a", "octo/a-logs-b", "octo/a.b_c"}
+	for _, repository := range repositories {
+		if _, err := NormalizeRepository(repository); err != nil {
+			t.Fatal(err)
+		}
+		prefix := lake.ShardPrefix(repository)
+		if prefix != lake.ShardPrefix(strings.ToUpper(repository)) {
+			t.Fatal("repository case changed the shard identity")
+		}
+		if !strings.Contains(prefix, "~") {
+			t.Fatal("versioned prefix must be outside the legacy filename alphabet")
+		}
+		for _, other := range repositories {
+			if repository != other && strings.HasPrefix(lake.ShardPrefix(other), prefix) {
+				t.Fatalf("%s prefix overlaps %s", repository, other)
+			}
+		}
+	}
+	if legacyShardPrefix("octo-a/b") != legacyShardPrefix("octo/a-b") {
+		t.Fatal("regression fixture does not reproduce the legacy collision")
+	}
+	maximum := strings.Repeat("a", 39) + "/" + strings.Repeat("b", 100)
+	if length := len(lake.ShardPrefix(maximum) + "legacy-1792594800-0000-0123456789abcdef.jsonl"); length > 255 {
+		t.Fatalf("valid maximum-length coordinate exceeds filesystem basename limit: %d", length)
+	}
+}
+
+func writeIdentityShard(t *testing.T, path, repository string) []byte {
+	t.Helper()
+	content := []byte(`{"request":{"repository":"` + repository + `"}}` + "\n")
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return content
+}
+
+func TestForgetPreservesCollidingLegacyAndVersionedEvidence(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{lake.ShardDirectory(), lake.RunsDirectory(), lake.RecordsDirectory()} {
+		for i, repository := range []string{"octo-a/b", "octo/a-b"} {
+			writeIdentityShard(t, filepath.Join(directory, legacyShardPrefix(repository)+string(rune('1'+i))+".jsonl"), repository)
+			writeIdentityShard(t, filepath.Join(directory, lake.ShardPrefix(repository)+"1.jsonl"), repository)
+		}
+	}
+	if err := lake.Forget("Octo-A/B"); err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{lake.ShardDirectory(), lake.RunsDirectory(), lake.RecordsDirectory()} {
+		for _, name := range []string{legacyShardPrefix("octo/a-b") + "2.jsonl", lake.ShardPrefix("octo/a-b") + "1.jsonl"} {
+			if _, err := os.Stat(filepath.Join(directory, name)); err != nil {
+				t.Fatalf("unrelated colliding repository evidence lost: %v", err)
+			}
+		}
+		for _, name := range []string{legacyShardPrefix("octo-a/b") + "1.jsonl", lake.ShardPrefix("octo-a/b") + "1.jsonl"} {
+			if _, err := os.Stat(filepath.Join(directory, name)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("target evidence retained: %v", err)
+			}
+		}
+	}
+}
+
+func TestAmbiguousLegacyShardsFailBeforeMutation(t *testing.T) {
+	for _, content := range []string{
+		"{}\n", "{broken\n",
+		"{\"request\":{\"repository\":\"octo-a/b\"}}\n{\"request\":{\"repository\":\"octo/a-b\"}}\n",
+		"{\"request\":{\"repository\":\"octo-a/b\"},\"run\":{\"repository_full_name\":\"octo/a-b\"}}\n",
+	} {
+		t.Run(content, func(t *testing.T) {
+			lake := Lake{Directory: t.TempDir()}
+			if err := lake.Prepare(); err != nil {
+				t.Fatal(err)
+			}
+			valid := filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo-a/b")+"1.jsonl")
+			expected := writeIdentityShard(t, valid, "octo-a/b")
+			legacy := filepath.Join(lake.ShardDirectory(), legacyShardPrefix("octo-a/b")+"2.jsonl")
+			if err := os.WriteFile(legacy, []byte(content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := lake.MigrateRepositoryShards(t.Context(), "octo-a/b"); err == nil {
+				t.Fatal("ambiguous legacy evidence migrated")
+			}
+			if err := lake.Forget("octo-a/b"); err == nil {
+				t.Fatal("ambiguous legacy erasure reported success")
+			}
+			actual, err := os.ReadFile(valid) // #nosec G304 -- path is a shard in this test's temporary lake.
+			if err != nil || !bytes.Equal(actual, expected) {
+				t.Fatalf("valid shard mutated before preflight completed: %v", err)
+			}
+			actual, err = os.ReadFile(legacy) // #nosec G304 -- path is a shard in this test's temporary lake.
+			if err != nil || string(actual) != content {
+				t.Fatalf("ambiguous evidence was not preserved: %v", err)
+			}
+		})
+	}
+}
+
+func TestMigrateRepositoryShardsPreservesCollidingLegacyOwnersAndReplay(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(lake.ShardDirectory(), legacyShardPrefix("octo-a/b")+"1.jsonl")
+	other := filepath.Join(lake.ShardDirectory(), legacyShardPrefix("octo/a-b")+"2.jsonl")
+	expected := writeIdentityShard(t, target, "octo-a/b")
+	otherContent := writeIdentityShard(t, other, "octo/a-b")
+	before, err := lake.RetainedRepositories(t.Context(), 10)
+	if err != nil || len(before) != 2 {
+		t.Fatalf("legacy replay identities: %v, %v", before, err)
+	}
+	for range 2 {
+		if err := lake.MigrateRepositoryShards(t.Context(), "octo-a/b"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	destination := filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo-a/b")+"legacy-1.jsonl")
+	actual, err := os.ReadFile(destination) // #nosec G304 -- path is a shard in this test's temporary lake.
+	if err != nil || !bytes.Equal(actual, expected) {
+		t.Fatalf("migration lost target cache bytes: %v", err)
+	}
+	actual, err = os.ReadFile(other) // #nosec G304 -- path is a shard in this test's temporary lake.
+	if err != nil || !bytes.Equal(actual, otherContent) {
+		t.Fatalf("migration changed colliding owner's cache bytes: %v", err)
+	}
+	if _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("legacy source not retired: %v", err)
+	}
+	after, err := lake.RetainedRepositories(t.Context(), 10)
+	if err != nil || len(after) != 2 {
+		t.Fatalf("mixed-layout replay identities: %v, %v", after, err)
+	}
+}
+
+func TestMigrateRepositoryShardsNeverClobbersDestinationAndResumesLinks(t *testing.T) {
+	for _, resume := range []bool{false, true} {
+		t.Run(map[bool]string{false: "conflict", true: "resume"}[resume], func(t *testing.T) {
+			lake := Lake{Directory: t.TempDir()}
+			if err := lake.Prepare(); err != nil {
+				t.Fatal(err)
+			}
+			source := filepath.Join(lake.ShardDirectory(), legacyShardPrefix("octo/api")+"1.jsonl")
+			expected := writeIdentityShard(t, source, "octo/api")
+			destination := filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo/api")+"legacy-1.jsonl")
+			if resume {
+				if err := os.Link(source, destination); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := os.WriteFile(destination, append(expected, '\n'), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			err := lake.MigrateRepositoryShards(t.Context(), "octo/api")
+			if resume && err != nil {
+				t.Fatal(err)
+			}
+			if !resume && err == nil {
+				t.Fatal("migration replaced existing evidence")
+			}
+			if !resume {
+				actual, err := os.ReadFile(source) // #nosec G304 -- path is a shard in this test's temporary lake.
+				if err != nil || !bytes.Equal(actual, expected) {
+					t.Fatalf("conflict lost legacy evidence: %v", err)
+				}
+				actual, err = os.ReadFile(destination) // #nosec G304 -- path is a shard in this test's temporary lake.
+				if err != nil || !bytes.Equal(actual, append(expected, '\n')) {
+					t.Fatalf("conflict overwrote destination: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestForgetPreflightsEveryDirectoryAndRejectsSymlinks(t *testing.T) {
+	lake := Lake{Directory: t.TempDir()}
+	if err := lake.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	raw := filepath.Join(lake.ShardDirectory(), lake.ShardPrefix("octo/api")+"1.jsonl")
+	expected := writeIdentityShard(t, raw, "octo/api")
+	link := filepath.Join(lake.RecordsDirectory(), legacyShardPrefix("octo/api")+"1.jsonl")
+	if err := os.Symlink(raw, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := lake.Forget("octo/api"); err == nil {
+		t.Fatal("symlink accepted for erasure")
+	}
+	actual, err := os.ReadFile(raw) // #nosec G304 -- path is a shard in this test's temporary lake.
+	if err != nil || !bytes.Equal(actual, expected) {
+		t.Fatalf("cross-directory preflight deleted valid evidence: %v", err)
+	}
+}
 
 func TestLakeValidateRejectsMissingOrRelativeDirectory(t *testing.T) {
 	if err := (Lake{}).Validate(); err == nil {
@@ -99,14 +297,12 @@ func TestLakeForgetRemovesOnlyMatchingShardsAcrossDirectories(t *testing.T) {
 	if err := lake.Prepare(); err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
-	const target = "octo-cat-widgets"
-	const other = "octo-cat-widgets-extra"
+	const target = "octo-cat/widgets"
+	const other = "octo-cat/widgets-extra"
 	for _, directory := range []string{lake.ShardDirectory(), lake.RunsDirectory(), lake.RecordsDirectory()} {
-		for _, name := range []string{
-			lake.ShardPrefix(target) + "1.jsonl",
-			lake.ShardPrefix(other) + "1.jsonl",
-		} {
-			if err := os.WriteFile(filepath.Join(directory, name), []byte("{}"), 0o600); err != nil {
+		for _, repository := range []string{target, other} {
+			name := lake.ShardPrefix(repository) + "1.jsonl"
+			if err := os.WriteFile(filepath.Join(directory, name), []byte(`{"request":{"repository":"`+repository+`"}}`), 0o600); err != nil {
 				t.Fatalf("seed shard %s: %v", name, err)
 			}
 		}
@@ -169,40 +365,5 @@ func TestLakePopulatedReflectsManifestAndRunShards(t *testing.T) {
 	}
 	if !populated {
 		t.Fatal("expected a lake with a manifest and a run shard to be populated")
-	}
-}
-
-func TestRemoveMatchingFilesCountsAndFiltersByPrefix(t *testing.T) {
-	directory := t.TempDir()
-	for _, name := range []string{"keep-1.jsonl", "match-1.jsonl", "match-2.jsonl"} {
-		if err := os.WriteFile(filepath.Join(directory, name), []byte("{}"), 0o600); err != nil {
-			t.Fatalf("seed %s: %v", name, err)
-		}
-	}
-	if err := os.Mkdir(filepath.Join(directory, "match-subdir"), 0o750); err != nil {
-		t.Fatalf("seed subdirectory: %v", err)
-	}
-	removed, err := removeMatchingFiles(directory, "match-")
-	if err != nil {
-		t.Fatalf("removeMatchingFiles: %v", err)
-	}
-	if removed != 2 {
-		t.Fatalf("expected 2 files removed, got %d", removed)
-	}
-	if _, err := os.Stat(filepath.Join(directory, "keep-1.jsonl")); err != nil {
-		t.Fatalf("expected unrelated file retained: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(directory, "match-subdir")); err != nil {
-		t.Fatalf("expected matching subdirectory retained: %v", err)
-	}
-}
-
-func TestRemoveMatchingFilesToleratesMissingDirectory(t *testing.T) {
-	removed, err := removeMatchingFiles(filepath.Join(t.TempDir(), "missing"), "match-")
-	if err != nil {
-		t.Fatalf("unexpected error for a missing directory: %v", err)
-	}
-	if removed != 0 {
-		t.Fatalf("expected 0 files removed, got %d", removed)
 	}
 }
