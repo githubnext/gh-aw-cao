@@ -166,3 +166,26 @@ jobs:
             core.summary.addHeading('Promoted immutable prerelease to latest')
               .addCodeBlock(JSON.stringify(receipt, null, 2), 'json');
             await core.summary.write();
+  verify-install:
+    name: Verify public GitHub CLI installation
+    needs: promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Install and run the promoted extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          extension_home="$(mktemp -d "$RUNNER_TEMP/gh-cao-install.XXXXXX")"
+          trap 'rm -rf -- "$extension_home"' EXIT
+          export XDG_DATA_HOME="$extension_home/data"
+          export XDG_STATE_HOME="$extension_home/state"
+          export XDG_CACHE_HOME="$extension_home/cache"
+          export GH_PROMPT_DISABLED=1
+          gh extension install "$GITHUB_REPOSITORY"
+          test "$(gh cao --version)" = "gh cao version $RELEASE_TAG"
+          gh cao --help

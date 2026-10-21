@@ -35,6 +35,40 @@ curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
 gh cao --version
 ```
 
+### GitHub CLI release discovery
+
+`gh extension install githubnext/gh-cao` currently fails because GitHub's
+latest stable release, `v0.1.19`, contains only the CAO runtime archive and
+its checksum, not extension binaries. Newer published prereleases contain
+the binaries, but GitHub CLI first classifies the extension using
+`releases/latest`, **before** selecting a `--pin` tag. Therefore
+`gh extension install githubnext/gh-cao --pin v0.1.22` fails too.
+There is intentionally no root executable script: CAO ships a standalone Go
+binary, not a source-building or Node.js launcher.
+
+Use the installer above from a control-repository checkout while the latest
+stable release is runtime-only. Unlike GitHub CLI's discovery, it supports
+published prereleases and verifies binary checksums and the embedded version.
+It also installs the control-plane runtime; it is not an extension-only install.
+
+Maintainers must publish a complete native-binary prerelease from the corrected
+release workflow, then promote it through **Promote prerelease to latest** with
+independent approval. Merging source changes alone does not repair the public
+command. Do not modify an immutable historical release or promote a release
+without its required validation evidence.
+
+After a compatible release is latest, extension-only installs can use:
+
+```bash
+gh extension install githubnext/gh-cao
+gh cao --version
+```
+
+These binary installs are managed by `gh extension upgrade gh-cao` (unless
+pinned); they do not install the control-repository runtime or `gh-aw`.
+
+### Control-plane installer
+
 The installer registers `gh cao` directly in GitHub CLI's data directory,
 following the gh-aw installer pattern, without requiring Go or a repository
 rename. It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, defaulting to
