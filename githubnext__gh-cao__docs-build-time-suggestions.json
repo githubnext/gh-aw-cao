@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-20T16:41:00Z",
-      "worker_run_id": "39459331340",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39459216524,
-        39458834966,
-        39457478091,
-        39457473301,
-        39455317461,
-        39453828481,
-        39451796799,
-        39449842682,
-        39448017239,
-        39447662756,
-        39444611896,
-        39442826835,
-        39440727596,
-        39438956620,
-        39438578838,
-        39435558939,
-        39433804572,
-        39432443073,
-        39430511764,
-        39430500899
-      ],
-      "outcome": "no-op: the 2026-10-20T13:27:10Z to 2026-10-20T16:40:38Z window contained 17 successful and three skipped completed docs.yml runs. Five successful builds were compared (one push, three schedule, and one workflow_run, across three source SHAs): median/p90 end-to-end 135/309 seconds, initial queue or concurrency wait 4/84 seconds, queue-excluded execution 130/268 seconds, build job 85/93 seconds, and deploy job 21/163 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted step metadata showed all five builds restored the shared dashboard cache in 2-4 seconds and skipped dashboard run lookup and artifact download; bounded logs explicitly confirmed 57 MiB cache hits for four samples. The shared cache therefore kept dashboard reuse at a 2-second median, so even eliminating restoration entirely would save neither 60 seconds nor 15% of median execution. No correctness- and freshness-preserving reusable-dashboard change met the actionability threshold, so the category advanced. One push waited behind an overlapping schedule run, the 251-second deploy outlier was disclosed, and an additional log/list query was stopped after the runner hit an OS-thread resource limit."
-    },
-    {
       "evaluated_at": "2026-10-20T16:55:00Z",
       "worker_run_id": "39461388245",
       "category": "artifact transfer and Pages packaging",
@@ -799,6 +771,34 @@
         39519012782
       ],
       "outcome": "incomplete: the 2026-10-21T00:04:10Z to 2026-10-21T04:02:18Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Only four successful runs visibly had end-to-end durations consistent with executing build and deploy (three push and one schedule, across four source SHAs); the remaining successful schedule runs completed in 10-24 seconds after freshness checks, below the required minimum of five comparable successful builds. Trusted job and step metadata retrieved for run 39537187987 confirmed a successful 76-second build job, 17-second deploy job, 17-second dependency installation, 8-second documentation generation, 3-second dashboard-cache restoration with artifact fallback skipped, and 9-second Pages upload. During collection of the remaining required job, step, and cache evidence, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API work stopped. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements and repeated cache verification could not be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T04:44:01Z",
+      "worker_run_id": "39545392147",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39544196110,
+        39543958781,
+        39541805110,
+        39540374141,
+        39538758802,
+        39538490423,
+        39537187987,
+        39537150554,
+        39536780359,
+        39535737919,
+        39534698674,
+        39533366249,
+        39533085646,
+        39530983667,
+        39530971893,
+        39530441229,
+        39528891374,
+        39527291375,
+        39526297225,
+        39524098898
+      ],
+      "outcome": "incomplete: the 2026-10-21T00:54:06Z to 2026-10-21T04:28:21Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Only four successful runs executed both build and deploy (three push and one schedule, across four source SHAs), below the required minimum of five comparable successful builds. The newly observed schedule run 39544196110 completed in 12 seconds and freshness-checked without adding a build sample. Required median/p90 workflow, queue, build, deploy, dashboard, and Astro-generation measurements therefore cannot be completed; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the category remains next."
     }
   ]
 }
