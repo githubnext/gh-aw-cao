@@ -1,5 +1,39 @@
 import { expect, test } from "@playwright/test";
 
+for (const width of [320, 390, 800, 1280, 1440, 1920]) {
+  test(`ownership copy wraps responsively at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("./");
+    await page.evaluate(() => document.fonts.ready);
+    const copy = page.locator(".dispatch-story > p:not(.section-eyebrow)");
+    await expect(copy).toHaveText(
+      "Enterprise teams, organizations, and repository maintainers own their workflows. Shared work reaches enrolled repositories alongside local automation, with explicit scope and ownership.",
+    );
+    const layout = await copy.evaluate(paragraph => {
+      const range = document.createRange();
+      range.selectNodeContents(paragraph);
+      const bounds = paragraph.getBoundingClientRect();
+      const lines = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+      return {
+        lineCount: new Set(lines.map(rect => rect.top)).size,
+        contained: lines.every(rect => rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1),
+        left: bounds.left,
+        right: bounds.right,
+      };
+    });
+    if (width >= 1280) {
+      expect(layout.lineCount).toBe(2);
+    } else if (width <= 390) {
+      expect(layout.lineCount).toBeGreaterThan(2);
+    }
+    expect(layout.contained).toBe(true);
+    expect(layout.left).toBeGreaterThanOrEqual(0);
+    expect(layout.right).toBeLessThanOrEqual(width);
+    expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
+  });
+}
+
 async function measureHierarchy(page) {
   return page.locator(".dispatch-story").evaluate(section => {
     const figure = section.querySelector(".dispatch-illustration");
