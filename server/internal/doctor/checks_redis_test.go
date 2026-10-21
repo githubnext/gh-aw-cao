@@ -270,7 +270,7 @@ func TestClassifyRedisPersistence(t *testing.T) {
 	cases := []struct {
 		name         string
 		lastSave     string
-		aofEnabled   bool
+		aofEnabled   string
 		aofLastWrite string
 		wantStatus   Status
 		wantReason   persistenceClassificationReason
@@ -279,39 +279,110 @@ func TestClassifyRedisPersistence(t *testing.T) {
 	}{
 		{
 			name:     "failed background save warns even with AOF disabled",
-			lastSave: "err", aofEnabled: false,
+			lastSave: "err", aofEnabled: "0",
 			wantStatus: StatusWarn, wantReason: persistenceReasonBackgroundSaveFailed,
 			summaryHas: "background save did not succeed",
 		},
 		{
 			name:     "failed background save is checked before a failed AOF write",
-			lastSave: "err", aofEnabled: true, aofLastWrite: "err",
+			lastSave: "err", aofEnabled: "1", aofLastWrite: "err",
 			wantStatus: StatusWarn, wantReason: persistenceReasonBackgroundSaveFailed,
 			summaryHas: "background save did not succeed",
 		},
 		{
 			name:     "healthy background save with a failed AOF write warns",
-			lastSave: "ok", aofEnabled: true, aofLastWrite: "err",
+			lastSave: "ok", aofEnabled: "1", aofLastWrite: "err",
 			wantStatus: StatusWarn, wantReason: persistenceReasonAOFWriteFailed,
 			summaryHas: "append-only-file write did not succeed",
 		},
 		{
-			name:     "healthy background save with AOF disabled passes",
-			lastSave: "ok", aofEnabled: false,
-			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
-			summaryHas: "reporting healthy writes", remedyEmpty: true,
+			name:     "successful background save does not establish snapshot policy",
+			lastSave: "ok", aofEnabled: "0",
+			wantStatus: StatusWarn, wantReason: persistenceReasonSnapshotPolicyUnknown,
+			summaryHas: "last background save reports success",
 		},
 		{
 			name:     "healthy background save with a healthy AOF write passes",
-			lastSave: "ok", aofEnabled: true, aofLastWrite: "ok",
+			lastSave: "ok", aofEnabled: "1", aofLastWrite: "ok",
 			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
-			summaryHas: "reporting healthy writes", remedyEmpty: true,
+			summaryHas: "enabled AOF reports a successful last write", remedyEmpty: true,
 		},
 		{
-			name:     "blank background save status with AOF disabled passes",
-			lastSave: "", aofEnabled: false,
+			name:     "blank background save status with AOF disabled warns",
+			lastSave: "", aofEnabled: "0",
+			wantStatus: StatusWarn, wantReason: persistenceReasonSnapshotPolicyUnknown,
+			summaryHas: "background-save status and snapshot policy are unknown",
+		},
+		{
+			name:       "all observations missing",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "unknown",
+		},
+		{
+			name:       "AOF-only successful last write",
+			aofEnabled: "1", aofLastWrite: "ok",
 			wantStatus: StatusPass, wantReason: persistenceReasonHealthy,
-			summaryHas: "reporting healthy writes", remedyEmpty: true,
+			summaryHas: "durability and recoverability are not verified", remedyEmpty: true,
+		},
+		{
+			name:       "AOF-only failed last write",
+			aofEnabled: "1", aofLastWrite: "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonAOFWriteFailed,
+			summaryHas: "append-only-file write did not succeed",
+		},
+		{
+			name:       "RDB failure without AOF observation remains a known failure",
+			lastSave:   "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonBackgroundSaveFailed,
+			summaryHas: "background save did not succeed",
+		},
+		{
+			name:     "known AOF failure takes precedence over malformed RDB status",
+			lastSave: "invalid", aofEnabled: "1", aofLastWrite: "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonAOFWriteFailed,
+			summaryHas: "append-only-file write did not succeed",
+		},
+		{
+			name:     "unknown AOF enablement does not imply active writes",
+			lastSave: "ok", aofLastWrite: "ok",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "unknown",
+		},
+		{
+			name:     "malformed AOF enablement does not imply disabled AOF",
+			lastSave: "ok", aofEnabled: "invalid", aofLastWrite: "ok",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "invalid",
+		},
+		{
+			name:     "out of range AOF enablement",
+			lastSave: "ok", aofEnabled: "2", aofLastWrite: "ok",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "invalid",
+		},
+		{
+			name:     "malformed RDB status is not a known save failure",
+			lastSave: "invalid", aofEnabled: "1", aofLastWrite: "ok",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "unknown",
+		},
+		{
+			name:     "enabled AOF with missing write status",
+			lastSave: "ok", aofEnabled: "1",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "missing",
+		},
+		{
+			name:     "enabled AOF with malformed write status",
+			lastSave: "ok", aofEnabled: "1", aofLastWrite: "invalid",
+			wantStatus: StatusWarn, wantReason: persistenceReasonUnknown,
+			summaryHas: "invalid",
+		},
+		{
+			name:     "disabled AOF stale write failure is not an active write failure",
+			lastSave: "ok", aofEnabled: "0", aofLastWrite: "err",
+			wantStatus: StatusWarn, wantReason: persistenceReasonSnapshotPolicyUnknown,
+			summaryHas: "active snapshot policy is unknown",
 		},
 	}
 	for _, testCase := range cases {
@@ -331,6 +402,65 @@ func TestClassifyRedisPersistence(t *testing.T) {
 			}
 			if !testCase.remedyEmpty && got.remedy == "" {
 				t.Fatalf("remedy is empty, want a remedy for status %s", got.status)
+			}
+		})
+	}
+}
+
+func TestRedisPersistenceINFOObservations(t *testing.T) {
+	cases := []struct {
+		name       string
+		info       string
+		status     Status
+		summaryHas string
+		aofLabel   string
+		rdbLabel   string
+		writeLabel string
+	}{
+		{"provider omits persistence fields", "loading:0\r\n", StatusWarn, "unknown", "not reported", "not reported", ""},
+		{"provider reports blank fields", "aof_enabled:\r\nrdb_last_bgsave_status:\r\n", StatusWarn, "unknown", "not reported", "not reported", ""},
+		{"provider reports malformed enablement", "aof_enabled:disabled\r\nrdb_last_bgsave_status:ok\r\n", StatusWarn, "invalid", "disabled", "ok", ""},
+		{"RDB-only defaults do not establish policy", "aof_enabled:0\r\nrdb_last_bgsave_status:ok\r\nrdb_changes_since_last_save:0\r\n", StatusWarn, "snapshot policy is unknown", "false", "ok", ""},
+		{"RDB-only missing save status", "aof_enabled:0\r\n", StatusWarn, "background-save status", "false", "not reported", ""},
+		{"RDB-only failure", "aof_enabled:0\r\nrdb_last_bgsave_status:err\r\n", StatusWarn, "background save did not succeed", "false", "err", ""},
+		{"AOF-only healthy", "aof_enabled:1\r\naof_last_write_status:ok\r\n", StatusPass, "successful last write", "true", "not reported", "ok"},
+		{"AOF missing write status", "aof_enabled:1\r\n", StatusWarn, "missing", "true", "not reported", "not reported"},
+		{"AOF malformed write status", "aof_enabled:1\r\naof_last_write_status:unknown\r\n", StatusWarn, "invalid", "true", "not reported", "unknown"},
+		{"combined healthy whitespace", "aof_enabled: 1 \r\nrdb_last_bgsave_status: ok \r\naof_last_write_status: ok \r\n", StatusPass, "successful last write", "true", "ok", "ok"},
+		{"combined RDB failure", "aof_enabled:1\r\nrdb_last_bgsave_status:err\r\naof_last_write_status:ok\r\n", StatusWarn, "background save did not succeed", "true", "err", "ok"},
+		{"combined AOF failure", "aof_enabled:1\r\nrdb_last_bgsave_status:ok\r\naof_last_write_status:err\r\n", StatusWarn, "append-only-file write did not succeed", "true", "ok", "err"},
+		{"disabled AOF stale error", "aof_enabled:0\r\nrdb_last_bgsave_status:ok\r\naof_last_write_status:err\r\n", StatusWarn, "snapshot policy is unknown", "false", "ok", "err"},
+		{"empty INFO is a failed observation", "# Persistence\r\n", StatusFail, "returned no fields", "", "", ""},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			doctor := testDoctor(fakeClient{do: func(arguments ...string) (any, error) {
+				if !reflect.DeepEqual(arguments, []string{"INFO", "persistence"}) {
+					t.Fatalf("unexpected command (no CONFIG access allowed): %v", arguments)
+				}
+				return test.info, nil
+			}})
+			check := doctor.checkRedisPersistence(context.Background())
+			if check.Status != test.status || !strings.Contains(check.Summary, test.summaryHas) {
+				t.Fatalf("unexpected persistence result: %+v", check)
+			}
+			if test.status == StatusFail {
+				return
+			}
+			details := map[string]string{}
+			for _, field := range check.Details {
+				details[field.Name] = field.Value
+			}
+			if details["aofEnabled"] != test.aofLabel || details["lastBackgroundSave"] != test.rdbLabel ||
+				details["aofLastWrite"] != test.writeLabel {
+				t.Fatalf("observations lost or changed: %+v", check.Details)
+			}
+			if !strings.Contains(details["durabilityEvidence"], "not verified") ||
+				!strings.Contains(details["durabilityEvidence"], "provider persistence") {
+				t.Fatalf("missing provider evidence boundary: %+v", check.Details)
+			}
+			if test.status == StatusWarn && check.Remedy == "" {
+				t.Fatal("warning must provide an operator remedy")
 			}
 		})
 	}
