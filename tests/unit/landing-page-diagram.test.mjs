@@ -49,11 +49,12 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Setup, authentication, and rollout/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Roll out with confidence\./);
-  assert.match(hero, /Bring an existing workflow, such as Daily Repo Status from Agentics, under central control\./);
-  assert.match(hero, /Set repository scope and separate read\/write credentials\./);
-  assert.match(hero, /Review proposed reports before authorizing live delivery\./);
-  assert.match(hero, /Keep rollout policy and steering in your control repository/);
-  assert.match(hero, /reuse the workflow across enrolled repositories/);
+  assert.match(hero, /Start with monitoring\./);
+  assert.match(hero, /direct operations for known targets, standalone workflows for fleet selection/);
+  assert.match(hero, /campaigns for coordinated workers/);
+  assert.match(hero, /Daily Repo Status from Agentics as a standalone workflow/);
+  assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
+  assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
   assert.match(terminalText, /raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
@@ -61,10 +62,12 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(terminalText, /CAO runtime materialized and verified/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /Then review git diff and git status, commit, and push the installed files/);
+  assert.match(terminalText, /Monitoring is configured; executing operations is optional/);
   assert.match(terminalText, /Example agent request — not a CLI command/);
   assert.match(terminal, /data-terminal-request="integration"/);
   assert.match(terminalText, /Keep policy disabled, review-only, and scoped to one repo/);
   assert.match(terminalText, /Import shared\/control\.md as standalone/);
+  assert.match(terminalText, /For scheduled fleet selection:/);
   assert.match(terminalText, /Bind reads and review outputs to admitted targets/);
   assert.match(terminalText, /Preserve upstream ownership\. Do not enable or run/);
   assert.doesNotMatch(terminal, /data-terminal-output="rollout"|\bjq\b/);
@@ -114,7 +117,7 @@ test("terminal output excerpts remain grounded in the production installer and C
   assert.match(integration, /does not automatically add CAO\nadmission or redirect its writes/);
   assert.match(integration, /including closing older reports/);
   assert.match(integration, /additional explicitly enrolled targets through reviewed policy changes/);
-  assert.match(hero, /Add campaigns when you need coordinated work\./);
+  assert.match(hero, /Choose an operation pattern\./);
 });
 
 test("landing page shows shared and local workflows with explicit ownership", () => {

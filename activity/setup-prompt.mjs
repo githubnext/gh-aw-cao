@@ -189,8 +189,8 @@ export function createTerminalPrompt({ input, output, UsageError }) {
     },
     cancel: (message) => styled ? writeStyledLine(output, '■', ANSI.red, message) : note(message),
     finish: () => styled
-      ? writeStyledLine(output, '◇', ANSI.green, 'Configuration saved. No campaigns installed or run.')
-      : note('Configuration saved. No campaigns installed or run.'),
+      ? writeStyledLine(output, '◇', ANSI.green, 'Configuration saved. Monitoring only; no agentic operation enabled or run.')
+      : note('Configuration saved. Monitoring only; no agentic operation enabled or run.'),
     failure: () => styled
       ? writeStyledLine(output, '▲', ANSI.red, 'Setup stopped. See the recovery guidance below.')
       : note('Setup stopped. See the recovery guidance below.'),

@@ -437,7 +437,7 @@ export async function setupCaoControlPlane({
       throw new Error('cao setup only configures a bare control plane with no declared operations');
     }
 
-    interactive.note(`Control repository: ${control.repository} (${control.visibility})\nNo campaign will be installed, enabled, or run.\nWildcard patterns are expanded now; only exact names are saved.`, '1 / 3  Repositories');
+    interactive.note(`Control repository: ${control.repository} (${control.visibility})\nMonitoring only; no agentic operation will be enabled or run.\nWildcard patterns are expanded now; only exact names are saved.`, '1 / 3  Repositories');
     const targetAnswer = await interactive.text(
       'Repositories CAO should read (comma-separated names or * wildcards)',
       control.repository,

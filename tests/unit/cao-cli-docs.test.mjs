@@ -37,6 +37,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /does not commit or push/);
   assert.match(monitoring, /Check \*\*CAO validation\*\* in Actions/);
   assert.match(monitoring, /control-plane\.campaigns` is `\{\}`/);
+  assert.match(monitoring, /control-plane\.workflows` and\s+`control-plane\.operations` absent or `\{\}`/);
   assert.match(monitoring, /empty dashboard is expected/);
   assert.match(monitoring, /not every ordinary Actions job/);
   assert.match(monitoring, /does\s+\*\*not\*\*\s+guarantee a\s+private Pages site/);
@@ -44,9 +45,25 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(monitoring, /headless setup only\s+supports the exact current public control repository/);
   assert.match(gettingStarted.slice(optional), /repo-assist-quickstart\.md/);
   assert.match(gettingStarted.slice(optional), /Installation is not execution/);
+  assert.match(gettingStarted.slice(optional), /operation-patterns\.md/);
+  assert.match(gettingStarted.slice(optional), /Direct operation.*authority-envelopes\.md/);
+  assert.match(gettingStarted.slice(optional), /Standalone fleet workflow.*configuration\.md#standalone-agentic-workflows/);
+  assert.match(gettingStarted.slice(optional), /None is enrolled, enabled or run by setup/);
   assert.match(gettingStarted.slice(optional), /\*\*review\*\* mode with \*\*one\s+repository\*\*/);
   assert.match(walkthrough, /monitor existing[\s\S]*?\[Set Up CAO\]\(setup-quickstarts\.md\)/);
   assert.match(docs, /\[Repo Assist walkthrough\]\(repo-assist-quickstart\.md\)/);
+});
+
+test("native and Node setup hand off to optional pattern selection rather than campaign installation", () => {
+  for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
+    const source = readFileSync(filename, "utf8");
+    assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
+    assert.ok(source.includes("Choose an operation pattern: https://githubnext.github.io/gh-cao/operation-patterns/"));
+    assert.doesNotMatch(source, /Add your first campaign separately/);
+  }
+  const skill = readFileSync("skills/setup-cao/SKILL.md", "utf8");
+  assert.match(skill, /control-plane\.workflows` and `control-plane\.operations` absent or empty/);
+  assert.match(skill, /operation-patterns\.md/);
 });
 
 test("CAO command guide covers the operator-facing command surface", () => {

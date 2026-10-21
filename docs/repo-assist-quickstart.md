@@ -8,6 +8,9 @@ description: Manually install, review, and run one bounded Repo Assist campaign.
 To monitor existing Agentic Workflows without adding a campaign, start with
 [Set Up CAO](setup-quickstarts.md). This optional walkthrough uses ordinary
 campaign commands after setup; nothing commits, pushes, or dispatches on your behalf.
+It demonstrates the orchestrator/worker pattern, not the default next step.
+For known targets or a single fleet mission, first compare
+[direct and standalone operations](operation-patterns.md).
 
 ## 1. Install the campaign
 

@@ -22,6 +22,7 @@ test("setup keyboard walkthrough validates scope, selects with arrows, and appli
   assert.match(result.stdout, /2 \/ 3  Connections/);
   assert.match(result.stdout, /3 \/ 3  Review and apply/);
   assert.match(result.stdout, /Configuration saved/);
+  assert.match(result.stdout, /Monitoring only; no agentic operation enabled or run/);
   assert.match(result.stdout, /"profile":"token"/);
   assert.deepEqual(f.saved()["control-plane"].scope["allowed-repositories"], ["acme/control", "acme/service"]);
   assert.deepEqual(f.calls().at(-1), ["connect", "token"]);

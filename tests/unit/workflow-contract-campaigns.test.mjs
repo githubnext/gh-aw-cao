@@ -632,7 +632,8 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.ok(existsSync(addCampaignSkillPath));
   assert.match(setupSkill, /^---\r?\nname: setup-cao\r?\n/);
   assert.match(setupSkill, /control-plane\.campaigns.*empty object/);
-  assert.match(setupSkill, /no user-facing campaign installed or enabled, no live rollout, and no workflow\s+dispatch/);
+  assert.match(setupSkill, /No operation enrollment,\s+live rollout or dispatch/);
+  assert.match(setupSkill, /Install, enroll, enable, and execute no agentic operation during setup/);
   assert.match(setupSkill, /Capability\s+is not consent/);
   assert.match(setupSkill, /Ask before repository creation or reuse, runtime installation, credential\s+configuration, commit, or push/);
   assert.match(setupSkill, /credential reach never widens policy/);

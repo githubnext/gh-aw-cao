@@ -3,12 +3,11 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-This guide walks you through installing CAO in a control repository, connecting
-one repository to monitor, and publishing a dashboard of its existing GitHub
-Agentic Workflow runs, costs, and outcomes.
+Install CAO, connect one repository, and publish a dashboard of its existing
+GitHub Agentic Workflow runs, costs, and outcomes.
 
-This setup is for monitoring only. You can add an agentic workflow or a campaign
-later if you choose.
+This setup is for monitoring only. Execution is optional: choose an
+[operation pattern](operation-patterns.md) later, without repeating setup.
 
 ## Prerequisites
 
@@ -86,8 +85,9 @@ git diff -- .github
 ```
 
 Check that `.github/workflows/cao.json` names only the intended repositories
-and that `control-plane.campaigns` is `{}`. Do not publish private evidence to a
-public dashboard.
+and that `control-plane.campaigns` is `{}`. Keep `control-plane.workflows` and
+`control-plane.operations` absent or `{}` too: monitoring does not enroll
+execution. Do not publish private evidence to a public dashboard.
 
 Commit the CAO files and push to the control repository's default branch:
 
@@ -130,20 +130,24 @@ views, or return after your existing workflows have run and Activity has refresh
 
 ## Optional: add automation later
 
-Monitoring is enough to get started. When you have a task you want CAO to perform,
-browse the [campaign catalog](https://githubnext.github.io/gh-cao/catalog/).
-Install a chosen campaign with:
+Monitoring is enough. For execution, [choose an operation pattern](operation-patterns.md):
+
+| Your work | Next step |
+| --- | --- |
+| Known targets | [Direct operation](authority-envelopes.md), without discovery. |
+| One inventory mission | [Standalone fleet workflow](configuration.md#standalone-agentic-workflows). |
+| Independent target workers | [Campaign catalog](https://githubnext.github.io/gh-cao/catalog/). |
+
+None is enrolled, enabled or run by setup. Install a campaign separately:
 
 ```bash
 gh cao campaigns add githubnext/gh-cao/CAMPAIGN
 ```
 
-Installation is not execution. Review and commit its workflows and policy
-together before enabling or running it. Start in **review** mode with **one
+Installation is not execution. For any pattern, review and commit workflows and
+policy together before enabling or running them. Start in **review** mode with **one
 repository**; model access and AI credits are separate prerequisites.
 See [Roll out a campaign](rollout-and-routing.md) for the execution steps.
 
-Want a manual campaign example instead? The separate
-[Repo Assist walkthrough](repo-assist-quickstart.md) starts from a configured control
-repository and shows how to request one review-only maintenance proposal. It is optional,
-not a prerequisite for monitoring.
+The optional [Repo Assist walkthrough](repo-assist-quickstart.md) shows one
+review-only campaign request after setup, not a prerequisite for monitoring.
