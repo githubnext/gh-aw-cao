@@ -1106,6 +1106,24 @@ The exporter batches records and flushes at shutdown. `slog` error records
 retain their severity and active trace/span context. Only enable reviewed,
 non-sensitive namespaces when exporting to an external collector.
 
+For a local OTLP/HTTP collector, export only server debug logs without enabling
+trace or metric export:
+
+```bash
+export DEBUG=cao:server
+export CAO_OTEL_LOGS_ENABLED=true
+export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://127.0.0.1:4318/v1/logs
+npm run dashboard:server:serve
+```
+
+The log-specific endpoint is a complete URL, including the collector's path.
+The shared `OTEL_EXPORTER_OTLP_ENDPOINT` instead appends `/v1/logs` and also
+enables trace and metric export. If both are set, the log-specific endpoint
+wins. Configure collector authentication through secret-managed
+`OTEL_EXPORTER_OTLP_LOGS_HEADERS` (or shared `OTEL_EXPORTER_OTLP_HEADERS`);
+log-specific headers take priority. `OTEL_SDK_DISABLED=true` disables export
+without disabling stderr logs.
+
 > [!IMPORTANT]
 > The default `serve` command remains local-only: it uses a local bearer
 > capability and intentionally rejects non-loopback listen addresses. Remote
