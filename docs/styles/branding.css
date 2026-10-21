@@ -145,8 +145,7 @@
   color: var(--sl-color-text-accent);
   background: none;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration: none;
 }
 
 .right-sidebar {
@@ -171,8 +170,7 @@ starlight-toc h2,
   color: var(--sl-color-text-accent);
   background: none;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
+  text-decoration: none;
 }
 
 @media (min-width: 50rem) {

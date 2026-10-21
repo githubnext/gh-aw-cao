@@ -30,14 +30,16 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(current).toHaveCSS("font-size", "14px");
       await expect(current).toHaveCSS("line-height", "20.3px");
       await expect(current).toHaveCSS("font-weight", "600");
-      await expect(current).toHaveCSS("text-decoration-line", "underline");
+      await expect(current).toHaveCSS("text-decoration-line", "none");
       await expect(current).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
       await current.hover();
       await expect(current).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(current).toHaveCSS("text-decoration-line", "none");
       await page.keyboard.press("Tab");
       await current.focus();
       await expect(current).toHaveCSS("outline-style", "solid");
       await expect(current).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(current).toHaveCSS("text-decoration-line", "none");
       if (width < 800) {
         expect((await current.boundingBox()).height).toBeGreaterThanOrEqual(40);
       }
@@ -61,7 +63,7 @@ for (const colorScheme of ["light", "dark"]) {
       const activeSection = toc.locator('a[aria-current="true"]');
       await expect(activeSection).toHaveCSS("font-weight", "600");
       await expect(activeSection).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      await expect(activeSection).toHaveCSS("text-decoration-line", "underline");
+      await expect(activeSection).toHaveCSS("text-decoration-line", "none");
     });
   }
 }
