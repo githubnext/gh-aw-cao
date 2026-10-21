@@ -12,8 +12,10 @@ Do not label the system "SOC 2 compliant" based on source, tests, or this skill.
 
 ## Scope and authority
 
-Read `CODEBASE.yml`, `server/SOC2.md`, `server/SECURITY.md`, and the relevant
-normative specifications before assessing a component. Start from existing
+Read `CODEBASE.yml`, `specs/server-soc2-compliance.md`, `server/SOC2.md`,
+`server/SOC2-CHANGELOG.md`, `server/SECURITY.md`, and the relevant normative
+specifications before assessing a component. The SOC 2 specification defines
+the maintained evidence, decision and closure contract. Start from existing
 controls, including the hosted CLI SOC 2 evidence boundary and independent audit
 delivery contract; do not create a competing security specification.
 
@@ -132,6 +134,14 @@ and a concise handoff with findings, evidence requests, commands/outcomes,
 limitations, and decisions. The coordinator preserves the source SHA and
 citations while consolidating and deduplicating reports. Pending sessions
 remain explicitly pending, not silently counted as reviewed.
+
+When consolidating a received report, the coordinator MUST update
+`server/SOC2.md` with material findings, limitations and pending decisions, and
+append an event to `server/SOC2-CHANGELOG.md`. Follow the specification's stable
+IDs, separate finding lifecycle and decision states, and evidence-backed
+closure rules. Preserve original observations; corrections and decision
+changes are new history events. Do not rely solely on session artifacts for
+the durable finding description.
 
 ## Safety and completion gates
 

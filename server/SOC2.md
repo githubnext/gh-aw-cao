@@ -11,6 +11,11 @@ No runtime or deployment changes are authorized by this assessment.
 
 The reusable procedure is
 [soc2-server-assessment](../.github/skills/soc2-server-assessment/SKILL.md).
+The maintained [assessment specification](../specs/server-soc2-compliance.md)
+defines the evidence and decision contract; the append-only
+[assessment changelog](SOC2-CHANGELOG.md) records changes and dispositions.
+This register uses specification version 1. Component reports and later
+operator decisions MUST update this register and append a changelog event.
 The authoritative security intent remains [SECURITY.md](SECURITY.md) and the
 referenced specifications. This inventory does not change the architecture.
 
