@@ -642,9 +642,14 @@ export const SOURCE_ENTITY_IDENTIFIER_FIELDS = {
   'evidence-records': ['evidence-id']
 };
 
-export const SERVER_SOURCE_VALUES = ['collection-health', 'github-quota-usage'];
+export const SERVER_SOURCE_VALUES = ['collection-health', 'github-quota-usage', 'webhook-status'];
 
 export const SERVER_SOURCE_FIELDS = {
+  'webhook-status': [
+    'configured', 'scope', 'received', 'in-flight', 'verified', 'accepted',
+    'rejected', 'failed', 'duplicates', 'pings', 'last-received-at',
+    'last-accepted-at', 'last-failure-at', 'last-ping-at'
+  ],
   'collection-health': [
     'configured',
     'health',

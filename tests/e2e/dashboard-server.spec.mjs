@@ -64,6 +64,47 @@ const populatedViews = [
   },
 ];
 
+for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  test(`Ingestion shows live process webhook counters at ${viewport.width}px`, async ({ context, page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    await page.clock.install();
+    await page.goto(`/?access_token=${accessToken}#page-indexing`);
+    await page.getByRole('button', { name: viewport.width < 768 ? 'Switch to Cards view' : 'Cards', exact: true }).click();
+    const view = page.locator('[data-view-id="ingestion-webhook-status"]');
+    await expect(view.getByRole('heading', { name: 'Webhook counters (process-local, since restart)' })).toBeVisible();
+    await expect(page.locator('[data-page-id="indexing"]')).not.toHaveAttribute('aria-busy', 'true');
+    const received = view.locator('dl > div').filter({ has: page.locator('dt', { hasText: /^Received$/ }) }).locator('dd');
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    const beforeResponse = await context.request.get('/api/v1/ingestion/webhook/status', { headers });
+    expect(beforeResponse.ok()).toBe(true);
+    const before = await beforeResponse.json();
+    expect(before.scope).toBe('process');
+    await expect(view).toContainText(before.configured ? 'Configured' : 'Not configured');
+    await expect(received).toHaveText(String(before.received));
+    const delivery = await context.request.post('/api/github/webhook', {
+      headers: { 'X-GitHub-Event': 'ping', 'X-GitHub-Delivery': `browser-ping-${viewport.width}` },
+      data: { zen: 'synthetic browser status check' }
+    });
+    // This fixture intentionally has no webhook secret, so no ping can validate.
+    expect(delivery.status()).toBe(503);
+    await page.clock.fastForward(30_000);
+    await expect.poll(async () => {
+      await page.clock.runFor(1000);
+      return received.textContent();
+    }, { timeout: 20_000 }).toBe(String(before.received + 1));
+    await expect(view.locator('dl > div').filter({ has: page.locator('dt', { hasText: /^Failed$/ }) }).locator('dd'))
+      .toHaveText(String(before.failed + 1));
+    await expect(view.locator('dl > div').filter({ has: page.locator('dt', { hasText: /^Signed pings$/ }) }).locator('dd'))
+      .toHaveText('0');
+    await expect(view.locator('.entity-card-list-card')).toBeVisible();
+    await view.scrollIntoViewIfNeeded();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const path = testInfo.outputPath(`ingestion-webhook-${viewport.width}.png`);
+    await page.screenshot({ path, fullPage: true });
+    await testInfo.attach(`Populated Go-server Ingestion (${viewport.width}px)`, { path, contentType: 'image/png' });
+  });
+}
+
 test("deployed shards populate server-backed dashboard views", async ({ context, page }) => {
   test.setTimeout(240_000);
   await page.goto(`/?access_token=${accessToken}`);

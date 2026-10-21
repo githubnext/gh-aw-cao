@@ -11,6 +11,34 @@ vi.mock('../../src/remote-data-backend.js', () => ({
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
+});
+
+it('refreshes webhook counters without a revision and aborts polling when the view closes', async () => {
+  vi.useFakeTimers();
+  const counters = (/** @type {number} */ received) => ({
+    revision: 1, healthRevision: 1,
+    sources: { 'ingestion-webhook-status': { source: 'ingestion-webhook-status', rows: [{ received }] } }
+  });
+  vi.mocked(queryRemoteDashboard).mockResolvedValueOnce(counters(1)).mockResolvedValue(counters(2));
+  const listener = vi.fn();
+  const controller = new AbortController();
+  const stop = subscribeCanonicalDashboardView('webhook-live', ['ingestion-webhook-status'], {
+    pages: [], queries: [{ name: 'ingestion-webhook-status', from: 'webhook-status' }]
+  }, listener, undefined, { signal: controller.signal });
+  await vi.advanceTimersByTimeAsync(20);
+  expect(listener.mock.calls.at(-1)?.[0]['ingestion-webhook-status'].rows).toEqual([{ received: 1 }]);
+  const requestSignal = vi.mocked(queryRemoteDashboard).mock.calls[0][3]?.signal;
+  expect(requestSignal).toBeInstanceOf(AbortSignal);
+  await vi.advanceTimersByTimeAsync(30_000);
+  await vi.advanceTimersByTimeAsync(20);
+  expect(listener.mock.calls.at(-1)?.[0]['ingestion-webhook-status'].rows).toEqual([{ received: 2 }]);
+  expect(queryRemoteDashboard).toHaveBeenCalledTimes(2);
+  controller.abort();
+  stop();
+  expect(requestSignal?.aborted).toBe(true);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(queryRemoteDashboard).toHaveBeenCalledTimes(2);
 });
 
 it('refreshes only subscribed collection load when time passes without a revision', async () => {

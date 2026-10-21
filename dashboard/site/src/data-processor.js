@@ -860,10 +860,10 @@ function registerRemoteSubscription(subscription) {
       }
     }
   });
-  const refreshesLoad = resolveDashboardQuerySources(
+  const refreshesRuntime = resolveDashboardQuerySources(
     subscription.context.queries ?? [], subscription.sourceNames
-  ).includes('collection-health');
-  const loadTimer = refreshesLoad ? setInterval(() => { void query(true); }, 30_000) : null;
+  ).some((source) => source === 'collection-health' || source === 'webhook-status');
+  const loadTimer = refreshesRuntime ? setInterval(() => { void query(true); }, 30_000) : null;
   subscription.remoteStop = () => {
     active = false;
     if (loadTimer !== null) clearInterval(loadTimer);

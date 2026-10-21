@@ -87,6 +87,17 @@
       "select": [{ "field": "queue" }, { "field": "tasks" }]
     },
     {
+      "name": "ingestion-webhook-status",
+      "subject": "Inspect live webhook delivery counters for the current server process.",
+      "objective": "Distinguish signature validation, acknowledgements, rejections and failures without polling GitHub.",
+      "acceptance": "Show only authorized process-local counters, including in-flight requests, duplicate acknowledgements and signed pings. Counters reset on restart, are not replica totals, and do not establish GitHub-side webhook registration or completed collection. Refresh the active subscription even without canonical data changes.",
+      "from": "webhook-status",
+      "compute": [
+        { "as": "configuration", "function": "if", "args": [{ "field": "configured" }, { "value": "Configured" }, { "value": "Not configured" }] }
+      ],
+      "limit": 1
+    },
+    {
       "name": "ingestion-health",
       "subject": "Show the current Redis-backed webhook and collection health snapshot.",
       "objective": "Determine whether the reported collection, webhook, queue, and backfill state warrants inspecting ingestion diagnostics.",
@@ -1771,6 +1782,37 @@
               { "field": "committed-records", "title": "Committed records", "type": "quantitative" },
               { "field": "workflow-runs", "title": "Workflow runs", "type": "quantitative" },
               { "field": "payload-hash", "title": "Payload hash", "type": "nominal" }
+            ]
+          }
+        },
+        {
+          "id": "ingestion-webhook-status",
+          "title": "Webhook counters (process-local, since restart)",
+          "requires": { "backend": "hosted", "on-unavailable": "hide" },
+          "subject": "Inspect webhook validation and HTTP outcomes observed by this server process.",
+          "objective": "Spot invalid signatures, failed admission and active webhook traffic without querying GitHub.",
+          "acceptance": "Display process-local counts and last-observed timestamps; missing or unauthorized evidence is unavailable, not zero. Acknowledged pings do not prove current GitHub registration and acknowledgements do not mean collection has completed.",
+          "description": "Live counters for this server process, refreshed every 30 seconds while this view is open. Reset on restart; not aggregated across replicas. Verified means valid HMAC, acknowledged means HTTP acceptance, and duplicate and ping counts overlap acknowledgements. A ping does not prove current GitHub-side registration.",
+          "data": { "source": "ingestion-webhook-status", "query-context": false, "limit": 1 },
+          "mark": "list",
+          "list": { "style": "entity-cards", "card": "webhook-status", "icon": "broadcast" },
+          "layout": "full",
+          "empty-message": "Live webhook counters are unavailable. No traffic or registration state can be inferred.",
+          "encoding": {
+            "columns": [
+              { "field": "configured", "type": "nominal", "title": "Configured" },
+              { "field": "received", "type": "quantitative", "title": "Received" },
+              { "field": "in-flight", "type": "quantitative", "title": "In flight" },
+              { "field": "verified", "type": "quantitative", "title": "HMAC verified" },
+              { "field": "accepted", "type": "quantitative", "title": "Acknowledged" },
+              { "field": "rejected", "type": "quantitative", "title": "Rejected" },
+              { "field": "failed", "type": "quantitative", "title": "Failed" },
+              { "field": "duplicates", "type": "quantitative", "title": "Duplicates" },
+              { "field": "pings", "type": "quantitative", "title": "Signed pings" },
+              { "field": "last-received-at", "type": "temporal", "title": "Last delivery", "format": "human-friendly-timestamp" },
+              { "field": "last-accepted-at", "type": "temporal", "title": "Last acknowledgement", "format": "human-friendly-timestamp" },
+              { "field": "last-failure-at", "type": "temporal", "title": "Last failure", "format": "human-friendly-timestamp" },
+              { "field": "last-ping-at", "type": "temporal", "title": "Last signed ping", "format": "human-friendly-timestamp" }
             ]
           }
         },

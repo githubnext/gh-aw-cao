@@ -25,6 +25,24 @@ model WebhookAcknowledgement {
   kind?: string;
   queued?: boolean;
 }
+/** Bounded in-memory counters for requests that reached this process's webhook handler. Reset on restart, not aggregated across replicas. Accepted means HTTP acknowledgement, not completed reconciliation or verified GitHub-side registration. */
+@example(#{configured: true, scope: "process", received: 3, inFlight: 0, verified: 2, accepted: 2, rejected: 1, failed: 0, duplicates: 0, pings: 1})
+model WebhookStatus {
+  configured: boolean;
+  scope: "process";
+  received: int64;
+  inFlight: int64;
+  verified: int64;
+  accepted: int64;
+  rejected: int64;
+  failed: int64;
+  duplicates: int64;
+  pings: int64;
+  lastReceivedAt?: utcDateTime;
+  lastAcceptedAt?: utcDateTime;
+  lastFailureAt?: utcDateTime;
+  lastPingAt?: utcDateTime;
+}
 model CollectionStatus {
   configured: boolean;
   health: string;
@@ -123,6 +141,12 @@ namespace Operations {
   @useAuth(DashboardAuth)
   @route("/api/v1/ingestion/health")
   @get op ingestionHealth(): CollectionStatus | Unauthorized | Forbidden | Unavailable;
+
+  /** Administrator-only live webhook status. Reads process-local counters without querying GitHub, the evidence database, collection queues or durable ingestion metrics; normal authentication and rate limiting still apply. Verified counts valid HMAC signatures, including requests later rejected for missing headers. Pings counts acknowledged, signed GitHub ping deliveries, not proof of current remote webhook configuration. Middleware rejections are outside these counters. */
+  @useAuth(DashboardAuth)
+  @route("/api/v1/ingestion/webhook/status")
+  @get op webhookStatus(): { @header cacheControl: "no-store"; @body body: WebhookStatus } |
+    Unauthorized | Forbidden | Unavailable;
 
   /** Administrator-only retained GitHub API usage; does not expose credentials. */
   @useAuth(DashboardAuth)

@@ -12,8 +12,12 @@ const documentation = new Map();
 const parents = new Map();
 const partitioned = new Set();
 let evidenceFactFields;
+let webhookStatusFields;
 navigateProgram(program, {
   model(model) {
+    if (getNamespaceFullName(model.namespace) === 'Cao.Postgres.Runtime' && model.name === 'webhookStatus') {
+      webhookStatusFields = new Set(model.properties.keys());
+    }
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres.Values' && model.name === 'OperationalValueFact') {
       evidenceFactFields = [...model.properties.keys()];
     }
@@ -197,7 +201,15 @@ test('generated SQL contains no JSON or serialized document columns', () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS cao_quality/);
   assert.doesNotMatch(sql, /\brow_count\b/, 'retained collection counts must be computed, not persisted');
   assert.doesNotMatch(sql, /\bis_skill\b/);
-  assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|simulation_days|marketplace_packages)\b/);
+  assert.doesNotMatch(sql, /CREATE TABLE IF NOT EXISTS (?:collection_health|github_quota_usage|webhook_status|simulation_days|marketplace_packages)\b/);
+});
+
+test('live webhook counters are typed process projections without physical storage', () => {
+  const bindings = readFileSync(new URL('../internal/postgresx/schema.gen.go', import.meta.url), 'utf8');
+  assert.ok(bindings.includes('"webhook-status": {name: "webhook_status", runtime: true, canonical: false'));
+  for (const field of ['received', 'in-flight', 'verified', 'accepted', 'rejected', 'failed', 'duplicates', 'pings']) {
+    assert.ok(webhookStatusFields?.has(field), `missing live counter ${field}`);
+  }
 });
 
 test('CLI command sources are typed runtime projections, never canonical tables', () => {

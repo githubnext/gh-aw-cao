@@ -252,6 +252,9 @@ describe('Ingestion backend contract', () => {
       { queue: 'Backfill admitted (total)', tasks: 27 }
     ]);
     expect(result.sources['ingestion-health'].rows[0]).toMatchObject({ health: 'healthy', 'queue-depth': 12 });
+    expect(result.sources['ingestion-webhook-status'].rows).toEqual([
+      { ...contract.runtimeInputs['webhook-status'][0], configuration: 'Configured' }
+    ]);
     expect(result.sources['github-api-usage'].rows[0]['usage-percent']).toBe(40);
     const view = page.views.find((/** @type {{ id: string }} */ view) => view.id === 'github-api-usage');
     const alias = dashboardViewAliasName(contract.page, view, page.views.indexOf(view), 'github-api-usage', 0);
@@ -263,6 +266,11 @@ describe('Ingestion backend contract', () => {
       expect(root.querySelector('[data-view-id="github-api-usage"] [data-chart-widget="line"]')).not.toBeNull();
       expect(root.querySelector('[data-view-id="ingestion-health-status"]')?.textContent).toContain('healthy');
       expect(root.querySelector('[data-view-id="ingestion-queue-sizes"]')?.textContent).toContain('27');
+      const webhook = root.querySelector('[data-view-id="ingestion-webhook-status"]');
+      expect(webhook?.textContent).toContain('HMAC verified');
+      expect(webhook?.textContent).toContain('Signed pings');
+      expect(webhook?.textContent).toContain('43');
+      expect(webhook?.textContent).toContain('process-local, since restart');
       for (const viewId of contract.hostedViews) {
         expect(root.querySelector(`[data-view-id="${viewId}"]`)?.hasAttribute('data-view-backend-unavailable')).toBe(false);
       }

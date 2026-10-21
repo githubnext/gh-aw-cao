@@ -1154,7 +1154,7 @@ describe('dashboard view query contracts', () => {
     const requested = [...new Set(dashboard.pages.flatMap((/** @type {Record<string, unknown>} */ page) => viewsOf(page).flatMap(sourceNamesOf)))];
     const runtimeRequested = requested.filter((name) => isCliQueueQuery(queries, [name]));
     const workerRequested = requested.filter((name) => !requiresServerSource(name) && !runtimeRequested.includes(name));
-    expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes']);
+    expect(requested.filter((name) => requiresServerSource(name)).sort()).toEqual(['github-api-usage', 'ingestion-health', 'ingestion-queue-sizes', 'ingestion-webhook-status']);
     vi.stubGlobal('indexedDB', new IDBFactory());
     let results;
     try {

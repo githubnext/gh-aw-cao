@@ -167,6 +167,11 @@ func (a *App) rebuildStatus(response http.ResponseWriter, request *http.Request)
 }
 
 func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request) {
+	a.webhookMetrics.begin()
+	tracked := &webhookResponseWriter{ResponseWriter: response}
+	response = tracked
+	ping := false
+	defer func() { a.webhookMetrics.finish(tracked.status, ping) }()
 	if a.reconciler == nil || len(a.webhookSecret) == 0 {
 		writeError(response, http.StatusServiceUnavailable, "webhook reconciliation is not configured")
 		return
@@ -183,12 +188,14 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		return
 	}
 	a.logAuthBranch("webhook.signature_accepted")
+	a.webhookMetrics.verified()
 	delivery := strings.TrimSpace(request.Header.Get("X-GitHub-Delivery"))
 	event := strings.TrimSpace(request.Header.Get("X-GitHub-Event"))
 	if delivery == "" || event == "" {
 		writeError(response, http.StatusBadRequest, "GitHub delivery and event headers are required")
 		return
 	}
+	ping = event == "ping"
 	a.recordIngestionCounter(request.Context(), "webhookReceived")
 	a.recordIngestionEvent(request.Context(), "webhook", "")
 	if admitter, ok := a.reconciler.(EventAdmitter); ok {
@@ -222,6 +229,7 @@ func (a *App) githubWebhook(response http.ResponseWriter, request *http.Request)
 		return
 	}
 	if !fresh {
+		a.webhookMetrics.duplicate()
 		a.recordIngestionCounter(request.Context(), "webhookDuplicate")
 		a.releaseProjectionLock(request.Context(), token)
 		writeJSON(response, http.StatusAccepted, map[string]any{"accepted": true, "duplicate": true})
@@ -272,6 +280,7 @@ func (a *App) admitWebhook(
 		payload[key] = value
 	}
 	if duplicate, _ := result["duplicate"].(bool); duplicate {
+		a.webhookMetrics.duplicate()
 		a.recordIngestionCounter(request.Context(), "webhookDuplicate")
 		serverLog.Printf("webhook delivery duplicate")
 	} else {

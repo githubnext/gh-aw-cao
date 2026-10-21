@@ -954,7 +954,8 @@
         "indexing-shards",
         "indexing-transactions",
         "ingestion-health",
-        "ingestion-queue-sizes"
+        "ingestion-queue-sizes",
+        "ingestion-webhook-status"
       ]
     },
     {
@@ -5294,6 +5295,25 @@
         "local": false,
         "requirements": [],
         "reason": "Requires collection-health, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "ingestion-webhook-status",
+      "subject": "Inspect live webhook delivery counters for the current server process.",
+      "objective": "Distinguish signature validation, acknowledgements, rejections and failures without polling GitHub.",
+      "acceptance": "Show only authorized process-local counters, including in-flight requests, duplicate acknowledgements and signed pings. Counters reset on restart, are not replica totals, and do not establish GitHub-side webhook registration or completed collection. Refresh the active subscription even without canonical data changes.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "webhook-status"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": false,
+        "requirements": [],
+        "reason": "Requires webhook-status, which the local SQLite projection does not provide."
       }
     },
     {

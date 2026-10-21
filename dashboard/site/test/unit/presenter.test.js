@@ -2071,7 +2071,8 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(8);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(9);
+      expect(page?.querySelector('[data-view-id="ingestion-webhook-status"] [data-view-availability="unavailable"]')).not.toBeNull();
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(0);
       expect(page?.querySelector('[data-view-id="ingestion-storage"]')?.textContent).toContain('Storage engine unknown');
       expect(page?.querySelector('[data-view-id="indexing-size"]')).toBeNull();

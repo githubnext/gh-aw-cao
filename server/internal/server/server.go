@@ -116,6 +116,7 @@ type App struct {
 	reconciler       Reconciler
 	memory           *repositorymemory.RemoteResolver
 	webhookSecret    []byte
+	webhookMetrics   webhookMetrics
 	mcp              http.Handler
 	actionsToken     string
 	actionsActor     string
@@ -702,6 +703,7 @@ func (a *App) Handler() http.Handler {
 		register("GET /api/admin/logs", a.serverLogs)
 	}
 	register("GET /api/v1/ingestion/health", a.collectionStatus)
+	register("GET /api/v1/ingestion/webhook/status", a.webhookStatus)
 	register("GET /api/v1/github-quota/usage", a.gitHubQuotaUsage)
 	register("GET /api/v1/github/repos/{owner}/{repo}", a.gitHubRepositoryResource)
 	register("GET /api/v1/github/repos/{owner}/{repo}/releases/latest", a.gitHubReleaseResource)
@@ -1431,11 +1433,25 @@ func (a *App) executeQuery(ctx context.Context, input queryRequest, allowCollect
 		return queryResponse{}, http.StatusInternalServerError, err
 	}
 	cacheEnabled := !cache.Disabled && a.services.Cache != nil && (len(input.SourceNames) > 0 || len(input.Aliases) > 0)
+	liveWebhook := false
+	if cacheEnabled {
+		definitions, requested := a.queryPlan(input)
+		if err := query.WalkPlan(definitions, requested, func(name string) error {
+			liveWebhook = liveWebhook || name == webhookStatusSourceName
+			return nil
+		}, func(query.Definition) error { return nil }); err != nil {
+			return queryResponse{}, http.StatusBadRequest, err
+		}
+		cacheEnabled = !liveWebhook
+	}
 	if !cacheEnabled {
 		reason := "readiness"
-		if cache.Disabled {
+		switch {
+		case liveWebhook:
+			reason = "live-webhook"
+		case cache.Disabled:
 			reason = "disabled"
-		} else if a.services.Cache == nil {
+		case a.services.Cache == nil:
 			reason = "no-redis"
 		}
 		if err := a.recordQueryCacheBypass(ctx, reason); err != nil {
@@ -1582,6 +1598,12 @@ func (loader *databaseLoader) ExecuteSQLPlan(definitions []query.Definition, req
 }
 
 func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, definitions []query.Definition) (model.Source, error) {
+	if name == webhookStatusSourceName {
+		if loader.app == nil {
+			return model.Source{}, errors.New("webhook-status provider is unavailable")
+		}
+		return loader.app.webhookStatusSource(loader.allowCollectionHealth), nil
+	}
 	if name == "cli-commands" || name == "cli-command-summary" || name == "cli-command-statuses" {
 		return unavailableSource(name), nil
 	}
@@ -1629,7 +1651,7 @@ func (loader *databaseLoader) runtimeSource(ctx context.Context, name string, de
 // RuntimeQuerySourceNames lists sources resolved by the server rather than
 // stored as Postgres dashboard entities.
 func RuntimeQuerySourceNames() []string {
-	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, marketplace.SourceName, simulationDaysSourceName,
+	return []string{collectionHealthSourceName, gitHubQuotaUsageSourceName, webhookStatusSourceName, marketplace.SourceName, simulationDaysSourceName,
 		"cli-commands", "cli-command-summary", "cli-command-statuses"}
 }
 

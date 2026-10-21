@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CAO dashboard server",
-    "version": "2.8.0",
+    "version": "2.9.0",
     "description": "The Go dashboard server HTTP contract. Local mode uses a loopback bearer capability; hosted mode uses an authorized GitHub OAuth session and X-CSRF-Token on protected mutations. The optional MCP HTTP transport is covered, but its protocol messages and tool schemas are owned by the MCP contract; dashboard static assets are outside this contract."
   },
   "tags": [
@@ -2102,6 +2102,104 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CollectionStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "An error response. The message is diagnostic, not a stable error code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "description": "An error response. The message is diagnostic, not a stable error code."
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ingestion and administration"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ingestion/webhook/status": {
+      "get": {
+        "operationId": "Operations_webhookStatus",
+        "description": "Administrator-only live webhook status. Reads process-local counters without querying GitHub, the evidence database, collection queues or durable ingestion metrics; normal authentication and rate limiting still apply. Verified counts valid HMAC signatures, including requests later rejected for missing headers. Pings counts acknowledged, signed GitHub ping deliveries, not proof of current remote webhook configuration. Middleware rejections are outside these counters.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "headers": {
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookStatus"
                 }
               }
             }
@@ -5793,6 +5891,95 @@
           {
             "accepted": true,
             "duplicate": true
+          }
+        ]
+      },
+      "WebhookStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "scope",
+          "received",
+          "inFlight",
+          "verified",
+          "accepted",
+          "rejected",
+          "failed",
+          "duplicates",
+          "pings"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "process"
+            ]
+          },
+          "received": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inFlight": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "verified": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "accepted": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rejected": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastReceivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAcceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastFailureAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastPingAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Bounded in-memory counters for requests that reached this process's webhook handler. Reset on restart, not aggregated across replicas. Accepted means HTTP acknowledgement, not completed reconciliation or verified GitHub-side registration.",
+        "examples": [
+          {
+            "configured": true,
+            "scope": "process",
+            "received": 3,
+            "inFlight": 0,
+            "verified": 2,
+            "accepted": 2,
+            "rejected": 1,
+            "failed": 0,
+            "duplicates": 0,
+            "pings": 1
           }
         ]
       },

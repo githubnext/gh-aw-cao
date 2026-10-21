@@ -26,6 +26,29 @@
     ],
     "card-templates": [
       {
+        "id": "webhook-status",
+        "icon": "broadcast",
+        "title": { "field": "scope", "title": "Counter scope" },
+        "detail-labels": "visible",
+        "labels": [{ "field": "configuration", "title": "Configuration" }],
+        "details": [
+          { "field": "received", "title": "Received" },
+          { "field": "in-flight", "title": "In flight" },
+          { "field": "verified", "title": "HMAC verified" },
+          { "field": "accepted", "title": "Acknowledged" },
+          { "field": "rejected", "title": "Rejected" },
+          { "field": "failed", "title": "Failed" },
+          { "field": "duplicates", "title": "Duplicates" },
+          { "field": "pings", "title": "Signed pings" }
+        ],
+        "timing": [
+          { "field": "last-received-at", "title": "Last delivery", "type": "temporal", "format": "human-friendly-timestamp", "icon": "clock" },
+          { "field": "last-accepted-at", "title": "Last acknowledgement", "type": "temporal", "format": "human-friendly-timestamp", "icon": "clock" },
+          { "field": "last-failure-at", "title": "Last failure", "type": "temporal", "format": "human-friendly-timestamp", "icon": "clock" },
+          { "field": "last-ping-at", "title": "Last signed ping", "type": "temporal", "format": "human-friendly-timestamp", "icon": "clock" }
+        ]
+      },
+      {
         "id": "workflow-value-result",
         "icon": "trophy",
         "title": { "field": "delta-label", "title": "Observed change" },

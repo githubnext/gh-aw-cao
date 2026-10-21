@@ -468,6 +468,7 @@ browser IndexedDB. The registered sources are:
 |---|---|---|
 | `collection-health` | the current administrator-only CAO webhook and collection health snapshot | `configured`, `health`, `health-revision`, `queue-depth`, `pending-tasks`, `oldest-pending-age`, `dead-letters`, `backfill`, `backfill-failures`, `backfill-queued-run-tasks`, `webhook-load`, `collection-load`, `failure-load`, `last-projected`, `last-webhook-at`, `last-failure-at`, `last-failure-code`, `last-success-at`, `webhook-received`, `webhook-duplicate`, `webhook-admission-failed`, `task-queued`, `task-coalesced`, `collection-succeeded`, `collection-failed`, `collection-retried`, `collection-dead-lettered` |
 | `github-quota-usage` | the peak GitHub API quota usage of one bucket, or the limit-weighted aggregate of every bucket, during one 15-minute slot of the last 24 hours | `observed-at`, `scope`, `bucket`, `app`, `installation`, `resource`, `buckets`, `limit`, `used`, `reserved`, `usage-percent` |
+| `webhook-status` | the administrator-only live webhook counters for the current server process | `configured`, `scope`, `received`, `in-flight`, `verified`, `accepted`, `rejected`, `failed`, `duplicates`, `pings`, `last-received-at`, `last-accepted-at`, `last-failure-at`, `last-ping-at` |
 | `cli-commands` | one persistent command from the authorized local server's bounded, filtered history page | `id`, `actionId`, `command`, `status`, `createdAt`, `startedAt`, `completedAt`, `exitCode`, `error`, `retryOf`, `outputTruncated` |
 | `cli-command-summary` | the authorized local queue's authoritative counts and admission state, independent of history pagination | `running`, `total`, `paused-reason`, `revision` |
 | `cli-command-statuses` | one supported command lifecycle status, for declarative filter options | `status` |
@@ -479,6 +480,17 @@ distinguishes them. Other clients receive an unavailable source, and the
 providers store no raw error messages or credentials in the source. Runtime
 sources are consumed only through a declared Dashboard Language query; view
 code and UI elements do not fetch or derive this data independently.
+
+The `webhook-status` provider reads a bounded in-memory snapshot, never GitHub,
+collection queues or durable ingestion metrics. Counters reset on restart and
+are not aggregated across replicas. `verified` counts valid HMAC signatures,
+even if headers are subsequently rejected; `accepted` counts HTTP
+acknowledgements, not completed reconciliation. Duplicates and signed ping
+acknowledgements overlap accepted requests. Middleware rejections are excluded.
+Missing timestamps remain absent, not fabricated observations. Neither
+`configured` nor a signed ping proves current GitHub-side registration.
+The active view refreshes every 30 seconds under an abort-scoped subscription,
+even without canonical revision changes; results bypass the server query cache.
 
 The `cli-*` providers are available only through the data worker in authorized
 local admin or trusted canvas sessions and are never ingested into browser

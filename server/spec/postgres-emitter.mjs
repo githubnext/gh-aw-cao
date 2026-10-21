@@ -27,6 +27,7 @@ const runtimeNames = new Map([
   ['cliCommands', 'cli-commands'], ['cliCommandSummary', 'cli-command-summary'],
   ['cliCommandStatuses', 'cli-command-statuses'],
   ['collectionHealth', 'collection-health'], ['githubQuotaUsage', 'github-quota-usage'],
+  ['webhookStatus', 'webhook-status'],
   ['simulationDays', 'simulation-days']
 ]);
 

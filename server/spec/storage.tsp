@@ -813,6 +813,23 @@ namespace Inputs {
   }
 
   namespace Runtime {
+    /** Administrator-only process-local webhook counters; never persisted as evidence. */
+    model webhookStatus {
+      configured: boolean;
+      scope: string;
+      received: int64;
+      `in-flight`: int64;
+      verified: int64;
+      accepted: int64;
+      rejected: int64;
+      failed: int64;
+      duplicates: int64;
+      pings: int64;
+      `last-received-at`?: utcDateTime;
+      `last-accepted-at`?: utcDateTime;
+      `last-failure-at`?: utcDateTime;
+      `last-ping-at`?: utcDateTime;
+    }
     /** Local authorized queue projections, unavailable without an execution host. */
     model cliCommands {
       id: int64;

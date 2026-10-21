@@ -51,7 +51,7 @@ test('agent discovery describes public GET and body-free HEAD responses', () => 
 
 test('the generated contract describes the implemented security and wire formats', () => {
   assert.equal(openapi.openapi, '3.1.0')
-  assert.equal(openapi.info.version, '2.8.0')
+  assert.equal(openapi.info.version, '2.9.0')
   for (const path of ['/api/runs/{id}/jobs', '/api/runs/{id}/sessions', '/api/sessions/{id}/events']) {
     assert.equal(openapi.paths[path], undefined)
   }
@@ -104,6 +104,24 @@ test('the generated contract describes the implemented security and wire formats
     },
     { type: 'string', format: 'date-time' }
   )
+})
+
+test('webhook status is an authenticated process-local no-store snapshot', () => {
+  const operation = openapi.paths['/api/v1/ingestion/webhook/status'].get
+  assert.ok(operation.security.some(entry => 'BearerAuth' in entry))
+  assert.ok(operation.security.some(entry => 'ApiKeyAuth' in entry))
+  for (const status of ['401', '403', '503']) assert.ok(operation.responses[status])
+  const response = operation.responses['200']
+  assert.deepEqual(response.headers['cache-control'].schema.enum, ['no-store'])
+  assert.equal(response.content['application/json'].schema.$ref, '#/components/schemas/WebhookStatus')
+  const model = openapi.components.schemas.WebhookStatus
+  assert.deepEqual(model.properties.scope.enum, ['process'])
+  for (const name of ['received', 'inFlight', 'verified', 'accepted', 'rejected', 'failed', 'duplicates', 'pings']) {
+    assert.equal(model.properties[name].type, 'integer')
+    assert.ok(model.required.includes(name))
+  }
+  assert.match(operation.description, /without querying GitHub/)
+  assert.match(model.description, /Reset on restart/)
 })
 
 test('on-demand value publication preserves the original bounded envelope and administrator boundary', () => {
@@ -263,6 +281,7 @@ test('structured payload fields stay in sync with Go JSON tags', () => {
     ['../internal/model/model.go', 'Source', 'QuerySource'],
     ['../internal/model/model.go', 'Metrics', 'QueryMetrics'],
     ['../internal/server/operations.go', 'rebuildStatus', 'RebuildStatus'],
+    ['../internal/server/webhook_status.go', 'webhookStatus', 'WebhookStatus'],
     ['../internal/server/value.go', 'valuePublicationRequest', 'ValuePublicationRequest'],
     ['../internal/server/logs.go', 'serverLogSnapshot', 'ServerLogSnapshot'],
     ['../internal/server/logs.go', 'serverLogRedis', 'ServerLogRedis'],
