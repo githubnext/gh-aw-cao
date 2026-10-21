@@ -54,9 +54,10 @@ type fakeAzureApply struct {
 
 func testAzureImageDigest(repository string) string {
 	letter := "b"
-	if repository == "cao-ingest" {
+	switch repository {
+	case "cao-ingest":
 		letter = "c"
-	} else if repository == "cao-db-provision" {
+	case "cao-db-provision":
 		letter = "d"
 	}
 	return "sha256:" + strings.Repeat(letter, 64)
