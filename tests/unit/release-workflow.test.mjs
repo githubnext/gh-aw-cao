@@ -108,6 +108,10 @@ test("release builds versioned binaries read-only from the exact authorized sour
   assert.match(stepBlock(source, "Build extension release binaries"), /RELEASE_TAG: \$\{\{ needs.resolve-version.outputs.release_tag \}\}/);
   assert.match(stepBlock(source, "Build extension release binaries"), /bash scripts\/build-release\.sh "\$RELEASE_TAG" "\$RUNNER_TEMP\/release-binaries"/);
   assert.match(stepBlock(source, "Verify embedded release version"), /\/gh-cao-linux-amd64" --version\)" = "gh cao version \$\{RELEASE_TAG\}"/);
+  const install = stepBlock(source, "Verify GitHub CLI release installation");
+  assert.match(install, /CAO_EXTENSION_BINARY: \$\{\{ runner.temp \}\}\/release-binaries\/gh-cao-linux-amd64/);
+  assert.match(install, /CAO_EXTENSION_VERSION: \$\{\{ needs.resolve-version.outputs.release_tag \}\}/);
+  assert.match(install, /node --test tests\/integration\/gh-extension-installation.test.mjs/);
   const upload = stepBlock(source, "Upload extension release binaries");
   const download = stepBlock(source, "Download extension release binaries");
   assert.match(upload, /name: release-binaries-\$\{\{ github.run_id \}\}/);
@@ -151,10 +155,66 @@ test("release context paginates before filtering complete API responses", () => 
 
   assert.doesNotMatch(fetchReleaseContext, /gh api[^\n]*--slurp/);
   assert.equal(
-    fetchReleaseContext.match(/gh api --paginate[\s\S]*?\|\n\s+jq --slurp/g)?.length,
+    fetchReleaseContext.match(/fetch_paginated_json [^\n]*(?:\\\n[^\n]*)?\|\n\s+jq --slurp/g)?.length,
     2,
     "each API request should paginate before local jq slurps its responses",
   );
+});
+
+test("paginated release evidence retries incomplete responses without accepting partial evidence", async (t) => {
+  const step = releaseConfig.steps.find(({ name }) => name === "Fetch release context");
+  const functionSource = step.run.slice(step.run.indexOf("fetch_paginated_json()"), step.run.indexOf("RELEASE_ID="));
+  for (const scenario of [
+    "complete", "empty array", "retry empty", "retry truncated", "retry partial", "empty", "truncated", "partial", "object",
+  ]) {
+    await t.test(scenario, (t) => {
+      const directory = mkdtempSync(join(tmpdir(), "cao-release-context-"));
+      t.after(() => rmSync(directory, { recursive: true, force: true }));
+      const bin = join(directory, "bin");
+      mkdirSync(bin);
+      const countPath = join(directory, "attempts");
+      writeFileSync(join(bin, "gh"), `#!/usr/bin/env node
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+const count = existsSync(process.env.TEST_COUNT) ? Number(readFileSync(process.env.TEST_COUNT, "utf8")) + 1 : 1;
+writeFileSync(process.env.TEST_COUNT, String(count));
+const scenario = process.env.TEST_SCENARIO;
+if (process.argv.slice(2).join(" ") !== "api --paginate /repos/acme/gh-cao/releases?per_page=100") process.exit(2);
+if (scenario.startsWith("retry ") && count > 1) {
+  console.log('[{"id":2}]\\n[{"id":3}]');
+} else if (scenario.endsWith("empty")) {
+  console.error("unexpected end of JSON input");
+  process.exit(1);
+} else if (scenario.endsWith("truncated")) {
+  process.stdout.write('[{"id":1}');
+} else if (scenario.endsWith("partial")) {
+  console.log('[{"id":1}]');
+  process.exit(1);
+} else {
+  console.log(scenario === "empty array" ? "[]" : scenario === "object" ? "{}" : '[{"id":2}]\\n[{"id":3}]');
+}
+`, { mode: 0o755 });
+      writeFileSync(join(bin, "sleep"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+      const result = spawnSync("bash", ["-c", `set -euo pipefail
+${functionSource.replace("/tmp/gh-aw/agent/release-data/api-pages.json", join(directory, "api-pages.json"))}
+fetch_paginated_json '/repos/acme/gh-cao/releases?per_page=100' | jq --slurp 'add'
+`], {
+        encoding: "utf8",
+        timeout: 10_000,
+        env: {
+          ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}`,
+          TEST_COUNT: countPath, TEST_SCENARIO: scenario,
+        },
+      });
+      const succeeds = ["complete", "empty array"].includes(scenario) || scenario.startsWith("retry ");
+      assert.equal(result.status === 0, succeeds, result.stderr);
+      assert.equal(Number(readFileSync(countPath, "utf8")), scenario.startsWith("retry ") ? 2 : succeeds ? 1 : 3);
+      if (succeeds) {
+        assert.deepEqual(JSON.parse(result.stdout), scenario === "empty array" ? [] : [{ id: 2 }, { id: 3 }]);
+      } else {
+        assert.doesNotMatch(result.stdout, /"id"/, "partial responses must not reach consumers");
+      }
+    });
+  }
 });
 
 test("release context fetches tags before local git inspection", () => {

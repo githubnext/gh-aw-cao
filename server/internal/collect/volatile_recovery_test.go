@@ -169,21 +169,21 @@ func TestRetainedIdentityDoesNotUseAmbiguousFilenames(t *testing.T) {
 	}
 }
 
-func TestVolatileScopeRejectsCollidingShardPrefixesBeforeMutation(t *testing.T) {
+func TestVolatileScopeRecoversPreviouslyCollidingRepositories(t *testing.T) {
 	b := volatileBackfill(t)
 	path := retainedRepository(t, b.Lake, "a-b/c")
 	b.Enumerator = recoveryEnumerator{
 		installations: []githubapp.Installation{{ID: 1}},
 		repositories:  map[int64][]githubapp.Repository{1: {{FullName: "a/b-c"}}},
 	}
-	if _, _, _, err := b.reconstructScope(t.Context()); err == nil {
-		t.Fatal("colliding repository prefixes accepted")
+	if _, _, _, err := b.reconstructScope(t.Context()); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("collision erased retained evidence: %v", err)
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("withdrawn evidence retained: %v", err)
 	}
-	if enrolled, err := b.Enrollment.Enrolled(t.Context(), "a/b-c"); err != nil || enrolled {
-		t.Fatalf("failed snapshot mutated enrollment: %t, %v", enrolled, err)
+	if enrolled, err := b.Enrollment.Enrolled(t.Context(), "a/b-c"); err != nil || !enrolled {
+		t.Fatalf("fresh repository not enrolled: %t, %v", enrolled, err)
 	}
 }
 
@@ -196,32 +196,6 @@ func TestVolatileRecoveryRejectsMixedShardIdentity(t *testing.T) {
 	}
 	if _, err := b.Lake.RetainedRepositories(t.Context(), 10); err == nil {
 		t.Fatal("only the first record's identity was checked")
-	}
-}
-
-func TestDetectAmbiguousShardPrefixesAcceptsDisjointNames(t *testing.T) {
-	lake := Lake{Directory: t.TempDir()}
-	fresh := map[string]int64{"octo/current": 1}
-	previous := map[string]struct{}{"octo/withdrawn": {}}
-	if err := detectAmbiguousShardPrefixes(lake, fresh, previous); err != nil {
-		t.Fatalf("disjoint repository names must not collide: %v", err)
-	}
-}
-
-func TestDetectAmbiguousShardPrefixesRejectsCollisionAcrossFreshAndPrevious(t *testing.T) {
-	lake := Lake{Directory: t.TempDir()}
-	fresh := map[string]int64{"a/b-c": 1}
-	previous := map[string]struct{}{"a-b/c": {}}
-	if err := detectAmbiguousShardPrefixes(lake, fresh, previous); err == nil {
-		t.Fatal("colliding shard prefixes across fresh and previous scope accepted")
-	}
-}
-
-func TestDetectAmbiguousShardPrefixesRejectsCollisionWithinPrevious(t *testing.T) {
-	lake := Lake{Directory: t.TempDir()}
-	previous := map[string]struct{}{"a/b-c": {}, "a-b/c": {}}
-	if err := detectAmbiguousShardPrefixes(lake, nil, previous); err == nil {
-		t.Fatal("colliding shard prefixes within previous scope accepted")
 	}
 }
 

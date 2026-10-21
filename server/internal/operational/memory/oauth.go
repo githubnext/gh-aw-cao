@@ -43,7 +43,11 @@ func (s *Store) SessionRecord(ctx context.Context, id string) (string, error) {
 		return "", err
 	}
 	s.prune(s.config.Clock())
-	return s.sessions[id].value, nil
+	current := s.sessions[id]
+	if !current.expires.After(s.config.Clock()) {
+		return "", nil
+	}
+	return current.value, nil
 }
 
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
@@ -54,19 +58,20 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	if err := s.name(id); err != nil {
 		return err
 	}
-	delete(s.sessions, id)
-	s.drop(recordKey{"session", id, ""})
-	return nil
+	_, err := s.invalidateSession(id, "", s.sessions[id].namespace)
+	return err
 }
 
-func (s *Store) putSession(id, value string, ttl time.Duration, now time.Time) error {
-	if _, ok := s.sessions[id]; !ok && len(s.sessions) >= s.config.MaxSessions {
-		return capacity()
+func (s *Store) putSession(id, value string, ttl time.Duration, namespace string, now time.Time) error {
+	if _, ok := s.sessions[id]; !ok {
+		if len(s.sessions) >= s.config.MaxSessions || len(s.sessions)+len(s.revocations) >= s.config.MaxRevocations {
+			return capacity()
+		}
 	}
-	if err := s.reserve(map[recordKey]int64{{"session", id, ""}: charge(id, value)}); err != nil {
+	if err := s.reserve(map[recordKey]int64{{"session", id, ""}: charge(namespace, id, value)}); err != nil {
 		return err
 	}
-	s.sessions[strings.Clone(id)] = expiringValue{strings.Clone(value), now.Add(ttl)}
+	s.sessions[strings.Clone(id)] = sessionValue{expiringValue{strings.Clone(value), now.Add(ttl)}, strings.Clone(namespace)}
 	return nil
 }
 
@@ -83,7 +88,7 @@ func (s *Store) sessionInput(id, value string, ttl time.Duration) error {
 	return validTTL(ttl)
 }
 
-func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration) error {
+func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration, namespace string) error {
 	if err := s.enter(ctx); err != nil {
 		return err
 	}
@@ -91,12 +96,15 @@ func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Durat
 	if err := s.sessionInput(id, value, ttl); err != nil {
 		return err
 	}
+	if err := s.namespace(namespace); err != nil {
+		return err
+	}
 	now := s.config.Clock()
 	s.prune(now)
-	return s.putSession(id, value, ttl, now)
+	return s.putSession(id, value, ttl, namespace, now)
 }
 
-func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration) (bool, error) {
+func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration, namespace string) (bool, error) {
 	if err := s.enter(ctx); err != nil {
 		return false, err
 	}
@@ -107,13 +115,16 @@ func (s *Store) CompareSession(ctx context.Context, id, expected, value string, 
 	if err := s.value(expected); err != nil {
 		return false, err
 	}
+	if err := s.namespace(namespace); err != nil {
+		return false, err
+	}
 	now := s.config.Clock()
 	s.prune(now)
 	current, ok := s.sessions[id]
-	if !ok || current.value != expected {
+	if !ok || current.value != expected || !current.expires.After(now) || current.namespace != namespace {
 		return false, nil
 	}
-	if err := s.putSession(id, value, ttl, now); err != nil {
+	if err := s.putSession(id, value, ttl, namespace, now); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -136,16 +147,16 @@ func (s *Store) InvalidateSession(ctx context.Context, id, expected, namespace s
 		return "", err
 	}
 	s.prune(s.config.Clock())
+	return s.invalidateSession(id, expected, namespace)
+}
+
+func (s *Store) invalidateSession(id, expected, namespace string) (string, error) {
 	current, ok := s.sessions[id]
 	if !ok {
 		return "", nil
 	}
 	if expected != "" && current.value != expected {
 		return "", operational.ErrConflict
-	}
-	key := revocationKey{namespace, id}
-	if _, ok := s.revocations[key]; !ok && len(s.revocations) >= s.config.MaxRevocations {
-		return "", capacity()
 	}
 	changes := map[recordKey]int64{
 		{"session", id, ""}: 0, {"revocation", namespace, id}: charge(namespace, id, current.value),
@@ -177,7 +188,7 @@ func (s *Store) QueueRevocation(ctx context.Context, id, value, namespace string
 		return err
 	}
 	key := revocationKey{namespace, id}
-	if _, ok := s.revocations[key]; !ok && len(s.revocations) >= s.config.MaxRevocations {
+	if _, ok := s.revocations[key]; !ok && len(s.revocations)+len(s.sessions) >= s.config.MaxRevocations {
 		return capacity()
 	}
 	if err := s.reserve(map[recordKey]int64{{"revocation", namespace, id}: charge(namespace, id, value)}); err != nil {
@@ -195,6 +206,14 @@ func (s *Store) PendingRevocation(ctx context.Context, namespace string) (operat
 	defer s.mu.Unlock()
 	if err := s.namespace(namespace); err != nil {
 		return operational.Revocation{}, err
+	}
+	for id, current := range s.sessions {
+		if current.namespace == namespace && !current.expires.After(s.config.Clock()) {
+			if _, err := s.invalidateSession(id, "", namespace); err != nil {
+				return operational.Revocation{}, err
+			}
+			break
+		}
 	}
 	next, nextOrder, wrapped := nextRevocation(s.revocations, namespace, s.revocationCursor[namespace])
 	if nextOrder == 0 {

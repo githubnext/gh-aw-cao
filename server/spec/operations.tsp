@@ -8,6 +8,10 @@ namespace Cao;
 model RebuildStatus {
   state: string;
   required: boolean;
+  /** Server-generated lifecycle correlation, independent of the private lease owner token. */
+  rebuildId?: string;
+  /** pending, recorded (durable), local (non-durable capability-level evidence), or unavailable. Publication success does not imply terminal evidence was persisted. */
+  auditState?: string;
   startedAt?: string;
   completedAt?: string;
   revision?: int64;
@@ -121,7 +125,7 @@ namespace Operations {
   ): { @statusCode code: 202; @body body: WebhookAcknowledgement } |
     BadRequest | Unauthorized | Conflict | Unavailable;
 
-  /** Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained. */
+  /** Start an asynchronous rebuild coordinated by the selected operational store; local bearer or hosted admin session and CSRF on hosted mutations. Hosted rebuilds require durable audit admission and start evidence; an unavailable audit service fails closed before reconciliation. Lifecycle events correlate actor, rebuildId, prior revision and terminal outcome without payloads. Canonical publication, audit appends and replaceable status are separate commits: terminal audit failures report auditState=unavailable where status storage remains available, never roll back a published revision, and require operator reconciliation of incomplete histories. Local bearer mode retains capability-level attribution, not personal identity or a durability guarantee. A volatile collector also reconstructs GitHub scope and reruns backfill, even with a populated lake, when durable audit is supplied. Canonical ingestion and existing-database maintenance curate Audits according to dashboard-data.md section 11.1, including unchanged artifact inputs. Changed retained data publishes a new revision; missing Run evidence, grader/eval identities, and actionable diagnostics remain retained. */
   @useAuth(DashboardAuth)
   @route("/api/admin/rebuild")
   @post op rebuild(@header("X-CSRF-Token") csrfToken?: string):

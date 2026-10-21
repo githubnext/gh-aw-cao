@@ -128,12 +128,16 @@ func TestRedactCLICommandTextProducesStorableOutput(t *testing.T) {
 }
 
 func TestCLICommandInvocationValidatesAttribution(t *testing.T) {
-	valid := CLICommandInvocation{ActionID: "a", Command: "c", Actor: "mona", Repository: "octo/api"}
+	valid := CLICommandInvocation{ActionID: "a", Command: "c", Actor: "mona", ActorID: 101, Repository: "octo/api"}
 	if _, err := valid.Encode(4096); err != nil {
 		t.Fatal(err)
 	}
 	for _, invocation := range []CLICommandInvocation{
 		{ActionID: "a", Command: "c", Actor: "bad login"},
+		{ActionID: "a", Command: "c", Actor: "mona"},
+		{ActionID: "a", Command: "c", Actor: "mona", ActorID: -1},
+		{ActionID: "a", Command: "c", ActorID: 101},
+		{ActionID: "a", Command: "c", ActorID: -1},
 		{ActionID: "a", Command: "c", Repository: "octo"},
 		{ActionID: "a", Command: "c", Repository: "octo/api/extra"},
 	} {

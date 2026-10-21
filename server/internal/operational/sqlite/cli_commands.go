@@ -245,6 +245,7 @@ func (q *cliCommandQueue) enqueue(ctx context.Context, invocation operational.CL
 			}
 			// Retry is a new admission by the currently authorized requester.
 			original.Actor = invocation.Actor
+			original.ActorID = invocation.ActorID
 			encoded, err := original.Encode(q.options.MaxInputBytes)
 			if err != nil {
 				return err

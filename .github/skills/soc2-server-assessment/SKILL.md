@@ -14,8 +14,11 @@ Do not label the system "SOC 2 compliant" based on source, tests, or this skill.
 
 Read `CODEBASE.yml`, `specs/server-soc2-compliance.md`, `server/SOC2.md`,
 `server/SOC2-CHANGELOG.md`, `server/SECURITY.md`, and the relevant normative
-specifications before assessing a component. The SOC 2 specification defines
-the maintained evidence, decision and closure contract. Start from existing
+specifications before assessing a component. RFC-035 at the established SOC 2
+specification path defines the maintained evidence, decision and closure
+contract using BCP 14 and stable `S2-` requirement IDs. Applicable assessment
+roles and unverified requirements must remain explicit; RFC conformance does
+not establish SOC 2 compliance. Start from existing
 controls, including the hosted CLI SOC 2 evidence boundary and independent audit
 delivery contract; do not create a competing security specification.
 

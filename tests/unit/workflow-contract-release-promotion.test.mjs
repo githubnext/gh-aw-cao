@@ -242,6 +242,18 @@ test("only promotion is approval-gated; automated prerelease publication and PR 
     assert.equal(jobs[name].permissions, undefined);
   }
   assert.equal(jobs.promote.steps[0].with.ref, "${{ github.sha }}");
+  assert.equal(jobs["verify-install"].needs, "promote");
+  assert.equal(jobs["verify-install"].permissions.contents, "read");
+  assert.equal(jobs["verify-install"].environment, undefined);
+  const install = jobs["verify-install"].steps.find(({ name }) => name === "Install and run the promoted extension");
+  assert.equal(install.env.RELEASE_TAG, "${{ inputs.tag }}");
+  assert.equal(install.env.GH_TOKEN, "${{ github.token }}");
+  assert.match(install.run, /export XDG_DATA_HOME="\$extension_home\/data"/);
+  assert.match(install.run, /export XDG_STATE_HOME="\$extension_home\/state"/);
+  assert.match(install.run, /export XDG_CACHE_HOME="\$extension_home\/cache"/);
+  assert.match(install.run, /gh extension install "\$GITHUB_REPOSITORY"/);
+  assert.doesNotMatch(install.run, /--pin|--force/);
+  assert.match(install.run, /test "\$\(gh cao --version\)" = "gh cao version \$RELEASE_TAG"/);
   assert.match(read(".github/workflows/release.md"), /prerelease: true,\s+make_latest: 'false'/);
   assert.doesNotMatch(read(".github/workflows/release.md"), /environment: release-latest/);
   for (const name of ["cgo", "cid", "workflow-contracts"]) {

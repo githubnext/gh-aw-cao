@@ -26,7 +26,7 @@ gh workflow run release-promote.yml --ref main -f tag=vX.Y.Z
 The workflow does not create a release, rebuild its assets, or move its tag.
 It requires an existing immutable, published prerelease whose tag and
 `target_commitish` identify the same full commit SHA reachable from the default
-branch. The runtime archive and its checksum, six `gh-cao-OS-ARCH` binaries
+branch. The runtime and Azure deployment archives and their checksums, six `gh-cao-OS-ARCH` binaries
 (`.exe` on Windows), and `checksums.txt` must all have immutable SHA-256 digests,
 and the exact-SHA prerelease preparation/highlights workflow must have succeeded.
 The candidate must advance the current stable semantic version; rollback,
@@ -70,11 +70,10 @@ branch head requires a new dispatch and approval. Reruns are rejected to avoid
 reusing approval history from an earlier attempt. Promotion runs share one
 non-cancelling concurrency group.
 
-Only then does the privileged job update the existing release with
-`prerelease: false` and `make_latest: true`, verifying the stable/latest result.
-Failure before the update leaves the candidate a prerelease. A failed readback
-after the update is reported as failure, not silently rolled back or declared
-successful; an operator must inspect the actual release state.
+Promotion sets `prerelease: false` and `make_latest: true`, checks stable/latest,
+then verifies the public unpinned install, version, and help in isolated storage.
+Pre-update failure leaves a prerelease; post-update failure requires inspection,
+without automatic rollback.
 
 Promotion's GitHub.com `cache-mode: read` denies cache writes through scoped
 job tokens. No job overrides it.

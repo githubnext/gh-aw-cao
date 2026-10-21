@@ -86,6 +86,11 @@ type expiringValue struct {
 	expires time.Time
 }
 
+type sessionValue struct {
+	expiringValue
+	namespace string
+}
+
 type revocationKey struct{ namespace, id string }
 type revocationValue struct {
 	value string
@@ -104,7 +109,7 @@ type Store struct {
 	metadataEntries               int
 	cache                         map[string]cacheEntry
 	cacheBytes                    int64
-	sessions                      map[string]expiringValue
+	sessions                      map[string]sessionValue
 	revocations                   map[revocationKey]revocationValue
 	revocationCursor              map[string]uint64
 	buckets                       map[string]tokenBucket
@@ -181,7 +186,7 @@ func New(c Config) (*Store, error) {
 	}
 	return &Store{
 		config: c, wake: make(chan struct{}), records: make(map[recordKey]int64),
-		cache: make(map[string]cacheEntry), sessions: make(map[string]expiringValue),
+		cache: make(map[string]cacheEntry), sessions: make(map[string]sessionValue),
 		revocations: make(map[revocationKey]revocationValue), revocationCursor: make(map[string]uint64),
 		buckets: make(map[string]tokenBucket), locks: make(map[string]expiringValue),
 		states: make(map[string][]byte), queues: make(map[string]*queue),
@@ -331,12 +336,6 @@ func (s *Store) Maintain(ctx context.Context) error {
 
 func (s *Store) prune(now time.Time) {
 	s.expireCache(now)
-	for k, v := range s.sessions {
-		if !v.expires.After(now) {
-			delete(s.sessions, k)
-			s.drop(recordKey{"session", k, ""})
-		}
-	}
 	for k, v := range s.locks {
 		if !v.expires.After(now) {
 			delete(s.locks, k)

@@ -131,3 +131,351 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Limitations: real databases/providers/executor kernels, deployed settings,
   organizational evidence and historical operation remain unverified.
   Initial technical assessment delivered; SOC 2 readiness undetermined.
+
+## 2026-10-21 - SOC2-LOG-006 - Remediation and daily worker authoring authorized
+
+- Type: explicit operator decision and coordinated implementation launch.
+- Source/evidence baseline: remediation sessions start from
+  `748093b701ef9cf22e0323ac84fc6b026ea526ac`, containing the consolidated
+  assessment. Original runtime observations remain tied to
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`.
+- Specification version: 1; added the daily SelfCare worker contract without
+  changing evidence/decision record semantics.
+- Authorization: operator directed "start session to fix each findings" and
+  "create an self care agentic workfler worker that does this check again
+  and fixes the top 3 issues daily".
+- Decisions: DATA-01/02/03, IAM-001/002, EXEC-01 and OPS-01/02/03/04 now
+  `remediate` / `in-progress`; DATA-08 is authorized for contract/root-cause
+  investigation and remediation under the same disposition.
+- Launched eleven dedicated repository fix sessions and a twelfth session to
+  author/register the daily SelfCare assessment/top-three-remediation worker.
+  Exact session IDs are maintained in `SOC2.md`.
+- Limits: draft PR proposals only, no merge/deployment/production access or
+  secret reads. Existing sole-target authority must not widen. Evidence-only
+  findings remain open/pending, except DATA-08's concrete failed check;
+  proposed exclusions remain unapproved. No risk acceptance inferred.
+- Outcome: repository work underway; no fix verified, no finding closed.
+  Daily workflow is not active until reviewed/merged/installed. SOC 2
+  readiness remains undetermined.
+
+## 2026-10-21 - SOC2-LOG-007 - OPS-04 validated draft remediation received
+
+- Type: proposed code remediation and validation evidence.
+- Source/evidence: commit `c480c3027785444a53e814802bf9776bb9f02fbc`,
+  draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), targeting
+  the assessment branch. Coordinator checked GitHub open/draft/head/base
+  identity and commit scope; it did not rerun the session's test suite.
+- Specification version: 1. Related finding: OPS-04.
+- Proposed change: missing/malformed Redis persistence evidence warns;
+  unknown AOF status remains unknown; historical RDB success does not assert
+  active snapshot policy; enabled-AOF write success is narrowly described.
+  Added classification/INFO boundary tests and operator documentation.
+- Reported validation: formatting, doctor normal/race tests, vet/build,
+  full server golangci-lint (zero issues), workflow compilation and diff
+  checks passed.
+- Decision/lifecycle: `remediate` / `in-progress`; draft awaiting review,
+  not merged/deployed and not closed. Original assessment evidence preserved.
+- Limitations: no live CONFIG/provider access or restore exercise.
+  DATA-07/OPS-06 provider durability/recovery evidence remains pending.
+
+## 2026-10-21 - SOC2-LOG-008 - DATA-08 contract correction proposed
+
+- Type: validation root-cause disposition and draft test-only remediation.
+- Source/evidence: commit `d2d640bd3301617d27919e6634ef63c2b50f321f`,
+  draft [#19305](https://github.com/githubnext/gh-cao/pull/19305).
+  Coordinator checked open/draft/head/base and one-file scope, not rerun
+  results independently.
+- Specification version: 1. Related finding: DATA-08.
+- Root cause: legacy Operational Value pages were intentionally retired;
+  the temporal SQL test still searched the removed page instead of the
+  shared native-measure fixture. No runtime processing defect inferred.
+- Proposed change: correct fixture/test naming, preserve existing semantic
+  assertions and strengthen source/metric/point/dimension/row-bound checks.
+- Reported validation: original failure reproduced; corrected targeted
+  check and PostgreSQL-backed full query suite passed (214 passing
+  test/subtest events, zero failures/skips); 74 related dashboard contract
+  tests, query vet/build/lint, formatting, workflow compile and diff checks
+  passed. Disposable database removed; no deployed service examined.
+- Decision/lifecycle: `remediate` / `in-progress`; review/integration and
+  post-integration gate evidence pending. Historical baseline failure is
+  preserved and no other provider/period evidence is closed.
+
+## 2026-10-21 - SOC2-LOG-009 - Review-state refresh and DATA-08 CI dependency
+
+- Type: current review state and integration limitation.
+- Source/evidence: GitHub refresh around 15:39 UTC reports
+  [#19304](https://github.com/githubnext/gh-cao/pull/19304) and
+  [#19305](https://github.com/githubnext/gh-cao/pull/19305) open/non-draft;
+  original proposal head commits remain unchanged. Initial draft-creation
+  events remain accurate history; no review-state changes were made here.
+- Specification version: 1. Related findings: OPS-04 and DATA-08.
+- OPS-04 Go CI has one failing completed check. Its session's log review
+  and query/fixture baseline tree comparison attribute failure to the
+  pre-existing DATA-08 temporal assertion, not the doctor change.
+  The separate DATA-08 correction is proposed in #19305.
+- Decision/lifecycle: both remain `remediate` / `in-progress`.
+  No cross-PR code copy, merge, CI rerun or closure authorized/performed.
+  Integration must resolve the known dependency and produce clean relevant
+  gate evidence before closure; provider/period limitations remain.
+
+## 2026-10-21 - SOC2-LOG-010 - Two corrections integrated on assessment branch
+
+- Type: observed remote integration and coordinator verification.
+- Source/evidence: GitHub reports OPS-04
+  [#19304](https://github.com/githubnext/gh-cao/pull/19304) merged at
+  15:40:18 UTC as `90b865397`, DATA-08
+  [#19305](https://github.com/githubnext/gh-cao/pull/19305) merged at
+  15:40:41 UTC as `c85b8dfe7`, both into the assessment branch.
+  This supersedes SOC2-LOG-009's earlier open-state observation.
+- Specification version: 1. Related findings: OPS-04 and DATA-08.
+- Coordinator's push detected remote advancement; it preserved both
+  externally merged fixes and rebased its unpublished documentation commit.
+  No remote merge, force push or PR-state change was performed by coordinator.
+- Integrated check:
+  `go -C server test ./internal/doctor ./internal/query -count=1 -json`
+  passed with 311 passing test/subtest events, 18 PostgreSQL-dependent
+  skipped cases and zero failures. Native-measure contract and doctor cases
+  passed; this is not real-provider or full-repository validation.
+- Decision/lifecycle: `remediate` / `in-progress` pending parent/default-branch
+  integration and final required gates; no production/period control closed.
+  Original design/failed-gate observations and skip limitations preserved.
+
+## 2026-10-21 - SOC2-LOG-011 - Daily SelfCare worker authored and proposed
+
+- Type: recurring workflow authoring/contract-validation milestone.
+- Source/evidence: commit `c132cc6d01809d2b99fb86e36dd56430355a44ef`,
+  draft [#19310](https://github.com/githubnext/gh-cao/pull/19310).
+  Coordinator verified GitHub draft/head/base, changed-file scope and policy
+  registration diff; authoring-session validation is separately attributed.
+- Specification version: 1, section 8.
+- Proposal: `self-care-server-soc2`, rolling 24-hour orchestrator eligibility
+  and manual duplicate-day guard; exact existing target/live authority only.
+  Worker registered across inventory/manifests/policy/dispatch; ceiling
+  20 to 21 workers, no target/mode/credit-ceiling widening.
+- Behavior: daily assessment/report even with an existing fix PR; at most
+  three ranked current verified compatible code issues in one bounded draft
+  PR; open/addressed remediation exclusion, no fabricated operational evidence.
+  One-package/12-file/50-KiB/path limits protect workflow/policy/credentials.
+  Blocked durable record deltas require explicit human consolidation.
+- Reported validation: 303 workflow/policy and 258 control integration
+  tests passed without skips; lint/both type checks passed; 73 workflows
+  compiled and locks regenerated with fixed seed and inspected.
+- Activation: pending review/default-control-branch integration, prerequisites,
+  credentials and Actions configuration. No run/merge/deployment performed
+  by authoring session or coordinator. Artifact retention is not proof of
+  examination-period retention or effective controls.
+- Decisions/findings: no risk accepted, exclusion approved or prior finding
+  closed. SOC 2 readiness remains undetermined.
+
+## 2026-10-21 - SOC2-LOG-012 - Stream and development-assurance proposals received
+
+- Type: two bounded draft remediation proposals and validation handoffs.
+- Source/evidence: IAM-002 commit
+  `6839329d8c442f58f5ab552ddda792c104bc2c59`,
+  draft [#19318](https://github.com/githubnext/gh-cao/pull/19318);
+  OPS-03 commit `bb897f7e76932704aa5c22640257abfaa940237b`,
+  draft [#19317](https://github.com/githubnext/gh-cao/pull/19317).
+  Coordinator verified open/draft identities and scopes; session validation
+  remains separately attributed.
+- Specification version: 1.
+- IAM-002 proposal: fixed OAuth stream authorization deadlines and bounded
+  heartbeat session reads; existing helpers handle reconnect. Reported
+  real-boundary/failure tests and repeated race checks pass; full server
+  result retains database-dependent skips. Proxy/buffer/backend operation
+  evidence remains required.
+- OPS-03 proposal: reviewed config and plan explicitly restrict source-build
+  apply to development; separate target digests/read-back and honest
+  assurance receipts added. No production scanner/promotion pipeline
+  claimed. Reported native check/race, Bicep/assets/package contracts,
+  lint/type/compile/docs checks pass with mocked Azure calls.
+- Integration dependencies: preserve IAM-001 expired-read semantics with
+  stream checks; preserve separate image parameters when combining OPS-02
+  telemetry templates; regenerate combined ARM.
+- Decision/lifecycle: both `remediate` / `in-progress`, unmerged and
+  undeployed. No production assurance/effectiveness or prior finding closed.
+
+## 2026-10-21 - SOC2-LOG-013 - Durable erasure follow-up proposal received
+
+- Type: DATA-03 draft remediation and durable-backend local verification.
+- Source/evidence: commit `79830714dd4b40453b0c15eefa1bf6569c475af7`,
+  draft [#19322](https://github.com/githubnext/gh-cao/pull/19322).
+  Coordinator verified open/draft/head/base and five-file scope.
+- Specification version: 1.
+- Proposal: one erasure helper persists follow-up before ACK; separate
+  requested/completed generations consume only captured intent after
+  canonical commit, retaining concurrent and interrupted work.
+- Session-reported validation: full collector race suite with isolated Redis
+  and PostgreSQL, 260 passing test/subtest events and zero failures/skips;
+  failure/cancel/reclaim/rollback/crash-equivalent/concurrent-publication
+  cases covered. Loaded-host timeout in initial existing parity test was
+  resolved by unchanged bounded-concurrency rerun, not weakened assertions.
+  Server lint/format/build, collector vet and workflow compile passed.
+- Integration: preserve DATA-01/02 cancellation-aware ForgetContext in the
+  new single helper; no duplicate identity/shared-evidence scope.
+- Decision/lifecycle: `remediate` / `in-progress`; proposal unmerged,
+  undeployed, no finding closed. Provider power-loss, actual recovery,
+  principal/encryption and period evidence remain separately unverified.
+
+## 2026-10-21 - SOC2-LOG-014 - Daily worker integrated on assessment branch
+
+- Type: observed integration and coordinator contract verification.
+- Source/evidence: GitHub reports
+  [#19310](https://github.com/githubnext/gh-cao/pull/19310) merged at
+  15:50:10 UTC as `4b63f3dcb6478dbc42f948d262131b2b32593a6e`.
+  Coordinator preserved the remote merge and rebased unpublished docs.
+- Specification version: 1, section 8.
+- Integrated check: `node --test tests/unit/workflow-contract-selfcare-soc2.test.mjs`,
+  seven passed, zero failures/skips. Initial missing locked `yaml` dependency
+  was restored with `npm ci --ignore-scripts --no-audit --no-fund`, then rerun;
+  no manifest/lock change.
+- Activation: still pending default/active-control-branch integration and
+  actual prerequisites; no dispatch/run/deploy or effectiveness claim.
+  This supersedes only SOC2-LOG-011's unmerged-proposal state.
+
+## 2026-10-21 - SOC2-LOG-015 - Four further remediation proposals recorded
+
+- Type: DATA-01/02 and OPS-01/02 draft implementation/validation handoffs.
+- Source/evidence: DATA-01 `03c5fdb5c89a9b45752151ee4094cb878fb4520a`
+  [#19325](https://github.com/githubnext/gh-cao/pull/19325);
+  DATA-02 `ca720d64091b12efb6408489b8c3e3f4f6c3c010`
+  [#19326](https://github.com/githubnext/gh-cao/pull/19326);
+  OPS-01 `0f0a42612a1b3cf9e561d37b31be92cd324ae375`
+  [#19323](https://github.com/githubnext/gh-cao/pull/19323);
+  OPS-02 `2296bdd84ca101d2a9632819020bc502dad87826`
+  [#19324](https://github.com/githubnext/gh-cao/pull/19324).
+  Coordinator verified each open/draft/head/base and scoped files.
+- Specification version: 1.
+- DATA-01: prefix-free versioned repository encoding, identity-verified
+  legacy migration/preflight erasure and mixed-identity rejection; ambiguous
+  data left intact. Reported Activity and Redis/PostgreSQL collector/ingest/
+  simulator race suites pass without skips; rollout inventory still required.
+- DATA-02: shared/derived collector-value erasure, cross-process lake lock,
+  zero-enrollment pruning and revision-keyed caches. Reported end-to-end
+  webhook/Activity/PostgreSQL withdrawal and scoped race/cache cases pass;
+  protected independent packets/holds remain an operator scope decision.
+- OPS-01: durable rebuild lifecycle attribution and explicit storage failures;
+  hosted rebuild without durable audit now refuses, API 2.10.0. Reported
+  role/reader-chain and outage tests pass; old baseline full-suite failure
+  DATA-08 separately corrected in parent. Cross-store/crash evidence is not
+  atomic; no outbox or missing-terminal reconstruction claimed.
+- OPS-02: reviewed optional HTTPS OTLP/log route, Key Vault-only headers and
+  secret-scoped grants; synthetic TLS receipt/failure/config/template tests
+  reportedly pass. Actual deployment/collector/alert operation remains unknown.
+- Integration dependencies: combine ForgetContext preflight/filter/lock with
+  DATA-03's single erasure helper/generations; preserve OPS-03 digest and
+  development-only apply controls when regenerating OPS-02/03 ARM.
+- Decision/lifecycle: all `remediate` / `in-progress`, unmerged/undeployed;
+  validation is session-reported, not whole-system or historical assurance.
+
+## 2026-10-21 - SOC2-LOG-016 - Assessment specification converted to RFC form
+
+- Type: user-directed specification format and conformance clarification.
+- Authorization: operator directed "sco2 spec should be written in RFC mode".
+- Specification: RFC-035 at the existing
+  `specs/server-soc2-compliance.md` path; record schema version remains 1.
+- Added RFC status/scope/safety metadata, abstract, BCP 14 / RFC 2119 and
+  RFC 8174 keyword interpretation, role-specific conformance classes,
+  terminology, stable `S2-` requirement identifiers, security/privacy and
+  compatibility considerations, acceptance criteria, references and open
+  dependencies.
+- Preserved existing evidence/decision/lifecycle enums, finding identifiers,
+  section-8 routing and historical observations/authorizations. Updated
+  register and skill references to the RFC; no runtime/workflow/policy or
+  deployment authority change.
+- Limitations: RFC editorial/process conformance is not certification,
+  engagement approval, deployed control evidence or finding closure.
+
+## 2026-10-21 - SOC2-LOG-017 - OAuth cleanup lifecycle proposal received
+
+- Type: IAM-001 draft remediation and real-adapter verification handoff.
+- Source/evidence: commit `6926c313c9c059af4a8e4f9ebb06d26dbeac0df8`,
+  draft [#19327](https://github.com/githubnext/gh-cao/pull/19327).
+  Coordinator verified open/draft/head/base and 22-file scope.
+- Specification: RFC-035, record schema version 1.
+- Proposal: explicit provider expiry, CAS cleanup handoff, inactive-session
+  ownership retention/atomic expiry staging across adapters, protected
+  transition capacity and bounded temporary cleanup ownership.
+  Expired records still cannot authenticate or CAS back into authority.
+- Session-reported evidence: affected server/operational/Redis suites with
+  isolated real Redis/PostgreSQL and roles, serialized/race lifecycle checks,
+  focused 48 pass/zero fail/zero skip, build/lint/format/file-size/compile.
+  Earlier environment concurrency/address failures are preserved and resolved.
+- Rollout limits: stop old Redis-envelope replicas, retain prefixes/data/keys,
+  preserve unknown-expiry legacy debt. Pre-existing abandoned grants need
+  separate reconciliation. Provider issuance-to-durable-write kill window
+  and volatile-memory restart loss remain explicit, not universal cleanup.
+- Decision/lifecycle: `remediate` / `in-progress`, unmerged/undeployed.
+  No grants reconciled, live provider requests or finding closure.
+
+## 2026-10-21 - SOC2-LOG-018 - Immutable queued requester proposal received
+
+- Type: EXEC-01 draft remediation and final workstream handoff.
+- Source/evidence: commit `6ecfccfe666e607887e20c9b94333fb234997e94`,
+  draft [#19328](https://github.com/githubnext/gh-cao/pull/19328).
+  Coordinator verified open/draft/head/base and 21-file scope.
+- Specification: RFC-035, record schema version 1.
+- Proposal: numeric ActorID survives admission/queue/idempotency/claims and
+  is verified in the permission response before credential use. Legacy
+  unknown-ID work remains readable but denies execution and needs explicit
+  fresh admission; no backfill/deletion or SQL migration.
+- Session-reported validation: serial affected suites, real PostgreSQL/
+  SQLite identity/operational cases, focused race, build/vet/lint,
+  29 TypeSpec checks/no generated drift, workflow compile and three bounded
+  TLC models. Concurrent native fixture failure passed serial rerun.
+- Rollout: coordinated web/executor upgrade with old executor reconciliation;
+  runtime contract 1.1.0, mixed old replicas unsafe. No production migration,
+  provider behavior proof or deployment occurred.
+- Decision/lifecycle: `remediate` / `in-progress`; no finding closed.
+
+## 2026-10-21 - SOC2-LOG-019 - All fix proposals delivered; review states refreshed
+
+- Type: coordination milestone and observed review/integration state.
+- Specification: RFC-035, record schema version 1.
+- All eleven finding-specific fix sessions have delivered reviewable PRs.
+  Eight remain open; three corrections and the daily worker are integrated
+  into the assessment branch. This is not default-branch/deployment closure.
+- GitHub reports IAM-002
+  [#19318](https://github.com/githubnext/gh-cao/pull/19318) merged at
+  15:52:18 UTC as `24db44b03`; this remote merge was preserved by the
+  execution host during the coordinator's documentation work.
+- Current non-draft open proposals: DATA-01/02/03 and OPS-01/02.
+  IAM-001, EXEC-01 and OPS-03 remain draft. Earlier draft observations remain
+  historical; coordinator did not override changed review state.
+- Decisions/lifecycles remain as recorded; no external evidence, exclusion,
+  risk acceptance or operating-effectiveness closure inferred.
+
+## 2026-10-21 - SOC2-LOG-020 - Durable erasure correction integrated remotely
+
+- Type: observed assessment-branch integration.
+- Source/evidence: remote commit `c5625fcf5` integrates DATA-03
+  [#19322](https://github.com/githubnext/gh-cao/pull/19322) while the
+  coordinator was publishing documentation. Remote code was preserved and
+  only the unpublished documentation commit rebased; no force push or
+  coordinator-initiated PR merge.
+- Specification: RFC-035, record schema version 1.
+- This supersedes the immediately preceding snapshot's open DATA-03 state.
+  Source correction is integrated; combined DATA-01/02 and final required
+  validation/default-branch/deployment evidence remain pending.
+- Decision/lifecycle: `remediate` / `in-progress`; no operating control closed.
+
+## 2026-10-21 - SOC2-LOG-021 - Integrated-base shard proposal and two remote merges
+
+- Type: integration follow-up, review refresh and observed source integration.
+- Source/evidence: DATA-01 [#19325](https://github.com/githubnext/gh-cao/pull/19325)
+  head `dfdd11f3cb8dad7fce79e43602446ccce7ba8a6b`, assessment base
+  `a643b5f17`; coordinator verified head/open/non-draft and in-progress CI.
+- Specification: RFC-035, record schema version 1.
+- DATA-01 preserves DATA-03's single helper/durable generations, uses
+  ForgetContext and validates normalized repository identity before erasure.
+  Session reports 271 real Redis/PostgreSQL collector race tests with zero
+  skips/failures, lint/type/build and 73-workflow compilation; CI still pending.
+- Remote integration: OPS-02 [#19324](https://github.com/githubnext/gh-cao/pull/19324)
+  merged at 15:59:15 UTC as `a643b5f17`; IAM-001
+  [#19327](https://github.com/githubnext/gh-cao/pull/19327) at 15:59:48 UTC
+  as `775d5ee7e`. Coordinator fast-forwarded externally merged code only.
+- Current snapshot: six of eleven source corrections and daily worker
+  integrated on assessment branch; DATA-01/02, EXEC-01 and OPS-01/03 remain
+  open, with EXEC-01 now non-draft. Earlier status snapshots are history.
+- Decision/lifecycle: remediation remains in progress. No deployed identity,
+  collector/alert, legacy migration, key/debt reconciliation, provider/period
+  control or main/control-branch activation closed.

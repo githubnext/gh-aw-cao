@@ -245,12 +245,32 @@ report that exact tag. Verify downloaded assets with
 
 The Release workflow runs extension checks and builds at the exact release SHA
 in a read-only job with Go caching disabled, then checks the embedded version
-before uploading its artifact. A separate source-free attachment job verifies
+before uploading its artifact. It also runs the real GitHub CLI against an
+isolated local API fixture to install and dispatch that built binary. The
+fixture reproduces runtime-only latest-release failures, including `--pin`,
+and verifies unpinned and pinned binary installation without network access,
+real credentials, or changes to the developer's installed extensions.
+A separate source-free attachment job verifies
 the binary checksums and the existing attested runtime. Publication requires
-the exact nine-asset set before the release becomes an immutable prerelease;
+the exact eleven-asset set (runtime, Azure assets, six binaries, and checksums)
+before the release becomes an immutable prerelease;
 the highlights agent remains restricted to updating release notes.
 `node --test tests/unit/build-release.test.mjs tests/unit/release-workflow.test.mjs`
 checks the build contract and release gates.
+
+Run `make build && node --test tests/integration/gh-extension-installation.test.mjs`
+for the GitHub CLI installation contract (macOS or Linux; requires `gh`).
+To check a release binary instead, set `CAO_EXTENSION_BINARY` to its absolute
+path and `CAO_EXTENSION_VERSION` to the embedded release tag.
+
+GitHub CLI uses the latest stable release to discover binary extensions, even
+when `--pin` names a complete prerelease. A runtime-only latest release therefore
+blocks both forms; adding binaries only to a prerelease is insufficient.
+Publishing a complete prerelease does not authorize promotion. After independent
+approval, **Promote prerelease to latest** revalidates the candidate, promotes it,
+and verifies the actual unpinned public install and embedded version in isolated
+extension storage. Only then is the public install path verified. No root
+launcher or source-build fallback is needed.
 
 ### CI feedback and post-merge coverage
 

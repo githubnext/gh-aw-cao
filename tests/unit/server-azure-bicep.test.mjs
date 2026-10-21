@@ -157,9 +157,10 @@ test('Every Azure role explicitly preserves the run window for linked evidence',
     assert.equal(workers.length, name === 'snapshot-ingestion' ? 1 : 2);
     for (const worker of workers) {
       for (const container of worker.properties.template.containers) {
-        const environment = Array.isArray(container.env) ? container.env : template.variables.collectionEnvironment;
+        const environment = Array.isArray(container.env) ? container.env : template.variables.collectionBaseEnvironment;
         if (!Array.isArray(container.env)) {
           assert.equal(container.env, "[variables('collectionEnvironment')]");
+          assert.match(template.variables.collectionEnvironment, /concat\(variables\('collectionBaseEnvironment'\), parameters\('otlpEnvironment'\)/);
         }
         for (const setting of ['CAO_POSTGRES_RUN_RETENTION_DAYS', 'CAO_POSTGRES_LINKED_RETENTION_DAYS']) {
           assert.deepEqual(environment.filter((entry) => entry.name === setting), [{
@@ -430,8 +431,8 @@ test('Only the separate provisioning identity can resolve the administrator secr
   assert.deepEqual(ingestGrants.properties.parameters.secretNames.value, ["[parameters('postgresUrlSecretName')]"]);
   const collectorGrants = resources.find((resource) => resource.name === 'collection-workers')
     .properties.template.resources.find((resource) => resource.name === 'collector-roles');
-  assert.deepEqual(collectorGrants.properties.parameters.secretNames.value,
-    ["[parameters('postgresUrlSecretName')]", 'cao-collect-private-key']);
+  assert.equal(collectorGrants.properties.parameters.secretNames.value,
+    "[concat(createArray(parameters('postgresUrlSecretName'), 'cao-collect-private-key'), if(not(parameters('otlpHeadersEnabled')), createArray(), createArray('cao-otel-headers')))]");
 });
 
 test('Provisioning verifies PostgreSQL TLS against the system CA bundle', () => {
@@ -487,4 +488,56 @@ test('No nested deployment outputs a password or credential-bearing URL', () => 
     }
   }
   checkOutputs(generated);
+});
+
+test('Azure Go exporters have an explicit shared OTLP route and secret-scoped authentication', () => {
+  assert.equal(generated.parameters.otlpEndpoint.defaultValue, '');
+  assert.equal(generated.parameters.otlpLogsEnabled.defaultValue, false);
+  assert.equal(generated.parameters.otlpHeaders.type, 'securestring');
+  assert.equal(generated.parameters.otlpHeaders.defaultValue, '');
+  assert.deepEqual(generated.variables.otlpEnvironment, [
+    { name: 'OTEL_EXPORTER_OTLP_ENDPOINT', value: "[parameters('otlpEndpoint')]" },
+    { name: 'OTEL_EXPORTER_OTLP_PROTOCOL', value: 'http/protobuf' },
+    { name: 'CAO_OTEL_LOGS_ENABLED', value: "[string(parameters('otlpLogsEnabled'))]" },
+  ]);
+  assert.equal(generated.variables.otlpHeadersEnabled,
+    "[and(not(empty(parameters('otlpEndpoint'))), not(empty(parameters('otlpHeaders'))))]");
+  const headers = resources.find((resource) => resource.type === 'Microsoft.KeyVault/vaults/secrets'
+    && resource.name.includes('cao-otel-headers'));
+  assert.equal(headers.condition, "[variables('otlpHeadersEnabled')]");
+  assert.equal(headers.properties.value, "[parameters('otlpHeaders')]");
+
+  const app = resources.find((resource) => resource.type === 'Microsoft.Web/sites');
+  assert.match(app.properties.siteConfig.appSettings, /variables\('otlpEnvironment'\)/);
+  assert.match(app.properties.siteConfig.appSettings, /if\(not\(variables\('otlpHeadersEnabled'\)\)/);
+  assert.match(app.properties.siteConfig.appSettings,
+    /'OTEL_EXPORTER_OTLP_HEADERS', 'value', format\('@Microsoft.KeyVault\(SecretUri=\{0\}secrets\/cao-otel-headers\)'/);
+  assert.match(app.properties.siteConfig.appSettings, /if\(not\(parameters\('otlpLogsEnabled'\)\).*?'DEBUG', 'value', 'cao:server,cao:telemetry'/);
+  const grants = resources.find((resource) => resource.name === 'function-managed-identity-roles');
+  assert.match(grants.properties.parameters.secretNames.value,
+    /if\(not\(variables\('otlpHeadersEnabled'\)\), createArray\(\), createArray\('cao-otel-headers'\)\)/);
+
+  const workers = resources.find((resource) => resource.name === 'collection-workers');
+  assert.equal(workers.properties.parameters.otlpEnvironment.value, "[variables('otlpEnvironment')]");
+  assert.equal(workers.properties.parameters.otlpHeadersEnabled.value, "[variables('otlpHeadersEnabled')]");
+  assert.equal(workers.properties.parameters.otlpLogsEnabled.value, "[parameters('otlpLogsEnabled')]");
+  const template = workers.properties.template;
+  assert.match(template.variables.collectionEnvironment,
+    /concat\(variables\('collectionBaseEnvironment'\), parameters\('otlpEnvironment'\)/);
+  assert.match(template.variables.collectionEnvironment, /'OTEL_EXPORTER_OTLP_HEADERS', 'secretRef', 'cao-otel-headers'/);
+  assert.match(template.variables.collectionSecrets,
+    /'cao-otel-headers', 'keyVaultUrl', format\('\{0\}secrets\/cao-otel-headers', parameters\('keyVaultUri'\)\), 'identity', resourceId/);
+  const debug = template.variables.collectionBaseEnvironment.find((entry) => entry.name === 'DEBUG');
+  assert.equal(debug.value,
+    "[if(parameters('otlpLogsEnabled'), 'cao:telemetry,cao:collect:recovery', 'cao:collect:*')]");
+  const consumers = template.resources.filter((resource) =>
+    ['Microsoft.App/jobs', 'Microsoft.App/containerApps'].includes(resource.type));
+  assert.equal(consumers.length, 2);
+  for (const consumer of consumers) {
+    assert.equal(consumer.properties.configuration.secrets, "[variables('collectionSecrets')]");
+    assert.equal(consumer.properties.template.containers[0].env, "[variables('collectionEnvironment')]");
+    assert.doesNotMatch(JSON.stringify(consumer.properties.template), /livenessProbe|readinessProbe|4318|otlpHeaders/);
+  }
+  assert.doesNotMatch(app.properties.siteConfig.appSettings, /parameters\('otlpHeaders'\)/);
+  assert.doesNotMatch(JSON.stringify(generated.outputs), /otlpHeaders|OTEL_EXPORTER_OTLP_HEADERS/);
 });

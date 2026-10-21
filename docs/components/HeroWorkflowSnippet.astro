@@ -1,0 +1,160 @@
+---
+import { checkPath, clockPath, issueOpenedPaths } from "./workflow-illustration-icons.mjs";
+
+interface Props {
+  label: string;
+  prompt: string;
+  promptLabel?: string;
+  filename: string;
+  code: string;
+  transition: string;
+  resultTitle: string;
+  result: string;
+  caption: string;
+  resultIcon?: "issue" | "check";
+}
+
+const {
+  label, prompt, promptLabel = "You ask", filename, code, transition, resultTitle, result, caption,
+  resultIcon = "check",
+} = Astro.props;
+---
+
+<div class="workflow-example" role="group" aria-label={label}>
+  <div class="workflow-example-card workflow-prompt">
+    <p class="workflow-example-label">{promptLabel}</p>
+    <p>{prompt}</p>
+  </div>
+  <span class="workflow-example-connector" aria-hidden="true"></span>
+  <div class="workflow-example-card workflow-file" data-slideshow-snippet={filename}>
+    <p class="workflow-file-name">{filename}</p>
+    <pre><code>{code}</code></pre>
+  </div>
+  <p class="workflow-example-timing">
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d={clockPath} /></svg>
+    {transition}
+  </p>
+  <div class="workflow-example-card workflow-result">
+    <p class="workflow-result-title">
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        {(resultIcon === "issue" ? issueOpenedPaths : [checkPath]).map((d) => <path d={d} />)}
+      </svg>
+      {resultTitle}
+    </p>
+    <p>{result}</p>
+    <span class="workflow-example-label">{caption}</span>
+  </div>
+</div>
+
+<style>
+  @layer starlight.core {
+    .workflow-example {
+      min-width: 0;
+      color: var(--cao-story-heading);
+    }
+
+    .workflow-example-card {
+      min-width: 0;
+      border: 1px solid var(--cao-section-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      background: var(--cao-section-bg);
+    }
+
+    .workflow-example p {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .workflow-example .workflow-example-label {
+      color: var(--cao-story-text);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .workflow-prompt > p + p {
+      margin-top: 0.375rem;
+    }
+
+    .workflow-example-connector {
+      display: block;
+      width: 1px;
+      height: 1.25rem;
+      margin-inline: auto;
+      background: var(--cao-loop-border);
+    }
+
+    .workflow-file {
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .workflow-file-name {
+      border-bottom: 1px solid var(--cao-section-border);
+      padding: 0.625rem 1rem;
+      color: var(--cao-story-text);
+      font-family: var(--sl-font-mono);
+      overflow-wrap: anywhere;
+    }
+
+    .workflow-file pre {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      padding: 0.875rem 1rem;
+      background: transparent;
+      color: var(--cao-story-heading);
+      font-family: var(--sl-font-mono);
+      font-size: 0.75rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .workflow-file code {
+      padding: 0;
+      background: transparent;
+      font: inherit;
+    }
+
+    .workflow-example svg {
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 auto;
+      fill: currentColor;
+    }
+
+    .workflow-example .workflow-example-timing {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding-block: 0.75rem;
+      color: var(--cao-story-text);
+      font-size: 0.75rem;
+    }
+
+    .workflow-result-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .workflow-result-title svg {
+      color: var(--sl-color-text-accent);
+    }
+
+    .workflow-result > p + p {
+      margin-block: 0.5rem;
+      color: var(--cao-story-text);
+    }
+
+    @media (min-width: 40rem) {
+      .workflow-prompt { margin-right: 2rem; }
+      .workflow-file { margin-inline: 1rem; }
+      .workflow-result { margin-left: 2rem; }
+    }
+  }
+</style>

@@ -659,7 +659,7 @@ func TestAdmitterErasesEvidenceWhenScopeIsWithdrawn(t *testing.T) {
 	for directory := range shards {
 		for _, repository := range []string{"acme/kept", "acme/withdrawn"} {
 			name := directory + "/" + lake.ShardPrefix(repository) + "0001.jsonl"
-			if err := WriteFileAtomic(name, []byte("{}\n")); err != nil {
+			if err := WriteFileAtomic(name, []byte(`{"request":{"repository":"`+repository+`"}}`+"\n")); err != nil {
 				t.Fatal(err)
 			}
 		}

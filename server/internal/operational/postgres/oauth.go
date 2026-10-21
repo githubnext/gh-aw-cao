@@ -32,21 +32,28 @@ func (s *Store) SessionRecord(ctx context.Context, id string) (string, error) {
 	return string(value), err
 }
 
-func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration) error {
+func (s *Store) PutSession(ctx context.Context, id, value string, ttl time.Duration, namespace string) error {
 	if err := sessionInput(id, value, ttl); err != nil {
 		return err
 	}
+	if err := opaque(namespace); err != nil {
+		return err
+	}
 	return s.transact(ctx, func(t *transaction) error {
-		// Reserve one extra record and its overhead for the logout transition.
-		if err := t.put(key{"session-reserve", id, ""}, make([]byte, 2048), t.now.Add(ttl)); err != nil {
+		// The destination reserves the bytes and entry needed to transfer
+		// ownership at expiry, even when protected capacity is exhausted.
+		if err := t.put(key{"session-reserve", id, ""}, []byte(namespace), time.Time{}); err != nil {
 			return err
 		}
 		return t.put(key{"session", id, ""}, []byte(value), t.now.Add(ttl))
 	})
 }
 
-func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration) (bool, error) {
+func (s *Store) CompareSession(ctx context.Context, id, expected, value string, ttl time.Duration, namespace string) (bool, error) {
 	if err := sessionInput(id, value, ttl); err != nil {
+		return false, err
+	}
+	if err := opaque(namespace); err != nil {
 		return false, err
 	}
 	saved := false
@@ -55,7 +62,11 @@ func (s *Store) CompareSession(ctx context.Context, id, expected, value string, 
 		if err != nil || current == nil || string(current) != expected {
 			return err
 		}
-		if err := t.put(key{"session-reserve", id, ""}, make([]byte, 2048), t.now.Add(ttl)); err != nil {
+		destination, err := t.get(key{"session-reserve", id, ""})
+		if err != nil || string(destination) != namespace {
+			return err
+		}
+		if err := t.put(key{"session-reserve", id, ""}, []byte(namespace), time.Time{}); err != nil {
 			return err
 		}
 		if err := t.put(key{"session", id, ""}, []byte(value), t.now.Add(ttl)); err != nil {
@@ -72,10 +83,12 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 		return err
 	}
 	return s.transact(ctx, func(t *transaction) error {
-		if err := t.remove(key{"session-reserve", id, ""}); err != nil {
+		destination, err := t.get(key{"session-reserve", id, ""})
+		if err != nil {
 			return err
 		}
-		return t.remove(key{"session", id, ""})
+		_, err = t.invalidateSession(id, "", string(destination))
+		return err
 	})
 }
 
@@ -86,25 +99,37 @@ func (s *Store) InvalidateSession(ctx context.Context, id, expected, namespace s
 	if err := opaque(namespace); err != nil {
 		return "", err
 	}
-	var value []byte
+	var value string
 	err := s.transact(ctx, func(t *transaction) error {
 		var err error
-		value, err = t.get(key{"session", id, ""})
-		if err != nil || value == nil {
-			return err
-		}
-		if expected != "" && string(value) != expected {
-			return operational.ErrConflict
-		}
-		if err := t.remove(key{"session-reserve", id, ""}); err != nil {
-			return err
-		}
-		if err := t.remove(key{"session", id, ""}); err != nil {
-			return err
-		}
-		return t.put(key{"revocation", namespace, id}, value, time.Time{})
+		value, err = t.invalidateSession(id, expected, namespace)
+		return err
 	})
 	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+func (t *transaction) invalidateSession(id, expected, namespace string) (string, error) {
+	var value []byte
+	err := t.tx.QueryRowContext(t.ctx, `SELECT value FROM cao_operational_records WHERE namespace=$1 AND kind='session' AND name=$2 AND field=''`, t.namespace, id).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if expected != "" && string(value) != expected {
+		return "", operational.ErrConflict
+	}
+	if err := t.remove(key{"session-reserve", id, ""}); err != nil {
+		return "", err
+	}
+	if err := t.remove(key{"session", id, ""}); err != nil {
+		return "", err
+	}
+	if err := t.put(key{"revocation", namespace, id}, value, time.Time{}); err != nil {
 		return "", err
 	}
 	return string(value), nil
@@ -131,7 +156,20 @@ func (s *Store) PendingRevocation(ctx context.Context, namespace string) (operat
 	}
 	var result operational.Revocation
 	err := s.transact(ctx, func(t *transaction) error {
-		err := t.tx.QueryRowContext(ctx, `SELECT field,value FROM cao_operational_records WHERE namespace=$1 AND kind='revocation' AND name=$2 ORDER BY position LIMIT 1`, s.namespace, namespace).Scan(&result.ID, &result.Value)
+		var expiredID string
+		err := t.tx.QueryRowContext(ctx, `SELECT s.name FROM cao_operational_records s
+			JOIN cao_operational_records r ON r.namespace=s.namespace AND r.kind='session-reserve' AND r.name=s.name AND r.field=''
+			WHERE s.namespace=$1 AND s.kind='session' AND s.expires_at<=$2 AND r.value=$3
+			ORDER BY s.expires_at LIMIT 1`, s.namespace, t.now, []byte(namespace)).Scan(&expiredID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil {
+			if _, err := t.invalidateSession(expiredID, "", namespace); err != nil {
+				return err
+			}
+		}
+		err = t.tx.QueryRowContext(ctx, `SELECT field,value FROM cao_operational_records WHERE namespace=$1 AND kind='revocation' AND name=$2 ORDER BY position LIMIT 1`, s.namespace, namespace).Scan(&result.ID, &result.Value)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}

@@ -254,6 +254,11 @@ jobs:
         run: |
           set -euo pipefail
           test "$("$RUNNER_TEMP/release-binaries/gh-cao-linux-amd64" --version)" = "gh cao version ${RELEASE_TAG}"
+      - name: Verify GitHub CLI release installation
+        env:
+          CAO_EXTENSION_BINARY: ${{ runner.temp }}/release-binaries/gh-cao-linux-amd64
+          CAO_EXTENSION_VERSION: ${{ needs.resolve-version.outputs.release_tag }}
+        run: node --test tests/integration/gh-extension-installation.test.mjs
       - name: Upload extension release binaries
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -592,6 +597,23 @@ steps:
       set -euo pipefail
       mkdir -p /tmp/gh-aw/agent/release-data
 
+      fetch_paginated_json() {
+        local response_file=/tmp/gh-aw/agent/release-data/api-pages.json
+        local attempt
+        for attempt in 1 2 3; do
+          if gh api --paginate "$1" > "$response_file" &&
+            jq --exit-status --slurp 'length > 0 and all(.[]; type == "array")' "$response_file" >/dev/null; then
+            cat "$response_file"
+            return 0
+          fi
+          echo "Paginated release evidence request failed (attempt $attempt/3)." >&2
+          if [ "$attempt" -lt 3 ]; then
+            sleep "$attempt"
+          fi
+        done
+        return 1
+      }
+
       RELEASE_ID=$(jq -r '.id' /tmp/gh-aw/agent/release-data/release.json)
       [[ "$RELEASE_ID" =~ ^[1-9][0-9]*$ ]]
       gh api "/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
@@ -608,7 +630,7 @@ steps:
         /tmp/gh-aw/agent/release-data/current_release.json >/dev/null
       test "$RUNTIME_ARCHIVE" = "cao-runtime-${GITHUB_SHA}.tgz"
 
-      gh api --paginate "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
+      fetch_paginated_json "/repos/$GITHUB_REPOSITORY/releases?per_page=100" |
         jq --slurp '[add[] | select(.draft == false and .prerelease == false)][0] // {}' \
         > /tmp/gh-aw/agent/release-data/previous_release.json
 
@@ -649,7 +671,7 @@ steps:
             echo "Invalid commit SHA in release range." >&2
             exit 1
           fi
-          COMMIT_PRS=$(gh api --paginate \
+          COMMIT_PRS=$(fetch_paginated_json \
             "/repos/$GITHUB_REPOSITORY/commits/$commit_sha/pulls?per_page=100" |
             jq --slurp 'add | map({
               number,

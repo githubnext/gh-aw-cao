@@ -17,6 +17,7 @@ on:
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
+      - tests/integration/gh-extension-installation.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
       - dashboard/site/src/data/**
@@ -41,6 +42,7 @@ on:
       - Makefile
       - scripts/build-release.sh
       - tests/unit/build-release.test.mjs
+      - tests/integration/gh-extension-installation.test.mjs
       - activity/**
       - dashboard/site/src/agent/**
       - dashboard/site/src/data/**
@@ -90,6 +92,8 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Check extension
         run: make check
+      - name: Check GitHub CLI release installation
+        run: node --test tests/integration/gh-extension-installation.test.mjs
       - name: Check standalone execution without Node.js
         run: |
           binary="$PWD/gh-cao"

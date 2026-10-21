@@ -101,7 +101,7 @@ func TestCapabilitiesRestartAndClose(t *testing.T) {
 	if err := operational.ValidateOperationalServices(s.Capabilities(), s.OperationalServices(), operational.Requirements{OAuth: true}); err == nil {
 		t.Fatal("process ownership must be explicit")
 	}
-	must(t, s.PutSession(ctx, "session", "sealed", time.Hour))
+	must(t, s.PutSession(ctx, "session", "sealed", time.Hour, ""))
 	must(t, s.QueueRevocation(ctx, "retry", "encrypted", "opaque:"))
 	must(t, s.SetOperationalState(ctx, "checkpoint", []byte("checkpoint")))
 	_, err := s.AddMembers(ctx, "enrollment", "owner/repo")
@@ -166,7 +166,7 @@ func TestContextFirstAndConfigValidation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, call := range []func() error{
-		func() error { return s.PutSession(ctx, "", "", 0) },
+		func() error { return s.PutSession(ctx, "", "", 0, "") },
 		func() error { _, err := s.TakeRateLimitTokens(ctx, "", 0, 0, 0); return err },
 		func() error { _, err := s.EnqueueTask(ctx, operational.EnqueueRequest{}); return err },
 		func() error { return s.RecordIngestionHealthEvent(ctx, "", "", time.Time{}) },

@@ -239,6 +239,9 @@ func idempotencyKey(request *http.Request, body string) string {
 // the requester can write to the single target repository with their own
 // OAuth token. The executor re-checks permission before it runs.
 func (a *App) admit(ctx context.Context, session oauthSession, request hostedcli.Request) (operational.CLICommandInvocation, error) {
+	if session.GitHubID <= 0 || session.Login == "" {
+		return operational.CLICommandInvocation{}, cliFailure(http.StatusForbidden, "A verified requester account identity is required. Sign in again before submitting CLI actions.")
+	}
 	invocation, err := a.hostedCLI.catalog.Resolve(request, a.hostedCLI.context)
 	if err != nil {
 		return invocation, err
@@ -251,6 +254,7 @@ func (a *App) admit(ctx context.Context, session oauthSession, request hostedcli
 		return invocation, cliFailure(http.StatusForbidden, "Write access to the target repository is required.")
 	}
 	invocation.Actor = session.Login
+	invocation.ActorID = session.GitHubID
 	invocation.Repository = plan.Repository
 	return invocation, nil
 }

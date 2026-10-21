@@ -37,13 +37,13 @@ test("getting started reaches monitoring before optional campaign execution", ()
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
   assert.match(install, /repository\s+runtime/);
-  assert.match(install, /required `gh-aw` extension/);
+  assert.match(install, /required\s+`gh-aw` extension/);
   assert.match(install, /--create-repo OWNER\/CONTROL_REPOSITORY/);
-  assert.match(install, /```bash\ngh extension install githubnext\/gh-cao --pin v0\.1\.22\n```/);
-  assert.match(install, /CLI binaries currently available only in a published prerelease/);
+  assert.doesNotMatch(install, /```bash\ngh extension install/);
+  assert.match(install, /supports published\s+prereleases/);
+  assert.match(install, /currently fails, even with `--pin`/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
-  assert.match(install, /even if you installed the CLI above/);
   assert.match(install, /installer requires GitHub CLI sign-in/);
   assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
@@ -88,6 +88,15 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(gettingStarted.slice(optional), /\*\*review\*\* mode with \*\*one\s+repository\*\*/);
   assert.match(walkthrough, /monitor existing[\s\S]*?\[Set Up CAO\]\(setup-quickstarts\.md\)/);
   assert.match(docs, /\[Repo Assist walkthrough\]\(repo-assist-quickstart\.md\)/);
+});
+
+test("extension installation guidance distinguishes discovery, promotion, and runtime installation", () => {
+  assert.match(docs, /latest stable release, `v0\.1\.19`/);
+  assert.match(docs, /before\*\* selecting a `--pin` tag/);
+  assert.match(docs, /Merging source changes alone does not repair the public/);
+  assert.match(docs, /After a compatible release is latest/);
+  assert.match(docs, /gh extension upgrade gh-cao/);
+  assert.match(docs, /do not install the control-repository runtime or `gh-aw`/);
 });
 
 test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {

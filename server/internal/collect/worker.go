@@ -240,35 +240,14 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 				return false
 			}
 		case installationID == 0:
-			if err := w.Runner.Lake.Forget(task.Repository); err != nil {
-				workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
-				if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
-					workerLog.Printf("task retry failed repository=%s", task.Repository)
-				}
-				return false
-			}
-			if err := w.Queue.Complete(ctx, lease); err != nil {
-				workerLog.Printf("task acknowledgement failed repository=%s", task.Repository)
-			}
-			return true
+			return w.processErasure(ctx, lease)
 		default:
 			lease.Task.InstallationID = installationID
 			task = lease.Task
 		}
 	}
 	if task.Erase {
-		if err := w.Runner.Lake.Forget(task.Repository); err != nil {
-			workerLog.Printf("evidence erasure failed repository=%s", task.Repository)
-			if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
-				workerLog.Printf("task retry failed repository=%s", task.Repository)
-			}
-			return false
-		}
-		if err := w.Queue.Complete(ctx, lease); err != nil {
-			workerLog.Printf("task acknowledgement failed repository=%s", task.Repository)
-		}
-		workerLog.Printf("erased retained evidence repository=%s", task.Repository)
-		return true
+		return w.processErasure(ctx, lease)
 	}
 	if task.Lifecycle != "" {
 		if err := w.processRepositoryLifecycle(ctx, lease); err != nil {
@@ -304,6 +283,27 @@ func (w Worker) process(ctx context.Context, lease Lease) bool {
 		return true
 	}
 	workerLog.Printf("collection completed repository=%s completed_at=%s", task.Repository, time.Now().UTC().Format(time.RFC3339Nano))
+	return true
+}
+
+func (w Worker) processErasure(ctx context.Context, lease Lease) bool {
+	if err := w.Runner.Lake.ForgetContext(ctx, lease.Task.Repository); err != nil {
+		workerLog.Printf("evidence erasure failed repository=%s", lease.Task.Repository)
+		if retryErr := w.Queue.Retry(ctx, lease, err); retryErr != nil {
+			workerLog.Printf("task retry failed repository=%s", lease.Task.Repository)
+		}
+		return false
+	}
+	// The task remains reclaimable if the follow-up cannot be persisted.
+	// Repeating Forget is safe; acknowledging without projection intent is not.
+	if err := w.Projector.RequestProjection(ctx); err != nil {
+		workerLog.Printf("erasure projection request failed repository=%s", lease.Task.Repository)
+		return false
+	}
+	if err := w.Queue.Complete(ctx, lease); err != nil {
+		workerLog.Printf("task acknowledgement failed repository=%s", lease.Task.Repository)
+	}
+	workerLog.Printf("erased retained evidence repository=%s", lease.Task.Repository)
 	return true
 }
 

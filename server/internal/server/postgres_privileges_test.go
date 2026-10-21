@@ -94,10 +94,10 @@ func TestPostgresRuntimePrivilegeBoundary(t *testing.T) {
 	if !ok {
 		t.Fatal("factory did not use PostgreSQL")
 	}
-	if err := s.PutSession(ctx, "session", "encrypted", time.Hour); err != nil {
+	if err := s.PutSession(ctx, "session", "encrypted", time.Hour, ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.PutSession(ctx, "session", "refreshed", time.Hour); err != nil {
+	if err := s.PutSession(ctx, "session", "refreshed", time.Hour, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.AppendAudit(ctx, operational.AuditEvent{Event: "test.accepted", Outcome: "success"}); err != nil {
