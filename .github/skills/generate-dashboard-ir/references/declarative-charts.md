@@ -9,7 +9,7 @@ Use [`docs/dashboard-language-specification.md`](../../../../docs/dashboard-lang
 | Quantitative trend | `line`; temporal `x` with an explicit `time-unit` for single-measure charts. A single-widget line may encode two to eight quantitative `y` fields instead of `color`. |
 | Contributions over time | `area`; ordinal or explicitly bucketed temporal `x`, quantitative `y`, optional categorical `color` for normal stacking. Do not stack negative contributions. |
 | Exact observations over time | `dot` or `scatter`; temporal `x`, quantitative `y`, no connecting lines. Only a single-widget dot may encode quantitative `reference` lines. |
-| Category comparison or ranking | `bar` or `horizontal-bar`; horizontal bars require categorical `x` and `data.limit` at most 100, with optional categorical `section` headings. |
+| Category comparison or ranking | `bar` or `horizontal-bar`; horizontal bars require categorical `x` and at most 100 bars, with optional categorical `section` headings. Explicit `stack: normal` with categorical `color` stacks unique non-negative category/series observations, allowing `data.limit` up to 1200 segment rows and at most 12 series. Declare aggregation and ordering in the source query, not the view; bound complete categories before segment expansion. |
 | Discrete composition | `pie`; categorical `x`, quantitative `y`. |
 | Sample distribution | `histogram`; categorical sample identity in `x`, quantitative `y`, no `color` or `href`. Binning is automatic after query processing. |
 | Compact categorical matrix | `heatmap`; categorical `x` and `y`, aggregated quantitative `color`, `data.limit` at most 100, at most 100 cells and 12 categories per axis. |

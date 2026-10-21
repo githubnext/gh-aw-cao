@@ -1394,7 +1394,7 @@ function renderChartView(context, facetPanel = false) {
   const series = chartType === 'heatmap' ? y : color;
   /** @param {Array<Record<string, unknown>>} chartRows @returns {ChartPoint[]} */
   const pointsForRows = (chartRows) => {
-    if (chartType === 'treemap') {
+    if (chartType === 'treemap' || (chartType === 'horizontal-bar' && view.stack === 'normal')) {
       return chartRows.map((row, index) => {
         const value = y ? row[y.field] : null;
         return {
@@ -1448,7 +1448,8 @@ function renderChartView(context, facetPanel = false) {
       null,
       chartType === 'treemap' && isPlainObject(view.treemap) ? view.treemap : {},
       null,
-      chartType === 'scatter' && isPlainObject(view.scatter) ? view.scatter : {}
+      chartType === 'scatter' && isPlainObject(view.scatter) ? view.scatter : {},
+      view.stack === 'normal'
     );
     const chartLegend = (color || yDefinitions.length > 1) && !['heatmap', 'pie', 'swimlane'].includes(chartType)
       ? renderChartLegend(chartSeries, chartType)

@@ -3099,6 +3099,65 @@
       }
     },
     {
+      "id": "repository-workflow-management",
+      "subject": "Classify workflows from current control inventory and registry evidence.",
+      "objective": "Distinguish centrally maintained workflows from repository-owned activity without inferring authority.",
+      "acceptance": "Control inventory booleans or explicit campaign roles identify central management, including standalone declarations. Registry-backed standalone workflows are repository-owned; all other evidence remains unclassified. Ownership is not historical run authorization.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "workflows"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-workflow-run-counts",
+      "subject": "Count distinct retained runs per execution workflow before management enrichment.",
+      "objective": "Bound management classification joins to workflow-grain run totals.",
+      "acceptance": "Group on execution organization, repository and workflow and count distinct run IDs across attempts; retain workflows even when inventory classification is missing.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "repository-management-run-counts",
+      "subject": "Retained run volume by execution repository and current workflow management.",
+      "objective": "Expose the management composition of repository execution without counting target work as local runs.",
+      "acceptance": "Left-join reduced workflow run totals on organization, repository and workflow. Missing matches remain Unclassified; sum workflow-grain counts without dropping centrally managed standalone runs.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-workflow-management",
+        "repository-workflow-run-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
       "id": "repository-observed-run-counts",
       "subject": "Count distinct retained run IDs by repository without importing event evidence.",
       "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
@@ -3118,7 +3177,7 @@
       }
     },
     {
-      "id": "repository-run-inventory",
+      "id": "repository-run-ranking",
       "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
       "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
@@ -3128,6 +3187,48 @@
         "repository-activity-preview",
         "repository-observed-run-counts"
       ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories",
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "repository-zero-run-segments",
+      "subject": "Keep ranked execution repositories without retained runs visible.",
+      "objective": "Preserve zero-run inventory without claiming inactivity or workflow ownership.",
+      "acceptance": "Produce a zero-valued Unclassified segment only when the ranked repository has no retained runs; preserve evidence quality.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-run-ranking"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories",
+          "runs"
+        ]
+      }
+    },
+    {
+      "id": "repository-run-inventory",
+      "subject": "Top execution repositories with retained runs split by workflow management.",
+      "objective": "Show where agentic work executes and which activity the control plane maintains.",
+      "acceptance": "Preserve the top 100 repositories ranked by total distinct runs and expand complete management segments, at most 300 rows. Missing classification stays Unclassified. Zero retained runs does not prove inactivity; management filtering selects segments within this ranked set.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-management-run-counts",
+        "repository-run-ranking",
+        "repository-zero-run-segments"
+      ],
       "used-by-pages": [
         "repositories"
       ],
@@ -3136,7 +3237,29 @@
         "backend": "sqlite",
         "requirements": [
           "repositories",
-          "runs"
+          "runs",
+          "workflows"
+        ]
+      }
+    },
+    {
+      "id": "repository-management-options",
+      "subject": "Observed management categories in the ranked execution repository chart.",
+      "objective": "Offer management filtering without deriving options from rendered bars.",
+      "acceptance": "Keep distinct categories from the complete ranked chart source under global scope and time filters; local selections do not narrow these options.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-run-inventory"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "repositories",
+          "runs",
+          "workflows"
         ]
       }
     },

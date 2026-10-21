@@ -600,9 +600,10 @@ function renderInteractiveChartMark({ className, entryIndex, label, shape, toolt
  * @param {import('./treemap-layout.js').TreemapOptions} [treemapOptions]
  * @param {ChartPlotDomain | null} [plotDomain]
  * @param {{ cluster?: boolean }} [scatterOptions]
+ * @param {boolean} [stacked]
  * @returns {HTMLElement}
  */
-export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}, plotDomain = null, scatterOptions = {}) {
+export function renderChartWidget(chartType, points, series, pieSummary = null, totalLabel = 'Total', unit = null, timeRange = null, referenceField = null, formatCategory = (label) => label, temporalMarker = null, treemapOptions = {}, plotDomain = null, scatterOptions = {}, stacked = false) {
   if (chartType === 'treemap') {
     return renderTreemapChart(points, totalLabel, unit, treemapOptions, chartSeriesClassName);
   }
@@ -759,21 +760,55 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
   }
 
   if (chartType === 'horizontal-bar') {
-    if (points.length > MAX_HORIZONTAL_BARS) {
+    /** @type {Array<{ point: ChartPointLike, segments: ChartPointLike[] }>} */
+    const bars = [];
+    /** @type {Map<string, typeof bars[number]>} */
+    const categories = new Map();
+    for (const point of points) {
+      const key = JSON.stringify([point.section ?? '', point.x]);
+      const existing = stacked ? categories.get(key) : undefined;
+      if (existing) existing.segments.push(point);
+      else {
+        const bar = { point, segments: [point] };
+        bars.push(bar);
+        categories.set(key, bar);
+      }
+    }
+    if (bars.length > MAX_HORIZONTAL_BARS) {
       debugChartElements({ event: 'bar-limit-exceeded', chartType, pointCount: points.length, limit: MAX_HORIZONTAL_BARS });
       return renderChartWidgetEmptyState(
         chartType,
         `Horizontal bar charts support at most ${MAX_HORIZONTAL_BARS} bars.`
       );
     }
-    const maximum = Math.max(...points.map((point) => toNumber(point.y)).filter(Number.isFinite), 1);
+    if (stacked && (new Set(points.map((point) => point.color)).size > CHART_SERIES_COLOR_COUNT || points.length > MAX_HORIZONTAL_BARS * CHART_SERIES_COLOR_COUNT
+      || bars.some(({ segments }) => new Set(segments.map((point) => point.color)).size !== segments.length
+        || segments.some((point) => point.y !== null && (!Number.isFinite(point.y) || point.y < 0))))) {
+      debugChartElements({ event: 'horizontal-stack-rejected', pointCount: points.length, categoryCount: bars.length });
+      return renderChartWidgetEmptyState(chartType,
+        'Stacked horizontal bars require unique non-negative observations per category and series, with at most 12 series.');
+    }
+    for (const bar of bars) {
+      if (bar.segments.length > 1) {
+        bar.segments.sort((left, right) => (left.color ?? 'value').localeCompare(right.color ?? 'value'));
+        bar.point = {
+          ...bar.point,
+          color: null,
+          y: bar.segments.some((point) => point.y === null)
+            ? null : bar.segments.reduce((total, point) => total + Number(point.y), 0)
+        };
+      }
+    }
+    const maximum = Math.max(...bars.map(({ point }) => toNumber(point.y)).filter(Number.isFinite), 1);
     const seriesClassNames = new Map(series.map((item) => [item.name, item.className]));
-    /** @param {ChartPointLike} point @param {number} index */
-    const renderRow = (point, index) => {
+    /** @param {{ point: ChartPointLike, segments: ChartPointLike[] }} barRow @param {number} index */
+    const renderRow = ({ point, segments }, index) => {
       const numericValue = toNumber(point.y);
       const value = Number.isFinite(numericValue) ? numericValue : 0;
-      const barSize = Math.max(0, value);
-      const label = chartPointLabel(point, unit);
+      const multipleSegments = segments.length > 1;
+      const label = chartPointLabel(point, unit) + (multipleSegments
+        ? ` (${segments.map((segment) => `${segment.color ?? 'value'}: ${segment.y === null ? 'Unavailable' : formatNumber(segment.y, unit)}`).join('; ')})`
+        : '');
       const category = formatCategory(point.x);
       const fullCategory = point.section ? `${point.section}:${point.x}` : point.x;
       const categoryText = h('bdi', {
@@ -787,15 +822,20 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         categoryContent.setAttribute('aria-label', `${point.link.label}: ${fullCategory}`);
         hasInteractiveLink = true;
       }
-      const bar = h('span', {
-        className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(point.color ?? 'value') ?? 'chart-series-1'}`,
-        style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(barSize / maximum) * 100}%`,
+      const bar = segments.map((segment) => h('span', {
+        className: `bar-chart-bar horizontal-bar-chart-bar ${seriesClassNames.get(segment.color ?? 'value') ?? 'chart-series-1'}`,
+        style: `--chart-entry-index: ${index}; --horizontal-bar-size: ${(Math.max(0, toNumber(segment.y) || 0) / maximum) * 100}%`,
+        title: chartPointLabel(segment, unit),
+        'data-chart-series': segment.color ?? 'value',
         'aria-hidden': 'true'
-      });
+      }));
       const track = point.link
-        ? renderSafeLink(bar, { ...point.link, label: `${label}: ${point.link.label}` })
-        : h('span', { 'aria-hidden': 'true' }, bar);
-      if (track instanceof HTMLElement) track.classList.add('horizontal-bar-chart-track');
+        ? renderSafeLink(h('span', { className: 'horizontal-bar-chart-segments' }, ...bar), { ...point.link, label: `${label}: ${point.link.label}` })
+        : h('span', { 'aria-hidden': 'true' }, ...bar);
+      if (track instanceof HTMLElement) {
+        track.classList.add('horizontal-bar-chart-track');
+        track.title = label;
+      }
       return h(
         'li',
         { className: 'horizontal-bar-chart-row' },
@@ -812,20 +852,22 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
           className: 'horizontal-bar-chart-value',
           tabIndex: 0,
           role: 'img',
+          title: label,
           'aria-label': label
         }, point.y == null ? 'Unavailable' : formatNumber(value, unit))
       );
     };
-    const hasSections = points.some((point) => point.section);
+    const hasSections = bars.some(({ point }) => point.section);
     /** @type {HTMLElement[]} */
     let entries;
     if (hasSections) {
-      /** @type {Map<string, Array<{ point: ChartPointLike, index: number }>>} */
+      /** @type {Map<string, Array<{ bar: typeof bars[number], index: number }>>} */
       const sections = new Map();
-      points.forEach((point, index) => {
+      bars.forEach((bar, index) => {
+        const { point } = bar;
         const section = point.section || 'Other';
         const sectionPoints = sections.get(section) ?? [];
-        sectionPoints.push({ point, index });
+        sectionPoints.push({ bar, index });
         sections.set(section, sectionPoints);
       });
       entries = [...sections.entries()].map(([section, sectionPoints]) => h(
@@ -835,18 +877,18 @@ export function renderChartWidget(chartType, points, series, pieSummary = null, 
         h(
           'ul',
           { className: 'horizontal-bar-chart-section-list', 'aria-label': section },
-          ...sectionPoints.map(({ point, index }) => renderRow(point, index))
+          ...sectionPoints.map(({ bar, index }) => renderRow(bar, index))
         )
       ));
     } else {
-      entries = points.map(renderRow);
+      entries = bars.map(renderRow);
     }
     return renderChartWidgetShell(
       chartType,
       null,
       h(
         'ul',
-        { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${points.length} bars` },
+        { className: 'horizontal-bar-chart-list', 'aria-label': `Horizontal bar chart with ${bars.length} bars` },
         ...entries
       )
     );

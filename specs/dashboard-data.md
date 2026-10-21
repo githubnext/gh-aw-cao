@@ -897,6 +897,29 @@ runtime or inventory completeness. Deleted registry entries SHALL NOT appear as
 current Workflows, and local compilation SHALL NOT convert missing or unknown
 registry evidence into an active runtime state.
 
+The repository execution-volume chart SHALL distinguish current workflow
+management from execution location and target coverage. A Workflow with explicit
+control inventory evidence (`inventory-ready` equal to either boolean value), or
+an explicit `orchestrator` or `worker` role, is centrally managed. This includes
+centrally maintained standalone workflows and disabled or uncompiled declarations;
+compilation readiness is not execution authority. A registry-backed standalone
+Workflow without control inventory evidence is repository-owned. Other or
+unmatched Workflows remain unclassified; missing Campaign membership alone MUST
+NOT establish ownership. Classification describes the retained current inventory,
+not historical authorization at the Run's SHA.
+
+SQLite, PostgreSQL, and IndexedDB queries SHALL use the same existing Workflow
+fields and join on execution organization, repository, and authoritative workflow
+path. Runs SHALL be counted distinctly across attempts before classification and
+reduced by workflow before enrichment. Missing classification evidence MUST NOT
+remove retained runs or imply repository ownership. Unavailable inventory SHALL
+remain unavailable rather than produce a complete classified result. The chart
+SHALL rank up to 100 execution repositories by total retained runs before
+expanding their management segments; its local management filter selects segments
+within that ranked set. Monitoring is an observation relationship, not an
+ownership class. No new canonical field, schema migration, or retention change is
+required for this query-only classification.
+
 Each resolved Repository SHALL have an independent `--cached-jsonl` wildcard
 prefix in the shared shard directory. Repeated collection SHALL reuse known
 shards, and canonical ingestion SHALL skip a shard whose content hash already

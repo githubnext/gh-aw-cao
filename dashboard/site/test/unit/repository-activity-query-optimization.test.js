@@ -72,7 +72,7 @@ const baseline = queries.map((query) => {
   };
 });
 /** @type {Query[]} */
-const chartBaseline = baseline.map((query) => query.name === runInventoryContract.source
+const chartBaseline = baseline.map((query) => query.name === 'repository-run-ranking'
   ? { ...query, from: 'repository-activity', joins: undefined, compute: undefined }
   : query);
 
@@ -142,6 +142,39 @@ function fixture() {
   };
 }
 
+function managementFixture() {
+  const inputs = fixture();
+  for (const input of [inputs.audits, inputs.domains, inputs.tools, inputs.issues]) input.rows = [];
+  const identity = { organization: 'org', repository: 'alpha' };
+  inputs.workflows.rows = [
+    { ...identity, workflow: 'central-worker.md', 'workflow-role': 'worker' },
+    {
+      ...identity, workflow: 'central-standalone.md', 'workflow-role': 'standalone',
+      'inventory-ready': false, 'workflow-registry-state': 'disabled_manually'
+    },
+    {
+      ...identity, workflow: 'local.md', 'workflow-role': 'standalone',
+      'workflow-registry-state': 'active'
+    },
+    { ...identity, workflow: 'unknown.md', 'workflow-role': 'standalone' },
+    {
+      ...identity, organization: 'other', workflow: 'central-worker.md',
+      'workflow-role': 'standalone', 'workflow-registry-state': 'active'
+    }
+  ];
+  const template = inputs.runs.rows[0];
+  inputs.runs.rows = [
+    { ...template, workflow: 'central-worker.md', run: '700', 'target-repository': 'org/empty' },
+    { ...template, workflow: 'central-standalone.md', run: '701' },
+    { ...template, workflow: 'central-standalone.md', run: '701', 'run-attempt': 2 },
+    { ...template, workflow: 'local.md', run: '702' },
+    { ...template, workflow: 'unknown.md', run: '703' },
+    { ...template, workflow: 'missing.md', run: '704' },
+    { ...template, organization: 'other', workflow: 'central-worker.md', run: '705' }
+  ];
+  return inputs;
+}
+
 /** @param {Record<string, unknown>} [inputs] */
 async function canonicalSources(inputs = fixture()) {
   return /** @type {Record<string, Source>} */ (await processDataRequest({
@@ -172,6 +205,81 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('repository activity query optimization', () => {
+  it('classifies central standalone, campaign, repository-owned and unmatched runs by exact execution workflow identity', async () => {
+    const sources = await canonicalSources(managementFixture());
+    const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    expect(result.rows.filter((row) => row.repository === 'org/alpha').map((row) => ({
+      management: row['workflow-management'], runs: row.runs, total: row['total-runs']
+    }))).toEqual([
+      { management: 'Centrally managed', runs: 2, total: 5 },
+      { management: 'Repository-owned', runs: 1, total: 5 },
+      { management: 'Unclassified', runs: 2, total: 5 }
+    ]);
+    expect(result.rows).toContainEqual(expect.objectContaining({
+      repository: 'other/alpha', 'workflow-management': 'Repository-owned', runs: 1
+    }));
+    expect(result.rows).toContainEqual(expect.objectContaining({ repository: 'org/empty', runs: 0 }));
+    const classifications = workerQuery(queries, sources, ['repository-workflow-management'])['repository-workflow-management'];
+    expect(classifications.rows).toContainEqual(expect.objectContaining({
+      workflow: 'central-standalone.md', 'workflow-management': 'Centrally managed'
+    }));
+  });
+
+  it('filters chart segments without narrowing management options or changing the repository ranking', async () => {
+    const sources = await canonicalSources(managementFixture());
+    const page = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === runInventoryContract.page);
+    const compiled = compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
+      queries, viewId: runInventoryContract.view,
+      queryContext: {
+        timeWindow: { start: '2026-09-20T00:00:00Z', end: '2026-09-24T00:00:00Z' },
+        viewFilters: { [runInventoryContract.view]: { 'workflow-management': ['Repository-owned'] } }
+      }
+    });
+    const results = workerQuery(compiled.queries, sources, compiled.aliases);
+    expect(results[compiled.aliases[0]].rows.map((row) => ({
+      repository: row.repository, management: row['workflow-management'], runs: row.runs
+    }))).toEqual([
+      { repository: 'org/alpha', management: 'Repository-owned', runs: 1 },
+      { repository: 'other/alpha', management: 'Repository-owned', runs: 1 }
+    ]);
+    expect(results[compiled.aliases[1]].rows.map((row) => row['workflow-management']))
+      .toEqual(runInventoryContract['management-values']);
+  });
+
+  it('retains unclassified counts and partial quality when workflow inventory is unavailable', async () => {
+    const sources = await canonicalSources(managementFixture());
+    sources.workflows = {
+      ...sources.workflows, rows: [],
+      metadata: { ...sources.workflows.metadata, availability: 'unavailable', completeness: 'unknown' }
+    };
+    const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    expect(result.rows).toContainEqual(expect.objectContaining({
+      repository: 'org/alpha', 'workflow-management': 'Unclassified', runs: 5
+    }));
+    expect(result.metadata.completeness).not.toBe('complete');
+  });
+
+  it('bounds complete management stacks to 100 repositories rather than 100 segments', async () => {
+    const inputs = managementFixture();
+    inputs.repositories.rows = Array.from({ length: 101 }, (_, index) => ({
+      organization: 'org', repository: `repo-${String.fromCharCode(97 + Math.floor(index / 26), 97 + index % 26)}`
+    }));
+    const workflows = inputs.workflows.rows.filter((row) => row.organization === 'org');
+    const runs = inputs.runs.rows.filter((row) => row.organization === 'org');
+    inputs.workflows.rows = inputs.repositories.rows.flatMap((repository) => workflows.map((row) => ({ ...row, ...repository })));
+    inputs.runs.rows = inputs.repositories.rows.flatMap((repository, index) => runs.map((row) => ({
+      ...row, ...repository, run: String(10000 + index * 1000 + Number(row.run))
+    })));
+    const sources = await canonicalSources(inputs);
+    const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
+    expect(result.rows).toHaveLength(runInventoryContract.limit);
+    expect(new Set(result.rows.map((row) => row.repository)).size).toBe(runInventoryContract['repository-limit']);
+    expect(result.rows.slice(-3).map((row) => row['workflow-management']))
+      .toEqual(runInventoryContract['management-values']);
+    expect(result.rows[0]).toMatchObject({ repository: 'org/repo-aa', 'total-runs': 5 });
+    expect(result.rows.at(-1)).toMatchObject({ repository: 'org/repo-dv', 'total-runs': 5 });
+  });
+
   it.each(contexts)('shares the overview dependency graph without changing scoped values or quality for %j', async (queryContext) => {
     const sources = await canonicalSources();
     sources.audits.metadata = {
@@ -232,7 +340,7 @@ describe('repository activity query optimization', () => {
     });
   });
 
-  it('keeps the run chart independent of workflow, outcome, cost, and imported event queries', async () => {
+  it('keeps the managed run chart independent of outcome, cost, and imported event queries', async () => {
     const compiled = compileDashboardViewPayloadQueries(
       dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === runInventoryContract.page).definition,
       runInventoryContract.page,
@@ -271,7 +379,7 @@ describe('repository activity query optimization', () => {
     expect(scoped(queries)).toEqual(scoped(chartBaseline));
   });
 
-  it('reduces chart row work by at least two thirds and only reads repositories and runs through the worker', async () => {
+  it('reduces chart row work and only reads repositories, runs and workflow classification through the worker', async () => {
     const sources = await canonicalSources();
     /** @param {Query[]} definitions */
     const measure = (definitions) => {
@@ -282,7 +390,7 @@ describe('repository activity query optimization', () => {
     const original = measure(chartBaseline);
     const optimized = measure(queries);
     expect(optimized.rows).toEqual(original.rows);
-    expect(optimized.operations).toBeLessThan(original.operations / 3);
+    expect(optimized.operations).toBeLessThan(original.operations);
     const result = /** @type {Record<string, Source>} */ (await processDataRequest({
       operation: 'load-dashboard-query-sources', sources: {},
       queries, sourceNames: [runInventoryContract.source]
@@ -351,13 +459,13 @@ describe('repository activity query optimization', () => {
     });
     const sources = await canonicalSources(inputs);
     expect(workerQuery(queries, sources, ['repository-activity'])['repository-activity'].rows).toHaveLength(101);
-    expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source].rows).toHaveLength(runInventoryContract.limit);
+    expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source].rows).toHaveLength(runInventoryContract['repository-limit']);
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.page);
     const compiled = compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
       queries, viewId: runInventoryContract.view
     });
     const result = workerQuery(compiled.queries, sources, compiled.aliases)[compiled.aliases[0]];
-    expect(result.rows).toHaveLength(runInventoryContract.limit);
+    expect(result.rows).toHaveLength(runInventoryContract['repository-limit']);
     expect(result.rows[0]).toMatchObject({ repository: 'org/extra-aa', runs: 0 });
     expect(result.rows.at(-1)).toMatchObject({ repository: 'org/extra-dv', runs: 0 });
   });

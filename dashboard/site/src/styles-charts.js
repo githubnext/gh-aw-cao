@@ -104,7 +104,9 @@ export const chartStyles = `.chart-widget { min-height: 230px; display: grid; pl
 .horizontal-bar-chart-row { min-width: 0; display: grid; grid-template-columns: minmax(120px, 52%) minmax(48px, 1fr) auto; align-items: center; gap: 8px; }
 .horizontal-bar-chart-label { overflow: hidden; color: var(--fg); font-size: .75rem; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .horizontal-bar-chart-label-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.horizontal-bar-chart-track { height: 14px; overflow: hidden; border-radius: 3px; background: var(--canvas-subtle); }
+.horizontal-bar-chart-track { display: flex; height: 14px; overflow: hidden; border-radius: 3px; background: var(--canvas-subtle); }
+.horizontal-bar-chart-segments { display: flex; width: 100%; }
+.horizontal-bar-chart-track .horizontal-bar-chart-bar { flex-shrink: 0; }
 .horizontal-bar-chart-bar { display: block; width: var(--horizontal-bar-size); height: 100%; transform-origin: left center; background: var(--accent); }
 .horizontal-bar-chart-value { min-width: 4ch; color: var(--muted); font-size: .6875rem; font-variant-numeric: tabular-nums; }
 .chart-series-1 { stroke: var(--success); }

@@ -89,6 +89,42 @@ describe('data view renderer', () => {
     vi.unstubAllGlobals();
   });
 
+  it('renders stacked horizontal bars in query order without presenter query callbacks', () => {
+    const buildChartPoints = vi.fn(() => []);
+    const prepareChartPoints = vi.fn(() => []);
+    const rendered = renderDataView('chart', {
+      pageId: 'repositories',
+      title: 'Runs',
+      view: {
+        mark: 'chart', chart: 'horizontal-bar', stack: 'normal',
+        data: { source: 'repository-run-inventory', limit: 300 },
+        encoding: {
+          x: { field: 'repository', type: 'nominal' },
+          y: { field: 'runs', type: 'quantitative' },
+          color: { field: 'management', type: 'nominal' }
+        }
+      },
+      sourceName: 'repository-run-inventory',
+      rows: [
+        { repository: 'org/zeta', runs: 5, management: 'Centrally managed' },
+        { repository: 'org/zeta', runs: 2, management: 'Repository-owned' },
+        { repository: 'org/alpha', runs: 1, management: 'Unclassified' }
+      ],
+      metadata,
+      contextDetails: [],
+      headingTag: 'h3',
+      prepareTableRows: () => [],
+      buildChartPoints,
+      prepareChartPoints,
+      toText: String
+    });
+    expect([...(rendered?.querySelectorAll('.horizontal-bar-chart-label') ?? [])].map(label => label.textContent))
+      .toEqual(['org/zeta', 'org/alpha']);
+    expect(rendered?.querySelector('.horizontal-bar-chart-value')?.textContent).toBe('7');
+    expect(buildChartPoints).not.toHaveBeenCalled();
+    expect(prepareChartPoints).not.toHaveBeenCalled();
+  });
+
   it('shows pending computed cells without implying zero activity', () => {
     const rendered = renderDataView('table', {
       pageId: 'repositories',

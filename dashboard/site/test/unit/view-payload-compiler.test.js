@@ -19,6 +19,27 @@ const metadata = {
   freshness: 'fresh'
 };
 
+it('bounds stacked repository rows in the worker while preserving the query-ranked category order', () => {
+  const dashboard = authoritativeDashboard.dashboard;
+  const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'repositories');
+  const payload = compileDashboardViewPayloadQueries(page, 'repositories', {
+    queries: dashboard.queries,
+    views: dashboard.views,
+    viewId: 'repositories-runs',
+    sourceNames: ['repository-run-inventory']
+  });
+  const alias = payload.aliases[0];
+  expect(payload.queries.find(query => query.name === alias)).toEqual({
+    name: alias, from: `${alias}:input`, limit: 300
+  });
+  expect(payload.queries.find(query => query.name === `${alias}:input`)?.from).toBe(`${alias}:root`);
+  expect(payload.queries.find(query => query.name === `${alias}:root`)?.['order-by']).toEqual([
+    { field: 'total-runs', direction: 'desc' },
+    { field: 'repository', direction: 'asc' },
+    { field: 'workflow-management', direction: 'asc' }
+  ]);
+});
+
 it('preserves the firewall aggregate failure diagnostic through the scoped view dependency chain', () => {
   const dashboard = authoritativeDashboard.dashboard;
   const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'firewall');

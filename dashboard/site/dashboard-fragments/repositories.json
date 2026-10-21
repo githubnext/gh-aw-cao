@@ -1055,6 +1055,107 @@
       ]
     },
     {
+      "name": "repository-workflow-management",
+      "subject": "Classify workflows from current control inventory and registry evidence.",
+      "objective": "Distinguish centrally maintained workflows from repository-owned activity without inferring authority.",
+      "acceptance": "Control inventory booleans or explicit campaign roles identify central management, including standalone declarations. Registry-backed standalone workflows are repository-owned; all other evidence remains unclassified. Ownership is not historical run authorization.",
+      "from": "workflows",
+      "compute": [
+        {
+          "as": "control-inventory",
+          "function": "equals-any",
+          "args": [{ "field": "inventory-ready" }, { "value": true }, { "value": false }]
+        },
+        {
+          "as": "campaign-role",
+          "function": "equals-any",
+          "args": [{ "field": "workflow-role" }, { "value": "orchestrator" }, { "value": "worker" }]
+        },
+        {
+          "as": "centrally-managed",
+          "function": "equals-any",
+          "args": [{ "value": true }, { "field": "control-inventory" }, { "field": "campaign-role" }]
+        },
+        {
+          "as": "standalone",
+          "function": "equals-any",
+          "args": [{ "field": "workflow-role" }, { "value": "standalone" }]
+        },
+        {
+          "as": "missing-registry",
+          "function": "equals-any",
+          "args": [{ "field": "workflow-registry-state" }, { "value": null }, { "value": "" }, { "value": "unknown" }]
+        },
+        {
+          "as": "registry-management",
+          "function": "if",
+          "args": [{ "field": "missing-registry" }, { "value": "Unclassified" }, { "value": "Repository-owned" }]
+        },
+        {
+          "as": "noncentral-management",
+          "function": "if",
+          "args": [{ "field": "standalone" }, { "field": "registry-management" }, { "value": "Unclassified" }]
+        },
+        {
+          "as": "workflow-management",
+          "function": "if",
+          "args": [{ "field": "centrally-managed" }, { "value": "Centrally managed" }, { "field": "noncentral-management" }]
+        }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository" },
+        { "field": "workflow" },
+        { "field": "workflow-management" }
+      ]
+    },
+    {
+      "name": "repository-workflow-run-counts",
+      "subject": "Count distinct retained runs per execution workflow before management enrichment.",
+      "objective": "Bound management classification joins to workflow-grain run totals.",
+      "acceptance": "Group on execution organization, repository and workflow and count distinct run IDs across attempts; retain workflows even when inventory classification is missing.",
+      "from": "runs",
+      "aggregate": {
+        "by": ["organization", "repository", "workflow"],
+        "values": [{ "field": "run", "as": "runs", "reducer": "distinct-count" }]
+      }
+    },
+    {
+      "name": "repository-management-run-counts",
+      "subject": "Retained run volume by execution repository and current workflow management.",
+      "objective": "Expose the management composition of repository execution without counting target work as local runs.",
+      "acceptance": "Left-join reduced workflow run totals on organization, repository and workflow. Missing matches remain Unclassified; sum workflow-grain counts without dropping centrally managed standalone runs.",
+      "from": "repository-workflow-run-counts",
+      "joins": [
+        {
+          "source": "repository-workflow-management",
+          "type": "left",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository", "right": "repository" },
+            { "left": "workflow", "right": "workflow" }
+          ],
+          "fields": [{ "field": "workflow-management", "as": "observed-management" }]
+        }
+      ],
+      "compute": [
+        {
+          "as": "repository-coordinate",
+          "function": "concat",
+          "args": [{ "field": "organization" }, { "value": "/" }, { "field": "repository" }]
+        },
+        {
+          "as": "workflow-management",
+          "function": "coalesce",
+          "args": [{ "field": "observed-management" }, { "value": "Unclassified" }]
+        }
+      ],
+      "aggregate": {
+        "by": ["organization", "repository-coordinate", "workflow-management"],
+        "values": [{ "field": "runs", "as": "runs", "reducer": "sum" }]
+      }
+    },
+    {
       "name": "repository-observed-run-counts",
       "subject": "Count distinct retained run IDs by repository without importing event evidence.",
       "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
@@ -1077,7 +1178,7 @@
       }
     },
     {
-      "name": "repository-run-inventory",
+      "name": "repository-run-ranking",
       "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
       "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
@@ -1103,14 +1204,80 @@
       "select": [
         { "field": "organization" },
         { "field": "repository" },
-        { "field": "runs" },
+        { "field": "runs", "as": "total-runs" },
         { "field": "repository-link" }
       ],
       "order-by": [
-        { "field": "runs", "direction": "desc" },
+        { "field": "total-runs", "direction": "desc" },
         { "field": "repository", "direction": "asc" }
       ],
       "limit": 100
+    },
+    {
+      "name": "repository-zero-run-segments",
+      "subject": "Keep ranked execution repositories without retained runs visible.",
+      "objective": "Preserve zero-run inventory without claiming inactivity or workflow ownership.",
+      "acceptance": "Produce a zero-valued Unclassified segment only when the ranked repository has no retained runs; preserve evidence quality.",
+      "from": "repository-run-ranking",
+      "filter": { "predicates": [{ "field": "total-runs", "equals": 0 }] },
+      "compute": [
+        { "as": "runs", "function": "literal", "args": [{ "value": 0 }] },
+        { "as": "workflow-management", "function": "literal", "args": [{ "value": "Unclassified" }] }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository", "as": "repository-coordinate" },
+        { "field": "workflow-management" },
+        { "field": "runs" }
+      ]
+    },
+    {
+      "name": "repository-run-inventory",
+      "subject": "Top execution repositories with retained runs split by workflow management.",
+      "objective": "Show where agentic work executes and which activity the control plane maintains.",
+      "acceptance": "Preserve the top 100 repositories ranked by total distinct runs and expand complete management segments, at most 300 rows. Missing classification stays Unclassified. Zero retained runs does not prove inactivity; management filtering selects segments within this ranked set.",
+      "from": "repository-zero-run-segments",
+      "union": ["repository-management-run-counts"],
+      "joins": [
+        {
+          "source": "repository-run-ranking",
+          "type": "inner",
+          "on": [
+            { "left": "organization", "right": "organization" },
+            { "left": "repository-coordinate", "right": "repository" }
+          ],
+          "fields": [
+            { "field": "total-runs", "as": "total-runs" },
+            { "field": "repository-link", "as": "repository-link" }
+          ]
+        }
+      ],
+      "select": [
+        { "field": "organization" },
+        { "field": "repository-coordinate", "as": "repository" },
+        { "field": "runs" },
+        { "field": "total-runs" },
+        { "field": "workflow-management" },
+        { "field": "repository-link" }
+      ],
+      "order-by": [
+        { "field": "total-runs", "direction": "desc" },
+        { "field": "repository", "direction": "asc" },
+        { "field": "workflow-management", "direction": "asc" }
+      ],
+      "limit": 300
+    },
+    {
+      "name": "repository-management-options",
+      "subject": "Observed management categories in the ranked execution repository chart.",
+      "objective": "Offer management filtering without deriving options from rendered bars.",
+      "acceptance": "Keep distinct categories from the complete ranked chart source under global scope and time filters; local selections do not narrow these options.",
+      "from": "repository-run-inventory",
+      "aggregate": {
+        "by": ["workflow-management"],
+        "values": [{ "field": "runs", "as": "runs", "reducer": "sum" }]
+      },
+      "order-by": [{ "field": "workflow-management", "direction": "asc" }]
     }
   ],
   "views": [
@@ -1222,26 +1389,36 @@
         "views": [
           {
             "id": "repositories-runs",
-            "title": "Runs by repository",
-            "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
-            "objective": "Compare repository execution volume and choose repositories for drill-down.",
-            "acceptance": "Show up to 100 repositories by run count descending with stable repository tie-breaks and drill links. Include zero retained runs without claiming inactivity; distinguish empty, partial, and unavailable evidence.",
-            "description": "Distinct retained runs per repository in the selected horizon, ranked by count directly from inventory and run evidence without waiting for imported event coverage. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
+            "title": "Runs by execution repository",
+            "subject": "Distinct retained runs by execution repository and current workflow management.",
+            "objective": "Distinguish centrally managed activity from repository-owned workflows and open repository details.",
+            "acceptance": "Show up to 100 repositories ranked by total distinct runs with complete management segments and drill links. Include centrally managed standalone workflows; retain unclassified, partial and unavailable evidence. Selected management segments remain within this ranked set.",
+            "description": "Top 100 execution repositories by distinct retained runs. Segments show current workflow management, including centrally managed standalone workflows; unmatched evidence stays Unclassified. Management filters select segments within this ranking. Monitoring does not imply ownership, authorization or target coverage. Zero means no retained runs, not confirmed inactivity.",
             "data": {
               "source": "repository-run-inventory",
-              "order-by": [
-                { "field": "runs", "direction": "desc" },
-                { "field": "repository", "direction": "asc" }
-              ],
-              "limit": 100
+              "limit": 300
             },
             "mark": "chart",
             "chart": "horizontal-bar",
+            "stack": "normal",
+            "filter-bar": {
+              "filters": [{
+                "id": "management",
+                "label": "Management",
+                "groups": [{
+                  "label": "Workflow management",
+                  "field": "workflow-management",
+                  "source": "repository-management-options",
+                  "value-field": "workflow-management"
+                }]
+              }]
+            },
             "layout": "full",
             "empty-message": "No repositories were retained in the current inventory.",
             "encoding": {
               "x": { "field": "repository", "type": "nominal", "title": "Repository" },
               "y": { "field": "runs", "type": "quantitative", "title": "Runs" },
+              "color": { "field": "workflow-management", "type": "nominal", "title": "Workflow management" },
               "href": { "field": "repository-link", "type": "nominal" }
             }
           },

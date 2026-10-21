@@ -962,14 +962,28 @@ export function validateView(view, viewNode, path, viewIds, errors) {
 
   validateSemanticFieldLiterals(view.data, `${path}.data`, errors);
   validateDatasetMetadata(getValueNodeByKey(viewNode, 'data'), view.data, `${path}.data`, errors);
+  if (view.stack !== undefined) {
+    const encoding = isPlainObject(view.encoding) ? view.encoding : {};
+    if (view.stack !== 'normal' || view.mark !== 'chart' || view.chart !== 'horizontal-bar'
+      || !isPlainObject(encoding.color) || view.layer !== undefined) {
+      errors.push(createError(ERROR_CODES.incompatibleMarkChannelTypeOrTimeUnit,
+        'stack: normal requires a horizontal-bar chart with categorical color and no layers.', `${path}.stack`));
+    }
+    if ((isPlainObject(view.data) && view.data['order-by'] !== undefined)
+      || Object.values(encoding).some((field) => isPlainObject(field) && field.aggregate !== undefined && field.aggregate !== 'none')) {
+      errors.push(createError(ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
+        'Stacked horizontal bars require query-shaped rows; declare aggregation and ordering in the source query.', `${path}.data`));
+    }
+  }
+  const horizontalBarLimit = view.chart === 'horizontal-bar' && view.stack === 'normal' ? 1200 : 100;
   if (
     ['heatmap', 'horizontal-bar'].includes(String(view.chart))
-    && (!isPlainObject(view.data) || !Number.isInteger(view.data.limit) || Number(view.data.limit) > 100)
+    && (!isPlainObject(view.data) || !Number.isInteger(view.data.limit) || Number(view.data.limit) > horizontalBarLimit)
   ) {
     const chartName = view.chart === 'horizontal-bar' ? 'horizontal-bar' : 'heatmap';
     errors.push(createError(
       ERROR_CODES.invalidScopeFilterTimeAggregationOrOrderReference,
-      `${chartName} charts must declare data.limit no greater than 100.`,
+      `${chartName} charts must declare data.limit no greater than ${horizontalBarLimit}.`,
       `${path}.data.limit`
     ));
   }

@@ -3,10 +3,15 @@
   "view": "repositories-runs",
   "source": "repository-run-inventory",
   "chart": "horizontal-bar",
-  "limit": 100,
+  "limit": 300,
+  "repository-limit": 100,
+  "management-field": "workflow-management",
+  "management-options": "repository-management-options",
+  "management-values": ["Centrally managed", "Repository-owned", "Unclassified"],
   "native-aggregates": [
     "repository-run-statistics",
     "repository-observed-run-counts",
+    "repository-workflow-run-counts",
     "repository-workflow-totals",
     "audit-event-runs",
     "domain-event-runs",
@@ -14,7 +19,7 @@
     "issue-event-runs"
   ],
   "import-identity-fields": ["organization", "repository", "workflow", "run", "run-attempt"],
-  "canonicalSources": ["repositories", "runs"],
+  "canonicalSources": ["repositories", "runs", "workflows"],
   "rows": [
     { "repository": "org/alpha", "runs": 6 },
     { "repository": "org/approval", "runs": 1 },

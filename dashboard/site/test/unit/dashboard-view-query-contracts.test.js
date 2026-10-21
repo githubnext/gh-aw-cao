@@ -909,9 +909,10 @@ describe('dashboard view query contracts', () => {
 
     expect(views[0]).toMatchObject({
       id: 'repositories-runs',
-      data: { source: 'repository-run-inventory', limit: 100 },
+      data: { source: 'repository-run-inventory', limit: 300 },
       mark: 'chart',
-      chart: 'horizontal-bar'
+      chart: 'horizontal-bar',
+      encoding: { color: { field: 'workflow-management', type: 'nominal' } }
     });
     expect(views[1]).toMatchObject(
       {

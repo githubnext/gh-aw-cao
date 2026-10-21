@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { SWIMLANE_LAYOUT, chartSeriesClassName, groupChartSeries, listChartSeries, pieChartEntries, renderChartLegend, renderChartWidget, renderPieChartLayout, renderPieLegend } from '../../src/components/chart-elements.js';
 import { buildChartPoints } from '../../src/components/view-data.js';
 
+/** @param {Parameters<typeof renderChartWidget>[1]} points */
+function renderStackedBars(points) {
+  return renderChartWidget('horizontal-bar', points, listChartSeries(points),
+    null, 'Total', null, null, null, undefined, null, {}, null, {}, true);
+}
+
 describe('chart element helpers', () => {
   it('retains missing window results as gaps and plots negative changes below zero', () => {
     const rows = [
@@ -348,6 +354,68 @@ describe('chart element helpers', () => {
       .toEqual(['Unavailable', '$0.00', '$1.25']);
     expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
       .toBe('Missing telemetry: Unavailable');
+  });
+
+  it('stacks colored horizontal bars on a shared total scale with accessible category breakdowns and links', () => {
+    const points = [
+      { x: 'org/alpha', y: 2, color: 'Repository-owned', link: { href: '#page-alpha', label: 'View Alpha' } },
+      { x: 'org/alpha', y: 3, color: 'Centrally managed', link: { href: '#page-alpha', label: 'View Alpha' } },
+      { x: 'org/beta', y: 1, color: 'Unclassified' }
+    ];
+    const chart = renderStackedBars(points);
+    expect(chart.querySelectorAll('.horizontal-bar-chart-row')).toHaveLength(2);
+    expect([...chart.querySelectorAll('.horizontal-bar-chart-bar')].map((bar) => bar.getAttribute('style')))
+      .toEqual([
+        '--chart-entry-index: 0; --horizontal-bar-size: 60%;',
+        '--chart-entry-index: 0; --horizontal-bar-size: 40%;',
+        '--chart-entry-index: 1; --horizontal-bar-size: 20%;'
+      ]);
+    expect(chart.querySelector('.horizontal-bar-chart-value')?.getAttribute('aria-label'))
+      .toBe('org/alpha: 5 (Centrally managed: 3; Repository-owned: 2)');
+    expect(chart.querySelector('.horizontal-bar-chart-track')?.getAttribute('href')).toBe('#page-alpha');
+    expect(chart.querySelector('.horizontal-bar-chart-track')?.getAttribute('aria-label'))
+      .toContain('Centrally managed: 3; Repository-owned: 2');
+    expect(chart.querySelector('.horizontal-bar-chart-bar')?.getAttribute('title'))
+      .toBe('org/alpha: 3, Centrally managed');
+  });
+
+  it('supports 100 complete colored bars without truncating their segments', () => {
+    const points = Array.from({ length: 100 }, (_, index) => [
+      { x: `repo-${index}`, y: 2, color: 'Centrally managed' },
+      { x: `repo-${index}`, y: 1, color: 'Repository-owned' },
+      { x: `repo-${index}`, y: 0, color: 'Unclassified' }
+    ]).flat();
+    const chart = renderStackedBars(points);
+    expect(chart.querySelectorAll('.horizontal-bar-chart-row')).toHaveLength(100);
+    expect(chart.querySelectorAll('.horizontal-bar-chart-bar')).toHaveLength(300);
+  });
+
+  it('keeps missing stacked values unavailable and rejects negative or duplicate contributions', () => {
+    const points = [
+      { x: 'repo', y: 2, color: 'central' },
+      { x: 'repo', y: null, color: 'local' }
+    ];
+    const chart = renderStackedBars(points);
+    expect(chart.querySelector('.horizontal-bar-chart-value')?.textContent).toBe('Unavailable');
+    for (const invalid of [
+      [{ ...points[0], y: -1 }],
+      [points[0], { ...points[1], y: -1 }],
+      [points[0], { ...points[1], color: 'central' }]
+    ]) {
+      const rejected = renderStackedBars(invalid);
+      expect(rejected.querySelector('.horizontal-bar-chart-list')).toBeNull();
+      expect(rejected.textContent).toContain('unique non-negative observations');
+    }
+  });
+
+  it('bounds stacked horizontal bars to twelve series', () => {
+    const points = Array.from({ length: 12 }, (_, index) => ({ x: 'repo', y: 1, color: `series-${index}` }));
+    const chart = renderStackedBars(points);
+    expect(chart.querySelectorAll('.horizontal-bar-chart-bar')).toHaveLength(12);
+    points.push({ x: 'repo', y: 1, color: 'series-12' });
+    const oversized = renderStackedBars(points);
+    expect(oversized.querySelector('.horizontal-bar-chart-list')).toBeNull();
+    expect(oversized.textContent).toContain('at most 12 series');
   });
 
   it('groups horizontal bars under section headings in first-appearance order', () => {

@@ -411,6 +411,31 @@ describe('dashboard document validation', () => {
     }
   });
 
+  it('bounds colored horizontal-bar segment payloads while retaining the uncolored 100-row limit', () => {
+    const document = JSON.parse(authoritativeDashboardSource);
+    const view = document.dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'repositories')
+      .definition.views.find((/** @type {{ id: string }} */ entry) => entry.id === 'repositories-runs');
+    document.dashboard.pages.push({ id: 'management-boundary', kind: 'custom', title: 'Management', views: [view] });
+    view.data.limit = 1200;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+    view.data.limit = 1201;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    view.data.limit = 300;
+    view.data['order-by'] = [{ field: 'repository' }];
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    delete view.data['order-by'];
+    view.encoding.y.aggregate = 'sum';
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    delete view.encoding.y.aggregate;
+    delete view.encoding.color;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    delete view.stack;
+    view.data.limit = 101;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(false);
+    view.data.limit = 100;
+    expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);
+  });
+
   it('validates page forms and typed query parameter references', () => {
     const document = JSON.parse(authoritativeDashboardSource);
     document.dashboard.queries.push({

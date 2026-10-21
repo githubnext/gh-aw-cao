@@ -48,8 +48,8 @@ export function validateViewFilterBar(view, viewNode, path, sourceName, errors, 
       }
     }
   };
-  if (view.mark !== 'list' && (view.mark !== 'table' || view.controls === 'static')) {
-    fail('View filter-bar is supported only on list and interactive table views.');
+  if (view.mark !== 'chart' && view.mark !== 'list' && (view.mark !== 'table' || view.controls === 'static')) {
+    fail('View filter-bar is supported only on chart, list and interactive table views.');
   }
   if (!isPlainObject(bar)) {
     debugViewFilterValidator({ event: 'filter-bar-rejected', reason: 'not-a-mapping' });

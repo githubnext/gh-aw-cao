@@ -162,8 +162,8 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
           ? { ...view, data: { ...viewData, 'order-by': options.queryContext.orderBy } }
           : view;
         queries.push(...compiled.dependencies, ...compileChartFacetQuery(facetView, query));
-      } else if (isPlainObject(view) && view.mark === 'chart' && view.chart === 'treemap' && !isOptions) {
-        // Treemaps consume ready-to-render rows, never presenter-side ordering or limiting.
+      } else if (isPlainObject(view) && view.mark === 'chart' && (view.chart === 'treemap' || view.stack === 'normal') && !isOptions) {
+        // These charts consume query-shaped rows without presenter-side ordering or limiting.
         const inputName = `${alias}:input`;
         const limit = Number(viewData?.limit);
         const order = useQueryContext && options.queryContext?.orderBy?.length

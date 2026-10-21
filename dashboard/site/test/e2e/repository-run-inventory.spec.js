@@ -29,6 +29,7 @@ test('repository run chart loads without imported events and stays subscribed ac
     const runs = [
       { ...identity, run: '1', 'run-attempt': 1 },
       { ...identity, run: '1', 'run-attempt': 2 },
+      { ...identity, workflow: '.github/workflows/local.md', run: '3', 'run-attempt': 1 },
       ...(updated ? [{ ...identity, run: '2', 'run-attempt': 1 }] : [])
     ].map((run) => ({ ...run, 'started-at': now, 'run-status': 'completed', 'run-conclusion': 'success' }));
     await route.fulfill({
@@ -39,6 +40,13 @@ test('repository run chart loads without imported events and stays subscribed ac
             organization: 'octo', repository: 'repo',
             'repository-link': { href: 'https://github.com/octo/repo', relation: 'repository' }
           }, { organization: 'octo', repository: 'idle' }],
+          metadata
+        },
+        workflows: {
+          rows: [
+            { ...identity, 'workflow-role': 'standalone', 'inventory-ready': false },
+            { ...identity, workflow: '.github/workflows/local.md', 'workflow-role': 'standalone', 'workflow-registry-state': 'active' }
+          ],
           metadata
         },
         runs: { rows: runs, metadata }
@@ -75,8 +83,8 @@ test('repository run chart loads without imported events and stays subscribed ac
   }, model);
 
   const chart = page.locator('[data-view-id="repositories-runs"]');
-  await expect(chart.getByRole('img', { name: 'octo/repo: 1', exact: true })).toBeVisible();
-  await expect(chart.getByRole('img', { name: 'octo/idle: 0', exact: true })).toBeVisible();
+  await expect(chart.getByRole('img', { name: 'octo/repo: 2 (Centrally managed: 1; Repository-owned: 1)', exact: true })).toBeVisible();
+  await expect(chart.getByRole('img', { name: 'octo/idle: 0, Unclassified', exact: true })).toBeVisible();
   await expect(chart.locator('a[href="#page-repository-detail?repository=octo%2Frepo"]').first()).toBeVisible();
   updated = true;
   await page.evaluate(async (documentModel) => {
@@ -86,7 +94,7 @@ test('repository run chart loads without imported events and stays subscribed ac
       views: documentModel.dashboard.views, githubUrlBase: 'https://github.com'
     });
   }, model);
-  await expect(chart.getByRole('img', { name: 'octo/repo: 2', exact: true })).toBeVisible();
+  await expect(chart.getByRole('img', { name: 'octo/repo: 3 (Centrally managed: 2; Repository-owned: 1)', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(chart.getByRole('img', { name: 'octo/repo: 2', exact: true })).toBeVisible();
+  await expect(chart.getByRole('img', { name: 'octo/repo: 3 (Centrally managed: 2; Repository-owned: 1)', exact: true })).toBeVisible();
 });
