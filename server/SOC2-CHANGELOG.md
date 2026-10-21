@@ -177,3 +177,25 @@ Dates are UTC. Corrections are new events; original observations remain.
   not merged/deployed and not closed. Original assessment evidence preserved.
 - Limitations: no live CONFIG/provider access or restore exercise.
   DATA-07/OPS-06 provider durability/recovery evidence remains pending.
+
+## 2026-10-21 - SOC2-LOG-008 - DATA-08 contract correction proposed
+
+- Type: validation root-cause disposition and draft test-only remediation.
+- Source/evidence: commit `d2d640bd3301617d27919e6634ef63c2b50f321f`,
+  draft [#19305](https://github.com/githubnext/gh-cao/pull/19305).
+  Coordinator checked open/draft/head/base and one-file scope, not rerun
+  results independently.
+- Specification version: 1. Related finding: DATA-08.
+- Root cause: legacy Operational Value pages were intentionally retired;
+  the temporal SQL test still searched the removed page instead of the
+  shared native-measure fixture. No runtime processing defect inferred.
+- Proposed change: correct fixture/test naming, preserve existing semantic
+  assertions and strengthen source/metric/point/dimension/row-bound checks.
+- Reported validation: original failure reproduced; corrected targeted
+  check and PostgreSQL-backed full query suite passed (214 passing
+  test/subtest events, zero failures/skips); 74 related dashboard contract
+  tests, query vet/build/lint, formatting, workflow compile and diff checks
+  passed. Disposable database removed; no deployed service examined.
+- Decision/lifecycle: `remediate` / `in-progress`; review/integration and
+  post-integration gate evidence pending. Historical baseline failure is
+  preserved and no other provider/period evidence is closed.

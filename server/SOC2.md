@@ -204,7 +204,7 @@ remain coordinator-owned to avoid conflicting edits.
 | OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
 | OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304); validated proposal, not merged/closed |
-| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Investigation/fix launched |
+| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Draft [#19305](https://github.com/githubnext/gh-cao/pull/19305); validated test-only proposal, not merged/closed |
 | Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
 
 The recurring worker must follow
@@ -241,6 +241,40 @@ independent provider assessment or historical operating evidence.
 No CONFIG access, live Redis changes or merge occurred. Provider persistence
 policy, backup retention, accepted-work RPO/RTO and actual restore operation
 remain evidence requests under DATA-07/OPS-06 and are not closed by this PR.
+
+#### DATA-08 remediation proposal received 2026-10-21
+
+Draft [#19305](https://github.com/githubnext/gh-cao/pull/19305), commit
+`d2d640bd3301617d27919e6634ef63c2b50f321f`, targets this assessment branch.
+The coordinator verified open/draft/head/base identity and that the only
+changed file is `server/internal/query/sql_temporal_test.go`.
+
+The remediation session traced the failure to stale fixture wiring:
+[#19293](https://github.com/githubnext/gh-cao/pull/19293) intentionally
+retired legacy Operational Value pages and moved
+`operational-value-plot-series` to
+`dashboard/site/test/fixtures/native-measure-history-query.json`.
+The SQL test still searched `campaign-insights.json`. The proposal names
+the test `TestTemporalSQLNativeMeasureHistoryQuery`, loads the shared
+fixture, preserves panel/link/order assertions and adds canonical source/
+native metric identity, point metadata, dimension-isolation and 100,000-row
+SQL bound checks. It does not alter production queries or infer a runtime
+processing defect.
+
+The session reports reproducing the original failure, then passing the
+renamed targeted check and full query suite against isolated PostgreSQL
+18.6 with both `POSTGRES_URL` and `TEMPORAL_TEST_POSTGRES_URL`: 214 passing
+test/subtest events, zero failures/skips. Related dashboard contract
+selectors passed 74 tests; query vet/build/lint, formatting, workflow
+compilation and diff checks passed. Temporary DB resources were removed;
+no deployed service/data was examined. Evidence:
+`/Users/peli/.copilot/session-state/ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d/files/data08-query-tests.json`.
+
+Decision remains **remediate**, lifecycle **in-progress**, evidence status
+**evidence-needed** at the original baseline until reviewed integration.
+The historical failed gate is preserved, not rewritten as a pass.
+Post-integration relevant-gate evidence is still required for closure;
+other workstreams' skipped database/operating evidence remains unverified.
 
 ### DATA report received 2026-10-21
 
@@ -479,6 +513,7 @@ All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
 Organizational/deployment/period evidence remains pending. Scoped repository
 remediation and a daily worker are authorized and underway as listed above;
-the OPS-04 validated draft proposal is recorded, not a merged/deployed fix.
+the OPS-04 and DATA-08 validated draft proposals are recorded, not
+merged/deployed fixes.
 The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
