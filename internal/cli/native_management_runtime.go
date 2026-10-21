@@ -23,6 +23,7 @@ var nativeRuntimeResources = []string{
 	"activity", "dashboard", ".github/actions/setup-cao-runtime", ".github/actions/setup-gh-aw",
 	".github/cao/instructions.md", ".github/workflows/shared/activity-cache.md",
 	".github/workflows/shared/control.md", ".github/workflows/shared/review-bundle.md",
+	".github/workflows/shared/operation.md",
 }
 
 var nativeRuntimeRequiredFiles = []string{

@@ -244,6 +244,32 @@ repository; live targets MUST route target writes only to that target through
 declared safe outputs. Workflow `max-mode`, when present, MUST narrow every
 target's mode. Credential reach, tools, and safe-output capabilities remain
 gh-aw-owned cumulative boundaries; CAO MUST NOT expand them for a fleet run.
+
+### 4.6 Direct Operations and Authority Envelopes
+
+**CAO-EXE-006:** A direct operation MAY execute an explicitly requested target
+set without campaign/worker records or inventory topology. It MUST declare its
+exact workflow slug under `control-plane.operations`, import shared operation
+control, and retain the pre-activation authorization output and activation gate.
+Workflow identity MUST match the compiled workflow reference. Identity conflicts
+with campaign, worker or standalone declarations MUST reject.
+
+The role-independent authority kernel MUST perform no discovery, credential
+acquisition, external requests or dispatch. Requests and verified execution
+context MUST be separate. V1 envelopes MUST pair each target, mode and output
+destination and bind grants to the control repository, policy SHA, workflow
+reference, run ID and attempt. Unsupported versions or required enforcement
+controls MUST reject. A request or envelope MUST NOT grant gh-aw capabilities.
+
+Direct precompute MUST re-resolve exact-revision policy, compare the admitted
+envelope with the current request and execution binding, and reject scope or
+destination widening. Required repository identity, archive/disable and
+destination evidence MUST be checked before execution. Redirects, duplicate
+targets and missing evidence MUST fail closed. Multiple targets MUST be
+review-only with a common destination. Live MUST use one explicit `target_repo`
+and target-bound compiled safe outputs. Direct operations MUST NOT discover
+additional targets, carry dispatcher envelopes or delegate work. Narrowing
+comparisons MUST NOT be treated as provenance verification or authorization.
 Request-only `debug` remains restricted to manual single-target workers.
 
 ## 5. JSON Configuration
@@ -278,6 +304,7 @@ A control repository uses `control-plane`. A target repository uses `target-auth
 | `defaults` | Mode, repository, and rollout defaults | Schema defaults |
 | `campaigns` | Explicit campaign and worker workflow declarations | Undeclared campaigns and workers are disabled |
 | `workflows` | Standalone agentic workflows keyed by exact compiled workflow slug | Undeclared workflows are disabled |
+| `operations` | Direct explicit-target operations keyed by exact compiled workflow slug | Undeclared operations are disabled |
 | `publishing` | Deterministic reviewed-output publication | Disabled |
 
 `allowed-owners` and `allowed-repositories` are cumulative when both are non-empty. Wildcards MUST NOT be accepted in version 1.
@@ -370,6 +397,14 @@ same global repository and owner scope constraints as campaign targets.
 Persistent modes, including `max-mode` and target modes, MUST be `review` or
 `live`, never `debug`. A standalone import MUST NOT also declare campaign or
 worker identities; campaign roles MUST NOT use standalone policy identity.
+
+An entry under `control-plane.operations` MAY contain `enabled`, `mode`,
+`max-mode`, `max-repositories` and `targets` only. Global mode and repository-cap
+defaults apply when absent. Fleet topology and execution capabilities MUST NOT
+be added to this declaration. Declared operations default to enabled, with
+review and one repository as the base defaults; examples SHOULD explicitly
+disable operations pending review. Target entries MUST satisfy global scope.
+Bare setup MUST reject declared operations before changing scope or credentials.
 
 ### 5.4 Precedence and Narrowing
 

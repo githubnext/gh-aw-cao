@@ -22,6 +22,10 @@ resources:
     destination: .github/workflows/shared/control.mjs
   - source: .github/workflows/shared/policy.mjs
     destination: .github/workflows/shared/policy.mjs
+  - source: .github/workflows/shared/authority.mjs
+    destination: .github/workflows/shared/authority.mjs
+  - source: .github/workflows/shared/operations.mjs
+    destination: .github/workflows/shared/operations.mjs
   - source: .github/workflows/shared/setup-github-apps.mjs
     destination: .github/workflows/shared/setup-github-apps.mjs
   - source: .github/workflows/shared/materialize-cao.mjs

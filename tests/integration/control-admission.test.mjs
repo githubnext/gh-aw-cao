@@ -23,6 +23,7 @@ function runAdmission({
   precomputeEnv = {},
   githubActions = true,
   repositories = [],
+  mutateEffective,
   env: extraEnv = {},
 } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "central-ops-admission-"));
@@ -112,6 +113,11 @@ esac
     const result = spawnSync("node", [program, "admit"], { encoding: "utf8", env });
     const effectivePath = join(directory, "cao", "effective-policy.json");
     const effective = existsSync(effectivePath) ? JSON.parse(readFileSync(effectivePath, "utf8")) : null;
+    if (mutateEffective && effective) {
+      const handoff = structuredClone(effective);
+      mutateEffective(handoff);
+      writeFileSync(effectivePath, JSON.stringify(handoff));
+    }
     const precomputeResult = runPrecompute && effective?.authorized
       ? spawnSync("node", [program, "precompute"], { encoding: "utf8", env: { ...env, ...precomputeEnv } })
       : null;
@@ -165,6 +171,112 @@ function standalonePolicy(workflow = {}, inventory = {}) {
 const standaloneRepositories = ["one", "two", "three", "four"].map((name, index) => ({
   id: index + 1, full_name: `acme/${name}`, archived: false, disabled: false, private: true,
 }));
+
+const operationEnv = {
+  ...standaloneEnv, CAO_ROLE: "direct", CAO_WORKFLOW: "direct-audit",
+  GITHUB_WORKFLOW_REF: "acme/control/.github/workflows/direct-audit.lock.yml@refs/heads/main",
+  CAO_TARGET_REPOSITORIES: '["acme/one","acme/two"]',
+};
+function directPolicy(declaration = {}) {
+  return JSON.stringify({
+    version: 1, "gh-aw-version": "v0.92.6",
+    "control-plane": {
+      scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/one", "acme/two"] },
+      operations: { "direct-audit": { "max-repositories": 2, ...declaration } },
+    },
+  });
+}
+
+test("direct operations admit an explicit target set without campaign, worker, discovery or inventory policy", () => {
+  const { output, effective, precomputeResult, precompute } = runAdmission({
+    policy: directPolicy(), env: operationEnv, repositories: standaloneRepositories, runPrecompute: true,
+  });
+  assert.equal(output.authorized, "true");
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.control_role, "direct");
+  assert.equal(precompute.campaign, "");
+  assert.equal(precompute.worker, "");
+  assert.deepEqual(precompute.worker_workflows, []);
+  assert.equal("inventory" in effective, false);
+  assert.deepEqual(precompute.candidate_repositories.map(repo => repo.full_name), ["acme/one", "acme/two"]);
+  assert.deepEqual(precompute.authority_envelope.binding, {
+    repository: "acme/control", policySha: "1".repeat(40),
+    workflowRef: operationEnv.GITHUB_WORKFLOW_REF, runId: "456", runAttempt: "1",
+  });
+});
+
+for (const [name, changes, declaration, error] of [
+  ["disabled", {}, { enabled: false }, /operation-disabled/],
+  ["missing target", { CAO_TARGET_REPOSITORIES: "" }, {}, /explicit targets/],
+  ["outside scope", { CAO_TARGET_REPOSITORIES: '["outside/one"]' }, {}, /outside/],
+  ["outside allowlist", { CAO_TARGET_REPOSITORIES: '["acme/three"]' }, {}, /not allowed/],
+  ["duplicate target", { CAO_TARGET_REPOSITORIES: '["acme/one","ACME/ONE"]' }, {}, /duplicate/],
+  ["excessive targets", {}, { "max-repositories": 1 }, /exceed/],
+  ["live escalation", { CAO_REQUESTED_MODE: "live" }, {}, /exceeds checked-in policy/],
+  ["unsupported mode", { CAO_REQUESTED_MODE: "debug" }, {}, /review or live/],
+  ["workflow spoofing", { CAO_WORKFLOW: "another" }, {}, /identity/],
+  ["run binding missing", { GITHUB_RUN_ID: "" }, {}, /verified execution identity/],
+  ["dispatcher input", { CAO_CORRELATION_ID: "123-1" }, {}, /dispatcher envelope/],
+]) {
+  test(`direct operation admission denies ${name}`, () => {
+    const { output, precomputeResult } = runAdmission({
+      policy: directPolicy(declaration), env: { ...operationEnv, ...changes }, runPrecompute: true,
+    });
+    assert.equal(output.authorized, "false");
+    assert.match(output.reason, error);
+    assert.equal(precomputeResult, null);
+  });
+}
+
+for (const [name, options, error] of [
+  ["redirected repository", { repositories: [{ ...standaloneRepositories[0], requested_name: "acme/one", full_name: "acme/other" }] }, /redirected/],
+  ["archived repository", { repositories: [{ ...standaloneRepositories[0], archived: true }] }, /archived/],
+  ["disabled repository", { repositories: [{ ...standaloneRepositories[0], disabled: true }] }, /disabled/],
+  ["incomplete repository evidence", { repositories: [{ ...standaloneRepositories[0], disabled: undefined }] }, /required evidence/],
+  ["unavailable repository", { repositories: [] }, /exited|Command|exit/i],
+  ["public review destination", {
+    env: { ...operationEnv, CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: "acme/review" },
+    repositories: [...standaloneRepositories, { full_name: "acme/review", private: false }],
+  }, /must be private/],
+  ["target as review destination", {
+    env: { ...operationEnv, CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: "acme/one" },
+  }, /must differ/],
+  ["changed request", { precomputeEnv: { CAO_TARGET_REPOSITORIES: '["acme/one"]' } }, /handoff/],
+  ["changed run attempt", { precomputeEnv: { GITHUB_RUN_ATTEMPT: "2" } }, /binding mismatch/],
+  ["changed envelope mode", { mutateEffective: value => { value.authority_envelope.grants[0].mode = "live"; } }, /widens/],
+  ["changed envelope control", { mutateEffective: value => { value.authority_envelope.requirements.push("shell-write"); } }, /enforcement control/],
+  ["missing envelope", { mutateEffective: value => { delete value.authority_envelope; } }, /envelope must/],
+]) {
+  test(`direct operation precompute blocks ${name}`, () => {
+    const { output, precomputeResult } = runAdmission({
+      policy: directPolicy(), env: operationEnv, repositories: standaloneRepositories,
+      runPrecompute: true, ...options,
+    });
+    assert.equal(output.authorized, "true");
+    assert.notEqual(precomputeResult.status, 0);
+    assert.match(precomputeResult.stderr, error);
+  });
+}
+
+test("live direct execution requires explicit policy and an exact target-bound output", () => {
+  const { output, precomputeResult, precompute } = runAdmission({
+    policy: directPolicy({ mode: "live" }), repositories: standaloneRepositories, runPrecompute: true,
+    env: { ...operationEnv, CAO_TARGET_REPOSITORIES: "", CAO_TARGET_REPOSITORY: "acme/one", CAO_REQUESTED_MODE: "live" },
+  });
+  assert.equal(output.authorized, "true");
+  assert.equal(precomputeResult.status, 0, precomputeResult.stderr);
+  assert.equal(precompute.safe_output_repo, "acme/one");
+  assert.equal(precompute.safe_output_mode, "live");
+});
+
+test("live direct execution cannot turn a target list into an implicit safe-output destination", () => {
+  const { precomputeResult } = runAdmission({
+    policy: directPolicy({ mode: "live" }), repositories: standaloneRepositories, runPrecompute: true,
+    env: { ...operationEnv, CAO_TARGET_REPOSITORIES: '["acme/one"]', CAO_REQUESTED_MODE: "live" },
+  });
+  assert.notEqual(precomputeResult.status, 0);
+  assert.match(precomputeResult.stderr, /one target_repo/);
+});
 
 test("standalone admission and precompute process a bounded fleet without campaign or dispatch APIs", () => {
   const { result, output, admission, precomputeResult, precompute } = runAdmission({

@@ -70,6 +70,7 @@ test("Azure asset bundle is byte-for-byte reproducible", () => {
 
 test("Azure asset bundle contains exactly the allowlisted Docker build inputs", () => {
   assert.deepEqual(AZURE_ASSET_ALLOWLIST, [
+    ".github/workflows/shared/authority.mjs",
     ".github/workflows/shared/policy.mjs",
     "activity/actions-log.mjs",
     "dashboard/report/bundle-dashboards.mjs",

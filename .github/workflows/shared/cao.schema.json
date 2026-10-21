@@ -167,6 +167,26 @@
       "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
       "additionalProperties": { "$ref": "#/$defs/workflowPolicy" }
     },
+    "operationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "$ref": "#/$defs/mode" },
+        "max-mode": { "$ref": "#/$defs/mode" },
+        "max-repositories": { "$ref": "#/$defs/maxRepositories" },
+        "targets": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/repository" },
+          "additionalProperties": { "$ref": "#/$defs/targetPolicy" }
+        }
+      }
+    },
+    "controlOperations": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/operationPolicy" }
+    },
     "scope": {
       "type": "object",
       "additionalProperties": false,
@@ -640,6 +660,7 @@
         "defaults": { "$ref": "#/$defs/defaults" },
         "campaigns": { "$ref": "#/$defs/controlCampaigns" },
         "workflows": { "$ref": "#/$defs/controlWorkflows" },
+        "operations": { "$ref": "#/$defs/controlOperations" },
         "publishing": { "$ref": "#/$defs/publishing" },
         "marketplace": { "$ref": "#/$defs/marketplace" },
         "webhook-gateway": { "$ref": "#/$defs/webhookGateway" }

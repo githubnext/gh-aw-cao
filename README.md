@@ -66,17 +66,22 @@ minutes for an already active exact-SHA runtime build. Node.js 24+ and an
 authenticated GitHub CLI with artifact and attestation access are still
 required. Dashboard builds retain their existing production npm dependencies.
 
-Central Agentic Ops provides persistent agentic campaigns that continuously pursue defined outcomes across explicit repository fleets without copying workflows into every repository.
+Central Agentic Ops governs shared **operations**, not one mandatory
+orchestration recipe. Use a direct operation for known targets, a standalone
+workflow for one bounded fleet mission, or a campaign when separate selection
+and independently governed target workers are useful. Campaigns remain a
+first-class way to package and scale recurring work, not a prerequisite.
 
-- **Reach more repositories:** deterministically discover and batch inventories of 100,000+ repositories while keeping each run bounded.
-- **Roll out with confidence:** review proposed outcomes away from the target, then promote each campaign independently to `live`.
-- **Keep work accountable:** every worker stays scoped to one repository and links its outcome to the originating control-plane run.
+[Choose an operation pattern](docs/operation-patterns.md) explains the options,
+tradeoffs, and when ordinary GitHub Actions or observation alone is enough.
+All participating patterns retain explicit scope, review/live ceilings, and
+gh-aw's execution and safe-output boundaries.
 
 ## Project status and scope
 
 Central Agentic Ops extends
 [GitHub Agentic Workflows](https://github.github.com/gh-aw/) with a catalog of
-reusable campaigns and a central control plane for explicit repository fleets.
+reusable campaigns and a central control plane for policy-governed operations.
 It does not replace repository permissions, branch protections, or human review.
 
 See the [open issues](https://github.com/githubnext/gh-cao/issues) for current

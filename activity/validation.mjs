@@ -283,10 +283,14 @@ export async function validatePolicy(root, source) {
       remediation: `Install ${campaign} or remove its stale policy entry`,
     }));
   }
-  for (const workflowName of Object.keys(policy["control-plane"]?.workflows ?? {})) {
+  for (const workflowName of [
+    ...Object.keys(policy["control-plane"]?.workflows ?? {}),
+    ...Object.keys(policy["control-plane"]?.operations ?? {}),
+  ]) {
     const workflowPath = path.posix.join(WORKFLOW_DIRECTORY, `${workflowName}.md`);
+    const operation = Object.hasOwn(policy["control-plane"]?.operations ?? {}, workflowName);
     if (!workflowNames.has(workflowName)) {
-      findings.push(finding("missing-standalone-workflow", "error", "policy", "Policy references a missing standalone workflow", {
+      findings.push(finding(operation ? "missing-operation-workflow" : "missing-standalone-workflow", "error", "policy", `Policy references a missing ${operation ? "direct operation" : "standalone"} workflow`, {
         files: [POLICY_PATH, workflowPath],
         expected: `${workflowName}.md is installed`,
         observed: "Workflow source is missing",
@@ -295,6 +299,7 @@ export async function validatePolicy(root, source) {
       continue;
     }
     try {
+      if (operation) continue;
       effectivePolicy(policy, {
         workflowName, role: "standalone",
         controlRepository: process.env.GITHUB_REPOSITORY || "local/control",

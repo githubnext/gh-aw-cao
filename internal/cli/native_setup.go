@@ -315,6 +315,11 @@ func nativeSetupBoundedPolicy(policy map[string]any, repo string) error {
 			return errors.New("non-interactive setup requires a bare control plane with no declared standalone workflows")
 		}
 	}
+	if value, exists := control["operations"]; exists {
+		if operations := nativeSetupMap(value); operations == nil || len(operations) != 0 {
+			return errors.New("non-interactive setup requires a bare control plane with no declared operations")
+		}
+	}
 	exact := func(value any, expected string) bool {
 		values, ok := nativeSetupStrings(value)
 		return ok && len(values) == 1 && strings.EqualFold(values[0], expected)
@@ -367,6 +372,11 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	if value, exists := control["workflows"]; exists {
 		if workflows := nativeSetupMap(value); workflows == nil || len(workflows) != 0 {
 			return nil, errors.New("setup only configures a bare control plane with no declared standalone workflows")
+		}
+	}
+	if value, exists := control["operations"]; exists {
+		if operations := nativeSetupMap(value); operations == nil || len(operations) != 0 {
+			return nil, errors.New("setup only configures a bare control plane with no declared operations")
 		}
 	}
 	owner := strings.Split(controlRepo.Repository, "/")[0]

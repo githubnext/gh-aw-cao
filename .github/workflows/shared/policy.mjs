@@ -1,11 +1,11 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
-
-export class PolicyError extends Error {}
+import { AuthorityError as PolicyError, narrowLimit, resolveAuthority } from "./authority.mjs";
+export { AuthorityError as PolicyError } from "./authority.mjs";
 
 const SCHEMA_URI = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 const ROOT_KEYS = ["$schema", "version", "gh-aw-version", "control-plane", "target-authority"];
-const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "publishing", "marketplace", "webhook-gateway"];
+const CONTROL_KEYS = ["scope", "activity", "inventory", "web", "defaults", "campaigns", "workflows", "operations", "publishing", "marketplace", "webhook-gateway"];
 const SCOPE_KEYS = ["allowed-owners", "allowed-repositories"];
 const ACTIVITY_KEYS = ["repositories"];
 const INVENTORY_KEYS = ["max-scan-repositories", "cell-count", "cell-index", "batch-size", "batch-index"];
@@ -38,6 +38,7 @@ const OCTICONS = [
 ];
 const CAMPAIGN_KEYS = ["enabled", ...DEFAULT_KEYS, "icon", "deploy", "targets", "workers", "workflow-values"];
 const WORKFLOW_KEYS = ["enabled", ...DEFAULT_KEYS, "max-mode", "targets"];
+const OPERATION_KEYS = ["enabled", "mode", "max-mode", "max-repositories", "targets"];
 const TARGET_POLICY_KEYS = ["mode"];
 const WORKER_KEYS = ["workflow", "enabled", "max-mode"];
 const PUBLISHING_KEYS = ["enabled", "control-repositories", "reviewers"];
@@ -276,6 +277,19 @@ function validateControlPlane(control) {
   if ("workflows" in control) {
     validateOperationPolicies(control.workflows, "workflows");
     validateCampaignRepositoryScopes(control, "workflows");
+  }
+  if ("operations" in control) {
+    validateOperationPolicies(control.operations, "operations");
+    validateCampaignRepositoryScopes(control, "operations");
+    const bound = new Set(Object.keys(control.workflows ?? {}));
+    for (const campaign of Object.values(control.campaigns ?? {})) {
+      for (const worker of Object.values(campaign.workers ?? {})) bound.add(worker.workflow);
+    }
+    for (const name of Object.keys(control.operations)) {
+      if (bound.has(name) || Object.hasOwn(control.campaigns ?? {}, name)) {
+        throw new PolicyError(`operation workflow identity ${name} conflicts with an existing declaration`);
+      }
+    }
   }
   if ("publishing" in control) validatePublishing(control.publishing);
   if ("marketplace" in control) validateMarketplace(control.marketplace);
@@ -763,7 +777,7 @@ function validateOperationPolicies(campaigns, collection = "campaigns") {
     const path = `control-plane.${collection}.${campaignName}`;
     assertString(campaignName, path, SLUG_PATTERN);
     assertMapping(campaignPolicy, path);
-    assertKeys(campaignPolicy, collection === "workflows" ? WORKFLOW_KEYS : CAMPAIGN_KEYS, path);
+    assertKeys(campaignPolicy, collection === "operations" ? OPERATION_KEYS : collection === "workflows" ? WORKFLOW_KEYS : CAMPAIGN_KEYS, path);
     if ("workflow-values" in campaignPolicy) {
       if (collection !== "campaigns" || campaignName !== "activity" || !Array.isArray(campaignPolicy["workflow-values"])
         || campaignPolicy["workflow-values"].length > 1000) {
@@ -937,12 +951,6 @@ export function effectivePolicy(
     ...(control.defaults ?? {}),
   };
   const effective = { ...defaults, ...pick(campaignPolicy, DEFAULT_KEYS) };
-  let targetPolicies = Object.fromEntries(
-    Object.entries(campaignPolicy.targets ?? {}).map(([repository, targetPolicy]) => [
-      repository.toLowerCase(),
-      { mode: targetPolicy.mode },
-    ]),
-  );
   const workerPolicies = Object.fromEntries(
     Object.entries(workers).map(([worker, policy]) => {
       return [policy.workflow, {
@@ -956,32 +964,25 @@ export function effectivePolicy(
     if (typeof targetRepository !== "string" || !REPOSITORY_PATTERN.test(targetRepository)) {
       throw new PolicyError("target_repo must use owner/repository form");
     }
-    const targetPolicy = targetPolicies[targetRepository.toLowerCase()];
-    if (targetPolicy) effective.mode = targetPolicy.mode;
   }
 
   if (role === "worker") {
     const worker = workers[workerName];
     if (!(worker.enabled ?? true)) return denied("worker-disabled", campaignName, role, workerName);
-    if ("max-mode" in worker) {
-      effective.mode = lesserMode(effective.mode, worker["max-mode"]);
-      targetPolicies = Object.fromEntries(
-        Object.entries(targetPolicies).map(([repository, targetPolicy]) => [
-          repository,
-          { mode: lesserMode(targetPolicy.mode, worker["max-mode"]) },
-        ]),
-      );
-    }
   }
-  if (standalone && "max-mode" in campaignPolicy) {
-    effective.mode = lesserMode(effective.mode, campaignPolicy["max-mode"]);
-    targetPolicies = Object.fromEntries(
-      Object.entries(targetPolicies).map(([repository, targetPolicy]) => [
-        repository,
-        { mode: lesserMode(targetPolicy.mode, campaignPolicy["max-mode"]) },
-      ]),
-    );
-  }
+  const authority = resolveAuthority({
+    mode: effective.mode,
+    maxMode: role === "worker" ? workers[workerName]["max-mode"] : standalone ? campaignPolicy["max-mode"] : undefined,
+    maxTargets: effective["max-repositories"],
+    targets: campaignPolicy.targets,
+  }, {
+    target: targetRepository,
+    mode: requestedMode === "debug" ? "" : requestedMode,
+    maxTargets: requestedMaxRepositories,
+  });
+  effective.mode = authority.mode;
+  effective["max-repositories"] = authority.maxTargets;
+  let targetPolicies = authority.targets;
 
   if (requestedMode === "debug") {
     if (role !== "worker" || eventName !== "workflow_dispatch") {
@@ -990,21 +991,8 @@ export function effectivePolicy(
     if (!targetRepository) throw new PolicyError("debug worker target_repo is required");
     effective.mode = "debug";
     targetPolicies = {};
-  } else if (requestedMode) {
-    assertMode(requestedMode, "safe_output_mode");
-    if (modeRank(requestedMode) > modeRank(effective.mode)) {
-      throw new PolicyError("safe_output_mode exceeds checked-in policy");
-    }
-    effective.mode = requestedMode;
-    targetPolicies = Object.fromEntries(
-      Object.entries(targetPolicies).map(([repository, targetPolicy]) => [
-        repository,
-        { mode: lesserMode(targetPolicy.mode, requestedMode) },
-      ]),
-    );
   }
-  narrowInteger(effective, "max-repositories", requestedMaxRepositories, "max_repositories", 1000);
-  narrowInteger(effective, "rollout-percent", requestedRolloutPercent, "rollout_percent", 100);
+  effective["rollout-percent"] = narrowLimit(effective["rollout-percent"], requestedRolloutPercent, "rollout_percent", 100);
 
   const scope = control.scope ?? {};
   const allowedOwners = scope["allowed-owners"] ?? [controlRepository.split("/", 1)[0]];
@@ -1082,6 +1070,13 @@ export function controlSettings(document, controlRepository) {
     },
     marketplace: control.marketplace ?? { registries: [] },
     campaigns,
+    ...(control.operations ? { operations: Object.fromEntries(Object.entries(control.operations).map(([name, policy]) => {
+      const authority = resolveAuthority({
+        mode: policy.mode ?? defaults.mode, maxMode: policy["max-mode"],
+        maxTargets: policy["max-repositories"] ?? defaults["max-repositories"],
+      });
+      return [name, { ...policy, enabled: policy.enabled ?? true, mode: authority.mode, "max-repositories": authority.maxTargets }];
+    })) } : {}),
     publishing_enabled: publishing.enabled ?? false,
     publishing_control_repositories: publishing["control-repositories"] ?? [controlRepository],
     publishing_reviewers: publishing.reviewers ?? [],
@@ -1180,20 +1175,4 @@ function assertUniqueStrings(value, path, pattern) {
 function assertUniqueRepositoryKeys(value, path) {
   const normalized = Object.keys(value).map((repository) => repository.toLowerCase());
   if (new Set(normalized).size !== normalized.length) throw new PolicyError(`${path} must contain unique repository names`);
-}
-
-function modeRank(mode) {
-  return MODES.indexOf(mode);
-}
-
-function lesserMode(left, right) {
-  return modeRank(left) <= modeRank(right) ? left : right;
-}
-
-function narrowInteger(effective, key, requested, path, maximum) {
-  if (requested === "" || requested === undefined || requested === null) return;
-  const value = typeof requested === "number" ? requested : Number(requested);
-  assertInteger(value, path, 1, maximum);
-  if (value > effective[key]) throw new PolicyError(`${path} exceeds checked-in policy`);
-  effective[key] = value;
 }

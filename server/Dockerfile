@@ -193,6 +193,8 @@ COPY --from=dashboard-runtime --chown=cao:cao /app/ /app/
 COPY --from=dashboard-build --chown=cao:cao /workspace/activity/ /app/catalog/activity/
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/control.mjs /app/catalog/.github/workflows/shared/control.mjs
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/policy.mjs /app/catalog/.github/workflows/shared/policy.mjs
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/authority.mjs /app/catalog/.github/workflows/shared/authority.mjs
+COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/shared/operations.mjs /app/catalog/.github/workflows/shared/operations.mjs
 COPY --from=control-plane-inventory --chown=cao:cao /tmp/control-plane-inventory.json /app/catalog/control-plane-inventory.json
 # gh aw logs discovers agentic workflow names from local compiled workflows
 # before it queries runs, so the collection catalog must retain the lock files.

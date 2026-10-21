@@ -25,6 +25,8 @@ const installerSource = readFileSync(resolve("install.sh"), "utf8");
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",
+  ".github/workflows/shared/authority.mjs",
+  ".github/workflows/shared/operations.mjs",
   ".github/workflows/shared/setup-github-apps.mjs",
 ];
 const controlPlaneSkillFiles = [

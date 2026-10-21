@@ -332,7 +332,7 @@ test("root campaign provides default control-repository agent context", () => {
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.equal(rootManifest.resources.length, 5);
+  assert.equal(rootManifest.resources.length, 7);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
   assert.deepEqual(rootManifest.skills, [
     "skills/agentic-workflows",
@@ -433,7 +433,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.equal(policy.authorized, true);
   assert.equal(policy.campaign, "dependabot");
   assert.doesNotMatch(rootManifest, /\.github\/aw\/cao\//);
-  for (const path of ["control.mjs", "policy.mjs", "setup-github-apps.mjs"]) {
+  for (const path of ["control.mjs", "policy.mjs", "authority.mjs", "operations.mjs", "setup-github-apps.mjs"]) {
     assert.deepEqual(
       controlPlaneManifest.resources.find(({ destination }) =>
         destination === `.github/workflows/shared/${path}`),
@@ -495,6 +495,14 @@ test("root campaign composes its operational campaigns through manifests", () =>
     {
       source: ".github/workflows/shared/policy.mjs",
       destination: ".github/workflows/shared/policy.mjs",
+    },
+    {
+      source: ".github/workflows/shared/authority.mjs",
+      destination: ".github/workflows/shared/authority.mjs",
+    },
+    {
+      source: ".github/workflows/shared/operations.mjs",
+      destination: ".github/workflows/shared/operations.mjs",
     },
     {
       source: ".github/workflows/shared/setup-github-apps.mjs",

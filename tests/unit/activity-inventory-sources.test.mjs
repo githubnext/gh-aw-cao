@@ -26,6 +26,21 @@ function workflow(id, path, overrides = {}) {
   };
 }
 
+test("direct operations remain workflow evidence without synthetic campaigns", () => {
+  const sources = buildInventoryDashboardSources({
+    repository: "acme/control", generatedAt: "2026-10-21T00:00:00Z",
+    inventory: { workflows: [{ id: "audit", name: "Audit", sourcePath: ".github/workflows/audit.md",
+      compiled: true, role: "standalone" }], bundles: [] },
+    controlSettings: { campaigns: {}, operations: { audit: { enabled: false, mode: "review" } } },
+    discoveredRepositories: [],
+  });
+  assert.equal(sources.campaigns.rows.length, 0);
+  const row = sources.workflows.rows[0];
+  assert.equal(row["workflow-role"], "standalone");
+  assert.equal(row["admission-status"], "blocked");
+  assert.equal(row["admission-reason"], "operation-disabled");
+});
+
 test("merges independently authenticated inventory fragments without losing health", () => {
   const metadata = {
     "source-id": "central-agentic-ops-repositories",

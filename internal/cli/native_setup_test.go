@@ -107,6 +107,13 @@ func TestNativeSetupBoundedPolicy(t *testing.T) {
 		{"standalone workflow", func(c map[string]any) { c["workflows"] = map[string]any{"audit": map[string]any{}} }, false},
 		{"empty standalone workflows", func(c map[string]any) { c["workflows"] = map[string]any{} }, true},
 		{"malformed standalone workflows", func(c map[string]any) { c["workflows"] = nil }, false},
+		{"direct operation", func(c map[string]any) { c["operations"] = map[string]any{"audit": map[string]any{}} }, false},
+		{"direct operation with empty workflows", func(c map[string]any) {
+			c["workflows"] = map[string]any{}
+			c["operations"] = map[string]any{"audit": map[string]any{}}
+		}, false},
+		{"empty operations", func(c map[string]any) { c["operations"] = map[string]any{} }, true},
+		{"malformed operations", func(c map[string]any) { c["operations"] = nil }, false},
 		{"missing campaigns", func(c map[string]any) { delete(c, "campaigns") }, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -567,6 +574,52 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 				t.Fatal("private key leaked to setup output")
 			}
 		})
+	}
+}
+
+func TestNativeSetupRefusesOperationsBeforeMutation(t *testing.T) {
+	for _, workflows := range []bool{false, true} {
+		for _, guided := range []bool{false, true} {
+			t.Run(fmt.Sprintf("workflows=%t/guided=%t", workflows, guided), func(t *testing.T) {
+				nativeSetupTestDirectory(t)
+				policy := nativeSetupTestPolicy()
+				control := nativeSetupMap(policy["control-plane"])
+				control["operations"] = map[string]any{"audit": map[string]any{"enabled": false}}
+				if workflows {
+					control["workflows"] = map[string]any{}
+				}
+				nativeSetupTestSave(t, policy)
+				before, err := os.ReadFile(policyPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				gh := func(_ context.Context, args ...string) (string, string, error) {
+					switch strings.Join(args, " ") {
+					case "auth status":
+						return "", "", nil
+					case "repo view --json nameWithOwner --jq .nameWithOwner":
+						return "org/control", "", nil
+					case "repo view org/control --json nameWithOwner,visibility":
+						return `{"nameWithOwner":"org/control","visibility":"PUBLIC"}`, "", nil
+					default:
+						t.Fatalf("setup reached a mutation or unexpected read: %v", args)
+						return "", "", nil
+					}
+				}
+				var prompt nativeSetupPrompt
+				if guided {
+					prompt = &nativeSetupTestPrompt{}
+				}
+				_, err = nativeSetupControl(nativeSetupTestCommand(), gh, prompt)
+				if err == nil || !strings.Contains(err.Error(), "no declared operations") {
+					t.Fatalf("expected operation refusal, got %v", err)
+				}
+				after, err := os.ReadFile(policyPath)
+				if err != nil || !bytes.Equal(before, after) {
+					t.Fatalf("setup changed policy: %v", err)
+				}
+			})
+		}
 	}
 }
 

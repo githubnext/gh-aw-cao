@@ -173,6 +173,17 @@ test("non-interactive setup refuses broader existing scope before external chang
   assert.deepEqual(f.saved(), f.policy);
 });
 
+test("non-interactive setup refuses declared operations before scope or credential changes", (t) => {
+  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
+  f.policy["control-plane"].operations = { audit: { enabled: false } };
+  writeFileSync(f.policyPath, JSON.stringify(f.policy));
+  const result = spawnSync(process.execPath, [f.driver], { cwd: f.root, encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /no declared operations/);
+  assert.ok(!f.calls().some(args => args[0] === "api" || args[0] === "variable" || args[0] === "connect"));
+  assert.deepEqual(f.saved(), f.policy);
+});
+
 test("non-interactive setup reports partial external effects and preserves policy on variable failure", (t) => {
   const f = fixture(t, setupModule, {
     controlVisibility: "PUBLIC",

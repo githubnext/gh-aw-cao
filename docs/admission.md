@@ -100,6 +100,11 @@ These are executable gates, not prompt instructions.
 
 ### Duplication reduced inside CAO
 
+The [authority envelope framework](authority-envelopes.md) separates the pure
+mode/target authority resolver from operating-pattern adapters. Direct operations
+use explicit target sets and run-bound versioned envelopes without campaign or
+inventory topology; existing campaign and standalone handoffs stay compatible.
+
 The [control runtime](https://github.com/githubnext/gh-cao/blob/main/.github/workflows/shared/control.mjs)
 now shares one exact-target scope validator across manual debug admission,
 worker dispatch, requested inventory selection, and resolved standalone

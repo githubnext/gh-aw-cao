@@ -98,6 +98,9 @@ export function validateGlobalPolicy(document, source) {
   if (document['control-plane']?.workflows !== undefined && !isMapping(document['control-plane'].workflows)) {
     throw new Error(`${source} control-plane.workflows must be an object`);
   }
+  if (document['control-plane']?.operations !== undefined && !isMapping(document['control-plane'].operations)) {
+    throw new Error(`${source} control-plane.operations must be an object`);
+  }
   return document;
 }
 

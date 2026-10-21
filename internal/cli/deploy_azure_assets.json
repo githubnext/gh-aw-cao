@@ -1,4 +1,5 @@
 [
+  ".github/workflows/shared/authority.mjs",
   ".github/workflows/shared/policy.mjs",
   "activity/actions-log.mjs",
   "dashboard/report/bundle-dashboards.mjs",

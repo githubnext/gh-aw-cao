@@ -17,6 +17,7 @@ const rootResources = [
   '.github/cao/instructions.md',
   '.github/workflows/shared/activity-cache.md',
   '.github/workflows/shared/control.md',
+  '.github/workflows/shared/operation.md',
   '.github/workflows/shared/review-bundle.md',
 ];
 const retiredLauncherDigests = new Set([

@@ -8,7 +8,7 @@ import-schema:
     default: "__none__"
   role:
     type: choice
-    options: [orchestrator, worker, standalone]
+    options: [orchestrator, worker, standalone, direct]
     required: true
   worker:
     type: string
@@ -74,7 +74,7 @@ safe-outputs:
     private-key: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY || '' }}
     ignore-if-missing: true
     repositories:
-      - ${{ inputs.safe_output_repo || github.repository }}
+      - ${{ env.CAO_ROLE == 'direct' && inputs.safe_output_mode == 'live' && inputs.target_repo || inputs.safe_output_repo || github.repository }}
   github-token: ${{ env.CAO_ROLE == 'orchestrator' && ((inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository) == github.repository && github.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_WRITE_PAT_REPOSITORIES || '{}')[(inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_WRITE_PAT || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_TOKEN || (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && secrets.GITHUB_TOKEN }}
   noop:
     report-as-issue: false
@@ -222,6 +222,7 @@ jobs:
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
+          CAO_TARGET_REPOSITORIES: ${{ inputs.target_repos || '' }}
           CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
           CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: ${{ inputs.safe_output_repo || '' }}
           CAO_CORRELATION_ID: ${{ inputs.correlation_id || '' }}
@@ -299,6 +300,10 @@ jobs:
           CAO_ROLE: ${{ github.aw.import-inputs.role }}
           CAO_WORKER: ${{ github.aw.import-inputs.worker }}
           CAO_TARGET_REPOSITORY: ${{ inputs.target_repo || '' }}
+          CAO_TARGET_REPOSITORIES: ${{ inputs.target_repos || '' }}
+          CAO_REQUESTED_MODE: ${{ inputs.safe_output_mode || '' }}
+          CAO_REQUESTED_MAX_REPOSITORIES: ${{ inputs.max_repos || '' }}
+          CAO_REQUESTED_ROLLOUT_PERCENT: ${{ inputs.rollout_percent || '' }}
           CAO_DISPATCH_MAX: "${{ github.aw.import-inputs.dispatch_max }}"
           CAO_SAFE_OUTPUT_REPOSITORY: ${{ env.CAO_ROLE == 'standalone' && (inputs.safe_output_repo || github.repository) || (inputs.safe_output_mode || 'review') == 'review' && (inputs.safe_output_repo || github.repository) || inputs.target_repo || '' }}
           CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: ${{ inputs.safe_output_repo || '' }}
@@ -354,7 +359,7 @@ jobs:
            run_id: process.env.GITHUB_RUN_ID || "",
            run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT || 1),
            campaign: process.env.CAO_CAMPAIGN === "__none__" ? "" : process.env.CAO_CAMPAIGN || "",
-           ...(process.env.CAO_ROLE === "standalone" ? { workflow_id: process.env.CAO_WORKFLOW || "" } : {}),
+           ...(["standalone", "direct"].includes(process.env.CAO_ROLE) ? { workflow_id: process.env.CAO_WORKFLOW || "" } : {}),
            role: process.env.CAO_ROLE || "",
            worker: process.env.CAO_ROLE !== "worker" ? "" : process.env.CAO_WORKER || "",
            target_repository: "",
@@ -429,6 +434,7 @@ jobs:
           [ "$CAO_CAMPAIGN" != "__none__" ] || expected_campaign=""
           [ "$CAO_ROLE" != "orchestrator" ] || expected_worker=""
           [ "$CAO_ROLE" != "standalone" ] || expected_worker=""
+          [ "$CAO_ROLE" != "direct" ] || expected_worker=""
           echo "[cao] Checking that the precompute artifact exists."
           [ -f "$out" ]
           echo "[cao] Checking that precompute authorized activation."
@@ -437,7 +443,7 @@ jobs:
           jq -e --arg campaign "$expected_campaign" '.campaign == $campaign and .bundle == $campaign' "$out" >/dev/null
           echo "[cao] Checking the precompute control role."
           jq -e --arg role "$CAO_ROLE" '.control_role == $role' "$out" >/dev/null
-          if [ "$CAO_ROLE" = "standalone" ]; then
+          if [ "$CAO_ROLE" = "standalone" ] || [ "$CAO_ROLE" = "direct" ]; then
             jq -e --arg workflow "$CAO_WORKFLOW" '.workflow == $workflow' "$out" >/dev/null
           fi
           echo "[cao] Checking the precompute worker identity."
@@ -610,6 +616,8 @@ jobs:
 ---
 
 Read `/tmp/gh-aw/agent/control-precompute.json` before making control decisions. Treat it as authoritative for `control_role`, campaign enablement state, target repository inputs, safe-output routing, and worker workflow availability.
+
+If `control_role` is `direct`, execute the importing operation's mission only against `candidate_repositories`. The versioned `authority_envelope` records the exact run and policy binding, scoped target/mode/destination grants, and required enforcement controls. Do not discover more targets, dispatch work, or treat this record as a credential or new gh-aw capability. Use each candidate's output routing. Multiple targets are supported only for review into one common review destination; live execution requires one explicit `target_repo` and compiled target-bound safe outputs. If compiled tools, credentials, or safe outputs cannot perform the admitted work, report incomplete rather than substituting another destination or mechanism. Skip all campaign and standalone instructions below.
 
 If `control_role` is `standalone`, execute the importing workflow's mission directly against only `candidate_repositories` from precompute. This is a complete, deterministically admitted set, already narrowed by scope, inventory cell and batch, rollout percentage, and `max_repos`; do not discover additional repositories, dispatch workflows, or invent campaign/worker identities or dispatcher correlation. Process at most `effective_max_repos` targets. Use each candidate's `safe_output_mode` and `safe_output_repo`, never a raw input or the run's default in place of that target's routing. Review candidates permit proposals only in their admitted review repository; live candidates permit only the importing workflow's compiled safe outputs against that candidate. CAO does not provision extra credentials, tools, or output capabilities for fleet execution. If required evidence or a declared output cannot be accessed within the compiled capabilities, report incomplete instead of falling back to another repository or output channel. If the admitted set is empty, call `noop`. Skip all orchestrator dispatch instructions below.
 

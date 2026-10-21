@@ -744,10 +744,19 @@ function workflowAdmission(controlSettings, campaignName, role, workflowId) {
 function workflowCampaignDetails(inventory, controlSettings) {
   const details = new Map();
   for (const workflow of inventory.workflows || []) {
+    const operation = controlSettings.operations?.[workflow.id];
+    const operationStatus = operation
+      ? controlSettings.policy_resolution?.status === "unavailable"
+        ? { admissionStatus: "unavailable", admissionReason: "policy-resolution-unavailable" }
+        : { admissionStatus: operation.enabled === false ? "blocked" : "authorized",
+          admissionReason: operation.enabled === false ? "operation-disabled" : "authorized",
+          configuredMode: rolloutMode(operation.mode ?? "review") }
+      : {};
     details.set(workflow.sourcePath, {
       maxAiCredits: workflow.maxAiCredits,
       inventoryReady: workflow.compiled,
       ghAwVersion: normalizeVersion(workflow.ghAwVersion),
+      ...operationStatus,
     });
   }
   for (const bundle of inventory.bundles || []) {

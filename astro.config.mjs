@@ -97,6 +97,7 @@ export default defineConfig({
             "agentic-*",
             "architecture",
             "authentication",
+            "authority-envelopes",
             "author-*",
             "blog/**",
             "cao-cli",
@@ -250,6 +251,7 @@ export default defineConfig({
           items: [
             { label: "What is Central Agentic Ops?", link: "/architecture-at-a-glance/" },
             { label: "How does CAO work?", link: "/how-cao-works/" },
+            { label: "Choose an operation pattern", link: "/operation-patterns/" },
             { label: "Architecture", link: "/architecture/" },
           ],
         },
@@ -267,6 +269,7 @@ export default defineConfig({
           items: [
             { label: "Control plane status", link: "/cao/" },
             { label: "Admission gates", link: "/admission/" },
+            { label: "Authority envelopes", link: "/authority-envelopes/" },
             { label: "Set up the admission gate", link: "/admission-gate/" },
             { label: "Roll out a campaign", link: "/rollout-and-routing/" },
             { label: "Monitor and recover", link: "/operations/" },

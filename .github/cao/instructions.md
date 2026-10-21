@@ -25,6 +25,16 @@ remains gh-aw-owned.
 
 ## Workflow authoring
 
+CAO's authority kernel is topology-independent. Campaigns, standalone fleet
+execution and direct operations are supported operating patterns, not distinct
+sources of authority. Direct workflows import `shared/operation.md`, declare
+their exact slug under `control-plane.operations`, and request an explicit
+target set. They must retain the CAO pre-activation output and activation gate.
+Multiple targets are review-only with a common validated destination; live
+requires one explicit target and target-bound compiled safe outputs. Direct
+operations cannot discover targets, dispatch downstream work or carry a
+dispatcher envelope. See `docs/authority-envelopes.md`.
+
 For an operational campaign, apply `skills/create-cao-campaign/SKILL.md`. It defines the CAO orchestrator/worker topology, rollout boundary, and required `.github/workflows/shared/control.md` imports.
 
 For a standalone agentic workflow, import `shared/control.md` with

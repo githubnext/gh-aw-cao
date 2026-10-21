@@ -48,7 +48,9 @@ See [dashboard hosting](#evidence-and-dashboard-hosting) below and
 The diagram shows the campaign pattern. A governed standalone workflow instead
 performs its mission directly against a bounded admitted set, without an
 orchestrator or downstream workers. Campaigns are a packaging and rollout
-pattern, not a requirement for monitoring or governed standalone execution.
+pattern, not a requirement for monitoring or governed execution. Direct
+operations instead request explicit targets without inventory selection.
+[Choose an Operation Pattern](operation-patterns.md) explains when each fits.
 
 ### Repository roles and records
 
@@ -89,7 +91,9 @@ not promote its mode or expand its limits.
 
 Admission validates identity, policy, requested limits, and API capacity
 before agent execution. Authorized-run precompute resolves repository
-inventory, routing, access, and eligible workers. The agent receives a validated
+inventory or explicit targets, routing, access, and eligible workers where
+applicable. The topology-independent authority kernel resolves ceilings without
+performing discovery or dispatch. The agent receives a validated
 non-secret control artifact, not the policy credentials used for precompute.
 GitHub Agentic Workflows owns how the authorized workflow executes and which
 tools, permissions, and safe outputs it can use.
@@ -97,6 +101,8 @@ tools, permissions, and safe outputs it can use.
 See [Admission Gates](admission.md), [Configuration](configuration.md), and the
 [control architecture specification](https://github.com/githubnext/gh-cao/blob/main/specs/control-architecture.md)
 for the exact contracts.
+The [authority envelope contract](authority-envelopes.md) describes direct
+execution identity binding, scoped grants and unsupported capabilities.
 
 <span id="how-it-works"></span>
 

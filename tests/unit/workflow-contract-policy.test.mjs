@@ -320,7 +320,7 @@ test("enterprise defaults, budgets, timeouts, and concurrency are finite", () =>
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
   assert.match(control, /campaign:\n\s+type: string\n\s+default: "__none__"/);
-  assert.match(control, /role:\n\s+type: choice\n\s+options: \[orchestrator, worker, standalone\]/);
+  assert.match(control, /role:\n\s+type: choice\n\s+options: \[orchestrator, worker, standalone, direct\]/);
   assert.match(control, /worker:\n\s+type: string\n\s+default: "__none__"/);
   assert.match(precompute, /join\(admissionDirectory\(\), "effective-policy\.json"\)/);
   assert.doesNotMatch(control, /^steps:/m);

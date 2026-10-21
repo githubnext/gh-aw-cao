@@ -190,7 +190,7 @@ func readPolicy() (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("%s control-plane must be an object", policyPath)
 		}
-		for _, key := range []string{"campaigns", "workflows"} {
+		for _, key := range []string{"campaigns", "workflows", "operations"} {
 			if value, exists := control[key]; exists {
 				if _, ok := value.(map[string]any); !ok {
 					return nil, fmt.Errorf("%s control-plane.%s must be an object", policyPath, key)

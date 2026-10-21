@@ -8,6 +8,12 @@ agent:
 
 Use this page after installation to answer the urgent operator questions: Is the control plane healthy? How do I stop it? What evidence should I collect? How do I recover safely?
 
+Choosing what to run is a separate task. Start with
+[Choose an Operation Pattern](operation-patterns.md) for the meaning of central
+operations and the tradeoffs between direct execution, standalone fleet
+workflows, campaigns and ordinary Actions. Campaign-specific procedures below
+apply only when you use that pattern.
+
 For a failed deployment or runtime, follow the
 [`debug-cao` skill](https://github.com/githubnext/gh-cao/blob/main/skills/debug-cao/SKILL.md)
 before changing or rerunning anything, then use the deployment-specific guide
