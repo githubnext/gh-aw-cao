@@ -421,7 +421,7 @@ func (s *Store) Maintain(ctx context.Context) error {
 }
 
 func (t *transaction) expiredKeys() ([]key, error) {
-	rows, err := t.tx.QueryContext(t.ctx, `SELECT kind,name,field FROM cao_operational_records WHERE namespace=$1 AND expires_at<=$2 ORDER BY expires_at LIMIT 512`, t.namespace, t.now)
+	rows, err := t.tx.QueryContext(t.ctx, `SELECT kind,name,field FROM cao_operational_records WHERE namespace=$1 AND expires_at<=$2 AND kind NOT IN ('session','session-reserve') ORDER BY expires_at LIMIT 512`, t.namespace, t.now)
 	if err != nil {
 		return nil, err
 	}

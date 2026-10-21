@@ -1057,6 +1057,22 @@ func fakeRedis(t *testing.T) (string, func()) {
 						bulkResult := ""
 						rateLimitResult := false
 						switch {
+						// Session expiry/Lua semantics are exercised against real Redis.
+						case strings.Contains(command[1], "-- cao-session-put"):
+							values[command[3]] = command[6]
+						case strings.Contains(command[1], "-- cao-session-compare"):
+							if values[command[3]] == command[6] {
+								values[command[3]] = command[7]
+							} else {
+								result = 0
+							}
+						case strings.Contains(command[1], "-- cao-session-expire"):
+							result = 0
+						case strings.Contains(command[1], "return session.value") && !strings.Contains(command[1], "-- cao-session-invalidate"):
+							bulkResult = values[command[3]]
+							if bulkResult == "" {
+								result = 0
+							}
 						case strings.Contains(command[1], `local current = redis.call("TIME")`):
 							rateLimitResult = true
 						case len(command) >= 6 && strings.Contains(command[1], `redis.call("SADD"`) && strings.Contains(command[1], `redis.call("DEL"`):
