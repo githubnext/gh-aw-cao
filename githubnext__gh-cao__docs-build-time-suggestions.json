@@ -1,35 +1,7 @@
 {
   "source_sha": "d05e87322560a2241751052c7ca5472b633ab255",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-20T14:23:51Z",
-      "worker_run_id": "39438226519",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39438578838,
-        39435558939,
-        39433804572,
-        39432443073,
-        39430511764,
-        39430500899,
-        39430273601,
-        39430006806,
-        39427857200,
-        39427737824,
-        39426199464,
-        39426192123,
-        39423355731,
-        39422943430,
-        39419288382,
-        39417494838,
-        39415907323,
-        39414590932,
-        39414237559,
-        39412052909
-      ],
-      "outcome": "no-op: the 2026-10-20T11:01:44Z to 2026-10-20T14:22:11Z window contained 15 successful and five skipped completed docs.yml runs. Five successful builds were comparable (two push, three schedule, across four source SHAs): median/p90 end-to-end 225/347 seconds, initial queue or concurrency wait 3/114 seconds, queue-excluded execution 184/304 seconds, build job 87/94 seconds, and deploy job 73/203 seconds. docs.yml has no dashboard job because generation is reusable work in cao-dashboard.yml. Trusted logs confirmed all five builds hit and restored the same 57 MiB central-agentic-ops-dashboard cache in 2-3 seconds; every artifact lookup/download fallback was skipped. The relevant producer run 39425679094 completed in 230 seconds: its build job took 211 seconds, including 159 seconds upgrading activity data and 8 seconds assembling the dashboard, then its cache job took 12 seconds and saved the shared key. Reuse therefore already avoids repeating a >3-minute producer path in each docs build, while the remaining 2-second median restore offers neither 60 seconds nor 15% of median execution as further savings. No correctness- and freshness-preserving reusable-dashboard change met the actionability threshold; category advanced. Deploy variance and one push run's concurrency wait were disclosed rather than attributed to dashboard reuse."
-    },
     {
       "evaluated_at": "2026-10-20T14:41:19Z",
       "worker_run_id": "39440878058",
@@ -799,6 +771,34 @@
         39508887305
       ],
       "outcome": "incomplete: the 2026-10-20T22:32:41Z to 2026-10-21T02:30:11Z latest-20 window contained 16 successful and four skipped completed docs.yml runs. Five successful runs appeared to execute both build and deploy (two push, two schedule, and one workflow_run, across four source SHAs), satisfying the sample-count screen. During collection of the required job and step metadata, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API and model work stopped. Complete median/p90 workflow, queue, build, deploy, dashboard-reuse, and cache-hit measurements could not be established; docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. No recommendation was made and the reusable dashboard generation category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-21T02:59:36Z",
+      "worker_run_id": "39535770055",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        39535737919,
+        39534698674,
+        39533366249,
+        39533085646,
+        39530983667,
+        39530971893,
+        39530441229,
+        39528891374,
+        39527291375,
+        39526297225,
+        39524098898,
+        39523832163,
+        39519012782,
+        39517127441,
+        39516414092,
+        39516401425,
+        39515612526,
+        39514408681,
+        39514007733,
+        39512188837
+      ],
+      "outcome": "no-op: the 2026-10-20T23:01:18Z to 2026-10-21T02:56:03Z latest-20 window contained 15 successful and five skipped completed docs.yml runs. Five successful builds were comparable (two push, two schedule, and one workflow_run, across four source SHAs): median/p90 end-to-end 126/165.2 seconds, initial queue 4/5.8 seconds, queue-excluded execution 123/159.6 seconds, build job 88/89.6 seconds, and deploy job 29/60 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted step metadata showed all five builds restored the dashboard cache in 2-3 seconds and skipped dashboard run lookup and artifact download. Producer run 39513594499 completed in 220 seconds; its 202-second build included 152 seconds upgrading activity data and 9 seconds assembling the dashboard, followed by a 10-second cache job. Reuse therefore avoids repeating the producer path in every docs build, while eliminating the 2-second median restore would save only 1.6% of median queue-excluded execution and far less than 60 seconds. No correctness- and freshness-preserving reusable-dashboard improvement met the actionability threshold, so the category advanced. Five skipped workflow_run entries and deployment-service variance were disclosed rather than attributed to dashboard reuse."
     }
   ]
 }
