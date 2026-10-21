@@ -20,7 +20,8 @@ install → connect → dashboard. Follow the written steps below.
 
 - **Tools:** Git, Bash, `curl`, Node.js 24+, and [GitHub CLI](https://cli.github.com)
   2.68+. Linux, macOS, or Windows with WSL.
-- **GitHub sign-in:** verify `gh auth status`; use `gh auth login` if needed.
+- **Logged in to GitHub CLI:** verify with `gh auth status` and run
+  `gh auth login` if needed.
 - **Control repository:** a separate GitHub repository where you can configure
   Actions, credentials, and Pages. Enable Actions. CAO runs here, not in the
   monitored repository.
@@ -35,19 +36,40 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-The installer provides the **`gh cao` GitHub CLI extension**, the **repository runtime**
-for collection and publication, and the required `gh-aw` extension.
-Installing the CLI alone is not a complete control-plane setup.
+Install the **`gh cao` GitHub CLI extension**:
 
-From a clean checkout of your control repository, on its default branch:
+```bash
+gh extension install githubnext/gh-cao --pin v0.1.22
+```
+
+The pin selects CLI binaries currently available only in a published prerelease.
+
+:::tip[Installation and authentication]
+If authentication fails, sign in and retry:
+
+```bash
+gh auth login
+gh auth status
+```
+
+**In a clean control-repository checkout on its default branch, run the installer
+even if you installed the CLI above.** It installs the extension, the
+**repository runtime**, and the required `gh-aw` extension.
+The CLI alone is insufficient.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+```
+
+The installer requires GitHub CLI sign-in and verifies CLI checksums and version.
+:::
+
+```bash
 gh cao --version
 ```
 
-**Ready:** `gh cao` prints its version; collection, dashboard, and validation
-files are installed locally. No campaign is installed or run.
+**Ready:** `gh cao` prints its version; runtime files are installed.
+No campaign is installed or run.
 
 <details>
 <summary>No control repository yet? Create one during installation.</summary>
@@ -60,8 +82,7 @@ curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
   bash -s -- --create-repo OWNER/CONTROL_REPOSITORY
 ```
 
-This replaces the installation command above. Enter the new private checkout
-and run `gh cao --version` before continuing.
+Enter the new checkout and run `gh cao --version`.
 
 </details>
 

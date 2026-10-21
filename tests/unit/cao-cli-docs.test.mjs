@@ -39,7 +39,15 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(install, /repository\s+runtime/);
   assert.match(install, /required `gh-aw` extension/);
   assert.match(install, /--create-repo OWNER\/CONTROL_REPOSITORY/);
-  assert.doesNotMatch(install, /gh extension install githubnext\/gh-cao/);
+  assert.match(install, /```bash\ngh extension install githubnext\/gh-cao --pin v0\.1\.22\n```/);
+  assert.match(install, /CLI binaries currently available only in a published prerelease/);
+  assert.match(install, /:::tip\[Installation and authentication\]/);
+  assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
+  assert.match(install, /even if you installed the CLI above/);
+  assert.match(install, /installer requires GitHub CLI sign-in/);
+  assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow/);
+  const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
+  assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
   assert.match(monitoring, /## Prerequisites/);
   assert.match(gettingStarted, /## Continue learning/);
   assert.match(gettingStarted, /<span id="4-open-your-dashboard"><\/span>/);
