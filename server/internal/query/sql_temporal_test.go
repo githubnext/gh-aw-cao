@@ -34,7 +34,7 @@ func temporalTestDefinition() TemporalSeries {
 		Trend:    &TemporalTrend{Direction: "direction"}}
 }
 
-func temporalTestPlan(t *testing.T, input SQLRelation, definition TemporalSeries) SQLPlan {
+func temporalTestPlan(t testing.TB, input SQLRelation, definition TemporalSeries) SQLPlan {
 	t.Helper()
 	compiler := sqlCompiler{}
 	output, err := compiler.temporal(input, definition, "observations")
@@ -50,12 +50,15 @@ func TestTemporalSQLGroupsCompilation(t *testing.T) {
 	plan := temporalTestPlan(t, input, temporalTestDefinition())
 	for _, fragment := range []string{
 		"AS NOT MATERIALIZED", "pg_input_is_valid", "isfinite(", "GROUP BY",
-		"first_value(", "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
+		"first_value(", "last_value(", "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING",
 		"jsonb_agg(jsonb_build_object('x'", `ORDER BY "__at","__order"`,
 		"LIMIT 100001", "__count <= 100000", "ELSE 0 END = 1", `"count" >= 2`,
 	} {
 		if !strings.Contains(plan.CTEs, fragment) {
 			t.Errorf("missing temporal SQL contract %q", fragment)
+		}
+		if strings.Contains(plan.CTEs, " DESC") {
+			t.Fatal("trend endpoints must share one ascending chronological window")
 		}
 	}
 	for _, field := range []string{"trend-start-value", "trend-end-value", "trend-delta", "trend-relative-percent", "trend-observation-count"} {
@@ -235,7 +238,17 @@ func TestTemporalSQLNativeMeasureHistoryQuery(t *testing.T) {
 	}
 }
 
-func temporalTestConnection(t *testing.T) *pgx.Conn {
+func TestTemporalSQLSharesScalarInputScan(t *testing.T) {
+	input := temporalTestInput(`(1,'2026-01-01'::text,'repo'::text,10::numeric,'increase'::text,true,'metric'::text,'label'::text,NULL::text,false)`)
+	definition := temporalTestDefinition()
+	definition.Measures = append(definition.Measures, TemporalMeasure{Field: "value", Kind: "diagnostic"})
+	plan := temporalTestPlan(t, input, definition)
+	if strings.Count(plan.CTEs, `FROM "q0" AS ts`) != 1 || !strings.Contains(plan.CTEs, "AS scalar_metrics(") {
+		t.Fatal("scalar measures must expand with VALUES over one source scan")
+	}
+}
+
+func temporalTestConnection(t testing.TB) *pgx.Conn {
 	t.Helper()
 	url := os.Getenv("TEMPORAL_TEST_POSTGRES_URL")
 	if url == "" {

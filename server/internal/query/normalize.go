@@ -149,22 +149,6 @@ func Normalize(definition Definition) NormalizedQuery {
 		stages = append(stages, stage{name: "compute", requires: required, produces: map[string]bool{compute.As: true}})
 		plan.ResultShape.Added = append(plan.ResultShape.Added, ResultField{Field: compute.As, As: compute.As})
 	}
-	if definition.Aggregate != nil {
-		required, produced := map[string]bool{}, map[string]bool{}
-		plan.ResultShape = ResultShape{Mode: ClosedShape}
-		for _, field := range definition.Aggregate.By {
-			required[field], produced[field] = true, true
-			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: field, As: field})
-		}
-		for _, value := range definition.Aggregate.Values {
-			required[value.Field], produced[value.As] = true, true
-			for field := range filterFields(value.Filter) {
-				required[field] = true
-			}
-			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: value.As, As: value.As})
-		}
-		stages = append(stages, stage{name: "aggregate", requires: required, produces: produced, closes: true})
-	}
 	if series := definition.TemporalSeries; series != nil {
 		required := map[string]bool{series.Time: true, series.Series: true}
 		if series.Link != "" {
@@ -184,6 +168,9 @@ func Normalize(definition Definition) NormalizedQuery {
 		}
 		for _, mapping := range series.Maps {
 			required[mapping.Field] = true
+			if mapping.Definitions != "" {
+				required[mapping.Definitions] = true
+			}
 			if mapping.Group != "" {
 				required[mapping.Group] = true
 			}
@@ -193,6 +180,10 @@ func Normalize(definition Definition) NormalizedQuery {
 		switch series.Shape {
 		case "groups":
 			names = append(names, "points")
+			if series.Trend != nil {
+				names = append(names, "trend-start-value", "trend-end-value", "trend-delta", "trend-relative-percent",
+					"trend-observed-direction", "trend-assessment", "trend-observation-count")
+			}
 		case "panels":
 			names = append(names, "series")
 		default:
@@ -205,6 +196,22 @@ func Normalize(definition Definition) NormalizedQuery {
 			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: name, As: name})
 		}
 		stages = append(stages, stage{name: "temporal-series", requires: required, produces: produced, closes: true})
+	}
+	if definition.Aggregate != nil {
+		required, produced := map[string]bool{}, map[string]bool{}
+		plan.ResultShape = ResultShape{Mode: ClosedShape}
+		for _, field := range definition.Aggregate.By {
+			required[field], produced[field] = true, true
+			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: field, As: field})
+		}
+		for _, value := range definition.Aggregate.Values {
+			required[value.Field], produced[value.As] = true, true
+			for field := range filterFields(value.Filter) {
+				required[field] = true
+			}
+			plan.ResultShape.Fields = append(plan.ResultShape.Fields, ResultField{Field: value.As, As: value.As})
+		}
+		stages = append(stages, stage{name: "aggregate", requires: required, produces: produced, closes: true})
 	}
 	for _, prediction := range definition.Predict {
 		var fields struct {

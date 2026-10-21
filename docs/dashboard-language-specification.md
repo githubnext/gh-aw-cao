@@ -712,6 +712,20 @@ A grouped temporal series may declare `trend.direction` as the name of a carried
 
 The transform preserves source-row order and measure declaration or map-property order. It emits no more than 64 mapped metrics per input observation and no more than 100000 rows. It executes in the data Web Worker through the same serializable tidy pipeline as filtering, aggregation, and prediction.
 
+Execution is backend-specific without changing the declaration: browser
+IndexedDB queries use the data worker, local SQLite queries use the shared Go
+evaluator, and hosted PostgreSQL queries compile to SQL. The worker and Go
+evaluator group points during expansion instead of retaining a second tidy
+table, parse each observation's timestamp once, and stably order cached numeric
+timestamps. Trend summaries reuse that ordering. SQLite projects the complete
+declared temporal inputs, including metric definitions and point metadata,
+rather than unrelated source fields; explicitly requested raw sources remain
+complete. PostgreSQL expands scalar measures with a lateral `VALUES` relation
+and maps with lateral branches over one input scan. Trend endpoints share one
+ascending window with an explicit full-partition frame. All paths enforce the
+100000-point expansion limit before returning grouped results; grouping does
+not relax that limit.
+
 #### 5.5.4 Observation Windows
 
 A query may declare a `window` sequence after `aggregate` and `predict`. Each

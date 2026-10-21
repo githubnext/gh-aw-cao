@@ -183,6 +183,41 @@ afterEach(() => {
 });
 
 describe('canonical view sources', () => {
+  it('executes temporal history through canonical IndexedDB projections and the worker query boundary', async () => {
+    await processDataRequest({ operation: 'query-canonical-database-diagnostics' });
+    for (const [run, attempt, startedAt] of [
+      ['42', 2, '2026-09-09T04:00:00Z'],
+      ['43', 1, '2026-09-08T04:00:00Z']
+    ]) {
+      await putCanonicalRecord('runs', {
+        id: `github:run:${run}`, owner: 'githubnext', repository: 'gh-cao',
+        githubRunId: run, attempt, startedAt
+      });
+    }
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'load-dashboard-query-sources',
+      sources,
+      queries: [{
+        name: 'temporal-history', subject: 'Run attempt history from canonical records.', from: 'runs',
+        compute: [{ as: 'direction', function: 'concat', args: [{ value: 'increase' }, { value: '' }] }],
+        'temporal-series': {
+          time: 'started-at', series: 'repository', shape: 'groups', carry: ['direction'],
+          measures: [{ field: 'run-attempt', kind: 'primary' }], trend: { direction: 'direction' }
+        }
+      }],
+      sourceNames: ['temporal-history']
+    }));
+    expect(result['temporal-history'].metadata.availability).toBe('available');
+    expect(result['temporal-history'].rows).toEqual([expect.objectContaining({
+      'trend-start-value': 1, 'trend-end-value': 2, 'trend-delta': 1,
+      'trend-assessment': 'improving', 'trend-observation-count': 2,
+      points: [
+        expect.objectContaining({ x: '2026-09-08T04:00:00Z', y: 1 }),
+        expect.objectContaining({ x: '2026-09-09T04:00:00Z', y: 2 })
+      ]
+    })]);
+  });
+
   it.each(['acme/control', 'github/gh-aw'])('attributes a retained worker issue in %s after a normalized Activity import', async (issueRepository) => {
     const inventory = {
       campaigns: { rows: [{ campaign: 'repo-assist', 'campaign-name': 'Repo Assist' }], metadata },

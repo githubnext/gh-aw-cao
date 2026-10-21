@@ -343,3 +343,48 @@ func TestRetryableSQLiteStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckSQLiteRedirect(t *testing.T) {
+	newRequest := func(raw string) *http.Request {
+		location, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &http.Request{URL: location}
+	}
+	chain := func(n int, raw string) []*http.Request {
+		via := make([]*http.Request, n)
+		for i := range via {
+			via[i] = newRequest(raw)
+		}
+		return via
+	}
+	for _, test := range []struct {
+		name    string
+		target  string
+		via     []*http.Request
+		wantErr string
+	}{
+		{"https to https", "https://b.example/x", chain(1, "https://a.example/"), ""},
+		{"http to https", "https://b.example/x", chain(1, "http://a.example/"), ""},
+		{"http to http", "http://b.example/x", chain(1, "http://a.example/"), ""},
+		{"https downgrade", "http://b.example/x", chain(1, "https://a.example/"), "unsafe SQLite download redirect"},
+		{"credentials", "https://user:pass@b.example/x", chain(1, "https://a.example/"), "unsafe SQLite download redirect"},
+		{"other scheme", "ftp://b.example/x", chain(1, "http://a.example/"), "unsafe SQLite download redirect"},
+		{"nine hops allowed", "https://b.example/x", chain(9, "https://a.example/"), ""},
+		{"ten hops rejected", "https://b.example/x", chain(10, "https://a.example/"), "stopped after 10 redirects"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := checkSQLiteRedirect(newRequest(test.target), test.via)
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || err.Error() != test.wantErr {
+				t.Fatalf("error = %v, want %q", err, test.wantErr)
+			}
+		})
+	}
+}

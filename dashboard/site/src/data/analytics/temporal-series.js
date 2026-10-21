@@ -9,9 +9,10 @@ const debugTemporalSeries = createDebug('temporal-series');
 
 const MAX_METRICS_PER_OBSERVATION = 64;
 const MAX_OUTPUT_ROWS = 100_000;
-const POINT_METADATA = Symbol('temporal-point-metadata');
 
 /** @typedef {Record<string, unknown>} Row */
+/** @typedef {{ point: Row, time: number }} TimedPoint */
+/** @typedef {{ row: Row, points: TimedPoint[], series: Map<string, TimedPoint[]> }} TemporalGroup */
 
 /**
  * @typedef {{
@@ -39,17 +40,67 @@ export function projectTemporalSeries(rows, definition) {
     throw new TypeError('temporal-series point-carry requires panels and 1 to 16 named fields.');
   }
   debugTemporalSeries({ event: 'projection-started', inputRows: rows.length, shape: definition.shape ?? 'tidy' });
+  const carry = definition.carry ?? [];
+  const panels = definition.shape === 'panels';
+  const grouped = panels || definition.shape === 'groups';
   /** @type {Row[]} */
   const projected = [];
+  /** @type {Map<string, TemporalGroup>} */
+  const groups = new Map();
+  let count = 0;
+  /**
+   * Group during expansion so grouped queries never retain a second tidy table.
+   * @param {Row} row
+   * @param {number} time
+   * @param {Row | undefined} metadata
+   */
+  function append(row, time, metadata) {
+    if (count >= MAX_OUTPUT_ROWS) {
+      debugTemporalSeries({ event: 'projection-rejected', reason: 'output-row-limit', limit: MAX_OUTPUT_ROWS });
+      throw new RangeError(`Temporal series exceeds the ${MAX_OUTPUT_ROWS}-row output limit.`);
+    }
+    const index = count++;
+    if (!grouped) {
+      projected.push(row);
+      return;
+    }
+    const key = JSON.stringify([...carry.map((field) => row[field] ?? null), row['metric-key']]);
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        row: Object.fromEntries([...carry, 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group']
+          .map((field) => [field, row[field]])),
+        points: [],
+        series: new Map()
+      };
+      groups.set(key, group);
+    }
+    const point = {
+      x: row.time,
+      y: row.value,
+      key: `${String(row['metric-key'])}:${index}`,
+      ...(!panels ? { color: row.series } : {}),
+      ...(panels && metadata ? { metadata } : {}),
+      ...(panels && row.link !== undefined ? { link: row.link } : {})
+    };
+    let points = group.points;
+    if (panels) {
+      const id = String(row.series);
+      points = group.series.get(id) ?? [];
+      group.series.set(id, points);
+    }
+    points.push({ point, time });
+  }
   for (const row of rows) {
     const observedTime = row[definition.time];
     const time = typeof observedTime === 'string' ? observedTime : '';
-    if (!time || !Number.isFinite(Date.parse(String(time)))) continue;
+    if (!time) continue;
+    const timestamp = Date.parse(time);
+    if (!Number.isFinite(timestamp)) continue;
     const series = scalarText(row[definition.series]);
-    const carried = Object.fromEntries((definition.carry ?? []).map((field) => [field, row[field]]));
+    const carried = Object.fromEntries(carry.map((field) => [field, row[field]]));
     const linked = definition.link ? { link: row[definition.link] } : {};
-    const pointMetadata = pointFields ? {
-      [POINT_METADATA]: Object.fromEntries(pointFields
+    const pointMetadata = pointFields ? Object.fromEntries(pointFields
         .filter((field) => row[field] !== undefined)
         .map((field) => {
           const value = row[field];
@@ -57,17 +108,15 @@ export function projectTemporalSeries(rows, definition) {
             throw new TypeError('temporal-series point-carry requires scalar fields.');
           }
           return [field, value];
-        }))
-    } : {};
+        })) : undefined;
 
     for (const measure of definition.measures ?? []) {
       const value = finiteNumber(row[measure.field]);
       if (value === null) continue;
       const metric = scalarText(measure.key ? row[measure.key] : measure.field) || measure.field;
-      append(projected, {
+      append({
         ...carried,
         ...linked,
-        ...pointMetadata,
         time,
         series,
         metric,
@@ -76,7 +125,7 @@ export function projectTemporalSeries(rows, definition) {
         'metric-kind': measure.kind,
         'metric-group': metric,
         value
-      });
+      }, timestamp, pointMetadata);
     }
 
     for (const map of definition.maps ?? []) {
@@ -87,10 +136,9 @@ export function projectTemporalSeries(rows, definition) {
       for (const [metric, candidate] of entries) {
         const value = finiteNumber(candidate);
         if (value === null) continue;
-        append(projected, {
+        append({
           ...carried,
           ...linked,
-          ...pointMetadata,
           time,
           series,
           metric,
@@ -99,103 +147,51 @@ export function projectTemporalSeries(rows, definition) {
           'metric-kind': map.kind,
           'metric-group': group,
           value
-        });
+        }, timestamp, pointMetadata);
       }
     }
   }
-  const result = definition.shape === 'panels'
-    ? groupTemporalPanels(projected, definition.carry ?? [])
-    : definition.shape === 'groups'
-    ? groupTemporalSeries(projected, definition.carry ?? [], definition.trend?.direction)
-    : projected;
+  const result = grouped ? [...groups.values()].map((group) => {
+    if (panels) {
+      return {
+        ...group.row,
+        series: [...group.series]
+          .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+          .map(([id, points]) => ({ id, label: id, points: orderedPoints(points) }))
+      };
+    }
+    const points = orderedPoints(group.points);
+    /** @type {Row} */
+    const row = { ...group.row, points };
+    return definition.trend
+      ? appendTrend(row, scalarText(row[definition.trend.direction]), points)
+      : row;
+  }) : projected;
   debugTemporalSeries({ event: 'projection-completed', outputRows: result.length });
   return result;
 }
 
 /**
- * @param {Row[]} rows
- * @param {string[]} carry
+ * @param {TimedPoint[]} points
  * @returns {Row[]}
  */
-function groupTemporalPanels(rows, carry) {
-  /** @type {Map<string, { row: Row, series: Map<string, { id: string, label: string, points: Row[] }> }>} */
-  const panels = new Map();
-  for (const [index, row] of rows.entries()) {
-    const key = JSON.stringify([...carry.map((field) => row[field] ?? null), row['metric-key']]);
-    const panel = panels.get(key) ?? {
-      row: Object.fromEntries([...carry, 'metric', 'metric-key', 'metric-name', 'metric-kind', 'metric-group']
-        .map((field) => [field, row[field]])),
-      series: new Map()
-    };
-    const id = String(row.series);
-    const series = panel.series.get(id) ?? { id, label: id, points: [] };
-    series.points.push({
-      x: row.time,
-      y: row.value,
-      key: `${String(row['metric-key'])}:${index}`,
-      ...(Object.hasOwn(row, POINT_METADATA) ? { metadata: Reflect.get(row, POINT_METADATA) } : {}),
-      ...(row.link !== undefined ? { link: row.link } : {})
-    });
-    panel.series.set(id, series);
-    panels.set(key, panel);
+function orderedPoints(points) {
+  for (let index = 1; index < points.length; index++) {
+    if (points[index].time < points[index - 1].time) {
+      points.sort((left, right) => left.time - right.time);
+      break;
+    }
   }
-  return [...panels.values()].map(({ row, series }) => ({
-    ...row,
-    series: [...series.values()]
-      .sort((left, right) => left.label < right.label ? -1 : left.label > right.label ? 1 : 0)
-      .map((entry) => ({
-        ...entry,
-        points: entry.points.toSorted((left, right) => Date.parse(String(left.x)) - Date.parse(String(right.x)))
-      }))
-  }));
-}
-
-/**
- * @param {Row[]} rows
- * @param {string[]} carry
- * @param {string | undefined} trendDirectionField
- * @returns {Row[]}
- */
-function groupTemporalSeries(rows, carry, trendDirectionField) {
-  /** @type {Map<string, Row & { points: Row[] }>} */
-  const groups = new Map();
-  for (const [index, row] of rows.entries()) {
-    const groupKey = JSON.stringify([...carry.map((field) => row[field] ?? null), row['metric-key']]);
-    /** @type {Row & { points: Row[] }} */
-    const group = groups.get(groupKey) ?? {
-      ...Object.fromEntries(carry.map((field) => [field, row[field]])),
-      metric: row.metric,
-      'metric-key': row['metric-key'],
-      'metric-name': row['metric-name'],
-      'metric-kind': row['metric-kind'],
-      'metric-group': row['metric-group'],
-      points: []
-    };
-    const points = Array.isArray(group.points) ? group.points : [];
-    group.points = points;
-    points.push({
-      x: row.time,
-      y: row.value,
-      color: row.series,
-      key: `${String(row['metric-key'])}:${index}`
-    });
-    groups.set(groupKey, group);
-  }
-  return [...groups.values()].map((group) => {
-    group.points.sort((left, right) => Date.parse(String(left.x)) - Date.parse(String(right.x)));
-    return trendDirectionField ? appendTrend(group, scalarText(group[trendDirectionField])) : group;
-  });
+  return points.map(({ point }) => point);
 }
 
 /**
  * @param {Row} group
  * @param {string} preferredDirection
+ * @param {Row[]} points Already timestamp-ordered by the temporal projection.
  * @returns {Row}
  */
-function appendTrend(group, preferredDirection) {
-  const points = (Array.isArray(group.points) ? group.points : [])
-    .filter((point) => point && typeof point === 'object')
-    .toSorted((left, right) => Date.parse(String(left.x)) - Date.parse(String(right.x)));
+function appendTrend(group, preferredDirection, points) {
   if (points.length < 2) {
     return {
       ...group,
@@ -233,15 +229,6 @@ function appendTrend(group, preferredDirection) {
     'trend-assessment': assessment,
     'trend-observation-count': points.length
   };
-}
-
-/** @param {Row[]} rows @param {Row} row */
-function append(rows, row) {
-  if (rows.length >= MAX_OUTPUT_ROWS) {
-    debugTemporalSeries({ event: 'projection-rejected', reason: 'output-row-limit', limit: MAX_OUTPUT_ROWS });
-    throw new RangeError(`Temporal series exceeds the ${MAX_OUTPUT_ROWS}-row output limit.`);
-  }
-  rows.push(row);
 }
 
 /** @param {unknown} value @returns {number|null} */

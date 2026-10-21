@@ -68,18 +68,8 @@ func downloadSQLite(ctx context.Context, rawURL, destination string) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	client := &http.Client{
-		Timeout: 5 * time.Minute,
-		CheckRedirect: func(request *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return errors.New("stopped after 10 redirects")
-			}
-			if request.URL.User != nil ||
-				(request.URL.Scheme != "http" && request.URL.Scheme != "https") ||
-				(via[len(via)-1].URL.Scheme == "https" && request.URL.Scheme != "https") {
-				return errors.New("unsafe SQLite download redirect")
-			}
-			return nil
-		},
+		Timeout:       5 * time.Minute,
+		CheckRedirect: checkSQLiteRedirect,
 	}
 	for attempt := 1; ; attempt++ {
 		err := downloadSQLiteAttempt(ctx, client, manifestURLs, destination)
@@ -99,6 +89,22 @@ func downloadSQLite(ctx context.Context, rawURL, destination string) error {
 		case <-timer.C:
 		}
 	}
+}
+
+// checkSQLiteRedirect limits redirects to a bounded chain of credential-free
+// HTTP(S) locations and never permits an HTTPS to HTTP downgrade.
+func checkSQLiteRedirect(request *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		commandLog.Printf("SQLite download redirect rejected: reason=too_many hops=%d", len(via))
+		return errors.New("stopped after 10 redirects")
+	}
+	if request.URL.User != nil ||
+		(request.URL.Scheme != "http" && request.URL.Scheme != "https") ||
+		(via[len(via)-1].URL.Scheme == "https" && request.URL.Scheme != "https") {
+		commandLog.Printf("SQLite download redirect rejected: reason=unsafe_target")
+		return errors.New("unsafe SQLite download redirect")
+	}
+	return nil
 }
 
 func validateSQLiteDestination(destination string) error {

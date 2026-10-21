@@ -99,7 +99,11 @@ func projectSnapshotPlan(definitions []query.Definition, requested, order []stri
 			}
 		}
 		normalized := query.Normalize(definition)
-		full := opaque || normalized.ResultShape.Mode == query.PreserveInput
+		// Temporal output is closed and all its source fields are declared.
+		// Keep opaque stages conservative without reading unrelated documents
+		// merely because a temporal transform is not row-local.
+		full := normalized.ResultShape.Mode == query.PreserveInput || len(definition.Predict) > 0 ||
+			len(definition.Window) > 0 || definition.Facet != nil
 		require(definition.From, normalized.SourceFields, full)
 		for _, source := range definition.Union {
 			require(source, normalized.SourceFields, full)

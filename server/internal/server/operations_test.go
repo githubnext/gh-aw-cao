@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -350,6 +351,14 @@ func TestSimulatorExercisesGoServerWithRedis(t *testing.T) {
 	}
 	if err := app.Collector().Start(t.Context(), nil); err != nil {
 		t.Fatalf("start Go server collector: %v", err)
+	}
+	// Admission-only servers queue scope changes for a separate worker.
+	repositories := make([]string, 8)
+	for index := range repositories {
+		repositories[index] = fmt.Sprintf("simulator/repo-%05d", index+1)
+	}
+	if err := app.Collector().enrollment.AddRepositories(t.Context(), 1, repositories); err != nil {
+		t.Fatal(err)
 	}
 	server := httptest.NewServer(app.Handler())
 	defer server.Close()
