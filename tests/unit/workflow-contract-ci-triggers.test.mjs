@@ -237,7 +237,7 @@ test("Go extension setup simulator runs independently without live credentials",
   assert.doesNotMatch(JSON.stringify(job), /secrets\.|github\.token|id-token/);
   const { scripts } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.match(scripts["test:integration:setup"], /CAO_SETUP_INTEGRATION=1 go -C server test -race/);
-  assert.match(scripts["test:integration:setup"], /-run '\^TestCAOSetupIntegration\$'/);
+  assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAOSetupIntegration\|TestSetup\)'/);
 });
 
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {

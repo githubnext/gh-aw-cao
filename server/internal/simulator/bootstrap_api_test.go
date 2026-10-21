@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -192,6 +193,19 @@ func (a *BootstrapAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if len(parts) >= 5 && parts[3] == "actions" && parts[4] == "variables" {
+			if len(parts) == 5 && r.Method == http.MethodGet {
+				names := make([]string, 0, len(repo.Variables))
+				for name := range repo.Variables {
+					names = append(names, name)
+				}
+				sort.Strings(names)
+				variables := make([]map[string]string, 0, len(names))
+				for _, name := range names {
+					variables = append(variables, map[string]string{"name": name, "value": repo.Variables[name]})
+				}
+				write(http.StatusOK, map[string]any{"total_count": len(variables), "variables": variables})
+				return
+			}
 			if len(parts) == 5 && r.Method == http.MethodPost {
 				var input struct{ Name, Value string }
 				if json.NewDecoder(r.Body).Decode(&input) != nil || !bootstrapName.MatchString(input.Name) {
@@ -334,6 +348,27 @@ func (a *BootstrapAPI) graphql(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data["repository"] = repo.graphql()
+	case strings.Contains(input.Query, "repositoryOwner("):
+		owner := bootstrapArgument(input.Query, "login", input.Variables)
+		nodes := []any{}
+		keys := make([]string, 0, len(a.Repositories))
+		for key := range a.Repositories {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			repo := a.Repositories[key]
+			if strings.EqualFold(repo.Owner, owner) {
+				nodes = append(nodes, repo.graphql())
+			}
+		}
+		data["repositoryOwner"] = map[string]any{
+			"login": owner,
+			"repositories": map[string]any{
+				"nodes": nodes, "totalCount": len(nodes),
+				"pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil},
+			},
+		}
 	case strings.Contains(input.Query, "organization("):
 		data["organization"] = map[string]string{"id": "O_platform", "login": "platform"}
 	case strings.Contains(input.Query, "user("):
