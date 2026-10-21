@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -254,7 +255,7 @@ func TestNativeSetupPublicMonitoring(t *testing.T) {
 				t.Fatalf("repeat result=%#v err=%v", repeated, err)
 			}
 			guided, err := nativeSetupControl(nativeSetupTestCommand(), gh, &nativeSetupTestPrompt{
-				texts: []string{"other/public", "public-only"}, confirms: []bool{true, true},
+				texts: []string{"other/public"}, confirms: []bool{true, true},
 			})
 			if err != nil || guided["profile"] != "public-only" || !reflect.DeepEqual(guided["repositories"], want) {
 				t.Fatalf("guided result=%#v err=%v", guided, err)
@@ -266,9 +267,11 @@ func TestNativeSetupPublicMonitoring(t *testing.T) {
 type nativeSetupTestPrompt struct {
 	texts    []string
 	confirms []bool
+	labels   []string
 }
 
-func (p *nativeSetupTestPrompt) Text(string, string) (string, error) {
+func (p *nativeSetupTestPrompt) Text(label string, _ string) (string, error) {
+	p.labels = append(p.labels, label)
 	if len(p.texts) == 0 {
 		return "", errNativeSetupCancelled
 	}
@@ -284,6 +287,160 @@ func (p *nativeSetupTestPrompt) Confirm(string, bool) (bool, error) {
 	answer := p.confirms[0]
 	p.confirms = p.confirms[1:]
 	return answer, nil
+}
+
+func TestNativeSetupTerminalPresentation(t *testing.T) {
+	for _, styled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("styled=%v", styled), func(t *testing.T) {
+			var output bytes.Buffer
+			prompt := &nativeSetupTerminalPrompt{
+				reader: bufio.NewReader(strings.NewReader("\nIv1.read\n\n")),
+				output: &output, styled: styled,
+			}
+			answer, err := prompt.Text("Repositories", "org/control")
+			if err != nil || answer != "org/control" {
+				t.Fatalf("default repository changed: %q, %v", answer, err)
+			}
+			answer, err = prompt.Text("Read App client ID", "")
+			if err != nil || answer != "Iv1.read" {
+				t.Fatalf("client ID changed: %q, %v", answer, err)
+			}
+			confirmed, err := prompt.Confirm("Apply this setup?", false)
+			if err != nil || confirmed {
+				t.Fatalf("confirmation no longer defaults to No: %v, %v", confirmed, err)
+			}
+			want := "Repositories [org/control]: Read App client ID: Apply this setup? (y/n) [n]: "
+			if styled {
+				want = "\x1b[36m?\x1b[0m Repositories\x1b[2m [org/control]\x1b[0m: " +
+					"\x1b[36m?\x1b[0m Read App client ID: " +
+					"\x1b[36m?\x1b[0m Apply this setup? (y/n)\x1b[2m [n]\x1b[0m: "
+			}
+			if output.String() != want {
+				t.Fatalf("prompt output = %q, want %q", output.String(), want)
+			}
+		})
+	}
+	t.Setenv("GH_FORCE_TTY", "1")
+	t.Setenv("CLICOLOR_FORCE", "1")
+	cmd := nativeSetupTestCommand()
+	if nativeSetupStyled(cmd) {
+		t.Fatal("redirected output must stay plain even when color is forced")
+	}
+	if err := nativeSetupNote(cmd, "Control: %s\nMonitoring only.\n", "org/control"); err != nil {
+		t.Fatal(err)
+	}
+	if cmd.ErrOrStderr().(*bytes.Buffer).String() != "Control: org/control\nMonitoring only.\n" {
+		t.Fatal("plain notes contain unexpected formatting")
+	}
+}
+
+func TestNativeSetupGuidedAuthenticationByVisibility(t *testing.T) {
+	for _, test := range []struct {
+		name, scope, controlVisibility, targetVisibility string
+		lookupFailure, wantError, wantAuth               bool
+	}{
+		{name: "public control only", scope: "org/control", controlVisibility: "PUBLIC"},
+		{name: "public exact", scope: "org/target", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
+		{name: "public wildcard", scope: "org/*", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
+		{name: "public multiple owners", scope: "other/*", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
+		{name: "private control", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "PUBLIC", wantAuth: true},
+		{name: "private exact", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "PRIVATE", wantAuth: true},
+		{name: "internal wildcard", scope: "org/*", controlVisibility: "PRIVATE", targetVisibility: "INTERNAL", wantAuth: true},
+		{name: "unknown exact", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "UNKNOWN", wantAuth: true},
+		{name: "unknown wildcard", scope: "other/*", controlVisibility: "PRIVATE", targetVisibility: "UNKNOWN", wantAuth: true},
+		{name: "missing exact visibility", scope: "org/target", controlVisibility: "PUBLIC", wantError: true},
+		{name: "missing wildcard visibility", scope: "org/*", controlVisibility: "PUBLIC", wantError: true},
+		{name: "failed exact lookup", scope: "org/target", controlVisibility: "PUBLIC", lookupFailure: true, wantError: true},
+		{name: "failed wildcard lookup", scope: "org/*", controlVisibility: "PUBLIC", lookupFailure: true, wantError: true},
+		{name: "public control private target", scope: "org/*", controlVisibility: "PUBLIC", targetVisibility: "PRIVATE", wantError: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			nativeSetupTestDirectory(t)
+			nativeSetupTestSave(t, nativeSetupTestPolicy())
+			before, err := os.ReadFile(policyPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			cmd := nativeSetupTestCommand()
+			prompt := &nativeSetupTestPrompt{texts: []string{test.scope}, confirms: []bool{true, true}}
+			if test.wantAuth {
+				prompt.texts = append(prompt.texts, "token")
+				prompt.confirms = []bool{false}
+			}
+			target := strings.Split(test.scope, "/")[0] + "/target"
+			mutations := 0
+			gh := func(_ context.Context, args ...string) (string, string, error) {
+				call := strings.Join(args, " ")
+				switch {
+				case call == "auth status":
+					return "", "", nil
+				case call == "repo view --json nameWithOwner --jq .nameWithOwner":
+					return "org/control", "", nil
+				case call == "repo view org/control --json nameWithOwner,visibility":
+					return fmt.Sprintf(`{"nameWithOwner":"org/control","visibility":%q}`, test.controlVisibility), "", nil
+				case strings.HasPrefix(call, "repo list ") || strings.HasPrefix(call, "repo view "+target+" "):
+					if test.lookupFailure {
+						return "", "lookup denied", errors.New("denied")
+					}
+					document := fmt.Sprintf(`{"nameWithOwner":%q,"visibility":%q}`, target, test.targetVisibility)
+					if args[1] == "list" {
+						document = "[" + document + "]"
+					}
+					return document, "", nil
+				case call == "api repos/org/control/pages":
+					return `{"build_type":"workflow","public":true}`, "", nil
+				case call == "variable set GH_AW_GITHUB_AUTH_MODE --repo org/control --body workflow-token":
+					mutations++
+					return "", "", nil
+				}
+				t.Fatalf("unexpected gh call: %s", call)
+				return "", "", nil
+			}
+			result, err := nativeSetupControl(cmd, gh, prompt)
+			if (err != nil) != test.wantError {
+				t.Fatalf("result=%#v err=%v", result, err)
+			}
+			authPrompted := len(prompt.labels) > 1
+			if authPrompted != test.wantAuth {
+				t.Fatalf("authentication prompted=%v want=%v: %v", authPrompted, test.wantAuth, prompt.labels)
+			}
+			if test.wantError || test.wantAuth {
+				after, err := os.ReadFile(policyPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if mutations != 0 || !bytes.Equal(before, after) {
+					t.Fatal("failed or declined setup changed policy or credentials")
+				}
+				if test.wantAuth {
+					appProfile := "github-app"
+					if strings.HasPrefix(test.scope, "other/") {
+						appProfile = "enterprise-app"
+					}
+					if prompt.labels[1] != "Authentication ("+appProfile+", approved-app, token)" {
+						t.Fatalf("wrong authentication choices: %s", prompt.labels[1])
+					}
+				}
+				return
+			}
+			if result["profile"] != "public-only" || mutations != 1 {
+				t.Fatalf("public setup did not use workflow token: %#v", result)
+			}
+			wantRepos := []string{"org/control"}
+			if test.scope != "org/control" {
+				wantRepos = append(wantRepos, target)
+			}
+			saved, err := readPolicy()
+			if err != nil {
+				t.Fatal(err)
+			}
+			control := nativeSetupMap(saved["control-plane"])
+			actualRepos, _ := nativeSetupStrings(nativeSetupMap(control["scope"])["allowed-repositories"])
+			if !reflect.DeepEqual(actualRepos, wantRepos) || nativeSetupMap(control["activity"])["public-only"] != true {
+				t.Fatalf("incorrect public monitoring policy: %#v", control)
+			}
+		})
+	}
 }
 
 func TestNativeSetupPublicDashboardConsent(t *testing.T) {

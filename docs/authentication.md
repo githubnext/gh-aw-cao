@@ -19,8 +19,9 @@ Use a private control repository whenever the target or required evidence is pri
 | Targets across organizations in one enterprise | Enterprise-owned private GitHub Apps |
 | Apps are unavailable and the required APIs are PAT-compatible | One fine-grained PAT pair per resource owner |
 
-For an all-public monitoring scope, interactive setup recommends **Public-only
-monitoring (no App or PAT)**. Private/internal evidence or authenticated operations
+For an all-public monitoring scope, including the control repository, interactive
+setup automatically selects **Public-only monitoring (no App or PAT)** without
+asking for authentication configuration. Private/internal evidence or authenticated operations
 still require an App or PAT profile. Public monitoring uses the built-in Actions
 `GITHUB_TOKEN`; it does not grant cross-repository execution or writes.
 
@@ -82,9 +83,9 @@ data, authenticated enrichments, or write APIs.
 
 ### Public-only monitoring quickstart
 
-After installing the bare runtime in a public control repository, run
-`gh cao setup` and select the public repositories to observe. Setup recommends
-the no-App/no-PAT profile for an all-public scope. For unattended setup:
+After installing the bare runtime, run `gh cao setup`. Confirmed all-public
+scope skips authentication selection, not review or public Pages consent.
+Unknown visibility or failed lookups never qualify. For unattended setup:
 
 ```bash
 gh cao setup --repository 'my-monalisa-org/*'

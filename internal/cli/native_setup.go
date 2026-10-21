@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	ghterm "github.com/cli/go-gh/v2/pkg/term"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
@@ -237,10 +238,22 @@ type nativeSetupPromptKey struct{}
 type nativeSetupTerminalPrompt struct {
 	reader *bufio.Reader
 	output io.Writer
+	styled bool
 }
 
 func (p *nativeSetupTerminalPrompt) Text(label, fallback string) (string, error) {
-	if _, err := fmt.Fprintf(p.output, "%s [%s]: ", label, fallback); err != nil {
+	suffix := ""
+	if fallback != "" {
+		suffix = " [" + fallback + "]"
+	}
+	prefix := ""
+	if p.styled {
+		prefix = "\x1b[36m?\x1b[0m "
+		if suffix != "" {
+			suffix = "\x1b[2m" + suffix + "\x1b[0m"
+		}
+	}
+	if _, err := fmt.Fprintf(p.output, "%s%s%s: ", prefix, label, suffix); err != nil {
 		return "", err
 	}
 	answer, err := p.reader.ReadString('\n')
@@ -276,7 +289,17 @@ func nativeSetupGetPrompt(cmd *cobra.Command) nativeSetupPrompt {
 	if !nativeSetupInteractive(cmd) {
 		return nil
 	}
-	return &nativeSetupTerminalPrompt{reader: bufio.NewReader(cmd.InOrStdin()), output: cmd.ErrOrStderr()}
+	return &nativeSetupTerminalPrompt{
+		reader: bufio.NewReader(cmd.InOrStdin()), output: cmd.ErrOrStderr(),
+		styled: nativeSetupStyled(cmd),
+	}
+}
+
+func nativeSetupStyled(cmd *cobra.Command) bool {
+	output, ok := cmd.ErrOrStderr().(*os.File)
+	return ok && term.IsTerminal(int(output.Fd())) &&
+		os.Getenv("NO_COLOR") == "" && os.Getenv("ACCESSIBLE") == "" && os.Getenv("CI") == "" &&
+		ghterm.FromEnv().IsColorEnabled()
 }
 
 func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
@@ -300,7 +323,7 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	if result["cancelled"] == true {
 		return nil
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), "Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nMonitoring is configured; executing operations is optional.\nDescribe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/\n")
+	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured. No workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\n")
 	return err
 }
 
@@ -422,10 +445,10 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 			}
 		}
 	} else {
-		if err := nativeSetupNote(cmd, "Control repository: %s (%s). Monitoring only; no agentic operation will be enabled or run.\nWildcard patterns are expanded now; only exact names are saved.\n", repo, controlRepo.Visibility); err != nil {
+		if err := nativeSetupNote(cmd, "Control: %s (%s)\nMonitoring only; no workflows run.\n", repo, controlRepo.Visibility); err != nil {
 			return nil, err
 		}
-		answer, e := prompt.Text("Repositories CAO should read (comma-separated names or * wildcards)", repo)
+		answer, e := prompt.Text("Repositories (comma-separated; * saves exact names)", repo)
 		if e != nil {
 			return nil, e
 		}
@@ -446,20 +469,23 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if len(owners) != 1 {
 			appProfile = "enterprise-app"
 		}
-		recommended := appProfile
 		allPublic := true
 		for _, candidate := range inspected {
 			allPublic = allPublic && candidate.Visibility == "public"
 		}
 		if allPublic {
-			recommended = "public-only"
-		}
-		profile, e = prompt.Text("Authentication: "+recommended+", "+appProfile+", approved-app, or token", recommended)
-		if e != nil {
-			return nil, e
-		}
-		if profile != recommended && profile != appProfile && profile != "approved-app" && profile != "token" {
-			return nil, fmt.Errorf("authentication profile is not available for this repository scope: %s", profile)
+			profile = "public-only"
+			if err := nativeSetupNote(cmd, "Public-only monitoring: Actions token; no App/PAT. Restricted evidence is partial.\n"); err != nil {
+				return nil, err
+			}
+		} else {
+			profile, e = prompt.Text("Authentication ("+appProfile+", approved-app, token)", appProfile)
+			if e != nil {
+				return nil, e
+			}
+			if profile != appProfile && profile != "approved-app" && profile != "token" {
+				return nil, fmt.Errorf("authentication profile is not available for this repository scope: %s", profile)
+			}
 		}
 		authOptions = nativeSetupAuthOptions{repo: repo, policy: policyPath, write: []string{repo}, expires: "30"}
 		if profile == "approved-app" || profile == "enterprise-app" {
@@ -477,7 +503,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if profile == "public-only" {
 			writeScope = "none (monitoring only)"
 		}
-		if err := nativeSetupNote(cmd, "Read scope: %s\nReview output write scope: %s\nAuthentication: %s\nCampaigns: none\nPages settings and credentials may change; no commit or push is made.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
+		if err := nativeSetupNote(cmd, "Read: %s\nWrite: %s\nAuth: %s\nApplies Pages, credentials and local policy. No commit or push.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
 			return nil, err
 		}
 		apply, e := prompt.Confirm("Apply this setup?", false)
@@ -503,7 +529,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		return nil, errors.New("non-interactive setup requires public GitHub Pages for the public control repository")
 	}
 	if prompt != nil && pages.Public {
-		if err := nativeSetupNote(cmd, "Warning: the dashboard Pages site for %s is public. Anyone can read published dashboard data, including activity from this control repository and selected repositories.\nRestrict access in Settings > Pages to keep it private.\n", repo); err != nil {
+		if err := nativeSetupNote(cmd, "Warning: Pages is public. Anyone can read published data from %s and selected repositories.\nRestrict access in Settings > Pages for private evidence.\n", repo); err != nil {
 			return nil, err
 		}
 		consent, e := prompt.Confirm("Is a public dashboard OK?", false)
@@ -706,6 +732,15 @@ func nativeSetupExpand(cmd *cobra.Command, gh ghExecutor, control nativeSetupRep
 }
 
 func nativeSetupNote(cmd *cobra.Command, format string, args ...any) error {
+	if nativeSetupStyled(cmd) {
+		message := strings.TrimSuffix(fmt.Sprintf(format, args...), "\n")
+		for _, line := range strings.Split(message, "\n") {
+			if _, err := fmt.Fprintf(cmd.ErrOrStderr(), "\x1b[36m>\x1b[0m \x1b[2m%s\x1b[0m\n", line); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	_, err := fmt.Fprintf(cmd.ErrOrStderr(), format, args...)
 	return err
 }

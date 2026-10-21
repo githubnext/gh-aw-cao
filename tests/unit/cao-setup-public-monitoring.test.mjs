@@ -69,29 +69,46 @@ test('public quickstart snapshots public repositories without App/PAT prompts an
   assert.deepEqual(repeated.repositories, result.repositories);
 });
 
-test('guided all-public setup recommends public monitoring and does not request credentials', async (t) => {
-  const f = await fixture(t);
-  const result = await setupCaoControlPlane({
-    ...f.options, publicOnly: false,
-    prompt: {
-      note() {},
-      text: async () => 'octo/public',
-      select: async (_, choices) => {
-        assert.equal(choices[0].value, 'public-only');
-        return choices[0].value;
+test('guided all-public setup skips authentication selection for exact and wildcard scopes', async (t) => {
+  for (const scope of ['acme/control', 'octo/public', 'octo/*', 'acme/control,octo/*']) {
+    const f = await fixture(t);
+    const execute = f.options.execute;
+    const result = await setupCaoControlPlane({
+      ...f.options, publicOnly: false,
+      execute(binary, args) {
+        if (args[1] === 'list') return {
+          status: 0, stdout: '[{"nameWithOwner":"octo/public","visibility":"PUBLIC"}]',
+        };
+        return execute(binary, args);
       },
-      confirm: async () => true,
-    },
-  });
-  assert.equal(result.profile, 'public-only');
-  assert.equal((await f.saved())['control-plane'].activity['public-only'], true);
+      prompt: {
+        note() {},
+        text: async () => scope,
+        select: async () => assert.fail('all-public scope must not prompt for authentication'),
+        confirm: async () => true,
+      },
+    });
+    assert.equal(result.profile, 'public-only');
+    assert.equal(result.authentication.mode, 'workflow-token');
+    assert.deepEqual(result.repositories, scope === 'acme/control'
+      ? ['acme/control'] : ['acme/control', 'octo/public']);
+    assert.deepEqual((await f.saved())['control-plane'].activity, {
+      repositories: result.repositories, 'public-only': true,
+    });
+  }
 });
 
-test('explicitly selecting an App after public monitoring clears the collection-only profile', async (t) => {
+test('selecting an App for a now-private scope clears the collection-only profile', async (t) => {
   const f = await fixture(t);
   await setupCaoControlPlane(f.options);
   const result = await setupCaoControlPlane({
     ...f.options, publicOnly: false,
+    execute(binary, args) {
+      if (args[1] === 'view' && !args.includes('--jq')) return {
+        status: 0, stdout: '{"nameWithOwner":"acme/control","visibility":"PRIVATE"}',
+      };
+      return f.options.execute(binary, args);
+    },
     prompt: {
       note() {},
       text: async () => 'acme/control',
@@ -104,6 +121,45 @@ test('explicitly selecting an App after public monitoring clears the collection-
   assert.deepEqual((await f.saved())['control-plane'].activity, {
     repositories: ['acme/control'],
   });
+});
+
+test('guided setup keeps authentication for nonpublic scopes and fails closed on incomplete lookups', async (t) => {
+  for (const scope of ['octo/target', 'octo/*']) {
+    for (const visibility of ['PUBLIC', 'PRIVATE', 'INTERNAL', 'UNKNOWN', '', 'failed']) {
+      const f = await fixture(t, { visibility: 'PRIVATE' });
+      let selections = 0;
+      const options = {
+        ...f.options, publicOnly: false,
+        execute(binary, args) {
+          if (args[1] === 'list' || args[2] === 'octo/target') {
+            if (visibility === 'failed') return { status: 1, stderr: 'lookup denied' };
+            const record = { nameWithOwner: 'octo/target', visibility };
+            return { status: 0, stdout: JSON.stringify(args[1] === 'list' ? [record] : record) };
+          }
+          return f.options.execute(binary, args);
+        },
+        prompt: {
+          note() {},
+          text: async () => scope,
+          select: async (_, choices) => {
+            selections++;
+            assert.deepEqual(choices.map(({ value }) => value), ['enterprise-app', 'approved-app', 'token']);
+            return 'token';
+          },
+          confirm: async () => false,
+        },
+      };
+      if (visibility === 'failed') {
+        await assert.rejects(setupCaoControlPlane(options), /lookup denied/);
+        assert.equal(selections, 0);
+      } else {
+        assert.equal((await setupCaoControlPlane(options)).cancelled, true);
+        assert.equal(selections, 1);
+      }
+      assert.deepEqual(await f.saved(), f.policy);
+      assert.ok(f.calls.every((args) => args[0] === 'auth' || args[0] === 'repo'));
+    }
+  }
 });
 
 test('public quickstart rejects non-public control or exact target and preserves policy on failures', async (t) => {

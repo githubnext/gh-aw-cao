@@ -146,8 +146,12 @@ control-plane setup, or configure credentials independently with
 `gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
-For an all-public scope, guided setup recommends monitoring with the built-in
-Actions token and no App/PAT prompts. Its unattended shortcut is to repeat
+After wildcard expansion, guided setup skips authentication prompts when every
+repository (including the control repository) is confirmed public, using
+Actions' built-in token for public-only monitoring. Review and public Pages
+consent still require confirmation. Nonpublic or unknown visibility never
+qualifies; lookup failures stop setup. For authenticated operations, use
+`gh cao setup auth`. Its unattended monitoring shortcut is to repeat
 `--repository OWNER/REPO` or pass a quoted `OWNER/*` to snapshot
 currently public repositories. This public monitoring quickstart accepts a public Pages
 dashboard; exact private/internal inputs fail. It enables no agent execution or

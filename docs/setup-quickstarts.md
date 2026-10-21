@@ -93,13 +93,12 @@ gh cao setup
 
 Run this in an **interactive terminal**, then follow the prompts:
 
-1. At **Repositories CAO should read**, enter your exact `OWNER/REPOSITORY`,
+1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.
-2. Choose **Authentication**. Setup offers authentication choices based on that scope.
-   Check the profile's prerequisites in [Authentication](authentication.md#choose-cross-repository-authentication).
-   For an all-public scope,
-   `public-only` uses Actions' built-in `GITHUB_TOKEN`, without an App or PAT.
-   Private/internal evidence requires an App or token profile.
+2. Choose **Authentication** only if prompted. Confirmed all-public scope
+   (including the control repository) automatically uses `public-only` with
+   Actions' `GITHUB_TOKEN`, no App/PAT. Nonpublic scope requires credentials;
+   see [Authentication](authentication.md#choose-cross-repository-authentication).
 3. Review the exact read scope, output scope, and authentication, then confirm
    **Apply this setup?** Setup configures Pages and asks **Is a public dashboard
    OK?** if the site is public. Decline for non-public evidence.
