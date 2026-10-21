@@ -46,13 +46,13 @@ RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
     -o /out/cao-dashboard \
-    ./cmd/cao-dashboard
-RUN CGO_ENABLED=0 go build \
+    ./cmd/cao-dashboard \
+    && CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION}" \
     -o /out/cao-webhook-gateway \
-    ./cmd/cao-webhook-gateway
-RUN CGO_ENABLED=0 go build \
+    ./cmd/cao-webhook-gateway \
+    && CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
     -o /out/cao-functions \
