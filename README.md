@@ -39,10 +39,17 @@ or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before setup. Choose
 `--public` instead only for public evidence. A private control repository
 requires credentials even when its other targets are public.
 
-Check the installation, review, and publish your configuration:
+Interactive setup shows the CAO file summary, policy diff, and full-diff path,
+then asks **“Commit and push these CAO monitoring changes? [y/N]”**. Approval
+publishes only reviewed CAO files from the synchronized default branch with an
+empty Git index. No force-push or branch-protection bypass. Setup returns
+immediately with Actions and dashboard links marked **deployment pending**;
+it never waits for collection or deployment.
+
+Declining, blocked publication, and unattended setup leave files local.
+Run `gh cao doctor` afterward. If not published, review and publish manually:
 
 ```bash
-gh cao doctor
 git status --short
 git diff -- .github
 git add .github activity dashboard
@@ -53,8 +60,8 @@ git push
 On upgrades, also review and stage the retired shell launcher's deletion if Git
 reports it. Only known shipped launchers are removed; consumer-owned scripts are preserved.
 
-In Actions, check **CAO validation**, then wait for **CAO Activity** and **CAO Dashboard**,
-including its Pages deployment, then open **Settings → Pages**.
+In Actions, check **CAO validation**, **CAO Activity**, and **CAO Dashboard**,
+including its Pages deployment. The dashboard becomes ready asynchronously.
 **No campaign is installed or run.** A repository without Agentic Workflow
 history starts with an empty dashboard; you do not need to generate activity.
 

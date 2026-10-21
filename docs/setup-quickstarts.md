@@ -19,8 +19,7 @@ install → connect → dashboard. Follow the written steps below.
 ## Prerequisites
 
 - **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS,
-  or Windows. Native setup does not require Node.js, Bash, or `curl`;
-  Activity and Dashboard Actions provide their own Node.js runtime.
+  or Windows. No local Node.js, Bash, or `curl` required.
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
@@ -103,10 +102,10 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-No `init` or installer is required. Setup adds missing runtime and policy from
-a verified release, preserving existing files and refusing conflicts or malformed
-policy. Complete runtime is reused. Missing `gh-aw` is installed; older versions
-need explicit upgrade. See [details](cao-cli.md#guided-runtime-preparation).
+No `init` or installer needed. Setup verifies a release and adds
+missing runtime/policy without overwriting files. Malformed policy/conflicts
+stop setup; complete runtime is reused. Missing `gh-aw` is installed; upgrade old
+versions explicitly. See [details](cao-cli.md#guided-runtime-preparation).
 
 1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.
@@ -117,11 +116,15 @@ need explicit upgrade. See [details](cao-cli.md#guided-runtime-preparation).
 3. Review the exact read scope, output scope, and authentication, then confirm
    **Apply this setup?** Setup configures Pages and asks **Is a public dashboard
    OK?** if the site is public. Decline for non-public evidence.
-4. Complete any credential prompts. Let setup store secrets in Actions, never
-   in policy or committed files. Credential reach does not expand your scope.
+4. Store secrets in Actions, never in policy or committed files.
+   Credentials do not expand scope.
+5. Review the summary, policy diff, and full-diff path.
+   **“Commit and push these CAO monitoring changes? [y/N]”** optionally publishes
+   reviewed CAO files and returns **deployment pending** links immediately.
 
-**Ready:** runtime, repository scope, Pages, and authentication are configured.
-Setup installs no campaign and runs no workflow; it does not commit or push.
+No campaigns or agentic work are installed. Publication requires a synchronized
+default branch, matching origin, and empty index; no protection bypass.
+Declining, blocked, or unattended setup stays local.
 
 If setup stops, inspect its error, local files, and Pages or credential changes
 before retrying; do not publish incomplete setup. For unattended public-only
@@ -131,10 +134,15 @@ setup, see [Authentication](authentication.md#public-only-monitoring-quickstart)
 
 ## Step 3 - Publish and open your dashboard
 
-Check the installation and inspect the installed files:
+Check installation:
 
 ```bash
 gh cao doctor
+```
+
+If setup published, follow its Actions link. Otherwise review and publish:
+
+```bash
 git status --short
 git diff -- .github
 ```
@@ -144,8 +152,7 @@ and that `control-plane.campaigns` is `{}`. Keep `control-plane.workflows` and
 `control-plane.operations` absent or `{}` too: monitoring does not enroll
 execution. Do not publish private evidence to a public dashboard.
 
-Review and include other setup-created files shown by `git status`, not
-unrelated files or secrets. Commit and push to the control repository's default branch:
+Include only setup-created files, never unrelated files or secrets:
 
 ```bash
 git add .github activity dashboard
@@ -161,9 +168,8 @@ it. This collects evidence, not new agentic work.
 <span id="4-open-your-dashboard"></span>
 <span id="step-4---wait-for-collection-and-inspect-your-dashboard"></span>
 
-In the control repository's **Actions** tab, wait for **CAO Activity** and then
-**CAO Dashboard** to complete, including its Pages deployment.
-Open the site link in **Settings → Pages**.
+Check **CAO Activity**, then **CAO Dashboard**, including its Pages deployment.
+Only then is the dashboard ready. Open its link or **Settings → Pages**.
 
 If collection has not started, request it once from the control checkout:
 

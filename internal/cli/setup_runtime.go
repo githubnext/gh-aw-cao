@@ -57,77 +57,77 @@ func setupCheckoutRoot(ctx context.Context) error {
 	return nil
 }
 
-func setupRuntime(cmd *cobra.Command, gh ghExecutor) (err error) {
+func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error) {
 	complete, err := setupRuntimeComplete()
 	if err != nil || complete {
-		return err
+		return nil, err
 	}
 	if err := nativeSetupNote(cmd, "Preparing missing CAO monitoring runtime; existing files will not be overwritten.\n"); err != nil {
-		return err
+		return nil, err
 	}
 	tag, err := nativeSetupGH(cmd, gh, "release", "view", "--repo", "github.com/"+catalogRepository, "--json", "tagName", "--jq", ".tagName")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !regexpStableVersion.MatchString(tag) {
-		return fmt.Errorf("latest CAO release must have a stable v-prefixed version: %s", tag)
+		return nil, fmt.Errorf("latest CAO release must have a stable v-prefixed version: %s", tag)
 	}
 	revision, err := nativeSetupGH(cmd, gh, "api", "--hostname", "github.com", "repos/"+catalogRepository+"/commits/"+tag, "--jq", ".sha")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !commitPattern.MatchString(revision) {
-		return errors.New("CAO release did not resolve to a full commit SHA")
+		return nil, errors.New("CAO release did not resolve to a full commit SHA")
 	}
 	manifest, err := nativeSetupGH(cmd, gh, "api", "--hostname", "github.com", "repos/"+catalogRepository+"/contents/aw.yml?ref="+revision, "-H", "Accept: application/vnd.github.raw+json")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	match := regexp.MustCompile(`(?m)^min-version: (v[0-9]+\.[0-9]+\.[0-9]+)\s*$`).FindStringSubmatch(manifest)
 	if len(match) != 2 {
-		return errors.New("CAO release manifest has no valid minimum gh-aw version")
+		return nil, errors.New("CAO release manifest has no valid minimum gh-aw version")
 	}
 	required := match[1]
 	current, versionErr := nativeVersion(cmd.Context(), gh)
 	if versionErr != nil {
 		extensions, err := nativeSetupGH(cmd, gh, "extension", "list")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if strings.Contains(extensions, "gh-aw") {
-			return versionErr
+			return nil, versionErr
 		}
 		if _, err := nativeSetupGH(cmd, gh, "extension", "install", "github/gh-aw", "--pin", required); err != nil {
-			return err
+			return nil, err
 		}
 		current, err = nativeVersion(cmd.Context(), gh)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if nativeCompareVersions(current, required) < 0 {
-		return fmt.Errorf("installed gh-aw %s is older than required %s; upgrade gh-aw explicitly, then rerun gh cao setup", current, required)
+		return nil, fmt.Errorf("installed gh-aw %s is older than required %s; upgrade gh-aw explicitly, then rerun gh cao setup", current, required)
 	}
 	staging, err := os.MkdirTemp(".", ".cao-setup-")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
 	staging, err = filepath.Abs(staging)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	packages := filepath.Join(staging, "checkout")
 	if output, err := exec.CommandContext(cmd.Context(), "git", "init", "--quiet", packages).CombinedOutput(); err != nil {
-		return fmt.Errorf("initialize isolated CAO installation: %s: %w", output, err)
+		return nil, fmt.Errorf("initialize isolated CAO installation: %s: %w", output, err)
 	}
 	// gh-aw owns package records and project settings, but operates only in staging.
 	if _, stderr, err := gh(ghcli.WithDirectory(cmd.Context(), packages), "aw", "add", catalogRepository+"@"+tag, "--no-security-scanner", "--no-gitattributes"); err != nil {
-		return commandError("unable to prepare CAO root package", stderr, err)
+		return nil, commandError("unable to prepare CAO root package", stderr, err)
 	}
 	records, err := nativeInstalledPackagesIn(packages)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var record *nativePackageRecord
 	for i := range records {
@@ -136,21 +136,21 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (err error) {
 		}
 	}
 	if record == nil || !strings.EqualFold(record.revision, revision) {
-		return errors.New("CAO root package record does not match the selected release revision")
+		return nil, errors.New("CAO root package record does not match the selected release revision")
 	}
 	runtimeRoot, err := nativeStageRuntime(cmd.Context(), gh, *record, staging)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, resource := range nativeRuntimeResources {
-		if err := setupCopyMissing(filepath.Join(runtimeRoot, resource), filepath.Join(packages, resource), false); err != nil {
-			return err
+		if _, err := setupCopyMissing(filepath.Join(runtimeRoot, resource), filepath.Join(packages, resource), false); err != nil {
+			return nil, err
 		}
 	}
 	for _, name := range append(append([]string{}, setupRuntimeFiles...), nativeRuntimeRequiredFiles...) {
 		info, err := os.Stat(filepath.Join(packages, name))
 		if err != nil || !info.Mode().IsRegular() {
-			return fmt.Errorf("prepared CAO root package is incomplete: %s", name)
+			return nil, fmt.Errorf("prepared CAO root package is incomplete: %s", name)
 		}
 	}
 	// Preflight every destination before creating any local runtime files.
@@ -163,18 +163,23 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (err error) {
 			if _, err := os.Lstat(source); errors.Is(err, os.ErrNotExist) {
 				continue
 			} else if err != nil {
-				return err
+				return nil, err
 			}
-			if err := setupCopyMissing(source, resource, !apply); err != nil {
-				return err
+			prepared, err := setupCopyMissing(source, resource, !apply)
+			if err != nil {
+				return nil, err
+			}
+			if !apply {
+				files = append(files, prepared...)
 			}
 		}
 	}
-	return nil
+	return files, nil
 }
 
-func setupCopyMissing(source, destination string, dryRun bool) error {
-	return filepath.WalkDir(source, func(filename string, entry fs.DirEntry, walkErr error) error {
+func setupCopyMissing(source, destination string, dryRun bool) ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(source, func(filename string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -199,6 +204,7 @@ func setupCopyMissing(source, destination string, dryRun bool) error {
 		if !entry.Type().IsRegular() {
 			return fmt.Errorf("setup refuses non-regular runtime source: %s", filename)
 		}
+		files = append(files, filepath.ToSlash(filepath.Join(destination, relative)))
 		if info != nil {
 			existing, err := os.ReadFile(target)
 			if err != nil {
@@ -221,6 +227,7 @@ func setupCopyMissing(source, destination string, dryRun bool) error {
 		}
 		return nativeCopyTree(filename, target)
 	})
+	return files, err
 }
 
 func setupDestination(name string) (string, error) {

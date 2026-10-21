@@ -323,7 +323,17 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	if result["cancelled"] == true {
 		return nil
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured. Automation is optional; no workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/\n")
+	publication := nativeSetupMap(result["publication"])
+	if publication["status"] == "published" {
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Monitoring configuration pushed. Deployment pending; setup is not waiting for Actions.\nActions: %s\nPages settings: %s\n", publication["actionsURL"], publication["pagesSettingsURL"]); err != nil {
+			return err
+		}
+		if dashboard, ok := publication["dashboardURL"].(string); ok {
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Dashboard (deployment pending): %s\n", dashboard)
+		}
+		return err
+	}
+	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured locally. No commit or push was performed.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/\n")
 	return err
 }
 
@@ -516,7 +526,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if profile == "public-only" {
 			writeScope = "none (monitoring only)"
 		}
-		if err := nativeSetupNote(cmd, "Read: %s\nWrite: %s\nAuth: %s\nPrepares missing monitoring runtime, Pages, credentials and local policy. No commit or push.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
+		if err := nativeSetupNote(cmd, "Read: %s\nWrite: %s\nAuth: %s\nPrepares missing monitoring runtime, Pages, credentials and local policy. Commit/push requires separate approval afterward.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
 			return nil, err
 		}
 		apply, e := prompt.Confirm("Apply this setup?", false)
@@ -534,7 +544,8 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 			err = &nativeSetupStageError{cause: err, stage: stage, policySaved: policySaved}
 		}
 	}()
-	if err = setupRuntime(cmd, gh); err != nil {
+	files, err := setupRuntime(cmd, gh)
+	if err != nil {
 		return nil, err
 	}
 	if createPolicy {
@@ -623,6 +634,11 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		"command": "setup", "controlRepository": repo, "visibility": controlRepo.Visibility,
 		"repositories": repositories, "profile": profile, "authentication": authentication,
 		"dashboardPages": visibility, "campaigns": []string{},
+	}
+	stage = "optional publication"
+	result["publication"], err = setupPublish(cmd, gh, prompt, repo, pages.URL, append(files, policyPath))
+	if err != nil {
+		return result, err
 	}
 	if prompt == nil {
 		result["nonInteractive"] = true

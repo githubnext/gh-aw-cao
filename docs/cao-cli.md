@@ -78,10 +78,31 @@ command for scripting; it is not a prerequisite and does not configure remote
 settings. Both paths construct the same exact, campaign-free baseline policy.
 
 Create or clone repositories explicitly with `gh repo create` or `gh repo clone`
-before setup. Setup never creates repositories, commits, pushes, enrolls
-campaigns, or dispatches workflows. Review all prepared files and publish them
-yourself. A failed or cancelled setup can leave prepared runtime files and
+before setup. Setup never creates repositories, enrolls campaigns, or dispatches
+workflows. A failed or cancelled setup can leave prepared runtime files and
 already applied Pages or credential settings; inspect them before retrying.
+
+Interactive setup offers a separate **“Commit and push these CAO monitoring
+changes? [y/N]”** after configuration. It shows a file summary and policy diff,
+with a complete diff in a temporary file available while the prompt is open.
+Review uses an isolated Git index and does not stage your files. Only the exact
+runtime/package files prepared by this setup and policy are eligible, never
+unrelated files, including files alongside the runtime.
+
+Approval requires an empty real index, a matching single origin push destination,
+and a default-branch checkout exactly synchronized with the remote (or both
+unborn for an empty repository). Setup rechecks Git/file state after review,
+commits the reviewed changes, and pushes normally without force, extra tags,
+submodule pushes, or protection bypasses. Existing local commits, staged changes,
+feature branches, or uncommitted runtime from an earlier setup require manual
+publication. Commit failures leave staging for inspection; push failures retain
+the local commit with recovery guidance.
+
+Success reports Actions and known dashboard URLs as **deployment pending** and
+returns immediately: no workflow dispatch, polling, or deployment wait.
+`--json` includes `publication.status` and, after a push, its commit, links, and
+`deploymentStatus: "pending"`. Declining or cancelling publication leaves
+configuration local. Unattended/CI setup never commits or pushes.
 
 ### Legacy control-plane installer
 
@@ -355,8 +376,9 @@ the policy before activation at a reviewed workflow SHA.
 
 ### Setup and manual campaign execution
 
-Use `gh cao setup` for review-before-apply configuration. Setup installs no
-campaign, runs no workflow, and never commits or pushes. To add automation
+Use `gh cao setup` for review-before-apply configuration and optional separately
+approved publication. Setup installs no campaign or agentic execution; a push
+starts normal monitoring Actions asynchronously. To add automation
 afterward, follow the manual [Repo Assist walkthrough](repo-assist-quickstart.md)
 using `gh cao campaigns add` and `gh aw run`.
 

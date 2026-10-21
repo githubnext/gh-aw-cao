@@ -221,19 +221,34 @@ func TestSetupRuntimePublishedRelease(t *testing.T) {
 	if os.Getenv("CAO_SETUP_RUNTIME_INTEGRATION") != "1" {
 		t.Skip("set CAO_SETUP_RUNTIME_INTEGRATION=1 for read-only release/runtime verification")
 	}
-	nativeSetupTestDirectory(t)
+	cmd, publicationGH, remote, _ := setupPublishFixture(t, false)
 	gh := func(ctx context.Context, args ...string) (string, string, error) {
 		if args[0] == "extension" {
 			t.Fatal("release verification must not install or replace global extensions")
 		}
 		return ghcli.Exec(ctx, args...)
 	}
-	if err := setupRuntime(nativeSetupTestCommand(), gh); err != nil {
+	files, err := setupRuntime(cmd, gh)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if complete, err := setupRuntimeComplete(); err != nil || !complete {
 		t.Fatalf("published runtime incomplete: %v", err)
 	}
+	policy := initialPolicy("org/control", "")
+	data, err := json.Marshal(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, policyPath, string(data))
+	result, err := setupPublish(cmd, publicationGH, &setupPublishPrompt{approve: true}, "org/control", "", append(files, policyPath))
+	if err != nil || result["status"] != "published" {
+		t.Fatalf("published runtime could not be committed/pushed to local fixture: %#v: %v", result, err)
+	}
+	if setupPublishTestGit(t, cmd, "--git-dir="+remote, "rev-parse", "main") != result["commit"] {
+		t.Fatal("published runtime did not reach the local fixture remote")
+	}
+	t.Logf("verified %d real prepared runtime/package paths and published them only to a local bare fixture", len(files))
 }
 
 func TestSetupFreshCommandJSON(t *testing.T) {

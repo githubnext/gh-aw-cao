@@ -103,6 +103,8 @@ repositories are not enrolled. Exact private/internal inputs fail. Setup changes
 only the control repository's configuration and local policy, never targets,
 campaign activation, agent execution, safe outputs, or live authority.
 Review, commit and push the installed files and policy to publish the setup.
+Interactive setup can offer publication after separate default-No review;
+this unattended public-only shortcut never commits or pushes.
 A private control repository cannot use this shortcut, even with public-only
 targets: the control repository is always included. Use interactive setup and
 explicit authentication instead.

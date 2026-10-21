@@ -13,9 +13,21 @@ Complete installations are reused, not upgraded. Missing gh-aw is installed at
 the catalog minimum; older or broken existing installations require explicit
 repair. Setup constructs missing baseline policy through the same helper as
 optional policy-only `gh cao init`, saving it only after external setup succeeds.
-No local Node.js, separate init, installer, repository creation, commit, push, or
-agent execution is part of this path. Repository creation belongs to `gh repo
+No local Node.js, separate init, installer, repository creation, or
+agent execution is required. Repository creation belongs to `gh repo
 create`, cloning to `gh repo clone`.
+
+After configuration, interactive setup can separately offer reviewed publication
+with a default-No prompt. A temporary index supplies the file summary, policy
+diff, and full review diff without touching real staging. Only exact files from
+this setup's runtime/package plan and policy are eligible. An empty real index,
+matching single origin, synchronized default branch, and unchanged reviewed
+Git/file state are required; existing local commits, feature branches, or
+uncommitted runtime from earlier setup require manual publication. Normal Git
+commit/push respects identity, hooks and protections, never forces, and includes
+no extra tags/submodule pushes. A failed push leaves the commit local.
+Success returns deployment-pending dashboard/Actions links without dispatching,
+polling or waiting. Declining/cancelling, CI and unattended setup never publish.
 
 The following legacy installer remains available for compatible scripts.
 The root `install.sh` downloads and verifies the platform-specific Go extension
@@ -73,8 +85,8 @@ removes only a newly created site where possible; existing sites remain with
 restriction or unpublication guidance. Policy is saved atomically afterward.
 Failures report partial external effects honestly; rerun setup after fixing
 the reported problem. The default CLI output gives next actions; `setup --json`
-keeps structured stdout. Setup never commits, pushes, installs a campaign, or
-dispatches a workflow.
+keeps structured stdout. Setup never installs a campaign or dispatches a workflow;
+commit/push requires the separate interactive approval above.
 
 Canonical runtime files live together under `.github/workflows/shared/`,
 including `control.md`, `control.mjs`, `policy.mjs`, the policy schema, the
