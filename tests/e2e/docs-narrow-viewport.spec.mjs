@@ -98,19 +98,19 @@ test("operational value beginner guide remains readable without JavaScript", asy
   }
 });
 
-for (const width of [390, 799, 800, 1920]) {
+for (const width of [320, 390, 799, 800, 1440, 1920]) {
   test(`documentation uses responsive content width at ${width}px without changing the hero page`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
     await expect(page.locator("html")).not.toHaveAttribute("data-has-hero");
     expect(await page.locator("html").evaluate(
       (element) => getComputedStyle(element).getPropertyValue("--sl-content-width").trim(),
-    )).toBe(width < 800 ? "100%" : "52rem");
+    )).toBe("38.75rem");
     const content = page.locator(".sl-markdown-content");
     const bounds = await content.boundingBox();
     expect(bounds.width).toBeGreaterThan(0);
-    expect(bounds.width).toBeLessThanOrEqual(Math.min(width, 832));
-    if (width === 1920) expect(bounds.width).toBeCloseTo(832, 0);
+    expect(bounds.width).toBeLessThanOrEqual(Math.min(width, 620));
+    if (width === 1920) expect(bounds.width).toBeCloseTo(620, 0);
     expect(await page.locator("html").evaluate((element) => element.scrollWidth))
       .toBeLessThanOrEqual(width);
 
@@ -120,6 +120,48 @@ for (const width of [390, 799, 800, 1920]) {
       (element) => getComputedStyle(element).getPropertyValue("--sl-content-width").trim(),
     )).toBe("67.5rem");
   });
+}
+
+for (const colorScheme of ["light", "dark"]) {
+  for (const [width, sizes] of [
+    [390, { body: 15.0334, h1: 27.7739, h2: 19.1892, h3: 16.9817 }],
+    [1440, { body: 16, h1: 39.0624, h2: 25, h3: 20 }],
+  ]) {
+    test(`documentation matches gh-aw prose typography at ${width}px in ${colorScheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await page.setViewportSize({ width, height: 900 });
+      expect((await page.goto("architecture-at-a-glance/"))?.ok()).toBe(true);
+      const typography = await page.evaluate(() => {
+        const selectors = {
+          body: ".sl-markdown-content > p",
+          item: ".sl-markdown-content li",
+          h1: "h1#_top",
+          h2: ".sl-markdown-content h2",
+          h3: ".sl-markdown-content h3",
+        };
+        return Object.fromEntries(Object.entries(selectors).map(([name, selector]) => {
+          const style = getComputedStyle(document.querySelector(selector));
+          return [name, {
+            fontSize: parseFloat(style.fontSize),
+            lineHeight: parseFloat(style.lineHeight),
+            fontWeight: style.fontWeight,
+          }];
+        }));
+      });
+      for (const name of ["body", "h1", "h2", "h3"]) {
+        expect(typography[name].fontSize).toBeCloseTo(sizes[name], 2);
+      }
+      expect(typography.item.fontSize).toBeCloseTo(sizes.body, 2);
+      expect(typography.body.lineHeight).toBeCloseTo(sizes.body * 1.7, 2);
+      expect(typography.h1.lineHeight).toBeCloseTo(sizes.h1 * 1.15, 2);
+      expect(typography.h2.lineHeight).toBeCloseTo(sizes.h2 * 1.35, 2);
+      expect(typography.h1.fontWeight).toBe("400");
+      expect(typography.h2.fontWeight).toBe("400");
+      expect(typography.h3.fontWeight).toBe("600");
+      expect(await page.locator("html").evaluate(element => element.scrollWidth))
+        .toBeLessThanOrEqual(width);
+    });
+  }
 }
 
 test("Get started navigation follows the user journey without duplicate authentication pages", async ({ page }) => {

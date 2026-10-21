@@ -93,12 +93,34 @@
 }
 
 :root:not([data-has-hero]) {
-  --sl-content-width: 100%;
+  --sl-content-width: 38.75rem;
+  --sl-text-body: clamp(0.9375rem, 0.9119rem + 0.1136vw, 1rem);
+  --sl-text-h1: clamp(1.5017rem, 1.1173rem + 1.7086vw, 2.4414rem);
+  --sl-text-h2: clamp(1.1865rem, 1.0327rem + 0.6836vw, 1.5625rem);
+  --sl-text-h3: clamp(1.0547rem, 0.9748rem + 0.3551vw, 1.25rem);
+  --sl-text-h4: var(--sl-text-body);
+  --sl-text-h5: var(--sl-text-body);
+  --sl-text-h6: var(--sl-text-body);
+  --sl-line-height-headings: 1.35;
 }
 
-@media (min-width: 50rem) {
+:root:not([data-has-hero]) .sl-markdown-content :is(p, li):not(:where(.not-content *)) {
+  font-size: var(--sl-text-body);
+  line-height: 1.7;
+}
+
+:root:not([data-has-hero]) :is(h1#_top, .sl-markdown-content h1:not(:where(.not-content *))) {
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+:root:not([data-has-hero]) .sl-markdown-content h2:not(:where(.not-content *)) {
+  font-weight: 400;
+}
+
+@media (max-width: 30rem) {
   :root:not([data-has-hero]) {
-    --sl-content-width: 52rem;
+    --sl-text-h1: clamp(1.6894rem, 1.1321rem + 2.477vw, 3.0518rem);
   }
 }
 
