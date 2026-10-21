@@ -74,8 +74,13 @@ func (f *FleetAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	endpoint := strings.TrimPrefix(r.URL.Path, "/api/v3")
 	if strings.HasPrefix(endpoint, "/app/installations/") && strings.HasSuffix(endpoint, "/access_tokens") {
 		id := strings.TrimSuffix(strings.TrimPrefix(endpoint, "/app/installations/"), "/access_tokens")
+		installation, err := strconv.ParseInt(id, 10, 64)
+		if err != nil || installation <= 0 {
+			writeNotFound(w)
+			return
+		}
 		// These are public fixture strings, not credentials.
-		_ = json.NewEncoder(w).Encode(map[string]any{"token": "simulator-installation-" + id,
+		_ = json.NewEncoder(w).Encode(map[string]any{"token": "simulator-installation-" + strconv.FormatInt(installation, 10),
 			"expires_at":  clock.Now(f.Clock).Add(365 * 24 * time.Hour),
 			"permissions": map[string]string{"contents": "write", "metadata": "read", "pull_requests": "write"}})
 		return

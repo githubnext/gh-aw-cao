@@ -1,13 +1,63 @@
 package simulator
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestFleetInstallationTokenIDs(t *testing.T) {
+	f := &FleetAPI{}
+	for _, prefix := range []string{"", "/api/v3"} {
+		for _, test := range []struct {
+			id    string
+			token string
+		}{
+			{id: "1", token: "simulator-installation-1"},
+			{id: "1001", token: "simulator-installation-1001"},
+			{id: "0001", token: "simulator-installation-1"},
+			{id: "9223372036854775807", token: "simulator-installation-9223372036854775807"},
+			{id: ""},
+			{id: "0"},
+			{id: "-1"},
+			{id: "9223372036854775808"},
+			{id: "not-an-installation"},
+			{id: "1/extra"},
+			{id: `<script>alert("xss")</script>`},
+		} {
+			t.Run(prefix+"/"+test.id, func(t *testing.T) {
+				path := prefix + "/app/installations/" + url.PathEscape(test.id) + "/access_tokens"
+				r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, path, nil)
+				w := httptest.NewRecorder()
+				f.ServeHTTP(w, r)
+				if w.Header().Get("Content-Type") != "application/json" {
+					t.Fatalf("unexpected content type: %q", w.Header().Get("Content-Type"))
+				}
+				if test.token == "" {
+					if w.Code != http.StatusNotFound || strings.TrimSpace(w.Body.String()) != `{"message":"Not Found"}` {
+						t.Fatalf("invalid installation ID response: %d %s", w.Code, w.Body.String())
+					}
+					return
+				}
+				var body struct {
+					Token string `json:"token"`
+				}
+				if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+					t.Fatal(err)
+				}
+				if w.Code != http.StatusOK || body.Token != test.token {
+					t.Fatalf("token response: %d %+v", w.Code, body)
+				}
+			})
+		}
+	}
+}
 
 func TestManualClockAndQuotaWindows(t *testing.T) {
 	c := NewManualClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))

@@ -80,6 +80,8 @@ HTTP cancellation and I/O deadlines remain wall-clock based.
 All HTTP clients are confined to the exact numeric-loopback simulator endpoint,
 with proxies disabled. The test reads no secrets or credentials; its public HMAC
 fixture and ephemeral App-constructor key have no external authority.
+Synthetic installation-token routes accept only positive int64 installation IDs
+and format the fixture token from the parsed number, never the raw request path.
 Set `CAO_FLEET_STRESS_REPORT_DIR` to retain `fleet-stress.json`. Actions uploads
 that report and the test log, including incomplete outcomes on failure.
 The smaller `TestGitHubSimulatorFleetSmoke` scenario runs in ordinary Go tests.
