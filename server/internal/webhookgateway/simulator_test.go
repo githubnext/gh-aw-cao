@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/githubnext/gh-cao/server/internal/simulator"
 	wg "github.com/githubnext/gh-cao/server/internal/webhookgateway"
 	"github.com/githubnext/gh-cao/server/internal/webhookgatewaylocal"
@@ -202,6 +204,24 @@ func TestGitHubSimulatorGatewaySQLite(t *testing.T) {
 
 func TestGitHubSimulatorGatewayPostgres(t *testing.T) {
 	dsn := simulatorPostgresDSN(t)
+	t.Run("isolated_schema", func(t *testing.T) {
+		otherDSN := simulatorPostgresDSN(t)
+		var schemas [2]string
+		for i, dsn := range []string{dsn, otherDSN} {
+			conn, err := pgx.Connect(t.Context(), dsn)
+			if err != nil {
+				t.Fatal("connect to PostgreSQL simulator schema")
+			}
+			err = conn.QueryRow(t.Context(), "SELECT current_schema()").Scan(&schemas[i])
+			closeErr := conn.Close(t.Context())
+			if err != nil || closeErr != nil {
+				t.Fatal("inspect PostgreSQL simulator schema")
+			}
+		}
+		if schemas[0] == schemas[1] || schemas[0] == "public" || schemas[1] == "public" {
+			t.Fatal("PostgreSQL simulator suites share migration tables")
+		}
+	})
 	runGatewaySimulatorSuite(t, func(t *testing.T, options wg.QueueOptions) simulatorStorage {
 		return postgresSimulatorStorage(t, dsn, options)
 	})

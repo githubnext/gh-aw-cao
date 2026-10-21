@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,6 +77,39 @@ func simulatorPostgresDSN(t *testing.T) string {
 		if !strings.HasPrefix(host, "/") && !net.ParseIP(host).IsLoopback() {
 			t.Fatal("gateway simulator requires numeric loopback or a local Unix socket")
 		}
+	}
+	// Namespace isolation does not isolate migration locks from other packages'
+	// runtime writes. Give each simulator suite its own physical schema.
+	schema := "gateway_simulator_" + strings.ToLower(rand.Text())
+	admin, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatal("open PostgreSQL simulator schema owner")
+	}
+	if _, err := admin.ExecContext(t.Context(), "CREATE SCHEMA "+pgx.Identifier{schema}.Sanitize()); err != nil {
+		_ = admin.Close()
+		t.Fatal("create PostgreSQL simulator schema")
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, err := admin.ExecContext(ctx, "DROP SCHEMA "+pgx.Identifier{schema}.Sanitize()+" CASCADE"); err != nil {
+			t.Error("remove PostgreSQL simulator schema")
+		}
+		if err := admin.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
+		parsed, err := url.Parse(dsn)
+		if err != nil {
+			t.Fatal("invalid PostgreSQL simulator schema configuration")
+		}
+		query := parsed.Query()
+		query.Set("search_path", schema)
+		parsed.RawQuery = query.Encode()
+		dsn = parsed.String()
+	} else {
+		dsn += " search_path=" + schema
 	}
 	return dsn
 }

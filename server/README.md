@@ -1194,6 +1194,8 @@ conclusion rejection, persistent admission revocation, and exactly one
 successful queued dispatch for duplicate signed deliveries. Canonical publication
 is a controlled test sink; this does not exercise the dashboard entity schema.
 Each run provisions a random operational namespace and removes it afterward.
+Gateway suites also create and remove private PostgreSQL schemas so their
+migrations cannot deadlock with admission writes in another test package.
 Provisioning requires the database owner's DDL privileges; never point this at
 a shared production database. Missing configuration fails the dedicated command
 instead of silently skipping; ordinary unit runs skip this variant when
