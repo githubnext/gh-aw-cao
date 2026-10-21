@@ -382,6 +382,31 @@ governed property and not an accident of disk usage.
   deleted or suspended, or repositories are removed from it, an implementation
   MUST delete that repository's shards from the evidence lake and MUST request a
   projection so the canonical database stops reporting it.
+- Collector-owned shared operational-value observations MUST be filtered by
+  exact, case-insensitive repository identity, not by shard filename. Withdrawal
+  MUST preserve unrelated raw observations, including their extension metadata.
+  Affected disposable normalized shards and normalization-cache files MUST be
+  invalidated; compaction regenerates their unrelated rows from retained raw
+  evidence. A snapshot whose manifested payload was invalidated MUST NOT replay
+  successfully until recompaction.
+- Shared-file erasure and collector projection MUST serialize across processes
+  sharing the evidence lake. The Go collector uses an advisory filesystem lock;
+  the configured lake filesystem MUST support that lock across its writers.
+  Before best-effort operational-value acquisition, projection MUST filter
+  collector-owned observations against current enrollment, including an empty
+  enrollment set. Credential or adapter failures MUST NOT bypass that filtering
+  or restore withdrawn observations through the retained-value merge.
+- Successful canonical replacement advances the revision. Queries depending on
+  collector operational values MUST include that revision in their result-cache
+  identity so an older cached result cannot serve after replacement. Unreachable
+  older query-result cache entries still follow the bounded cache TTL; this is
+  not a claim of immediate physical disposal of every cache or backup copy.
+- Independently published operational-value evidence packets and protected
+  publication-owned facts have a separate publication authority contract.
+  Collector enrollment withdrawal MUST NOT infer permission to delete those
+  facts. Their repository scope, disposal authority, retention and any hold
+  obligations require an explicit operator decision; this rule does not invent
+  a hold or authorize indefinite retention.
 - Repository-prefixed shard erasure MUST preflight candidate ownership across
   raw, run, and record directories before deleting any file. A legacy filename
   match alone MUST NOT authorize deletion: unambiguously unrelated evidence

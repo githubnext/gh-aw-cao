@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/logger"
 )
@@ -64,6 +65,10 @@ func (l Lake) ControlPlaneInventoryPath() string {
 // ManifestPath is the payload-hash manifest that makes the lake verifiable.
 func (l Lake) ManifestPath() string {
 	return filepath.Join(l.Directory, "payload-hashes.json")
+}
+
+func (l Lake) operationalValuesPath() string {
+	return filepath.Join(l.ShardDirectory(), "operational-values.jsonl")
 }
 
 // ControlSettingsPath is the synthesized settings file that tells the Activity
@@ -129,7 +134,9 @@ func (l Lake) seedInventoryIfMissing() (bool, error) {
 // projection afterwards, which is what removes the repository's rows from the
 // canonical database.
 func (l Lake) Forget(repository string) error {
-	return l.ForgetContext(context.Background(), repository)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return l.ForgetContext(ctx, repository)
 }
 
 // ForgetContext is Forget with cancellation during ownership preflight.
@@ -141,6 +148,11 @@ func (l Lake) ForgetContext(ctx context.Context, repository string) error {
 	if err := l.Validate(); err != nil {
 		return err
 	}
+	unlock, err := l.lockEvidence(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	var paths []string
 	for _, directory := range []string{
 		l.ShardDirectory(), l.RunsDirectory(), l.RecordsDirectory(),
@@ -150,6 +162,11 @@ func (l Lake) ForgetContext(ctx context.Context, repository string) error {
 			return err
 		}
 		paths = append(paths, matches...)
+	}
+	if err := l.filterOperationalValues(func(name string) bool {
+		return name != normalized
+	}); err != nil {
+		return fmt.Errorf("erase shared operational values: %w", err)
 	}
 	for _, path := range paths {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
