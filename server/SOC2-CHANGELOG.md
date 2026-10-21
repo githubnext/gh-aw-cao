@@ -157,3 +157,23 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Outcome: repository work underway; no fix verified, no finding closed.
   Daily workflow is not active until reviewed/merged/installed. SOC 2
   readiness remains undetermined.
+
+## 2026-10-21 - SOC2-LOG-007 - OPS-04 validated draft remediation received
+
+- Type: proposed code remediation and validation evidence.
+- Source/evidence: commit `c480c3027785444a53e814802bf9776bb9f02fbc`,
+  draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), targeting
+  the assessment branch. Coordinator checked GitHub open/draft/head/base
+  identity and commit scope; it did not rerun the session's test suite.
+- Specification version: 1. Related finding: OPS-04.
+- Proposed change: missing/malformed Redis persistence evidence warns;
+  unknown AOF status remains unknown; historical RDB success does not assert
+  active snapshot policy; enabled-AOF write success is narrowly described.
+  Added classification/INFO boundary tests and operator documentation.
+- Reported validation: formatting, doctor normal/race tests, vet/build,
+  full server golangci-lint (zero issues), workflow compilation and diff
+  checks passed.
+- Decision/lifecycle: `remediate` / `in-progress`; draft awaiting review,
+  not merged/deployed and not closed. Original assessment evidence preserved.
+- Limitations: no live CONFIG/provider access or restore exercise.
+  DATA-07/OPS-06 provider durability/recovery evidence remains pending.

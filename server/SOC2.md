@@ -203,7 +203,7 @@ remain coordinator-owned to avoid conflicting edits.
 | OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Remediation launched |
 | OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
 | OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
-| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Remediation launched |
+| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304); validated proposal, not merged/closed |
 | DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Investigation/fix launched |
 | Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
 
@@ -216,6 +216,31 @@ merged and installed on the applicable default branch.
 The following report sections preserve initial observations and initial
 pending decisions. This current authorization table supersedes only those
 decision/lifecycle fields explicitly listed above. A draft PR is not closure.
+
+#### OPS-04 remediation proposal received 2026-10-21
+
+Draft [#19304](https://github.com/githubnext/gh-cao/pull/19304), commit
+`c480c3027785444a53e814802bf9776bb9f02fbc`, targets this assessment branch.
+The coordinator verified its open/draft state, exact head and three-file
+scope: doctor implementation/tests and server README. The finding remains
+**design-gap**, decision **remediate**, lifecycle **in-progress** until
+review/integration and applicable closure evidence; it is not deployed.
+
+The proposal warns on missing/malformed persistence observations, preserves
+unknown AOF enablement instead of coercing it to disabled, and no longer treats
+RDB-only historical success as proof of active snapshot policy. Explicit
+enabled-AOF successful writes pass only as a limited observation, not proof
+of durability/recoverability. Known write errors still warn.
+
+The remediation session reports passing formatting, doctor normal/race
+tests, vet/build, full server golangci-lint (zero issues), workflow compilation
+and diff checks. Added tables cover missing/malformed/partial/RDB/AOF/
+combined/provider omissions. These are reported local results, not a new
+independent provider assessment or historical operating evidence.
+
+No CONFIG access, live Redis changes or merge occurred. Provider persistence
+policy, backup retention, accepted-work RPO/RTO and actual restore operation
+remain evidence requests under DATA-07/OPS-06 and are not closed by this PR.
 
 ### DATA report received 2026-10-21
 
@@ -454,5 +479,6 @@ All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
 Organizational/deployment/period evidence remains pending. Scoped repository
 remediation and a daily worker are authorized and underway as listed above;
-no verified remediation result has yet been received. The conclusion is
+the OPS-04 validated draft proposal is recorded, not a merged/deployed fix.
+The conclusion is
 **initial technical assessment delivered; SOC 2 readiness undetermined**.
