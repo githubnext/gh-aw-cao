@@ -501,7 +501,9 @@ for (const colorScheme of ["light", "dark"]) {
         expect(await ecosystem.locator(".ecosystem-board").evaluate((element) => element.getBoundingClientRect().height)).toBeLessThanOrEqual(500);
       }
       await expect(ecosystem.locator(".enterprise-node header")).toHaveCSS("font-size", "16px");
-      await expect(ecosystem.locator(".enterprise-node .workflow-run")).toHaveCSS("height", "44px");
+      expect(await ecosystem.locator(".enterprise-node .workflow-run").evaluate(element => (
+        Number.parseFloat(getComputedStyle(element).height)
+      ))).toBeCloseTo(44, 1);
       for (const repository of await ecosystem.locator(".repository-node:visible").all()) {
         const order = await repository.evaluate((element) => {
           const workflow = element.querySelector(".local-workflows");
@@ -549,21 +551,26 @@ for (const colorScheme of ["light", "dark"]) {
           (icons) => icons.map((icon) => [...icon.querySelectorAll("path")].map((path) => path.getAttribute("d"))),
         )).toEqual([safeOutputPaths[outputType], issueOpenedPaths, issueOpenedPaths]);
         await expect(repository.locator(".safe-output.local")).toBeVisible();
-        expect(await repository.locator(".safe-output.local").evaluate((element) => ({
-          link: getComputedStyle(element, "::before").height,
+        const localOutputStyle = await repository.locator(".safe-output.local").evaluate((element) => ({
+          link: Number.parseFloat(getComputedStyle(element, "::before").height),
           separation: getComputedStyle(element).borderRightWidth,
-        }))).toEqual({ link: "12px", separation: "0px" });
+        }));
+        expect(localOutputStyle.link).toBeCloseTo(12, 1);
+        expect(localOutputStyle.separation).toBe("0px");
         expect(await repository.locator(".workflow-outputs").evaluate((element) => {
           const bounds = element.getBoundingClientRect();
           const outputs = [...element.querySelectorAll(".safe-output")].map((output) => output.getBoundingClientRect());
+          const zoom = element.closest(".workflow-ecosystem").currentCSSZoom;
           return outputs.every((output, index) => (
             output.left >= bounds.left && output.right <= bounds.right + 0.1
-            && (index === 0 || output.left - outputs[index - 1].right >= 2.9)
+            && (index === 0 || (output.left - outputs[index - 1].right) / zoom >= 2.9)
           ));
         })).toBe(true);
         await expect(repository.locator(".workflow-run")).toHaveCount(1);
         await expect(repository.locator(".local-workflows .workflow-run")).toHaveCount(1);
-        await expect(repository.locator(".local-workflows .workflow-run")).toHaveCSS("height", "36px");
+        expect(await repository.locator(".local-workflows .workflow-run").evaluate(element => (
+          Number.parseFloat(getComputedStyle(element).height)
+        ))).toBeCloseTo(36, 1);
         const outputRows = await repository.locator(".safe-output-icon").evaluateAll(
           (icons) => icons.map((icon) => icon.getBoundingClientRect().top),
         );

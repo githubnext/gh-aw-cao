@@ -594,6 +594,18 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
       margin: 1rem auto 0;
     }
 
+    @media (width > 72rem) {
+      .dispatch-illustration {
+        width: min(80%, 56rem);
+      }
+
+      .dispatch-illustration :global(.workflow-ecosystem) {
+        width: auto;
+        /* Unlike transform, zoom also reduces the diagram's occupied height. */
+        zoom: 0.8;
+      }
+    }
+
     .product-story::before {
       position: absolute;
       z-index: -1;
