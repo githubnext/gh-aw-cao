@@ -70,15 +70,18 @@ func (s *Service) Conclude(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	if err != nil {
-		if !errors.Is(err, ErrDenied) {
-			status = http.StatusServiceUnavailable
-		}
-		return
+	status = conclusionStatus(err, ctx.Err())
+	admissionLog.Printf("conclusion finished: status=%d", status)
+}
+
+// conclusionStatus maps the conclusion pipeline result to an HTTP status:
+// denials stay forbidden, other failures or an expired context are unavailable.
+func conclusionStatus(err, ctxErr error) int {
+	switch {
+	case errors.Is(err, ErrDenied):
+		return http.StatusForbidden
+	case err != nil, ctxErr != nil:
+		return http.StatusServiceUnavailable
 	}
-	if ctx.Err() != nil {
-		status = http.StatusServiceUnavailable
-		return
-	}
-	status = http.StatusNoContent
+	return http.StatusNoContent
 }
