@@ -68,6 +68,39 @@ jobs:
           golangci-lint run ./...
           go test ./...
 
+  actions-simulator-postgres:
+    name: Local Actions and webhook PostgreSQL integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cao_actions_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cao_actions_test"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+    env:
+      POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/cao_actions_test?sslmode=disable
+      CAO_ACTIONS_SIMULATOR_POSTGRES: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.3
+          cache: false
+      - name: Exercise local Actions and gateway with durable PostgreSQL state
+        run: >-
+          go -C server test -race ./internal/admission
+          -run '^TestLocalActionsPostgresIntegration$' -count=1 -timeout=2m -v
+
   server-backfill:
     name: Postgres backfill and OpenObserve integration
     if: github.event_name != 'pull_request'

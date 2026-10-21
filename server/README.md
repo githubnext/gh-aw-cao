@@ -1176,6 +1176,32 @@ incorrect audience/signature, malformed tokens, JWKS outage, failed bootstrap
 exchange, request/claim mismatch, current-policy denial, invalid budgets,
 redirects, and failing job callbacks. This is a protocol/job simulator, not a
 general workflow-YAML executor or a claim that upstream gh-aw JavaScript ran.
+For real PostgreSQL persistence, point the integration at a **disposable local**
+database owned by the test user (numeric loopback or a Unix socket only):
+
+```bash
+POSTGRES_URL='postgresql://postgres@127.0.0.1:5432/cao_actions_test?sslmode=disable' \
+  npm run test:integration:actions-simulator-postgres
+```
+
+This variant runs the production admission/conclusion handlers with the real
+PostgreSQL decision and receipt store, plus a PostgreSQL-backed webhook queue
+and a separately opened dispatch replica. It verifies allowance replay across
+reopen, pending-publication repair, completed-receipt deduplication, conflicting
+conclusion rejection, persistent admission revocation, and exactly one
+successful queued dispatch for duplicate signed deliveries. Canonical publication
+is a controlled test sink; this does not exercise the dashboard entity schema.
+Each run provisions a random operational namespace and removes it afterward.
+Provisioning requires the database owner's DDL privileges; never point this at
+a shared production database. Missing configuration fails the dedicated command
+instead of silently skipping; ordinary unit runs skip this variant when
+`POSTGRES_URL` is unset.
+
+The Go CI `actions-simulator-postgres` job supplies a health-checked local
+Postgres 16 service on a dynamically allocated port and runs this integration
+with the race detector on pull requests and pushes. It uses no deployed service,
+GitHub credential, or live GitHub API.
+
 The separately pinned upstream client conformance tests remain available via
 `GH_AW_ADMISSION_PROTOCOL_PATH` and `GH_AW_CONCLUSION_RUNTIME_DIR`.
 
