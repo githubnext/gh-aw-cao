@@ -1124,7 +1124,9 @@ Run the credential-free, localhost-only Actions/admission/webhook integration:
 npm run test:integration:actions-simulator
 # Equivalent without Node/npm (also suitable for a GitHub Actions run step):
 go -C server test -race ./internal/simulator ./internal/admission \
-  ./cmd/cao-webhook-gateway -run '^(TestLocalActions|TestSpecLocalHost)' -count=1 -timeout=2m -v
+  ./internal/webhookgateway ./cmd/cao-webhook-gateway \
+  -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' \
+  -count=1 -timeout=2m -v
 ```
 
 The tests start real HTTP listeners on ephemeral numeric-loopback ports, use a
@@ -1201,6 +1203,35 @@ The Go CI `actions-simulator-postgres` job supplies a health-checked local
 Postgres 16 service on a dynamically allocated port and runs this integration
 with the race detector on pull requests and pushes. It uses no deployed service,
 GitHub credential, or live GitHub API.
+
+### Discovered agentic workflows, webhooks, and dispatch
+
+The same commands also run shared gateway suites for SQLite and PostgreSQL.
+`NewGatewayAPI` provides an opt-in private `simulator/repo-00001` fixture with
+separate receiving and dispatch installations, repository-scoped token mints,
+numeric repository lookups, default-branch refs, commit-pinned workflow listings
+and raw lock-file reads, and observable repository-dispatch POSTs. `Publish`
+advances the synthetic default branch without mutating earlier commits. Fixture
+storage is bounded to eight revisions of 16 MiB each and 128 dispatches below
+64 KiB each. Observations contain synthetic dispatch data, not credentials;
+App JWT signatures are deliberately not verified.
+
+The discovery suites fetch compiled `gh-aw-manifest` headers through the
+production GitHub client, apply reviewed discovery policy, receive signed
+security webhooks, and run the production live-authority checks and compiler
+dispatcher over loopback HTTP. PostgreSQL also exercises the production
+discovery worker and durable registry across queue reopen; SQLite has no hosted
+registry and keeps its discovered inventory in the test while using the same
+HTTP discovery client and policy compiler. No simulator metadata grants
+production authority.
+
+Assertions cover batched minimal payloads, delivery IDs, API-version pinning,
+replay deduplication after restart, stale workflow revocation, discovery API
+outages, and non-replay of ambiguous dispatch server errors. Faults use the
+existing local `FaultProxy`, rather than replacing dispatcher outcomes. The
+separate queue suites cover concurrent replicas, capacity and database outages,
+policy disablement, and bounded retries. These tests do not execute workflow
+YAML or prove that a real GitHub Actions run started.
 
 The separately pinned upstream client conformance tests remain available via
 `GH_AW_ADMISSION_PROTOCOL_PATH` and `GH_AW_CONCLUSION_RUNTIME_DIR`.
