@@ -131,3 +131,29 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Limitations: real databases/providers/executor kernels, deployed settings,
   organizational evidence and historical operation remain unverified.
   Initial technical assessment delivered; SOC 2 readiness undetermined.
+
+## 2026-10-21 - SOC2-LOG-006 - Remediation and daily worker authoring authorized
+
+- Type: explicit operator decision and coordinated implementation launch.
+- Source/evidence baseline: remediation sessions start from
+  `748093b701ef9cf22e0323ac84fc6b026ea526ac`, containing the consolidated
+  assessment. Original runtime observations remain tied to
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`.
+- Specification version: 1; added the daily SelfCare worker contract without
+  changing evidence/decision record semantics.
+- Authorization: operator directed "start session to fix each findings" and
+  "create an self care agentic workfler worker that does this check again
+  and fixes the top 3 issues daily".
+- Decisions: DATA-01/02/03, IAM-001/002, EXEC-01 and OPS-01/02/03/04 now
+  `remediate` / `in-progress`; DATA-08 is authorized for contract/root-cause
+  investigation and remediation under the same disposition.
+- Launched eleven dedicated repository fix sessions and a twelfth session to
+  author/register the daily SelfCare assessment/top-three-remediation worker.
+  Exact session IDs are maintained in `SOC2.md`.
+- Limits: draft PR proposals only, no merge/deployment/production access or
+  secret reads. Existing sole-target authority must not widen. Evidence-only
+  findings remain open/pending, except DATA-08's concrete failed check;
+  proposed exclusions remain unapproved. No risk acceptance inferred.
+- Outcome: repository work underway; no fix verified, no finding closed.
+  Daily workflow is not active until reviewed/merged/installed. SOC 2
+  readiness remains undetermined.

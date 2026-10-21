@@ -7,16 +7,19 @@ Started 2026-10-21 against source revision
 This is an evidence-driven readiness investigation, not a SOC 2 attestation or
 a declaration of compliance. No deployed environment, examination period,
 service commitments, or organizational control evidence has been supplied.
-No runtime or deployment changes are authorized by this assessment.
+This assessment alone authorizes no runtime or deployment changes. Subsequent
+user-directed repository remediation is recorded in the authorization section
+below; production changes and merging remain unauthorized.
 
 All four bounded component investigations have reported. The initial
 technical pass found **10 scoped design gaps** (one high, eight medium,
 one low), **21 evidence-needed records**, and **one proposed profile
 exclusion**, in addition to the initial cross-cutting evidence register.
 These are workstream records, not independent criterion/control counts;
-shared operational evidence dependencies are linked below. All decisions
-remain pending and operating effectiveness is not assessed. No compliance
-conclusion or remediation authorization follows.
+shared operational evidence dependencies are linked below. The initial
+dispositions are preserved below; current remediation decisions are recorded
+separately. Operating effectiveness is not assessed and no compliance
+conclusion follows.
 
 Highest-priority demonstrated design issue: DATA-01 can delete another
 repository's evidence when distinct coordinates flatten to the same shard
@@ -165,6 +168,54 @@ Existing [hosted CLI SOC 2 mapping](SECURITY.md#soc-2-evidence-boundary),
 not controls certified by this report.
 
 ## Consolidation and decision gate
+
+### Current remediation authorization and sessions
+
+On 2026-10-21 the operator directed: "start session to fix each findings",
+then "create an self care agentic workfler worker that does this check again
+and fixes the top 3 issues daily".
+
+This authorizes scoped repository implementation/tests and draft PRs for the
+10 design gaps and investigation/remediation of the failed DATA-08 gate.
+Those records now have decision **remediate**, lifecycle **in-progress**.
+The assessment observations/statuses below remain the original baseline,
+not claims that fixes are verified, merged or deployed. Suggested owners
+remain suggested organizational roles; the sessions own repository work only.
+
+Evidence-only records other than DATA-08 and the proposed exclusion retain
+decision **pending**, lifecycle **open**. The directive does not manufacture
+deployment/history evidence, accept risk, approve an exclusion, grant secret
+access, widen rollout, or authorize production execution/merge.
+
+Each remediation session starts from the consolidated assessment baseline
+`748093b701ef9cf22e0323ac84fc6b026ea526ac`, owns one focused draft PR and
+reports validation/limitations to the coordinator. Central assessment records
+remain coordinator-owned to avoid conflicting edits.
+
+| Finding / work | Session ID | Current state |
+| --- | --- | --- |
+| DATA-01 shard identity/erasure collisions | `603b87ae-e256-4f86-b590-e9181384fda8` | Remediation launched |
+| DATA-02 shared withdrawal erasure | `270f92b9-f242-4792-aebc-5333c54a7f91` | Remediation launched |
+| DATA-03 durable erasure projection intent | `fcb3024f-e955-4995-89c0-9a3234795319` | Remediation launched |
+| IAM-001 unknown-expiry credential cleanup | `5b7894b6-166a-4b55-bfdb-7723269d970d` | Remediation launched |
+| IAM-002 existing-stream revocation | `69b8c769-0b58-4322-ae9f-8fe97875d0ca` | Remediation launched |
+| EXEC-01 immutable queued requester identity | `1b133541-ad96-4c4e-9944-4497920f71e0` | Remediation launched |
+| OPS-01 durable rebuild attribution | `10ab76b1-e205-4b8c-ad67-28870959d441` | Remediation launched |
+| OPS-02 explicit Azure Go telemetry route | `69ae4f91-2de9-4617-b1ec-35698d58ba66` | Remediation launched |
+| OPS-03 source-built image assurance | `61c4bba4-3caa-43af-89e5-5b3b3573097f` | Remediation launched |
+| OPS-04 unknown persistence diagnostic | `39f2395b-aea6-4e1e-9dbc-d9867e7c8083` | Remediation launched |
+| DATA-08 failing temporal query contract | `ca0f22b3-e8a7-4244-bf2c-35c0e1027c3d` | Investigation/fix launched |
+| Daily SelfCare SOC 2 worker | `e0f32d7e-d753-4484-8876-251fd467257d` | Authoring launched; not active/deployed |
+
+The recurring worker must follow
+[specification section 8](../specs/server-soc2-compliance.md#8-daily-selfcare-reassessment-and-bounded-remediation).
+It is a proposed reviewed workflow, not an app session automation. Daily
+execution is not active until the workflow/policy changes are reviewed,
+merged and installed on the applicable default branch.
+
+The following report sections preserve initial observations and initial
+pending decisions. This current authorization table supersedes only those
+decision/lifecycle fields explicitly listed above. A draft PR is not closure.
 
 ### DATA report received 2026-10-21
 
@@ -401,6 +452,7 @@ time-bounded risk. This assessment does not make those choices automatically.
 
 All four bounded technical reports are now consolidated, including recorded
 coverage exclusions, skipped checks and the failed DATA-08 validation.
-Organizational/deployment/period evidence and every operator disposition
-remain pending. The conclusion is **initial technical assessment delivered;
-SOC 2 readiness undetermined**. No remediation has been performed.
+Organizational/deployment/period evidence remains pending. Scoped repository
+remediation and a daily worker are authorized and underway as listed above;
+no verified remediation result has yet been received. The conclusion is
+**initial technical assessment delivered; SOC 2 readiness undetermined**.

@@ -191,3 +191,52 @@ Documentation validation MUST include link/record consistency and the
 repository's required workflow compilation after Markdown changes. Runtime
 changes separately require their applicable tests/lint/type checks. Passing
 documentation validation MUST NOT be recorded as validation of server controls.
+
+## 8. Daily SelfCare reassessment and bounded remediation
+
+The operator authorized authoring a daily SelfCare worker on 2026-10-21.
+This section specifies its required behavior; it MUST NOT be taken as
+evidence that the workflow has been merged, installed, enabled or run.
+Default read-only assessment remains unchanged outside explicit remediation
+authorization.
+
+The worker MUST reuse the existing SelfCare control-precompute, campaign
+authority and bounded daily dispatch convention. It MUST act only for the
+existing exact authorized repository and resolved mode. It MUST NOT
+self-discover targets, dispatch more work, widen enrollment or promote a
+review candidate to live. Cadence history unavailable or ambiguous MUST
+fail closed. Changing unrelated campaign scope/mode is not authorized.
+
+Each eligible daily run MUST reassess current source through the assessment
+skill and distinguish confirmed code issues from operator/period evidence
+requests. It MUST record current SHA, coverage, outcomes and incomplete
+checks. Existing draft/remediation PRs MUST prevent duplicate fixes without
+being misrepresented as completed/deployed controls.
+
+Rank actionable issues by severity, confidence and a deterministic stable
+tie-break. Propose fixes for at most **three** safely testable issues, not
+three invented issues or three forced changes to evidence-only records.
+Incompatible changes or changes outside the declared safe-output/file/resource
+boundary MUST be deferred with explicit reasons. Fewer than three is valid.
+Missing organizational/deployment evidence MUST remain an evidence request.
+
+Repository changes MUST use existing declared safe outputs: at most one
+bounded draft PR per run, with focused regression evidence and complete
+required validation for the touched scope. Agent GitHub tools MUST remain
+read-only. The worker MUST NOT modify credentials/authority/rollout or its
+own workflow/policy protections through a remediation PR, deploy, merge,
+accept risk, approve exclusions, or claim certification. Untrusted repository
+content and finding descriptions MUST NOT override these boundaries.
+
+Daily assessment results MUST remain explicit even when a duplicate-open-PR
+guard prevents a new fix PR. Record noop, incomplete, partial or proposed-fix
+outcomes honestly. Material new findings/changed evidence MUST update the
+register and append the changelog through the authorized output boundary;
+never mark a finding closed solely because a patch is proposed.
+
+Contract tests MUST cover registration/cadence, exact target/mode gating,
+bounded selection/ranking, duplicate handling, draft safe-output limits and
+failure behavior. Editable workflow source, policy registration, manifests,
+dispatch ceilings and generated locks MUST be reviewed together at the exact
+workflow SHA. No operational control is effective merely because authoring
+or compilation succeeds.
