@@ -543,3 +543,26 @@ Dates are UTC. Corrections are new events; original observations remain.
   decoded heap, concurrency/physical DB/temp budgets, file I/O deadlines,
   deployment and historical operation remain unverified. No finding closed,
   risk accepted, exclusion approved or compliance assertion made.
+
+## 2026-10-22 - SOC2-LOG-024 - Release evidence collector proposal received
+
+- Type: received bounded hardening report; RFC-035 record schema version 1.
+- Source: proposal `fde438115bfc8bfec9ea2a5db81d6704baa72659`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`, descendant of assessed
+  `53458a46d983356cdc2b8c5f27903026ca707a82`.
+  Coordinator verified [#19423](https://github.com/githubnext/gh-cao/pull/19423)
+  open/draft/head/base identity.
+- Related requests: REL-OP-01 / OPS-08. Owner-invoked read-only collection of
+  bounded run/artifact/approval references, optional exact-identity
+  attestation checks and sanitized existing Azure development receipts.
+  Versioned reports explicitly retain incomplete evidence boundaries.
+- Session-reported validation: 73 synthetic tests passed without skips;
+  lint, CAO typecheck, whitespace and 73-workflow compilation passed.
+  No real registry/API/deployment verification; coordinator did not rerun tests.
+- Decision/lifecycle: collector implementation authorized by the follow-up
+  directive, remediate/in-progress; broader evidence-needed records remain
+  open. Three other final implementation reports remain pending.
+- Limits: no independent original-evidence archive, actual running-image
+  measurement, approval independence, enforced governance, scan-exception
+  disposition or period proof. No runtime/control closure, deployment,
+  permissions, retention, risk acceptance or compliance assertion.

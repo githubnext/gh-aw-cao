@@ -162,7 +162,7 @@ changes, risk acceptance, exclusions or control closure.
 | DATA-10 metadata input bounds | `84846eb9-d1aa-42e5-876e-1371572695ea` | Draft [#19422](https://github.com/githubnext/gh-cao/pull/19422); proposal received |
 | DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Implementation/validation pending final report |
 | OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Implementation pending |
-| OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Read-only collector implementation pending |
+| OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Draft [#19423](https://github.com/githubnext/gh-cao/pull/19423); proposal received |
 | IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Offline rollover preflight selected; supported managed-signing deployment contract remains a separate decision |
 
 The metadata proposal is commit
@@ -203,6 +203,46 @@ authorization to change fleet resource policy. Review/integration, decoded
 heap/concurrency/DB/temp ceilings, filesystem I/O deadlines, deployed workload
 suitability and period evidence remain outstanding. Operating effectiveness
 is **not-assessed**. No exploitability or compliance conclusion follows.
+
+#### Release evidence collector proposal
+
+Draft [#19423](https://github.com/githubnext/gh-cao/pull/19423), commit
+`fde438115bfc8bfec9ea2a5db81d6704baa72659`, starts from
+`4beb309dd0e415e7bb82e156cdc463d6c21fb55f`, a descendant of the assessment
+SHA. Coordinator verified open/draft/head/base identity, not runtime execution.
+The collector is owner-invoked and read-only; no workflow, permission,
+retention, deployment or automatic schedule is changed.
+
+At that proposal SHA, `scripts/collect-release-evidence.mjs:21-115` collects
+bounded package/promotion run-attempt and job references, approval IDs and
+artifact identities/digests/expiry. Lines 117-140 optionally verify
+attestations against exact image/source/repository/reusable publisher/SLSA
+identity and matching run-attempt invocation. Lines 142-183 summarize existing
+Azure development receipts with source/per-target/configured-reference
+checks; lines 201-240 emit versioned attributed JSON with collector hash,
+tool versions and explicit incomplete boundaries. Usage and limitations are
+documented in `server/README.md:2329-2388`.
+
+Session-reported validation: 73 synthetic collector/package/promotion tests
+passed, zero failures/skips; root lint, CAO typecheck, whitespace and seeded
+73-workflow compilation passed. Tests cover owner-only report permissions,
+overwrite refusal, bounded/malformed/paginated input, identity and redaction.
+Missing locked dependencies were restored before final checks. No real
+registry/API integration or deployment was executed.
+
+The narrow collection/identity-binding design is **design-supported at the
+proposal SHA**, working mapping CC8.1/CC7.2. REL-OP-01/OPS-08 remain
+**evidence-needed**, lifecycle **open**; only this collector implementation is
+authorized `remediate` / `in-progress`. Reports deliberately remain incomplete:
+run-scoped approvals/artifacts do not prove attempt binding or independent
+approval, configured image read-back does not measure a running image, and
+development rebuilds inherit no official package assurance. Raw verifier
+responses are not archived; normalized receipts retain response hashes and
+commands only. Operators still must independently retain original package
+metadata/checksums, SBOM, signed bundles/verifier evidence, verify archive
+access/expiry, and supply deployed measurements, enforced approvals/checks,
+scan-exception dispositions, rollback and period records. Operating
+effectiveness is **not-assessed**; no finding is closed.
 
 ## Assessment boundary and current status
 
