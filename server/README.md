@@ -60,6 +60,9 @@ The test checks that private non-interactive setup fails without changing
 policy, repeated public monitoring setup is idempotent, and no campaign or
 agent operation is enabled. Home, Git configuration, CLI extensions, and
 credentials are isolated; only a synthetic token is used in the test.
+The shared bootstrap/setup environment explicitly disables CLI telemetry with
+`DO_NOT_TRACK=1` and `GH_TELEMETRY=0`; the proxy still rejects every destination
+outside its allowlist.
 The workflow and every job grant only `contents: read`. The integration step
 explicitly clears real GitHub token environment variables; the read-only
 workflow token is used only to download the gh-aw prerequisite, never for

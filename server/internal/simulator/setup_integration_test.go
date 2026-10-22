@@ -225,7 +225,7 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 		}
 		f.api.ServeHTTP(w, r)
 	}))
-	f.env = append(bootstrapEnvironment(t, directory, proxy, ca), "TMPDIR="+root, "DO_NOT_TRACK=1", "GH_TELEMETRY=0") //nolint:contextcheck // Shared environment helper uses this test's own lifetime.
+	f.env = append(bootstrapEnvironment(t, directory, proxy, ca), "TMPDIR="+root) //nolint:contextcheck // Shared environment helper uses this test's own lifetime.
 	bootstrapInstallAW(t, f.env)
 	for _, item := range f.env {
 		if data, ok := strings.CutPrefix(item, "XDG_DATA_HOME="); ok {
