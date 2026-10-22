@@ -3,8 +3,11 @@
 Load this reference only to inspect installer behavior, runtime layout, source
 versus generated files, or steering files.
 
-The primary operator path is `gh extension install githubnext/gh-cao`, enter an
-existing control checkout, then `gh cao setup`. Native setup prepares missing
+The primary operator path is the root `install.sh` from an existing control
+checkout, then `gh cao setup` (or the installer's `--setup` flag).
+The installer requires Bash, curl, and Node.js 24+ and invokes the upstream
+`github/gh-aw` installer for gh-aw. Public tool discovery and downloads are
+anonymous, without changing stored GitHub credentials. Native setup also prepares missing
 runtime through gh-aw in an isolated checkout and verifies the selected stable
 release's exact-SHA attested archive and file inventory before preflighting
 local destinations. It adds missing files without replacing existing content,
@@ -13,9 +16,10 @@ Complete installations are reused, not upgraded. Missing gh-aw is installed at
 the catalog minimum; older or broken existing installations require explicit
 repair. Setup constructs missing baseline policy through the same helper as
 optional policy-only `gh cao init`, saving it only after external setup succeeds.
-No local Node.js, separate init, installer, repository creation, or
-agent execution is required. Repository creation belongs to `gh repo
-create`, cloning to `gh repo clone`.
+Native setup itself needs no local Node.js or separate init.
+Repository creation belongs to `gh repo create` or the installer's explicit
+`--create-repo`; cloning can use `gh repo clone`. Neither path authorizes
+agent execution.
 
 After configuration, interactive setup can separately offer reviewed publication
 with a default-No prompt. A temporary index supplies the file summary, policy
@@ -29,7 +33,6 @@ no extra tags/submodule pushes. A failed push leaves the commit local.
 Success returns deployment-pending dashboard/Actions links without dispatching,
 polling or waiting. Declining/cancelling, CI and unattended setup never publish.
 
-The following legacy installer remains available for compatible scripts.
 The root `install.sh` downloads and verifies the platform-specific Go extension
 from a published release, installs or upgrades the required gh-aw version,
 installs the root CAO package when runtime files are absent, materializes the runtime,

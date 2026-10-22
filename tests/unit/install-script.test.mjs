@@ -147,20 +147,13 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
-if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
-  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
-  printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
-  exit 0
+if [[ "$*" == *repos/githubnext/gh-cao/releases* || "$*" == "extension install "* ]]; then
+  echo "Resource protected by organization SAML enforcement" >&2
+  exit 1
 fi
-if [[ "\${1:-} \${2:-}" == "api --hostname" && "\${4:-}" == repos/githubnext/gh-cao/releases/tags/* ]]; then
-  echo "$4" >> "$FAKE_CAO_RELEASE_REQUESTS"
-  [[ -z "\${FAKE_CAO_ASSET_LOOKUP_FAILURE:-}" ]] || { echo "release asset lookup failed" >&2; exit 1; }
-  if [[ -n "\${FAKE_CAO_RELEASE_ASSETS+set}" ]]; then
-    printf '%b\\n' "$FAKE_CAO_RELEASE_ASSETS"
-  else
-    printf '%s\\n' gh-cao-darwin-amd64 gh-cao-darwin-arm64 gh-cao-linux-amd64 gh-cao-linux-arm64 gh-cao-windows-amd64.exe gh-cao-windows-arm64.exe checksums.txt
-  fi
-  exit 0
+if [[ -n "\${FAKE_REQUIRE_CONTROL_AUTH:-}" && "\${GH_TOKEN:-}" != synthetic-control-token ]]; then
+  echo "control repository authentication was lost" >&2
+  exit 1
 fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   [[ "$*" == *"viewerCanCreateRepositories"* ]] || exit 2
@@ -276,6 +269,10 @@ exit 2
 // Serves gh-aw's install script, which records the requested version as installed.
 const fakeCurl = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "\${FAKE_CURLRC_AUTH:-}" && "\${1:-}" != --disable ]]; then
+  echo "curlrc authentication triggered SAML enforcement" >&2
+  exit 22
+fi
 url=""
 output=""
 while [[ $# -gt 0 ]]; do
@@ -285,6 +282,41 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
+[[ -z "\${FAKE_PUBLIC_REQUESTS:-}" ]] || printf '%s\\n' "$url" >> "$FAKE_PUBLIC_REQUESTS"
+if [[ "$url" == https://api.github.com/repos/githubnext/gh-cao/releases\\?* ]]; then
+  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 22; }
+  node --input-type=module -e '
+    const page = Number(new URL(process.argv[1]).searchParams.get("page"));
+    if (process.env.FAKE_CAO_RELEASE_RESPONSE) {
+      console.log(process.env.FAKE_CAO_RELEASE_RESPONSE);
+    } else if (process.env.FAKE_CAO_RELEASE_PAGES) {
+      console.log(JSON.stringify(JSON.parse(process.env.FAKE_CAO_RELEASE_PAGES)[page - 1] ?? []));
+    } else {
+      const list = process.env.FAKE_CAO_RELEASE_LIST ?? "false\\tfalse\\t" + (process.env.FAKE_LATEST_CAO_RELEASE ?? "v1.2.3");
+      console.log(JSON.stringify(list.split("\\n").filter(Boolean).map((line) => {
+        const [draft, prerelease, tag_name] = line.split("\\t");
+        return { draft: draft === "true", prerelease: prerelease === "true", tag_name };
+      })));
+    }
+  ' "$url"
+  exit 0
+fi
+if [[ "$url" == https://api.github.com/repos/githubnext/gh-cao/releases/tags/* ]]; then
+  echo "\${url#https://api.github.com/}" >> "$FAKE_CAO_RELEASE_REQUESTS"
+  [[ -z "\${FAKE_CAO_ASSET_LOOKUP_FAILURE:-}" ]] || { echo "release asset lookup failed" >&2; exit 22; }
+  node --input-type=module -e '
+    const names = process.env.FAKE_CAO_RELEASE_ASSETS ?? "gh-cao-darwin-amd64\\ngh-cao-darwin-arm64\\ngh-cao-linux-amd64\\ngh-cao-linux-arm64\\ngh-cao-windows-amd64.exe\\ngh-cao-windows-arm64.exe\\nchecksums.txt";
+    console.log(process.env.FAKE_CAO_RELEASE_METADATA ?? JSON.stringify({
+      draft: false, assets: names.split("\\n").filter(Boolean).map((name) => ({ name, state: "uploaded", size: 100 })),
+    }));
+  '
+  exit 0
+fi
+if [[ "$url" == https://github.com/github/gh-aw/releases/download/* ]]; then
+  printf 'upstream-public-download\\n' >> "$FAKE_COMMAND_LOG"
+  printf 'verified upstream fixture' > "$output"
+  exit 0
+fi
 if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; then
   echo "$url" >> "$FAKE_CAO_DOWNLOADS"
   [[ -z "\${FAKE_CAO_BINARY_FAILURE:-}" ]] || { echo "binary download failed" >&2; exit 22; }
@@ -326,6 +358,13 @@ if [[ -n "\${FAKE_INSTALL_FAILURE:-}" ]]; then
 fi
 [[ -z "\${FAKE_INSTALL_NOOP:-}" ]] || exit 0
 cat <<'EOF'
+if [[ -n "\${GH_TOKEN:-}\${GITHUB_TOKEN:-}\${GH_ENTERPRISE_TOKEN:-}\${GITHUB_ENTERPRISE_TOKEN:-}\${INPUT_VERSION:-}" ]]; then
+  echo "upstream installer inherited operator authentication or Actions version override" >&2
+  exit 1
+fi
+if [[ -n "\${FAKE_PUBLIC_REQUESTS:-}" ]]; then
+  curl --fail --location "https://github.com/github/gh-aw/releases/download/$1/linux-amd64" -o "$FAKE_GH_AW_INSTALLED.download"
+fi
 printf '%s\\n' "$1" > "$FAKE_GH_AW_INSTALLED"
 EOF
 `;
@@ -601,6 +640,68 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
     await streamInstaller(consumer, env);
     assert.equal(await log(), expectedLog);
     await assertCompleteInstall(consumer, env, expectedVersion, repository);
+  });
+}
+
+test("public tool installation bypasses SAML-restricted tokens without changing control repository credentials", async (t) => {
+  const { root, consumer, env, log } = await createConsumer(t);
+  const config = path.join(root, "gh-config");
+  const home = path.join(root, "home");
+  await mkdir(config);
+  await mkdir(home);
+  const hosts = "github.com:\n    oauth_token: synthetic-stored-token\n";
+  const curlrc = 'header = "Authorization: Bearer synthetic-curlrc-token"\n';
+  await writeFile(path.join(config, "hosts.yml"), hosts);
+  await writeFile(path.join(home, ".curlrc"), curlrc);
+  const requests = path.join(root, "public-requests.log");
+  const installEnv = {
+    ...env,
+    HOME: home,
+    GH_CONFIG_DIR: config,
+    GH_TOKEN: "synthetic-control-token",
+    GITHUB_TOKEN: "synthetic-actions-token",
+    GH_ENTERPRISE_TOKEN: "synthetic-enterprise-token",
+    GITHUB_ENTERPRISE_TOKEN: "synthetic-enterprise-actions-token",
+    INPUT_VERSION: "v0.0.1",
+    FAKE_REQUIRE_CONTROL_AUTH: "1",
+    FAKE_CURLRC_AUTH: "1",
+    FAKE_PUBLIC_REQUESTS: requests,
+  };
+  const result = await streamInstaller(consumer, installEnv);
+  await assertCompleteInstall(consumer, installEnv, supportedGhAw, "alpha-org/control");
+  assert.equal(await readFile(path.join(config, "hosts.yml"), "utf8"), hosts);
+  assert.equal(await readFile(path.join(home, ".curlrc"), "utf8"), curlrc);
+  assert.equal(await log(), "curl\nupstream-public-download\nadd\n");
+  const urls = (await readFile(requests, "utf8")).trim().split("\n");
+  assert.ok(urls.includes("https://api.github.com/repos/githubnext/gh-cao/releases?per_page=100&page=1"));
+  assert.ok(urls.includes("https://api.github.com/repos/githubnext/gh-cao/releases/tags/v1.2.3"));
+  assert.ok(urls.includes("https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh"));
+  assert.ok(urls.includes(`https://github.com/github/gh-aw/releases/download/${supportedGhAw}/linux-amd64`));
+  assert.ok(urls.some((url) => /githubnext\/gh-cao\/releases\/download\/v1\.2\.3\/gh-cao-/.test(url)));
+  assert.doesNotMatch(result.stdout + result.stderr, /synthetic-.*token/);
+});
+
+test("anonymous release discovery paginates past a full page of drafts and unsupported tags", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, {
+    ...env,
+    FAKE_CAO_RELEASE_PAGES: JSON.stringify([
+      Array.from({ length: 100 }, (_, index) => ({ draft: index !== 0, tag_name: index === 0 ? "nightly" : `v9.0.${index}` })),
+      [{ draft: false, prerelease: true, tag_name: "v1.2.5" }],
+    ]),
+  });
+  assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.5\n");
+});
+
+for (const response of ['{"message":"API rate limit exceeded"}', "not JSON"]) {
+  test(`anonymous release discovery fails closed on ${response.startsWith("{") ? "an API error object" : "invalid JSON"}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, { ...env, FAKE_CAO_RELEASE_RESPONSE: response });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /Public release discovery is anonymous/);
+    assert.equal(await log(), "");
+    assert.equal(await exists(env.XDG_DATA_HOME), false);
+    await assertNothingInstalled(consumer);
   });
 }
 
@@ -1417,10 +1518,12 @@ for (const [name, override, message] of [
 
 async function runExtensionInstaller(consumer, env, prefix = "gh-cao-") {
   const extensionInstaller = installerSource.match(/^install_cao_extension\(\) \([\s\S]*?^\)/m)?.[0];
+  const publicCurl = installerSource.match(/^public_curl\(\) \{[\s\S]*?^\}/m)?.[0];
   assert.ok(extensionInstaller, "the production extension installer is available");
+  assert.ok(publicCurl, "the production anonymous download helper is available");
   return executeFile("bash", [
     "-c",
-    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${extensionInstaller}\ninstall_cao_extension v1.2.3 "$1"`,
+    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${publicCurl}\n${extensionInstaller}\ninstall_cao_extension v1.2.3 "$1"`,
     "extension-installer",
     prefix,
   ], { cwd: consumer, env, timeout });

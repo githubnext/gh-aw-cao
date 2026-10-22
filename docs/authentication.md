@@ -83,9 +83,10 @@ data, authenticated enrichments, or write APIs.
 
 ### Public-only monitoring quickstart
 
-Install `gh cao` with `gh extension install githubnext/gh-cao`, then run
-`gh cao setup` from an existing control-repository checkout; it prepares missing
-bare runtime and policy itself. Confirmed all-public
+Install gh-aw, `gh cao`, and the baseline runtime with the
+[root installer](cao-cli.md#control-plane-installer), then run
+`gh cao setup` from the control-repository checkout. Public tool downloads are
+anonymous; keep GitHub CLI signed in for control-repository configuration. Confirmed all-public
 scope skips authentication selection, not review or public Pages consent.
 Unknown visibility or failed lookups never qualify. For unattended setup:
 

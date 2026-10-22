@@ -17,8 +17,8 @@ install → connect → dashboard. Follow the written steps below.
 
 ## Prerequisites
 
-- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS,
-  or Windows. No local Node.js, Bash, or `curl` required.
+- **Tools:** Git, Bash, curl, Node.js 24+, and
+  [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS, or Windows (Git Bash).
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
@@ -32,11 +32,8 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-Install the **`gh cao` GitHub CLI extension**:
-
-```bash
-gh extension install githubnext/gh-cao
-```
+The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
+and the baseline monitoring runtime and policy.
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -46,38 +43,26 @@ gh auth login
 gh auth status
 ```
 
-GitHub CLI extension installation requires GitHub CLI sign-in.
+Sign-in is for control-repository access. Public tool releases are discovered
+and downloaded anonymously, avoiding enterprise SAML cross-organization failures.
+Stored credentials are unchanged.
 :::
 
-```bash
-gh cao --version
-```
-
-**Ready:** `gh cao` prints its version. Extension installation does not yet
-change a repository.
-
-:::note[Release availability]
-Unified setup requires a release newer than `v0.1.24` containing this fix;
-see [release compatibility](cao-cli.md#github-cli-release-discovery).
-:::
-
-Use a clean default-branch checkout you may configure and enable Actions.
-Prefer a dedicated control repository in your targets' organization;
-see [other topologies](deployment-and-governance.md).
+Use a clean default-branch control checkout; see
+[other topologies](deployment-and-governance.md).
 
 <details>
 <summary>No control checkout yet? Explicitly create or clone one.</summary>
 
-Outside a checkout, replace `OWNER/CONTROL_REPOSITORY` with your exact repository:
+Replace `OWNER/CONTROL_REPOSITORY` with your repository:
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
 cd CONTROL_REPOSITORY
 ```
 
-Choose visibility explicitly: use `--public` instead only for public evidence.
-A private control repository requires guided authentication even for public
-targets; unattended public-only setup cannot include it.
+Use `--public` only for public evidence. Private controls require guided
+authentication even for public targets.
 
 To use an existing remote repository instead:
 
@@ -86,9 +71,23 @@ gh repo clone OWNER/CONTROL_REPOSITORY
 cd CONTROL_REPOSITORY
 ```
 
-CAO does not create repositories.
+Alternatively, the installer supports explicit `--create-repo OWNER/NAME`
+to create and clone a private control repository.
 
 </details>
+
+At the control checkout's root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+gh cao --version
+```
+
+**Ready:** tools, runtime, and policy are prepared.
+Existing policy is preserved. No campaign is added or run.
+Use `--setup` to open guided configuration immediately.
+Runtime artifact/provenance access is unchanged;
+see [installer details](cao-cli.md#control-plane-installer).
 
 <span id="guided-setup-instead"></span>
 
@@ -100,10 +99,9 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-No `init` or installer needed. Setup verifies a release and adds
-missing runtime/policy without overwriting files. Malformed policy/conflicts
-stop setup; complete runtime is reused. Missing `gh-aw` is installed; upgrade old
-versions explicitly. See [details](cao-cli.md#guided-runtime-preparation).
+Setup reuses the installed runtime and policy and configures scope,
+authentication, and Pages. No separate `init` is needed.
+See [details](cao-cli.md#guided-runtime-preparation).
 
 1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.

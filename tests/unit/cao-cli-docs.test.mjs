@@ -6,13 +6,14 @@ const docs = readFileSync("docs/cao-cli.md", "utf8");
 const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
 const gettingStarted = readFileSync("docs/setup-quickstarts.md", "utf8");
 const walkthrough = readFileSync("docs/repo-assist-quickstart.md", "utf8");
+const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash";
 
 test("getting started reaches monitoring before optional campaign execution", () => {
   const optional = gettingStarted.indexOf("## Optional: add automation later");
   assert.ok(optional > 0);
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
-    "gh extension install githubnext/gh-cao",
+    installation,
     "gh cao --version",
     "gh cao setup",
     "gh cao doctor",
@@ -36,17 +37,16 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
-  assert.match(install, /Extension installation does not yet\s+change a repository/);
+  assert.match(install, /Existing policy is preserved/);
   assert.match(install, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
   assert.match(install, /gh repo clone OWNER\/CONTROL_REPOSITORY/);
-  assert.match(install, /```bash\ngh extension install githubnext\/gh-cao\n```/);
-  assert.match(monitoring, /Setup verifies a release and adds\s+missing runtime\/policy without overwriting files/);
-  assert.match(monitoring, /Missing `gh-aw` is installed; upgrade old\s+versions explicitly/);
-  assert.match(monitoring, /No `init` or installer needed/);
+  assert.ok(install.includes(`\`\`\`bash\n${installation}\ngh cao --version\n\`\`\``));
+  assert.match(monitoring, /Setup reuses the installed runtime and policy/);
+  assert.match(monitoring, /No separate `init` is needed/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
-  assert.match(install, /extension installation requires GitHub CLI sign-in/);
-  assert.doesNotMatch(install, /install-gh-aw\.sh|--scopes repo,workflow|--create-repo|curl.*install\.sh/);
+  assert.match(install, /downloaded anonymously, avoiding enterprise SAML cross-organization failures/);
+  assert.doesNotMatch(install, /gh extension install|--scopes repo,workflow/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
   assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
   assert.match(monitoring, /## Prerequisites/);
@@ -97,6 +97,12 @@ test("getting started reaches monitoring before optional campaign execution", ()
 });
 
 test("extension installation guidance distinguishes discovery, promotion, and runtime installation", () => {
+  assert.match(docs, /root installer is the primary supported installation path for both tools/);
+  assert.ok(docs.includes(installation));
+  assert.match(docs, /upstream[\s\S]*install-gh-aw\.sh/);
+  assert.match(docs, /Public CAO release metadata, binaries, checksums, and the upstream installer\s+are fetched anonymously/);
+  assert.match(docs, /No credentials are cleared from the parent environment/);
+  assert.doesNotMatch(docs, /Legacy control-plane installer|legacy installer/);
   assert.match(docs, /latest stable release includes native binaries for GitHub CLI discovery/);
   assert.match(docs, /verified with `v0\.1\.24`/);
   assert.match(docs, /`releases\/latest` before selecting a\s+`--pin` tag/);
