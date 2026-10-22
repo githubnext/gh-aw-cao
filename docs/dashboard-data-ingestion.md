@@ -308,7 +308,11 @@ SQLite file. The local adapter stores IndexedDB metadata and JSON records in
 tables are an emulation detail, not canonical entity tables. The browser
 continues to use native IndexedDB.
 
-Ingest an extracted gh-aw log directory with its run context:
+### Manual artifact import
+
+`cao ingest` is a supported manual importer for an extracted gh-aw artifact
+directory and its run context. It is not used by the Activity or Dashboard
+pipelines and is not deprecated:
 
 ```bash
 cao ingest \
@@ -334,7 +338,18 @@ pass `--retention-days 7 --run-retention-days all`; database lifecycle remains
 the caller's responsibility. Use `--retention-days all --run-retention-days all`
 when historical detail must also be retained.
 
-Alternatively, ingest schema-v2 JSONL produced by `gh aw logs`:
+### Active JSONL pipeline
+
+The Activity and Dashboard pipelines use `compact-jsonl`, `hash-payloads`,
+and `ingest-jsonl`. Collection compacts raw cached shards per repository with
+`compact-jsonl` and imports them into collection-scoped SQLite with `ingest-jsonl`.
+Indexing uses `hash-payloads` to normalize and consolidate raw evidence into
+run/record shards, `ingest-jsonl` to build the published SQLite projection,
+and `hash-payloads` again to produce the final payload checksum manifest.
+`hash-payloads` is therefore a normalization and packaging command, not just
+a checksum utility.
+
+To import schema-v2 JSONL produced by `gh aw logs` manually:
 
 ```bash
 cao ingest-jsonl \
@@ -343,6 +358,8 @@ cao ingest-jsonl \
 ```
 
 Pass `--context CONTEXT_JSON` when JSONL `github_api_rate_limit` records should become canonical Audits. Without an owning collection Repository, Workflow, and Run, those records remain unmapped.
+
+### Download and query a snapshot
 
 Download the JSONL and SQLite projection published by the deployed CAO Pages site:
 

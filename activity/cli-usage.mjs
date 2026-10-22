@@ -39,7 +39,6 @@ export const USAGE = `Usage:
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY] [--offline]
   cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
   cao prune-dashboard --input FILE [--output FILE]
-  cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao ingest-jsonl [--database FILE] [--input FILE|--input-dir SHARD_DIRECTORY|--runs-dir DIRECTORY --records-dir DIRECTORY] [--context CONTEXT_JSON] [--retention-days DAYS|all] [--run-retention-days DAYS|all]
   cao audit-jsonl [--input-dir SHARD_DIRECTORY]
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
@@ -66,6 +65,12 @@ export const USAGE = `Usage:
   cao gh runs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--status STATUS] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh issues [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
   cao gh prs [--database FILE] [--repo OWNER/REPO] [--workflow NAME|FILE] [--since TIME] [--until TIME] [--limit COUNT]
+
+Manual artifact import (supported; not used by the Activity or Dashboard pipelines):
+  cao ingest [--database FILE] --context CONTEXT_JSON --logs LOG_DIRECTORY [--retention-days DAYS|all] [--run-retention-days DAYS|all]
+  Imports an extracted gh-aw artifact directory with its context JSON into SQLite.
+  The explicit ingest command remains supported; only the old positional CONTEXT_JSON LOG_DIRECTORY form is retired.
+
 Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao download
   cao dashboard-complexity --input dashboard/site/dashboard.json
@@ -131,6 +136,11 @@ gh query options:
 Data preparation:
   cao download writes the deployed JSONL and query-ready SQLite snapshot to ${DEFAULT_OUTPUT_DIRECTORY}/.
   To query other gh-aw JSONL shards, first run cao ingest-jsonl --input-dir SHARD_DIRECTORY [--database FILE].
+
+Active ingestion and packaging:
+  compact-jsonl compacts collected raw JSONL shards per repository.
+  hash-payloads normalizes and consolidates raw shards into run/record shards and computes payload checksums.
+  ingest-jsonl imports raw JSONL or normalized run/record shards into SQLite.
 
 Collections: ${QUERY_COLLECTIONS.join(', ')}
 

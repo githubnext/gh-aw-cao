@@ -89,6 +89,22 @@ test("Node usage inventories exactly the registered runtime commands", async () 
   assert.deepEqual([...advertised].sort(), [...commandHandlers.keys()].sort());
 });
 
+test("help distinguishes supported manual artifact import from active ingestion and packaging", async () => {
+  const help = await caoApi.runCli(["--help"]);
+  const manual = help.slice(help.indexOf("Manual artifact import"), help.indexOf("Query local CAO data"));
+  assert.match(manual, /supported; not used by the Activity or Dashboard pipelines/);
+  assert.match(manual, /^  cao ingest .*--context CONTEXT_JSON --logs LOG_DIRECTORY/m);
+  assert.match(manual, /explicit ingest command remains supported/);
+  assert.match(manual, /only the old positional CONTEXT_JSON LOG_DIRECTORY form is retired/);
+  const pipeline = help.slice(help.indexOf("Active ingestion and packaging:"), help.indexOf("Collections:"));
+  assert.match(pipeline, /compact-jsonl compacts collected raw JSONL shards per repository/);
+  assert.match(pipeline, /hash-payloads normalizes and consolidates raw shards/);
+  assert.match(pipeline, /ingest-jsonl imports raw JSONL or normalized run\/record shards into SQLite/);
+  for (const command of ["ingest", "ingest-jsonl", "compact-jsonl", "hash-payloads"]) {
+    assert.equal(typeof commandHandlers.get(command), "function", `${command} must remain supported`);
+  }
+});
+
 test("quickstart is not registered or advertised by the Node CLI", async () => {
   assert.equal(commandHandlers.has("quickstart"), false);
   assert.doesNotMatch(await caoApi.runCli(["--help"]), /quickstart/i);

@@ -217,6 +217,24 @@ test("command inventory covers registered Node APIs and process boundaries", () 
   assert.match(inventory, /npm `cao` bin[\s\S]*same\s+Node entry point/);
 });
 
+test("ingestion documentation separates active packaging from supported manual artifact import", () => {
+  const rows = docs.split("\n").filter((line) => line.startsWith("|"));
+  const pipeline = rows.find((line) => line.startsWith("| Active ingestion and packaging |"));
+  assert.ok(pipeline);
+  for (const command of ["ingest-jsonl", "compact-jsonl", "hash-payloads"]) {
+    assert.ok(pipeline.includes(`\`${command}\``), command);
+  }
+  assert.ok(!pipeline.includes("`ingest`"));
+  const manual = rows.find((line) => line.startsWith("| Manual artifact import |"));
+  assert.ok(manual);
+  assert.match(manual, /`ingest`/);
+  assert.match(manual, /not used by the Activity or Dashboard pipelines and not deprecated/);
+  const ingestion = readFileSync("docs/dashboard-data-ingestion.md", "utf8").replace(/\s+/g, " ");
+  assert.match(ingestion, /### Manual artifact import .*`cao ingest` is a supported manual importer/);
+  assert.match(ingestion, /### Active JSONL pipeline .*`compact-jsonl`, `hash-payloads`, and `ingest-jsonl`/);
+  assert.match(ingestion, /not just a checksum utility/);
+});
+
 test("hosted-executor App setup belongs only to the native operator CLI", () => {
   assert.match(docs, /gh cao setup auth hosted-cli --repo OWNER\/CONTROL/);
   assert.match(docs, /mode-`0600` temporary bootstrap file/);
