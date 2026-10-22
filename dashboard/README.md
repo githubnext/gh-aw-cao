@@ -31,14 +31,13 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 ## Install
 
 The root Central Agentic Ops campaign installs Activity, Dashboard, the trusted
-materializer, and the local runtime verification action together. The installer
-resolves the latest campaign release automatically, then materializes the
-canonical runtime files from the exact revision recorded by gh-aw:
+materializer, and the local runtime verification action together. Install the
+extension with GitHub CLI, then let guided setup prepare the runtime from the
+exact revision recorded by gh-aw:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- githubnext/gh-cao
+gh extension install githubnext/gh-cao
+gh cao setup
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
@@ -50,13 +49,18 @@ configure Pages for GitHub Actions with repository-restricted access for a
 private control repository. The standalone publisher remains manual-only and
 cannot enable Pages for the repository.
 
-To refresh or restore campaign-owned files, rerun the installer. It resolves the
-latest campaign release automatically:
+> [!TIP]
+> **SAML-token installation failure:** If GitHub CLI cannot download the extension
+> because of cross-organization SAML authorization, use
+> `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+> The fallback requires Bash, curl, and Node.js 24+; public tool downloads are
+> anonymous without changing stored credentials.
+
+To refresh the extension and the installed root runtime:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- githubnext/gh-cao
+gh extension upgrade gh-cao
+gh cao update --campaign root
 ```
 
 Use `gh cao update` to move installed campaigns to a newer reviewed

@@ -6,7 +6,7 @@ description: Set up CAO, monitor one repository, and explore your dashboard befo
 Monitor one repository's existing GitHub Agentic Workflow runs, costs, and
 outcomes where evidenced.
 
-**Estimated time: 15 minutes**, plus credential approval and Actions deployment time.
+**Estimated time: 15 minutes**; approval and deployment vary.
 
 **Monitoring only:** no campaign installation or new agentic work.
 
@@ -17,12 +17,12 @@ install → connect → dashboard. Follow the written steps below.
 
 ## Prerequisites
 
-- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS,
-  or Windows. No local Node.js, Bash, or `curl` required.
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+
+  on Linux, macOS, or Windows. The curl fallback also requires Bash, curl, and Node.js 24+.
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
-  Existing Agentic Workflow history is useful, not required.
+  Existing Agentic Workflow history is optional.
 
 Use a **private control repository** for private or internal evidence. A private
 repository does **not** guarantee a private Pages site: confirm restricted access
@@ -32,11 +32,8 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-Install the **`gh cao` GitHub CLI extension**:
-
-```bash
-gh extension install githubnext/gh-cao
-```
+Install the **`gh cao` GitHub CLI extension** with GitHub CLI.
+Guided setup prepares missing gh-aw, monitoring runtime, and policy.
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -46,37 +43,24 @@ gh auth login
 gh auth status
 ```
 
-GitHub CLI extension installation requires GitHub CLI sign-in.
+Sign-in is required for extension installation and control-repository access.
 :::
 
-```bash
-gh cao --version
-```
-
-**Ready:** `gh cao` prints its version. Extension installation does not yet
-change a repository.
-
-:::note[Release availability]
-Unified setup requires a release newer than `v0.1.24` containing this fix;
-see [release compatibility](cao-cli.md#github-cli-release-discovery).
-:::
-
-Use a clean default-branch checkout you may configure and enable Actions.
-Prefer a dedicated control repository in your targets' organization;
-see [other topologies](deployment-and-governance.md).
+Use a clean default-branch checkout; see
+[other topologies](deployment-and-governance.md).
 
 <details>
 <summary>No control checkout yet? Explicitly create or clone one.</summary>
 
-Outside a checkout, replace `OWNER/CONTROL_REPOSITORY` with your exact repository:
+Replace `OWNER/CONTROL_REPOSITORY`:
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
 cd CONTROL_REPOSITORY
 ```
 
-Choose visibility explicitly: use `--public` instead only for public evidence.
-Guided setup needs no App/PAT for a private control repository and public targets.
+Use `--public` only for public evidence. Guided setup needs no App/PAT for
+public targets, including private controls.
 
 To use an existing remote repository instead:
 
@@ -85,9 +69,30 @@ gh repo clone OWNER/CONTROL_REPOSITORY
 cd CONTROL_REPOSITORY
 ```
 
-CAO does not create repositories.
-
 </details>
+
+At the control checkout's root:
+
+```bash
+gh extension install githubnext/gh-cao
+gh cao --version
+```
+
+:::tip[SAML-token installation failure]
+If extension installation fails because your token lacks cross-organization
+SAML authorization, use the curl fallback:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
+```
+
+Requires Bash, curl, and Node.js 24+. Public tool downloads are anonymous;
+stored credentials and runtime-provenance access are unchanged.
+[Installer details](cao-cli.md#control-plane-installer).
+:::
+
+**Ready:** the extension is installed. Existing policy is preserved.
+No campaign is added or run.
 
 <span id="guided-setup-instead"></span>
 
@@ -99,10 +104,9 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-No `init` or installer needed. Setup verifies a release and adds
-missing runtime/policy without overwriting files. Malformed policy/conflicts
-stop setup; complete runtime is reused. Missing `gh-aw` is installed; upgrade old
-versions explicitly. See [details](cao-cli.md#guided-runtime-preparation).
+Setup prepares missing runtime and policy, reuses existing installations, and configures scope,
+authentication, and Pages. No separate `init` is needed.
+See [details](cao-cli.md#guided-runtime-preparation).
 
 1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
    not an organization wildcard. The control repository stays included.

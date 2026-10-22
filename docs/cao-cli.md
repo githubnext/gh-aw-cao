@@ -65,15 +65,27 @@ does not update an installed binary.
 
 ## GitHub CLI extension
 
-Install the extension, enter an existing control-repository checkout, and run
-the single guided entry point:
+Install the extension with GitHub CLI, then run guided setup from an existing
+control-repository checkout's root:
 
 ```bash
 gh extension install githubnext/gh-cao
 gh cao --version
-# From the control repository root:
 gh cao setup
 ```
+
+:::tip[SAML-token installation failure]
+If `gh extension install` fails because your token lacks cross-organization
+SAML authorization, use the [curl installer](#control-plane-installer):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup
+```
+
+This fallback requires Bash, curl, Git, Node.js 24+, and GitHub CLI 2.68+ signed
+in for the control repository. Public tool downloads are anonymous; stored
+credentials remain available for control-repository and runtime-provenance access.
+:::
 
 ### GitHub CLI release discovery
 
@@ -90,6 +102,8 @@ Refresh a GitHub-CLI-managed extension with:
 gh extension upgrade gh-cao
 gh cao --version
 ```
+
+Rerun `install-gh-cao.sh` only for an installer-managed extension.
 
 Extension installation alone does not install the control-repository runtime
 or `gh-aw`. `gh cao setup` prepares them as needed. Upgrade the extension to
@@ -146,6 +160,45 @@ output stays plain.
 `--json` includes `publication.status` and, after a push, its commit, links, and
 `deploymentStatus: "pending"`. Declining or cancelling publication leaves
 configuration local. Unattended/CI setup never commits or pushes.
+
+### Control-plane installer
+
+Use the root installer as a fallback when SAML-restricted tokens prevent
+GitHub CLI extension installation:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
+```
+
+The installer registers `gh cao` directly in GitHub CLI's data directory,
+following the gh-aw installer pattern, without requiring Go or a repository
+rename. It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, defaulting to
+`~/.local/share/gh/extensions/gh-cao`. Rerun the installer to update this
+manually installed extension; `gh extension upgrade` does not manage it.
+Linked/source installations are not overwritten. Release binaries use the
+`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
+macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
+digests. Downloads fail closed unless the asset's exact checksum and embedded
+version match. Verification finishes before replacing an existing binary.
+It installs `gh aw` using the upstream
+[`install-gh-aw.sh`](https://github.com/github/gh-aw/blob/main/install-gh-aw.sh),
+passing the required version and keeping upstream checksum verification enabled.
+The upstream installer runs without token environment variables or the Actions
+`INPUT_VERSION` override that would select authenticated extension installation.
+Public CAO release metadata, binaries, checksums, and the upstream installer
+are fetched anonymously, ignoring curl configuration that could inject
+authentication. No credentials are cleared from the parent environment,
+GitHub CLI configuration, or keychain. Authenticated control-repository
+creation and setup retain the operator's sign-in.
+Anonymous API rate limits or network errors fail closed; they do not trigger
+an authenticated download fallback.
+An explicit catalog source `githubnext/gh-cao@vX.Y.Z` selects the same
+extension tag, including a published prerelease with that tag; otherwise the
+installer selects the latest published CAO `vX.Y.Z` release, including prereleases
+but excluding drafts. Main/SHA and local catalog
+sources still select their own runtime revision independently.
+Node.js 24+ is required by this installer, but not by native setup
+or the other Go operator commands.
 
 ### Command reference
 

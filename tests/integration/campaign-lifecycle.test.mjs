@@ -21,7 +21,7 @@ const campaignUpdateSource = "https://github.com/githubnext/gh-cao";
 // own source repository; the consumer is never pushed.
 const consumerRepository = "octocat/Hello-World";
 const materializerScript = resolve(".github/workflows/shared/materialize-cao.mjs");
-const installerSource = readFileSync(resolve("install.sh"), "utf8");
+const installerSource = readFileSync(resolve("install-gh-cao.sh"), "utf8");
 const controlRuntimeFiles = [
   ".github/workflows/shared/control.mjs",
   ".github/workflows/shared/policy.mjs",

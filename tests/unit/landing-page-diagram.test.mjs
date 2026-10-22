@@ -66,7 +66,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminalText, /Daily Repo Status|as standalone/);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
-  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
+  assert.doesNotMatch(terminalText, /(?<![\w-])cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.deepEqual(
     [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
     ["dispatch-story", "terminal-story", "maintenance-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
@@ -137,12 +137,15 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
   assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
 });
 
-test("terminal follows extension onboarding and matches the production CLI", () => {
+test("terminal prefers GitHub CLI installation and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   const installation = "gh extension install githubnext/gh-cao";
   assert.ok(terminalText.includes(installation));
   assert.ok(readFileSync("README.md", "utf8").includes(installation));
-  assert.doesNotMatch(terminal, /raw\.githubusercontent\.com.*install\.sh|\bgh cao init\b/);
+  assert.doesNotMatch(terminal, /install-gh-cao\.sh|\bgh cao init\b/);
+  const readme = readFileSync("README.md", "utf8");
+  assert.ok(readme.indexOf(installation) < readme.indexOf("curl -fsSL"));
+  assert.match(readme, /> \*\*SAML-token installation failure:\*\*/);
   assert.match(terminal, /existing control repository checkout/);
   assert.match(terminal, /separately offer reviewed publication; declining leaves files local/);
   const setupExcerpt = terminal.match(/data-terminal-output="setup">([^<]+)<\/pre>/)?.[1];
@@ -482,6 +485,5 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /--terminal-bg: #0d1117/);
   assert.match(terminal, /background: var\(--terminal-bg\)/);
   assert.match(terminal, /class="syntax-command"/);
-  assert.match(terminal, /class="syntax-command">gh<\/span> extension install/);
-  assert.match(terminal, /class="syntax-url"/);
+  assert.match(terminal, /class="syntax-command">gh<\/span> extension install githubnext\/gh-cao/);
 });

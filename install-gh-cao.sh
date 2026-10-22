@@ -95,7 +95,7 @@ run_quiet_command() {
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
+    'Usage: install-gh-cao.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \
@@ -343,12 +343,21 @@ prompt_create_repository() {
   printf '%s/%s\n' "$owner" "$name"
 }
 
-install_gh_aw() {
-  info "Installing gh-aw $required_gh_aw..."
-  curl --fail --show-error --location \
-    https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
-    bash -s -- "$required_gh_aw"
+public_curl() {
+  # Ignore curlrc authentication; public distribution must not use operator credentials.
+  curl --disable --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 "$@"
 }
+
+install_gh_aw() (
+  info "Installing gh-aw $required_gh_aw..."
+  # Keep upstream's direct-download path even inside a setup-cli Actions environment.
+  curl() { command curl --disable "$@"; }
+  export -f curl
+  public_curl \
+    https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh |
+    env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN \
+      -u INPUT_VERSION bash -s -- "$required_gh_aw"
+)
 
 # gh-aw writes `gh aw version` to stderr.
 get_gh_aw_version() {
@@ -370,24 +379,27 @@ verify_gh_aw_version() {
 }
 
 resolve_latest_cao_release() {
-  local releases
-  local draft
-  local _prerelease
-  local release
-  if releases="$(gh api --hostname github.com --paginate \
-    'repos/githubnext/gh-cao/releases?per_page=100' \
-    --jq '.[] | [.draft, .prerelease, .tag_name] | @tsv')"; then
-    while IFS=$'\t' read -r draft _prerelease release; do
-      if [[ "$draft" == false &&
-        "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        printf '%s\n' "$release"
-        return
-      fi
-    done <<< "$releases"
-  fi
+  local page=1 records count release
+  while records="$(public_curl \
+    -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/githubnext/gh-cao/releases?per_page=100&page=$page" |
+    node -e '
+const releases = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+if (!Array.isArray(releases)) throw new Error("Expected a public GitHub release list.");
+const release = releases.find((item) => item.draft === false && /^v[0-9]+\.[0-9]+\.[0-9]+$/.test(item.tag_name));
+console.log(`${releases.length}\t${release?.tag_name ?? ""}`);
+')"; do
+    IFS=$'\t' read -r count release <<< "$records"
+    if [[ -n "$release" ]]; then
+      printf '%s\n' "$release"
+      return
+    fi
+    [[ "$count" -ge 100 ]] || break
+    page="$((page + 1))"
+  done
   printf '%s\n' \
     'Unable to resolve the latest published CAO release with a vX.Y.Z tag (including prereleases).' \
-    'Retry after GitHub release access is restored, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
+    'Public release discovery is anonymous; check network access and the unauthenticated GitHub API rate limit, or pass an explicit published tag such as githubnext/gh-cao@vX.Y.Z.' \
     'No CAO files were written.' >&2
   return 1
 }
@@ -395,9 +407,16 @@ resolve_latest_cao_release() {
 verify_cao_extension_release() {
   local release="$1"
   local assets asset count prefix complete missing=""
-  if ! assets="$(gh api --hostname github.com \
-    "repos/githubnext/gh-cao/releases/tags/$release" \
-    --jq 'select(.draft == false) | .assets[] | select(.state == "uploaded" and .size > 0) | .name')"; then
+  if ! assets="$(public_curl \
+    -H 'Accept: application/vnd.github+json' \
+    "https://api.github.com/repos/githubnext/gh-cao/releases/tags/$release" |
+    node -e '
+const release = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+if (release.draft !== false || !Array.isArray(release.assets)) throw new Error("Expected a published public GitHub release.");
+for (const asset of release.assets) {
+  if (asset.state === "uploaded" && asset.size > 0 && typeof asset.name === "string") console.log(asset.name);
+}
+')"; then
     printf 'Unable to inspect CAO extension release %s. No CAO files were written.\n' "$release" >&2
     return 1
   fi
@@ -471,9 +490,9 @@ install_cao_extension() (
   asset="$asset_prefix$os-$arch$suffix"
   info "Downloading gh cao $release for $os-$arch..."
   local base_url="https://github.com/githubnext/gh-cao/releases/download/$release"
-  curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 120 \
+  public_curl \
     "$base_url/$asset" -o "$binary"
-  curl --fail --show-error --location --retry 3 --connect-timeout 15 --max-time 60 \
+  public_curl \
     "$base_url/checksums.txt" -o "$staged/checksums.txt"
   expected="$(awk -v asset="$asset" '$2 == asset { print $1 }' "$staged/checksums.txt")"
   if [[ ! "$expected" =~ ^[0-9a-f]{64}$ ]]; then

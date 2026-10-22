@@ -1,15 +1,14 @@
 ---
 name: setup-cao
-description: "Set up a bare Central Agentic Ops (CAO) control plane. Use when a user asks to create, bootstrap, initialize, install, or get started with CAO. Create or reuse one control repository, install the runtime, establish exact repository scope, configure authentication, and stop before campaign installation or execution."
+description: "Create, bootstrap, initialize, or install a bare CAO control plane: one control repository, runtime, exact repository scope, and authentication. Stop before campaign installation or execution."
 metadata:
   argument-hint: "Optionally provide the control repository and repositories CAO should read"
 ---
 
 # Set Up Central Agentic Ops
 
-Set up monitoring with `gh cao`, the runtime and scoped authentication.
-Leave `control-plane.campaigns` as an empty object. No operation enrollment,
-live rollout or dispatch.
+Set up monitoring; leave `control-plane.campaigns` as an empty object.
+No operation enrollment, live rollout or dispatch.
 
 For later execution, follow
 [outcome-to-execution guidance](https://github.com/githubnext/gh-cao/blob/main/docs/operation-patterns.md)
@@ -61,14 +60,22 @@ Prefer interactive setup for a separate control repository; see the
 [setup guide](https://github.com/githubnext/gh-cao/blob/main/docs/setup-quickstarts.md#guided-setup-instead).
 
 ```bash
+# From an existing control checkout's root:
 gh extension install githubnext/gh-cao
-# Enter an existing control checkout, then:
 gh cao setup
 ```
 
 Create/clone explicitly with `gh repo create` or `gh repo clone`; choose visibility
-with the user. Setup prepares missing runtime/policy without `init` or local Node.js
-and offers authentication choices based on that scope.
+with the user. Native setup prepares missing runtime/policy without `init`
+or local Node.js.
+
+> [!TIP]
+> For SAML-token installation failures:
+> `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+> Requires Bash, curl, and Node.js 24+; public downloads are anonymous.
+> Stored credentials are unchanged.
+
+Setup offers authentication choices based on that scope.
 A separate default-No prompt can publish reviewed CAO files; declining/CI stays
 local. Push returns deployment-pending links without waiting.
 
@@ -76,11 +83,9 @@ local. Push returns deployment-pending links without waiting.
 
 1. Verify `gh --version` and `gh auth status`; identify the control repository
    and topology and obtain approval to create or reuse it.
-2. Obtain exact `OWNER/REPOSITORY` entries CAO may read and verify each
-   canonical name, owner, and visibility.
-3. With approval, install the extension if absent. Setup adds missing runtime,
-   preserves policy and unrelated files, and refuses conflicts. Do not run the
-   legacy installer over source-managed workflows.
+2. Obtain authorized `OWNER/REPOSITORY` entries; verify names, owners, and visibility.
+3. With approval, install the extension as above. Review source-managed
+   workflows before installation; do not overwrite them without approval.
 4. Prefer `gh cao setup`. Read
    [authentication](references/authentication.md) only when selecting or
    troubleshooting an authentication profile.

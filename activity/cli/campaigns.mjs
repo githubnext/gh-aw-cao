@@ -57,7 +57,7 @@ export async function addCaoCampaign(campaignSpec, ghAwOptions = [], {
   if (!campaignSpec || campaignSpec.startsWith('-')) throw new UsageError('cao add requires a campaign');
   const expectedCampaign = campaignSlugFromSpec(campaignSpec);
   if (expectedCampaign === 'gh-cao') {
-    throw new UsageError('cao add cannot install the CAO root package; use install.sh');
+    throw new UsageError('cao add cannot install the CAO root package; use install-gh-cao.sh');
   }
   let localSourceRoot;
   try {
@@ -142,7 +142,7 @@ export async function updateCaoCampaigns(ghAwOptions = [], {
     });
     // gh-aw update advances SHA sources to the default branch, so exact refs
     // must be reapplied through add, which also writes the ownership record.
-    // Match install.sh: root resources contain an intentional App setup form
+    // Match install-gh-cao.sh: root resources contain an intentional App setup form
     // that gh-aw's Markdown scanner rejects.
     const addOptions = record.campaign === 'githubnext/gh-cao' && !updateOptions.includes('--no-security-scanner')
       ? ['--no-security-scanner', ...updateOptions]

@@ -84,11 +84,21 @@ data, authenticated enrichments, or write APIs.
 
 ### Public-only monitoring quickstart
 
-Install `gh cao` with `gh extension install githubnext/gh-cao`, then run
-`gh cao setup` from an existing control-repository checkout; it prepares missing
-bare runtime and policy itself. Confirmed public remote targets
-skip authentication selection, not review or public Pages consent.
-The control repository may be private or internal: its own job token can read it.
+Install the extension with `gh extension install githubnext/gh-cao`, then run
+`gh cao setup` from the control-repository checkout. Setup prepares missing
+gh-aw and runtime files; keep GitHub CLI signed in for configuration.
+
+:::tip[SAML-token installation failure]
+If extension installation fails because of cross-organization SAML authorization,
+use the [curl fallback](cao-cli.md#control-plane-installer):
+`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+Public tool downloads are anonymous; control-repository and runtime-provenance
+access still use your stored credentials.
+:::
+
+Confirmed public remote targets skip authentication selection, not review or
+public Pages consent. The control repository may be private or internal: its
+own job token can read it.
 Unknown visibility or failed lookups never qualify. For unattended setup:
 
 ```bash

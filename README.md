@@ -14,28 +14,29 @@ repository. Add trusted agentic operations when you are ready.
 
 ## Get started: monitor one repository
 
-Install the GitHub CLI extension:
+Install the **`gh cao` extension** with GitHub CLI, then open guided setup
+from the root of an existing control-repository checkout:
 
 ```bash
 gh extension install githubnext/gh-cao
-```
-
-Enter an existing control repository's clean default-branch checkout, then
-prepare monitoring and connect one repository:
-
-```bash
 gh cao setup
 ```
 
-Setup installs missing bare runtime files and creates missing baseline policy
-before configuring scope, authentication, and Pages. No separate `init` or
-runtime installer is required. Existing policy and unrelated files are
-preserved; conflicts stop preparation rather than overwrite files.
-This unified setup requires an extension release newer than `v0.1.24`
-containing the fix; see [release compatibility](docs/cao-cli.md#github-cli-release-discovery).
+Git and authenticated GitHub CLI 2.68+ are required. Native setup prepares
+missing gh-aw, runtime files, and baseline policy without installing Node.js
+or adding or running a campaign.
+
+> [!TIP]
+> **SAML-token installation failure:** If GitHub CLI cannot download the extension
+> because your token lacks cross-organization SAML authorization, use the
+> [curl installer](docs/cao-cli.md#control-plane-installer):
+> `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup`.
+> This fallback requires Bash, curl, and Node.js 24+; public tool downloads are
+> anonymous, while stored credentials remain available for control-repository
+> and runtime-provenance operations.
 
 No checkout yet? Explicitly use `gh repo create OWNER/CONTROL --private --clone`
-or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before setup. Choose
+or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before installation. Choose
 `--public` instead only for public evidence. A private control repository
 requires credentials even when its other targets are public.
 
@@ -91,8 +92,9 @@ SHA and verifies signed build provenance before replacing runtime files; it
 does not run npm. Stable versions use release assets, while main/SHA installs
 use successful Actions artifacts retained for 90 days and wait up to five
 minutes for an already active exact-SHA runtime build. An authenticated GitHub
-CLI with release and attestation access is required.
-Native setup needs no local Node.js installation; Actions provide Node.js 24+.
+CLI with artifact and attestation access is required for runtime materialization;
+this is separate from anonymous public tool downloads.
+The curl fallback requires local Node.js 24+; native setup and Go commands do not.
 Dashboard builds retain their existing production npm dependencies.
 
 Central Agentic Ops governs shared **operations**, not one mandatory
@@ -129,10 +131,12 @@ gh cao --help
 gh cao --version
 ```
 
-Use `gh extension upgrade gh-cao` to refresh the extension. Runtime updates
-remain separate (`gh cao update --campaign root`). The legacy `install.sh`
-remains available for compatible scripted installs; it is not required by
-the guided flow. For local development, `make build` produces `./gh-cao`.
+Use `gh extension upgrade gh-cao` to refresh a GitHub-CLI-managed extension;
+rerun `install-gh-cao.sh` for a curl-installed extension. Runtime updates
+remain separate (`gh cao update --campaign root`). GitHub-CLI-managed
+installations can still use `gh extension upgrade gh-cao`, but that authenticated
+cross-organization release path can fail with enterprise SAML-restricted tokens.
+For local development, `make build` produces `./gh-cao`.
 
 Use `gh cao setup` for guided configuration or
 `gh cao setup auth github-app|enterprise-app|token` for authentication only.
@@ -150,7 +154,7 @@ SQLite snapshot repair and hosted-CLI App setup remain Node-only.
 Releases include version-stamped
 binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
 (amd64 and arm64), plus SHA-256 checksums.
-The legacy installer selects the latest published `vX.Y.Z` release, including prereleases
+The installer selects the latest published `vX.Y.Z` release, including prereleases
 but excluding drafts, and also verifies older releases' legacy `OS-ARCH` assets.
 See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
 boundary and [extension development](CONTRIBUTING.md#go-extension-development)
