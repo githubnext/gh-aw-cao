@@ -71,6 +71,19 @@ function compilerFinding(output) {
 export async function compileAndCompare(root, execute, expectedVersion) {
   const findings = [];
   const workflowRoot = path.join(root, WORKFLOW_DIRECTORY);
+  const sources = await filesIn(workflowRoot, ".md");
+  const locks = await filesIn(workflowRoot, ".lock.yml");
+  const expectedLocks = new Set(sources.map((name) => name.replace(/\.md$/, ".lock.yml")));
+  for (const lock of locks.filter((name) => !expectedLocks.has(name))) {
+    findings.push(finding("orphaned-generated-workflow", "error", "generated-workflows", "Generated workflow has no source", {
+      files: [path.posix.join(WORKFLOW_DIRECTORY, lock)],
+      expected: "Every generated workflow has a matching .md source",
+      observed: "No matching workflow source exists",
+      remediation: `Remove ${path.posix.join(WORKFLOW_DIRECTORY, lock)} after confirming its source was retired`,
+    }));
+  }
+  if (sources.length === 0) return findings;
+
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "cao-validate-"));
   const temporaryWorkflows = path.join(temporaryRoot, WORKFLOW_DIRECTORY);
   try {
@@ -109,9 +122,6 @@ export async function compileAndCompare(root, execute, expectedVersion) {
       return findings;
     }
 
-    const sources = await filesIn(workflowRoot, ".md");
-    const locks = await filesIn(workflowRoot, ".lock.yml");
-    const expectedLocks = new Set(sources.map((name) => name.replace(/\.md$/, ".lock.yml")));
     for (const lock of expectedLocks) {
       const checkedInPath = path.join(workflowRoot, lock);
       const generatedPath = path.join(temporaryWorkflows, lock);
@@ -153,14 +163,6 @@ export async function compileAndCompare(root, execute, expectedVersion) {
           remediation: "npm run compile:locks",
         }));
       }
-    }
-    for (const lock of locks.filter((name) => !expectedLocks.has(name))) {
-      findings.push(finding("orphaned-generated-workflow", "error", "generated-workflows", "Generated workflow has no source", {
-        files: [path.posix.join(WORKFLOW_DIRECTORY, lock)],
-        expected: "Every generated workflow has a matching .md source",
-        observed: "No matching workflow source exists",
-        remediation: `Remove ${path.posix.join(WORKFLOW_DIRECTORY, lock)} after confirming its source was retired`,
-      }));
     }
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });

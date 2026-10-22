@@ -488,6 +488,10 @@ retains `--strict-warnings` for Actions callers that require warnings to fail.
 
 Strict compilation runs against a committed temporary snapshot of the current
 workflow files in the Actions checkout, without rewriting generated artifacts.
+A monitoring-only installation with no top-level `.github/workflows/*.md`
+sources skips compilation, but still checks for orphaned `.lock.yml` artifacts
+and runs the other validation checks above. Existing Markdown sources always
+undergo strict compilation, even when their frontmatter is missing or malformed.
 
 CI writes its JSON report under `RUNNER_TEMP`, outside the checkout, before
 uploading the `cao-validation` artifact. This keeps report creation from
