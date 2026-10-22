@@ -135,6 +135,8 @@ jobs:
 
   extension-setup-simulator:
     name: Setup against local GitHub and Azure simulators
+    # Keep the full external-tool topology matrix off the PR critical path.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:

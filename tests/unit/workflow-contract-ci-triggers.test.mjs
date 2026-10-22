@@ -217,9 +217,9 @@ test("Go extension keeps authenticated doctor integration separate from unit and
   assert.equal(auth.run, "make authtests");
 });
 
-test("Go extension setup simulator runs independently without live credentials", () => {
+test("Go extension setup simulator runs only on main pushes, independently without live credentials", () => {
   const source = workflow("go-extension.yml");
-  const { jobs, permissions } = parse(source);
+  const { jobs, permissions, on: triggers } = parse(source);
   const job = jobs["extension-setup-simulator"];
   const steps = job.steps;
   const checkout = steps.find((step) => step.uses?.startsWith("actions/checkout@"));
@@ -245,7 +245,9 @@ test("Go extension setup simulator runs independently without live credentials",
     GITHUB_ENTERPRISE_TOKEN: "",
   });
   assert.equal(job.env, undefined);
-  assert.equal(job.if, undefined);
+  assert.equal(job.if, "github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  assert.deepEqual(triggers.push.branches, ["main"]);
+  assert.ok(triggers.pull_request, "PR quality and authenticated doctor checks remain enabled");
   assert.equal(job.needs, undefined);
   assert.equal(run["continue-on-error"], undefined);
   assert.deepEqual(azure.env, {

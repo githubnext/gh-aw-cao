@@ -130,7 +130,9 @@ is opt-in outside its dedicated npm command and CI job.
 real `gh cao setup`/GitHub CLI processes against the same strict loopback
 `BootstrapAPI`. Interactive cases reuse `tests/helpers/terminal.mjs` (Linux
 `script` or macOS `python3`); Node.js is a test-driver dependency, not a native
-setup dependency. The existing Go Extension CI setup job runs this suite.
+setup dependency. The Go Extension CI setup job runs this full suite only on
+path-matched pushes to `main`, not pull requests. PRs retain the extension quality,
+unit, build, smoke, and authenticated doctor checks.
 
 The topology matrix covers public/private GitHub.com controls and
 private/internal GHE.com controls, public/private/internal/mixed targets where
@@ -154,7 +156,8 @@ See [setup combinations and live gaps](../docs/setup-compatibility.md).
 
 Run `npm run test:integration:setup-azure` with Go 1.27.3 or newer on PATH, Git, GitHub CLI, the
 policy-pinned gh-aw prerequisite, and Docker installed. The Go Extension CI
-setup job runs this command alongside the GitHub-only setup suite. It uses the
+setup job runs this command alongside the GitHub-only setup suite on path-matched
+pushes to `main`, not pull requests. It uses the
 same digest-pinned official Azurite image as `scripts/azure-local/azure-local.sh`,
 with a disposable account, loopback-only dynamic port, and automatic cleanup.
 Prerequisites must already be local: run `go mod download`,
