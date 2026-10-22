@@ -2326,6 +2326,67 @@ attesting both build provenance and the SBOM for the exact OCI digest.
 Those package guarantees apply to consumers of the published image, not to
 locally source-built images.
 
+#### Owner-selected release evidence collection
+
+From a reviewed checkout, collect a bounded, machine-readable record without
+publishing, promoting, deploying, or changing workflow authority:
+
+```sh
+node scripts/collect-release-evidence.mjs \
+  --repository githubnext/gh-cao \
+  --revision FULL_40_CHARACTER_SOURCE_SHA \
+  --image ghcr.io/githubnext/gh-cao/cao-server@sha256:EXACT_64_CHARACTER_DIGEST \
+  --package-run PACKAGE_RUN_ID \
+  --output /secure/evidence/release-evidence.json
+```
+
+Use the existing package workflow run ID and immutable published image digest,
+not a tag. Optional `--promotion-run RUN_ID` collects references from the existing
+prerelease-to-latest workflow; its workflow SHA is **not** the product source
+SHA. Optional `--azure-receipt /secure/evidence/deploy-azure-receipt.json` consumes
+the existing `cao deploy azure` receipt, requiring its source revision to match
+the selected revision. It preserves development-only assurance, dirty-worktree
+state, context/plan hashes, per-target digests and reported verification outcomes.
+Private registry references are hashed; cloud resource identifiers, raw responses,
+actor names, comments, job/step names, secrets and credential-bearing URLs are
+not copied. No Azure API or deployment is invoked.
+
+With `--verify-provenance`, the collector invokes the installed GitHub CLI's
+`gh attestation verify` for the exact OCI digest, repository, reusable publisher,
+source-digest constraint and SLSA v1 predicate. It additionally requires the
+verified statement's image subject and package run-attempt invocation to match.
+Registry authentication and read access must already be configured; no credentials
+are accepted as collector arguments. A failed/unavailable verifier or mismatched
+receipt leaves provenance and image/source binding unknown. Manual builds whose
+certificate source identity differs from the selected product revision can fail
+this constraint; the collector does not relax verification to accept them.
+The normalized receipt includes the verification command and raw receipt hash,
+but does not retain raw attestation bundles or assert builder isolation.
+
+The collector currently targets GitHub.com and GHCR. Schema version 1
+(`kind: cao.release.evidence`) records the collector script hash, Node/GitHub CLI
+versions and collection time, and always reports `incomplete`.
+Run/job/check references are attempt-scoped; artifacts and approval history are
+run-scoped with **unknown** attempt binding. Approval records do not establish
+independent human approval or effective environment policy. Unavailable/invalid
+optional API evidence is explicitly unknown; invalid selected run identities or
+deployment receipts fail collection. API reads stop after five 100-record pages,
+marking bounded inventories incomplete; responses are limited to 2 MiB with a
+60-second command timeout, local receipts to 1 MiB, and step lists to 100.
+The new output is owner-readable and never overwrites an existing file.
+
+This is collection-time evidence, not a governance decision, production acceptance,
+proof of running image measurements, independent retention, or Type 2 operating
+effectiveness. Azure configured-reference read-back is not a measured running
+image digest, and its development images do not inherit official-package scans,
+SBOM or provenance. Owners must retain the original candidate metadata/checksums,
+SBOM, signed bundles and verification receipts through their approved evidence
+channel, along with this JSON and exact collector/tool versions. Existing Actions
+artifact references/expiry metadata are not independent delivery receipts; export
+before expiry, verify destination retention and access, supply actual deployment
+measurements and approval/check evidence, and agree the examination period and
+governance requirements with the auditor. Nothing is uploaded automatically.
+
 The Dockerfile includes the base `cao.json` policy. Configure a reviewed
 `control-plane.web.host` before building, or mount a reviewed policy and set
 `CAO_POLICY_PATH` at runtime. Supply database, OAuth, session, and webhook
