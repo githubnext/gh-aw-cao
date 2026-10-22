@@ -79,10 +79,13 @@ afterEach(() => {
 describe('declarative wizard contract', () => {
   it('registers a navigable, source-free JSON page with pinned mined patterns and the standard prompt button', async () => {
     expect(validateDashboardDocument(authoritativeDashboardSource).errors).toEqual([]);
-    expect(page).toMatchObject({ id: contract.page, kind: 'custom', views: [{
+    expect(page).toMatchObject({ id: contract.page, kind: 'custom', experimental: true, views: [{
       id: contract.view, element: contract.element, data: { sources: contract.sources }, prompt: 'none'
     }] });
-    expect(authoritativeDashboard.dashboard.navigation[0].pages).toContain(contract.page);
+    expect(authoritativeDashboard.dashboard.navigation[0].pages).not.toContain(contract.page);
+    expect(authoritativeDashboard.dashboard.navigation.find(
+      (/** @type {{ experimental?: boolean }} */ section) => section.experimental === true
+    )?.pages).toContain(contract.page);
     expect(wizard.steps.map((step) => step.id)).toEqual(contract.steps);
     expect(wizard.steps.flatMap((step) => step.fields.map((field) => field.id))).toEqual(contract.fields);
     expect(wizard.steps[0].fields[0]).toMatchObject({ id: 'pattern', control: 'cards', required: true, 'advance-on-select': true });

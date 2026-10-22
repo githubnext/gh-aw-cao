@@ -12,7 +12,7 @@
       "subject": "Author-selected requirements and pinned upstream workflow patterns, not operational authority.",
       "objective": "Review a complete generation prompt before handing it to a coding agent.",
       "acceptance": "Preserve explicit scope, safe outputs and success criteria; treat mined patterns as historical guidance; never install or activate generated work.",
-      "experimental": false,
+      "experimental": true,
       "parameters": [],
       "queries": []
     },

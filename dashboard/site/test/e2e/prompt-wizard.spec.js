@@ -28,6 +28,7 @@ for (const width of [390, 1280]) {
     await page.addStyleTag({ content: getPrimerStyles() });
     const root = page.locator('.prompt-wizard');
     await expect(root).toBeVisible();
+    await expect(page.locator('.title-area [data-page-experimental]')).toBeVisible();
     const tabs = root.locator('.prompt-wizard-progress button');
     await expect(tabs).toHaveCount(3);
     await expect(tabs.nth(2)).toBeDisabled();
@@ -132,6 +133,12 @@ test.describe('populated dashboard wizard', () => {
         await page.goto(`${server.url}/#page-wizard`);
         await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
         await expect(page.locator('.prompt-wizard')).toBeVisible();
+        await expect(page.locator('.title-area [data-page-experimental]')).toBeVisible();
+        const experimentalNavigation = page.locator('.primary-nav [data-nav-section="Experimental"]');
+        await expect(experimentalNavigation).toHaveAttribute('open', '');
+        await expect(experimentalNavigation.getByRole('link', {
+          name: 'Workflow wizard, Experimental', exact: true, includeHidden: true
+        })).toHaveCount(1);
         await expect(page.locator('.first-load-overlay')).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Custom automation', exact: true })).toBeVisible();
         const cardContent = page.locator('.prompt-wizard-card .issue-list-card-content').first();

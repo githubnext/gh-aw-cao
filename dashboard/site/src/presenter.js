@@ -1337,6 +1337,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-page-id': page.id,
       'data-page-title': title,
       'data-page-description': page.description ?? '',
+      'data-page-experimental': page.experimental === true ? 'true' : undefined,
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
       'data-route-title-format': page.route?.['title-format'],

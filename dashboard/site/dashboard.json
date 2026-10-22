@@ -1166,8 +1166,7 @@
       {
         "pages": [
           "overview",
-          "marketplace",
-          "wizard"
+          "marketplace"
         ]
       },
       {
@@ -1191,6 +1190,7 @@
         "label": "Experimental",
         "experimental": true,
         "pages": [
+          "wizard",
           "model-routing",
           "skills",
           "steering",
