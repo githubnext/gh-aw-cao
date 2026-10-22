@@ -189,7 +189,7 @@ test("dashboard bootstraps only when neither cache nor run is available and alwa
     "Install dashboard build dependencies",
     "Upgrade fallback activity data",
     "Validate restored activity data",
-    "Assess activity database health",
+    "Repair activity database and apply retention",
     "Assemble Dashboard Language site",
     "Upload dashboard artifact",
   ];

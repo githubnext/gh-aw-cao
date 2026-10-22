@@ -39,7 +39,7 @@ below; do not build or install the extension when the runtime or cache is absent
    queries, then canonical collection queries, then raw Dashboard Language.
 4. Preserve result `availability`, `completeness`, `freshness`, and `as-of`.
    Missing, stale, partial, zero, and complete evidence are different states.
-5. Run `node activity/cao.mjs doctor` before trusting a snapshot whose health is uncertain.
+5. Run `node activity/cao.mjs repair-database` to repair a snapshot whose health is uncertain. This mutates the snapshot, backs up before repair, and applies retention even without corruption; use `--ttl-days all --run-ttl-days all` for historical data.
 6. Report the command form, source snapshot, filters, record identifiers, and
    evidence limitations. Keep downloaded `.cao/` data uncommitted.
 
@@ -57,7 +57,7 @@ below; do not build or install the extension when the runtime or cache is absent
 | Run a reviewed query | `gh cao query QUERY_ID --limit N [--param NAME=VALUE]` |
 | Query a canonical collection | `gh cao query --collection COLLECTION [--where FIELD=VALUE] --limit N` |
 | Query one known record | `gh cao query --collection COLLECTION --id ID` |
-| Diagnose the projection | `node activity/cao.mjs doctor` |
+| Repair the projection and apply retention | `node activity/cao.mjs repair-database` |
 
 Use `--database FILE` only for a non-default SQLite projection. Use `--json`
 when another tool will consume the result. For raw Dashboard Language, pipe one

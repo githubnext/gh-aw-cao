@@ -1,4 +1,4 @@
-export function runDoctor({
+export function runRepairDatabase({
   options,
   databasePath,
   doctorSqliteDatabase,

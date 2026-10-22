@@ -94,6 +94,23 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
       assert.equal(result.stderr, "Error: Repository enrollment requires gh cao repos add OWNER/REPO; Node cao add --repository is no longer supported.\n");
     }
     run("git", ["diff", "--exit-code"], checkout);
+    assert.match(help, /cao repair-database\b/);
+    assert.doesNotMatch(help, /cao doctor\b/);
+    assert.equal(existsSync(path.join(checkout, "activity/commands/repair-database.mjs")), true);
+    assert.equal(existsSync(path.join(checkout, "activity/commands/doctor.mjs")), false);
+    const database = path.join(temporary, "snapshot.sqlite");
+    const shards = path.join(temporary, "shards");
+    mkdirSync(shards);
+    run(process.execPath, ["activity/cao.mjs", "ingest-jsonl", "--input-dir", shards, "--database", database], checkout);
+    const repair = JSON.parse(run(process.execPath, [
+      "activity/cao.mjs", "repair-database", "--database", database,
+      "--ttl-days", "all", "--run-ttl-days", "all",
+    ], checkout));
+    assert.equal(repair.command, "repair-database");
+    assert.equal(repair.healthy, true);
+    const retired = spawnSync(process.execPath, ["activity/cao.mjs", "doctor", database], { cwd: checkout, encoding: "utf8" });
+    assert.equal(retired.status, 1);
+    assert.match(retired.stderr, /Unknown command: doctor; use repair-database/);
     assert.equal(existsSync(path.join(checkout, "cao.sh")), false);
     const { parseDocuments } = await import(pathToFileURL(path.join(checkout, "dashboard/site/src/validator-dashboard.js")));
     const errors = [];

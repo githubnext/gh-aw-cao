@@ -103,7 +103,7 @@ test("first deployment builds a publishable dashboard with campaigns and no acti
 
   await runBuildStep("Upgrade fallback activity data", temporaryRoot);
   await runBuildStep("Validate restored activity data", temporaryRoot);
-  const [health] = await runBuildStep("Assess activity database health", temporaryRoot);
+  const [health] = await runBuildStep("Repair activity database and apply retention", temporaryRoot);
   assert.equal(JSON.parse(health.stdout).healthy, true);
   await runBuildStep("Assemble Dashboard Language site", temporaryRoot);
 
@@ -155,7 +155,7 @@ test("collected runs and audit evidence survive Dashboard upgrade, publication a
     envelopes.map((envelope) => JSON.stringify(envelope)).join("\n") + "\n");
   await runBuildStep("Upgrade fallback activity data", temporaryRoot);
   await runBuildStep("Validate restored activity data", temporaryRoot);
-  const [health] = await runBuildStep("Assess activity database health", temporaryRoot);
+  const [health] = await runBuildStep("Repair activity database and apply retention", temporaryRoot);
   const report = JSON.parse(health.stdout);
   assert.equal(report.healthy, true);
   assert.equal(report.after.counts.runs, 1);

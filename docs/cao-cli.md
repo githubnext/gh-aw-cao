@@ -219,7 +219,7 @@ to invoke it as `gh cao`.
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
-| Node-only administration | `node activity/cao.mjs doctor`, `node activity/cao.mjs setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
+| Node-only administration | `node activity/cao.mjs repair-database`, `node activity/cao.mjs setup-auth hosted-cli` | Mutating SQLite repair/retention and dedicated hosted-executor App creation; neither has an equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -363,8 +363,8 @@ the exact current control repository. Campaign installation never commits, pushe
 or dispatches work. Prepare the root runtime with `gh cao setup`, not `gh cao add`;
 review and commit generated workflows and policy together.
 
-`gh cao doctor` is deliberately **not** `node activity/cao.mjs doctor`: use the latter for
-the existing SQLite snapshot check/repair operation. Neither Activity nor
+`gh cao doctor` is deliberately **not** `node activity/cao.mjs repair-database`: use the latter for
+the existing mutating SQLite snapshot repair/retention operation. Neither Activity nor
 Dashboard Actions is switched to the Go executable.
 
 ### Publish and refresh workflow value
@@ -748,7 +748,22 @@ gh cao prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-lo
 
 Without `--database`, the command needs no downloaded snapshot and includes no evidence rows. With `--database FILE`, it executes the named query against that existing snapshot and includes a bounded preview; this does not grant rollout authority. Use `--dashboard FILE` to experiment with a different dashboard definition.
 
-Run `node activity/cao.mjs doctor` to validate and repair the downloaded SQLite snapshot. This is different from `gh aw doctor`, which validates the workflow installation and repository setup.
+Run `node activity/cao.mjs repair-database --database snapshot.sqlite` (or the npm
+`cao repair-database` bin) to repair a SQLite snapshot and apply retention. This
+is **not a read-only check**: it creates a backup before repair and may prune
+expired or orphaned records even when SQLite integrity is healthy. Existing
+backup filenames retain the `.doctor-backup-` prefix. The default database is
+`.cao/gh-aw-logs.sqlite`; `--ttl-days` defaults to 7 and `--run-ttl-days` defaults
+to 30 when `--ttl-days` is omitted, otherwise it follows that explicit TTL.
+Use `--ttl-days all --run-ttl-days all` to retain historical records without
+age-based pruning; structural repairs still apply.
+
+The JSON report identifies `command: "repair-database"` and retains the health,
+before/after diagnostics, repair actions, errors, and backup path. Exit status
+is 0 when healthy, 2 when the report remains unhealthy, and 1 for command errors.
+The old Node `doctor` command is rejected, not aliased. This is different from
+`gh aw doctor`, which validates the workflow installation and repository setup;
+native `gh cao doctor` and `cao-dashboard doctor` are unchanged.
 
 ## Evaluate and Evolve
 

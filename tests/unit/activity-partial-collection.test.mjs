@@ -146,7 +146,7 @@ for (const [mode, expectedRuns, expectedDownloads] of [
       "activity/cao.mjs", "query", "--database", item.database, "--collection", "runs",
     ]);
     assert.deepEqual(JSON.parse(stdout).map((run) => run.githubRunId).sort(), expectedRuns);
-    const health = await execute(process.execPath, ["activity/cao.mjs", "doctor", "--database", item.database]);
+    const health = await execute(process.execPath, ["activity/cao.mjs", "repair-database", "--database", item.database]);
     assert.equal(JSON.parse(health.stdout).healthy, true);
     const sources = JSON.parse(await readFile(item.inventory, "utf8"));
     const merged = mergeInventoryDashboardSources([sources]);

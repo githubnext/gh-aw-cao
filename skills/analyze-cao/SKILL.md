@@ -24,11 +24,11 @@ does not apply.
 4. Preserve availability and freshness metadata in the result.
 5. Report source identifiers, timestamps, filters, and uncertainty.
 
-Use this skill when a user asks to inspect, analyze, investigate, or summarize Central Agentic Ops activity data from the deployed dashboard snapshot or another published dashboard data URL.
+Use for CAO activity analysis from a published dashboard snapshot.
 
 ## Deterministic boundary
 
-Use `gh cao download`, `node activity/cao.mjs audit-jsonl`, `node activity/cao.mjs doctor`, and reviewed `gh cao query`
+Use `gh cao download`, `node activity/cao.mjs audit-jsonl`, `node activity/cao.mjs repair-database`, and reviewed `gh cao query`
 commands for acquisition, validation, filtering, and projection. The agent
 chooses the question and interprets availability, freshness, completeness, and
 results. Do not reproduce Dashboard Language queries or filter canonical rows
@@ -131,10 +131,12 @@ running commands. See [Agent analysis](https://github.com/githubnext/gh-cao/blob
 10. If database health is in doubt, run:
 
    ```bash
-   node activity/cao.mjs doctor
+   node activity/cao.mjs repair-database
    ```
 
-   Use `--ttl-days all` only for intentional historical backfills.
+   This mutates the snapshot, backs up before repair, and applies retention even
+   without corruption. Use `--ttl-days all --run-ttl-days all` for intentional
+   historical backfills.
 
 ## Collections
 

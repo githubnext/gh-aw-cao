@@ -53,7 +53,7 @@ async function main() {
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
-    if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+    if (typeof output === 'object' && output?.command === 'repair-database' && !output.healthy) process.exitCode = 2;
   } catch (error) {
     if (!controller.signal.aborted || error !== controller.signal.reason) throw error;
     process.exitCode = terminationSignal === 'SIGINT' ? 130 : 143;
