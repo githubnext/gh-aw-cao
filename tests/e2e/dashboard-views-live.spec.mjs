@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardPagesPreview } from "../helpers/dashboard-pages-preview.mjs";
 import {
   dashboardAssessmentCleanupBudgetMs,
   dashboardAssessmentPageHash,
@@ -81,11 +81,9 @@ test("each selected dashboard view renders with live data", async ({ context }, 
     if (process.env.DASHBOARD_PAGE_IDS === "") return;
     if (!sourceUrl) throw new Error("DASHBOARD_DATA_URL is required.");
 
-    preview = await startDashboardServer({
+    preview = await startDashboardPagesPreview({
       downloadData: (destination) =>
         downloadDeployedDashboardData(destination, sourceUrl, fetch, maximumActivityShards),
-      host: "127.0.0.1",
-      port: 0,
     });
     const dashboardResponse = await fetch(`${preview.url}/dashboard.json`);
     if (!dashboardResponse.ok) {

@@ -28,11 +28,11 @@ export async function startLocalDashboardPreview({
   generateQuery,
   enhanceQueryIntent,
 }) {
-  const localServerPath = await resolveBundledResource("localServer");
+  const localServerPath = await resolveBundledResource("canvasServer");
   const localServer = await import(pathToFileURL(localServerPath).href);
-  if (typeof localServer.startDashboardServer !== "function") {
+  if (typeof localServer.startCanvasServer !== "function") {
     throw new Error(
-      "dashboard/local-server.mjs does not export startDashboardServer.",
+      "dashboard/canvas-server.mjs does not export startCanvasServer.",
     );
   }
 
@@ -57,13 +57,12 @@ export async function startLocalDashboardPreview({
       });
       siteRoot = stagedSite;
     }
-    const preview = await localServer.startDashboardServer({
+    const preview = await localServer.startCanvasServer({
       workingDirectory: workspace,
       siteRoot,
       catalogRoot: isWorkspaceDashboard ? dirname(dashboardDirectory) : workspace,
       repository,
       ghExecutable,
-      canvas: true,
       generateQuery,
       enhanceQueryIntent,
       dataBackend,

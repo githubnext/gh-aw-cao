@@ -135,7 +135,7 @@ This option has no server, so there's no server-side OpenTelemetry endpoint to c
 | Credential health | Skipped `create-github-app-token` steps, admission capacity gates, and authentication failures show which credential a run used. For details, see the [GitHub Apps](deployment-actions-github-app.md#monitoring-the-deployment) and [fine-grained PAT](deployment-actions-pat.md#monitoring-the-deployment) profiles. |
 | Agentic workflow traces | Orchestrators and workers export OpenTelemetry spans through gh-aw. To turn on export, set the `GH_AW_DEFAULT_OTLP_ENDPOINT` variable and the `GH_AW_DEFAULT_OTLP_HEADERS` secret at the repository, organization, or enterprise level. For more information, see [Optional observability](configuration.md#optional-observability). |
 | Browser diagnostics | Add `?debug=1`, `?debug=*`, or a category filter such as `?debug=data:query,-render:*` to the dashboard URL. The browser console then shows structured diagnostics that contain no sensitive data. `?debug=data:query` shows timings for each query stage. |
-| Local reproduction | In a checkout of the catalog repository, run `npm run dashboard:local -- --repo OWNER/REPOSITORY` to download the published data and preview it locally. To query the same data with SQLite, see [Use local SQLite](dashboard-data-ingestion.md#use-local-sqlite). |
+| Local reproduction | In a catalog checkout, set `DASHBOARD_DATA_URL` to the deployed Pages URL and run `npm run dashboard:local -- --download-sqlite` for Go/SQLite serving. To test browser IndexedDB, build an explicit Pages simulation from an Activity snapshot and serve it with Go; see [Choose a local serving mode](dashboard-data-ingestion.md#choose-a-local-serving-mode). |
 
 ## What this deployment guarantees
 

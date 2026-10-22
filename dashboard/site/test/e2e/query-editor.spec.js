@@ -13,17 +13,17 @@ let server;
 let workspace = '';
 
 test.beforeAll(async () => {
-  const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+  const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
   workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-dashboard-e2e-', import.meta.url)));
   const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
   await cp(siteRoot, join(workspace, 'site'), {
     recursive: true,
     filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
   });
-  server = await startDashboardServer({
+  server = await startCanvasServer({
     workingDirectory: workspace,
     siteRoot: join(workspace, 'site'),
-    catalogRoot: null, port: 0, canvas: true, dataBackend,
+    catalogRoot: null, port: 0, dataBackend,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => ({}), approveCliAction: async () => false,
     generateQuery: async () => ({ document: JSON.stringify(previewDocument, null, 2) }),

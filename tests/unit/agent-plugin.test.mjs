@@ -158,7 +158,7 @@ test("portable skill validation rejects client-specific top-level fields and bro
     ].join("\n"));
     const fixedErrors = await validateAgentPlugin(directory);
     assert.ok(!fixedErrors.some((error) => error.includes("unsupported skill field")));
-    assert.ok(fixedErrors.some((error) => error.includes("dashboard/local-server.mjs: missing package file")));
+    assert.ok(fixedErrors.some((error) => error.includes("dashboard/canvas-server.mjs: missing package file")));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 

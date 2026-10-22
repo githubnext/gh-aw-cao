@@ -137,7 +137,7 @@ WebMCP requires a secure context, so use `https://` or `localhost`.
    repository root:
 
    ```bash
-   npm run dashboard:local -- --repo OWNER/REPOSITORY
+   DASHBOARD_DATA_URL=https://OWNER.github.io/REPOSITORY/ npm run dashboard:local -- --download-sqlite
    ```
 
 3. Open the browser developer tools and list the registered tools:

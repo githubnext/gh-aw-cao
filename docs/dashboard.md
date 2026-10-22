@@ -146,24 +146,16 @@ its reviewed workflows and policy.
 
 ### Configure compiler defaults
 
-**Maintenance → Governance** is visible only in local server `--admin` mode or
-to an authorized hosted administrator with a current, assured session. It is
-hidden in published dashboards, ordinary local previews, and Copilot canvas
-mode, including through direct links. To edit defaults, start an authorized
-loopback admin dashboard:
+**Maintenance → Governance** is visible only to an authorized hosted
+administrator with a current, assured session. It is hidden in published
+dashboards, local Go previews and Copilot canvases, including through direct
+links. The standalone Node `--admin` mode has been retired.
 
-```sh
-npm run dashboard:local -- --repo OWNER/REPOSITORY --admin
-```
-
-Select **Organization**, **Enterprise**, or **Repository** and enter the exact
-target. **Load defaults** uses `gh aw env get` to obtain every compiler default
-supported by the installed gh-aw version. Edit the complete YAML document,
-keeping values as quoted strings or `null`, then select **Preview changes**.
-Review the proposed sets and deletions, choose **Review and apply**, and confirm
-the exact scope and YAML. All commands use the existing approved CLI-action
-queue and your local GitHub CLI credentials. Reload after applying to verify
-the saved variables; recompile workflows to incorporate changed compiler defaults.
+Hosted repository installation tokens cannot administer organization or
+enterprise variables, so this editor remains disabled there. Use `gh aw env`
+outside the dashboard with administrative credentials for the exact chosen
+scope. Review sets and deletions before applying, verify saved variables and
+recompile workflows to incorporate changed compiler defaults.
 
 Organization and enterprise variables are inherited by repositories with access
 to them, including CAO repositories, but may also affect repositories outside

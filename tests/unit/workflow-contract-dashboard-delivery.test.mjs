@@ -86,6 +86,7 @@ test("dashboard authoring corpus workflow generates only validated training exam
 test("dashboard CI runs the campaign quality gates", () => {
   const source = workflow("cid.yml");
   const jobs = generatedJobs(source);
+  const pages = jobs.get("pages");
   const lintUnit = jobs.get("lint-unit");
   const playwrightIntegration = jobs.get("playwright-integration");
   const ingestionScale = jobs.get("ingestion-scale");
@@ -112,6 +113,7 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.deepEqual(
     [...jobs.keys()],
     [
+      "pages",
       "lint-unit",
       "playwright-integration",
       "ingestion-scale",
@@ -123,6 +125,10 @@ test("dashboard CI runs the campaign quality gates", () => {
       "lighthouse-comment"
     ]
   );
+  assert.deepEqual(pages.needs, []);
+  assert.match(pages.block, /go-version-file: server\/go\.mod/);
+  assert.match(pages.block, /run: npm run test:e2e:dashboard-pages/);
+  assert.match(pages.block, /path: test-results\/dashboard-pages\//);
   assert.deepEqual(lintUnit.needs, []);
   assert.deepEqual(playwrightIntegration.needs, []);
   assert.match(playwrightIntegration.block, /if: github\.event_name != 'pull_request'/);

@@ -13,7 +13,7 @@ import { originalSessions, replay, runCacheLine } from '../model-resolution-fixt
  */
 async function startRoutingServer(dataBackend, shards, run, timestamp, repository = 'octo/api') {
   const [organization, name] = repository.split('/');
-  const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+  const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
   const workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-routing-e2e-', import.meta.url)));
   const siteRoot = fileURLToPath(new URL('../../', import.meta.url));
   await cp(siteRoot, join(workspace, 'site'), {
@@ -21,9 +21,9 @@ async function startRoutingServer(dataBackend, shards, run, timestamp, repositor
     filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
   });
   /** @type {{ url: string, close: () => Promise<void> }} */
-  const server = await startDashboardServer({
+  const server = await startCanvasServer({
     workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
-    port: 0, canvas: true, dataBackend,
+    port: 0, dataBackend,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
     approveCliAction: async () => false,

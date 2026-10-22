@@ -68,7 +68,7 @@
     "dashboard/local-custom-views.mjs",
     "dashboard/local-github-service.mjs",
     "dashboard/local-release-metadata.mjs",
-    "dashboard/local-server.mjs",
+    "dashboard/canvas-server.mjs",
     "dashboard/local-sqlite-backend.mjs",
     "dashboard/local-sqlite-worker.mjs",
     "dashboard/query-editor-contract.mjs",

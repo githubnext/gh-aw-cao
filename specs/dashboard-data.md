@@ -583,8 +583,10 @@ The implementation profile defined by this specification is:
 
 ## 5.2 Go server profile
 
-The Go server profile SHALL be implemented independently of the existing
-Node.js dashboard preview server. It SHALL:
+Go SHALL be the serving runtime for local SQLite, hosted PostgreSQL, and explicit
+static Pages previews. The Node.js authoring bridge SHALL remain internal to
+Copilot canvas development rather than provide a standalone serving mode. The
+Go server data profile SHALL:
 
 * ingest `inventory-sources.json`, `payload-hashes.json`, and compacted
   `gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl` from a deployed

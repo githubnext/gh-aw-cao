@@ -105,7 +105,7 @@ preview output, and explicit write approval cannot be expressed by evidence
 marks. It never queries activity data or infers configuration from dashboard
 rows. The Governance page under Maintenance uses this element.
 
-Governance is visible only on a local server started with `--admin` or to an
+Governance is visible only to an
 authorized hosted administrator with a current, assured session. Published
 dashboards, ordinary local previews, and Copilot canvas mode do not expose it,
 including through direct links. Editing defaults still requires the local
@@ -1292,8 +1292,8 @@ runtime sources retain their normal explicit failure states.
 Any page may declare `requires: { capability: cli-queue }` or
 `requires: { capability: admin }`. The mapping accepts only the required
 `capability` key. `cli-queue` uses the same explicit transport capability as CLI
-actions; `admin` requires the server-issued administrator capability from local
-`--admin` mode or an authorized hosted administrator session with current
+actions; `admin` requires the server-issued administrator capability from an
+authorized hosted administrator session with current
 step-up assurance. Neither is inferred from URL parameters, the data backend
 type, or credential reach. Without the capability, the presenter omits
 the page from desktop and mobile navigation and route activation, and source
@@ -1502,9 +1502,10 @@ displayed batch. The built-in update and upgrade actions declare an **Auto merge
 checkbox, unchecked by default, which adds `--auto-merge` only when selected.
 This gh-aw option requires **Create pull request**.
 
-For CLI-action presentation and confirmation, canvas CLI-action mode also
-includes explicitly enabled local admin previews (`local-server.mjs --admin`).
-This host capability does not change the document vocabulary, copy-only
+For CLI-action presentation and confirmation, trusted canvas authoring and
+authorized hosted execution use explicit host capabilities; there is no
+standalone Node admin preview.
+These capabilities do not change the document vocabulary, copy-only
 restrictions, action authority, or per-run confirmation requirements. Commands
 start headlessly after confirmation in the web interface, without a second
 confirmation in the Copilot app. The approval dialog executes at most once and

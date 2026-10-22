@@ -2,10 +2,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
 
 for (const width of [1440, 390]) {
-  test(`admin action opens a persistent full-view terminal at ${width}px`, async ({ page }, testInfo) => {
+  test(`canvas action opens a persistent full-view terminal at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     /** @type {(() => void) | undefined} */
     let finish;
@@ -13,9 +13,10 @@ for (const width of [1440, 390]) {
     let emitOutput;
     let runs = 0;
     let cancellations = 0;
-    const preview = await startDashboardServer({
+    const preview = await startCanvasServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', admin: true, port: 0,
+      repository: 'acme/control', port: 0,
+      approveCliAction: async () => true,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},

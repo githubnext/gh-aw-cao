@@ -3,7 +3,7 @@
 The [TypeSpec HTTP contract](spec/README.md) is the source for generated
 OpenAPI 3.1 and selected JSON Schemas; consult it before changing server routes.
 
-The `server/` module is an optional backend for running the Central Agentic Ops
+The `server/` module is the unified serving runtime for the Central Agentic Ops
 dashboard with server-owned persistence and query execution. It ingests the
 same compacted data published with the deployed dashboard, stores current
 native entity rows in PostgreSQL and executes hosted Dashboard Language plans
@@ -31,6 +31,35 @@ the focused contracts.
 
 The browser never connects directly to Postgres or Redis and never receives
 database credentials. It communicates only with the same-origin HTTP(S) API.
+
+### Local development and Pages simulation
+
+From the repository root, `npm run dev` or `npm run dashboard:local` builds
+the dashboard and starts Go `serve` with its verified SQLite cache. The Node
+server is retired; only an internal loopback canvas authoring bridge remains.
+
+For explicit Pages/IndexedDB testing:
+
+```sh
+npm run dashboard:pages:build -- --fixture
+npm run dashboard:pages -- --base-path /gh-cao/
+npm run test:e2e:dashboard-pages
+```
+
+Use `--activity-dir PATH` instead of `--fixture` to prepare an existing Activity
+snapshot offline. Preparation runs production normalization, SQLite ingestion,
+hashing and Dashboard building; fixture data is explicitly synthetic. It does
+not simulate collection, Actions permissions, cache/artifact transport, TLS or
+GitHub Pages infrastructure. The current Actions runtime simulator accepts
+compiled dry-run agentic locks, not the ordinary Activity/Dashboard workflows.
+
+`serve-pages --site ../.tmp/dashboard-pages --listen 127.0.0.1:8080`
+serves the prepared artifact unchanged, optionally below `--base-path /REPO/`.
+It provides no hosted bootstrap, authentication or query API, so the page uses
+its real browser IndexedDB data path. The listener is numeric-loopback-only,
+and directory listings and escaping symlinks are refused. Paths in npm Go
+commands resolve relative to `server/`. Static Pages is an explicit mode,
+never a fallback for hosted serving.
 
 ## Local GitHub bootstrap integration
 
@@ -305,21 +334,21 @@ reviewed `control-plane.web.host` configuration, replace legacy `host.redis` wit
 }
 ```
 
-The local launcher supports each reviewed backend:
+Invoke Go directly for each reviewed hosted backend:
 
 ```bash
-npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
-npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
-npm run dashboard:local -- --operational-store postgres --policy .github/workflows/cao.postgres.json
+CAO_POLICY_PATH="$PWD/.github/workflows/cao.redis.json" go -C server run ./cmd/cao-dashboard serve-hosted --operational-store redis
+CAO_POLICY_PATH="$PWD/.github/workflows/cao.memory.json" go -C server run ./cmd/cao-dashboard serve-hosted --operational-store memory
+CAO_POLICY_PATH="$PWD/.github/workflows/cao.postgres.json" go -C server run ./cmd/cao-dashboard serve-hosted --operational-store postgres
 ```
 
-Supply your existing reviewed policy/profile at `--policy` (the paths above are
-examples), or use `CAO_POLICY_PATH`. The launcher builds and runs `serve-hosted`;
+Supply your existing reviewed policy/profile through `CAO_POLICY_PATH` (the paths
+above are examples). There is no Node launcher;
 the requested backend must match the resolved policy and cannot override it.
 It preserves the ordinary hosted authentication and transport requirements.
 Direct TLS uses the actual TLS connection without requiring forwarded headers
 unless `CAO_TRUSTED_PROXY_CIDRS` explicitly configures a proxy.
-Omitting the selector keeps the separate browser-only preview unchanged.
+Ordinary `npm run dashboard:local` instead selects local Go/SQLite serving.
 
 Use `serve-hosted` with the ordinary mandatory OAuth, HTTPS/proxy, organization
 or team, administrator, and webhook-secret configuration. Keep admission,

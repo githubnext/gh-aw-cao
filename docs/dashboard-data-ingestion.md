@@ -52,23 +52,22 @@ missing artifacts from an existing successful
 run, and invalid restored snapshots still fail rather than being treated as
 normal startup.
 
-## Local administrative actions
+## Canvas administrative actions
 
-The shared CLI executor is packaged in `dashboard/cli-actions.mjs` so installed
-campaigns can run local administrative actions without the Copilot extension.
-The extension re-exports the same executor rather than maintaining a separate copy.
+The shared CLI executor is packaged in `dashboard/cli-actions.mjs` for the
+trusted Copilot canvas bridge. Ordinary Go local serving and static Pages
+previews do not execute local commands. There is no standalone Node admin server.
 
-Local previews refresh the latest stable gh-aw release from GitHub when
+Canvas previews refresh the latest stable gh-aw release from GitHub when
 downloading their data. The **Latest** compiler version and upgrade state use
 this current release, not the release recorded in an older published snapshot.
 Installed versions and their observation times remain snapshot evidence.
 If release discovery fails, startup reports an error rather than presenting
 the snapshot's stale release as current.
 
-Run `npm run dashboard:local -- --admin --repo OWNER/REPOSITORY` to opt in to
-dashboard-declared CLI actions on the local preview server. Without `--admin`,
-the local preview remains copy-only. Admin mode is limited to a loopback host;
-it cannot be combined with canvas mode or the hosted Go server.
+Open the dashboard in a trusted Copilot canvas to use dashboard-declared CLI
+actions. The internal loopback-only authoring bridge requires paired execution
+and approval callbacks supplied by the host; a web page cannot grant execution.
 
 Each action opens a command-review dialog and requires explicit confirmation
 for every run. Once the server durably queues the approved command, the dashboard
@@ -92,7 +91,7 @@ Terminal input is disabled: commands must not require interactive keyboard input
 emulator is an interaction-only extension of the existing declarative
 `cli-actions` contract, not a dashboard data query or an arbitrary shell.
 
-Commands run in the server's working directory with the local GitHub CLI
+Commands run in the canvas's working directory with the local GitHub CLI
 credentials and the existing supported-command allowlist, without shell
 interpolation. Actions using `gh aw` may install the pinned extension first.
 The server admits queued commands within its concurrency and quota limits.
@@ -101,7 +100,7 @@ offers **Copy** instead of a cancellation button and **Retry command** for faile
 or timed-out work. Starting another action requires fresh confirmation in the
 web interface, not an additional confirmation in the Copilot app.
 Keep the capability URL private and
-do not expose or forward the admin server to other users. This switch does not
+do not expose or forward the canvas bridge to other users. Canvas execution does not
 change CAO rollout policy or grant remote workflow authority.
 
 ## Hosted server data pipeline
@@ -372,20 +371,31 @@ queries, instead of through collections, see
 
 Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
 
-### Choose a local preview data backend
+### Choose a local serving mode
 
-`npm run dashboard:local` selects the dashboard's query backend with `--data-backend`:
+The Go server owns ordinary local, hosted, and static serving. Select the mode
+explicitly rather than switching a Node preview's data backend:
 
-| Backend | Behavior |
+| Mode | Behavior |
 |---------|----------|
-| `sqlite` | Default for local previews. Ingests the downloaded inventory and Activity shards into a temporary server-side SQLite projection; the page uses the remote HTTP query backend instead of browser IndexedDB. |
-| `indexeddb` | Opt-in browser backend. The page uses the static browser backend. |
-| `postgres` | Selects the Go/PostgreSQL server. It needs the reviewed host policy, built site, database, and OAuth/HTTPS configuration, and does not support canvas previews. |
+| `npm run dashboard:local` | Builds the site and invokes Go `serve`. It reuses a verified SQLite cache, downloading the selected deployed snapshot when missing or explicitly refreshed. The browser uses the HTTP query backend. |
+| `npm run dashboard:pages` | Invokes Go `serve-pages` against prepared static output, with real browser IndexedDB and no hosted bootstrap or query APIs. |
+| Go `serve-hosted` | Uses PostgreSQL and requires reviewed host policy, OAuth authorization and HTTPS/proxy configuration. It never falls back to browser storage. |
 
 ```bash
-npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY
+DASHBOARD_DATA_URL=https://OWNER.github.io/REPOSITORY/ npm run dashboard:local -- --download-sqlite
+
+npm run dashboard:pages:build -- --activity-dir PATH
+npm run dashboard:pages -- --base-path /REPOSITORY/
 ```
 
-SQLite initialization failures stop startup; the preview does not silently fall back to IndexedDB. The canvas open input accepts `dataBackend: "sqlite"` or `"indexeddb"`.
+Use `--fixture` instead of `--activity-dir PATH` for explicitly labelled synthetic
+evidence. Preparation reuses Activity normalization and the production Dashboard
+build; it does not simulate GitHub collection, Actions permissions or Pages
+infrastructure. Relative Go server paths resolve from `server/`.
+
+SQLite initialization failures stop startup rather than falling back to IndexedDB.
+Only the internal canvas authoring bridge retains the `dataBackend: "sqlite"`
+or `"indexeddb"` canvas input.
 
 For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md).

@@ -297,8 +297,14 @@ components:
     path: dashboard/site/
     responsibility: render bounded Dashboard Language query payloads
   local_dashboard_server:
-    path: dashboard/local-server.mjs
-    responsibility: expose capability-protected declared CLI actions only in local admin or trusted canvas sessions, preserving trusted approval
+    path: server/cmd/cao-dashboard/
+    responsibility: unify local SQLite serve, reviewed PostgreSQL/OAuth serve-hosted, and explicit loopback-only serve-pages for unchanged built Pages artifacts and repository base paths without hosted bootstrap or APIs; npm dev and dashboard:local build the site and invoke Go, never a Node launcher
+  dashboard_pages_simulation:
+    path: scripts/simulate-dashboard-pages.mjs
+    responsibility: prepare built static Pages output through production Activity normalization/SQLite ingestion and Dashboard building from an existing snapshot or explicitly labelled fixture, without simulating collection, Actions authority or artifact transport
+  canvas_authoring_bridge:
+    path: dashboard/canvas-server.mjs
+    responsibility: provide internal loopback-only Copilot canvas JSON reload, authoring callbacks, read-only GitHub access and data adapters; only paired trusted execution and approval adapters initialize command execution; no standalone CLI, admin mode, process replacement or Go launcher
   local_cli_queue:
     path: dashboard/cli-action-queue.mjs
     responsibility: own durable single-owner FIFO operational SQLite commands independently of browser lifetimes, with bounded concurrency, deadlines, cancellation, ordered output, retry ancestry and terminal-only UTC weekly retention
@@ -826,7 +832,9 @@ commands:
       manual_workflow_compile: gh aw compile --schedule-seed githubnext/gh-cao
       workflow_compile_locks: npm run compile:locks
       docs_build: npm run docs:build
-      dashboard_local: "npm run dashboard:local -- --repo OWNER/REPOSITORY"
+      dashboard_local: "npm run dashboard:local"
+      dashboard_pages_build: "npm run dashboard:pages:build -- --fixture"
+      dashboard_pages_serve: "npm run dashboard:pages -- --base-path /gh-cao/"
       dashboard_server_lint: npm run dashboard:server:lint
       dashboard_server_tests: npm run dashboard:server:test
       dashboard_server_e2e: npm run test:e2e:dashboard-server

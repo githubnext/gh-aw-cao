@@ -58,7 +58,7 @@ test("a relocated complete plugin resolves its own executable and specification 
     const specification = JSON.parse(await tools.readDashboardDataSpecification({ startLine: 1, endLine: 3 }));
     assert.ok(specification.path.startsWith(plugin));
     const resources = await import(pathToFileURL(join(plugin, "com.github.copilot/extensions/cao-dashboard/bundled-resources.mjs")).href);
-    assert.equal(await resources.resolveBundledResource("localServer"), join(plugin, "dashboard/local-server.mjs"));
+    assert.equal(await resources.resolveBundledResource("canvasServer"), join(plugin, "dashboard/canvas-server.mjs"));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

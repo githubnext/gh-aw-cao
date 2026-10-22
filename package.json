@@ -8,7 +8,10 @@
   "scripts": {
     "postinstall": "node dashboard/site/scripts/prepare-terminal.mjs",
     "install:gh-aw": "GH_AW_VERSION=$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
-    "dashboard:local": "node dashboard/local-server.mjs",
+    "dashboard:local": "go -C server run ./cmd/cao-dashboard serve",
+    "predashboard:local": "npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json",
+    "dashboard:pages": "go -C server run ./cmd/cao-dashboard serve-pages",
+    "dashboard:pages:build": "node scripts/simulate-dashboard-pages.mjs",
     "dashboard:server:build": "npm run dashboard:server:spec:check && npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json",
     "dashboard:server:redis-up": "docker-compose -f server/docker-compose.yml up -d redis",
     "dashboard:server:postgres-up": "docker-compose -f server/docker-compose.yml up -d postgres",
@@ -34,7 +37,7 @@
     "dashboard:data": "node activity/cao.mjs",
     "dashboard:data:download": "npm run dashboard:data -- download",
     "generate:agent-catalog": "node scripts/generate-agent-catalog.mjs",
-    "dev": "node dashboard/local-server.mjs --replace-existing --trace-file .cao-dashboard-traces/latest.jsonl",
+    "dev": "npm run dashboard:local --",
     "docs:dev": "astro dev",
     "docs:build": "astro build && node scripts/validate-agent-docs.mjs && node --test tests/integration/agent-docs-discovery.test.mjs",
     "docs:preview": "astro preview",
@@ -65,6 +68,7 @@
     "test:e2e:setup-pathways:contoso": "node scripts/verify-contoso-setup-pathways.mjs --verify-only",
     "test:e2e:dashboard-views": "playwright test --config=tests/playwright/configs/dashboard-views.config.mjs",
     "test:e2e:dashboard-server": "playwright test --config=tests/playwright/configs/dashboard-server.config.mjs",
+    "test:e2e:dashboard-pages": "playwright test --config=tests/playwright/configs/dashboard-pages.config.mjs",
     "test:e2e:cao-mcp-container": "node tests/e2e/cao-mcp-container.mjs",
     "test:e2e:dashboard-query-parity": "node tests/e2e/dashboard-query-parity.mjs",
     "test:e2e:dashboard-deployed": "playwright test --config=tests/playwright/configs/dashboard-deployed.config.mjs",
@@ -74,8 +78,7 @@
     "test:e2e:dashboard-ingestion": "playwright test --config=tests/playwright/configs/dashboard-ingestion.config.mjs",
     "test:stress:dashboard": "playwright test --config=tests/playwright/configs/dashboard-massive-scale.config.mjs",
     "test:memory:dashboard-overview": "playwright test --config=tests/playwright/configs/dashboard-overview-memory.config.mjs",
-    "debug:dashboard-worker-memory": "node tests/e2e/dashboard-worker-memory-trace.mjs --eager --debug=data:indexeddb,data:ingestion,data:performance",
-    "test:e2e:local-server": "playwright test --config=tests/playwright/configs/local-server.config.mjs"
+    "debug:dashboard-worker-memory": "node tests/e2e/dashboard-worker-memory-trace.mjs --eager --debug=data:indexeddb,data:ingestion,data:performance"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "7.3.1",

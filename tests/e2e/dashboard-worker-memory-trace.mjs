@@ -11,7 +11,7 @@
  */
 import { createServer } from "node:net";
 import { chromium } from "playwright";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardPagesPreview } from "../helpers/dashboard-pages-preview.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
 
 const sourceUrl = process.env.DASHBOARD_DATA_URL
@@ -77,10 +77,8 @@ function cdpClient(endpoint) {
   };
 }
 
-const preview = await startDashboardServer({
+const preview = await startDashboardPagesPreview({
   downloadData: (destination) => downloadDeployedDashboardData(destination, sourceUrl),
-  host: "127.0.0.1",
-  port: 0,
 });
 const port = await freePort();
 const browser = await chromium.launch({

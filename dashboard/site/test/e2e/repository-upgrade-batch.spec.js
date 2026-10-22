@@ -2,13 +2,13 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-const { startDashboardServer } = await import(new URL('../../../local-server.mjs', import.meta.url).href);
+const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
 /** @type {(command: string) => string[]} */
 const parseDashboardCommand = (await import(new URL('../../../cli-actions.mjs', import.meta.url).href)).parseDashboardCommand;
 
 for (const width of [1440, 390]) {
   test(`Upgrade copy dialog contains clicks inside the repository card at ${width}px`, async ({ page }, testInfo) => {
-    const preview = await startDashboardServer({
+    const preview = await startCanvasServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
       repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', port: 0,
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
@@ -87,17 +87,18 @@ for (const { width, canExecute } of [
     /** @type {() => void} */
     let finish = () => {};
     const execution = new Promise((resolve) => { finish = () => resolve(undefined); });
-    const preview = await startDashboardServer({
+    const preview = await startCanvasServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', admin: canExecute, port: 0,
+      repository: 'acme/control', caoUrl: 'https://ops.example.com/central/', port: 0,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-      executeCliAction: async (/** @type {{ command: string }} */ { command }) => {
+      approveCliAction: canExecute ? async () => true : undefined,
+      executeCliAction: canExecute ? async (/** @type {{ command: string }} */ { command }) => {
         commands.push(command);
         await execution;
         return { ok: true, exitCode: 0 };
-      },
+      } : undefined,
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };

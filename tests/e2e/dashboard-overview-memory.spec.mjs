@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startDashboardPagesPreview } from "../helpers/dashboard-pages-preview.mjs";
 import { performanceSnapshotTimestamp } from "../../dashboard/site/test/performance/lighthouse-contract.js";
 import { deployedActivityShardEntries } from "./dashboard-deployed-refresh-helpers.mjs";
 import { downloadDeployedDashboardData } from "./dashboard-view-data.mjs";
@@ -33,7 +33,7 @@ function numberSetting(name, fallback) {
 
 test.beforeAll(async () => {
   test.setTimeout(900_000);
-  preview = await startDashboardServer({
+  preview = await startDashboardPagesPreview({
     downloadData: async (destination) => {
       const response = await fetch(sourceUrl);
       if (!response.ok) throw new Error(`Dashboard manifest download failed: HTTP ${response.status}.`);
@@ -49,9 +49,6 @@ test.beforeAll(async () => {
       }
       if (!Number.isFinite(retentionAsOf)) throw new Error("Memory dataset contains no timestamped canonical evidence.");
     },
-    dataBackend: "indexeddb",
-    host: "127.0.0.1",
-    port: 0,
   });
 });
 
