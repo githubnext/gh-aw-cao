@@ -3,34 +3,6 @@
   "next_category": "Astro documentation generation",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T03:25:48Z",
-      "worker_run_id": "39716484463",
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        39714648806,
-        39713858687,
-        39712756450,
-        39712612466,
-        39712117669,
-        39711874159,
-        39710782426,
-        39709805802,
-        39708509403,
-        39706637559,
-        39706197220,
-        39704459343,
-        39704096906,
-        39703889092,
-        39702392148,
-        39701994784,
-        39697372755,
-        39697049120,
-        39695525774,
-        39694184337
-      ],
-      "outcome": "incomplete: the 2026-10-21T23:33:33Z to 2026-10-22T03:02:33Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Seven successful builds were comparable (four push and three schedule, across seven source SHAs): median/p90 end-to-end 184/398.2 seconds, initial queue or concurrency wait 3/4.4 seconds, queue-excluded execution 181/394.2 seconds, build job 117/364.8 seconds, and deploy job 29/53.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. Dependency installation was 23/304.6 seconds, Astro generation 14/15.4 seconds, dashboard-cache restoration 3/3 seconds, and Pages artifact upload 13/14 seconds. Trusted step metadata showed all seven builds restored the dashboard cache and skipped artifact fallback; one bounded log read verified both the npm package-cache and reusable dashboard-cache hits. During the remaining bounded log reads and open-issue check, the runner hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, further API and model work stopped. Complete repeated cache verification and duplicate-issue checking could not be completed, so no recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next. Eleven schedule runs produced three builds and eight freshness-only skips; two push builds had 303- and 307-second npm-ci outliers, disclosed rather than attributed to scheduling."
-    },
-    {
       "evaluated_at": "2026-10-22T03:44:33Z",
       "worker_run_id": "39718238057",
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -692,6 +664,34 @@
         39840996309
       ],
       "outcome": "no-op: the 2026-10-22T19:32:30Z to 2026-10-22T21:47:06Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Nine successful build-and-deploy runs were comparable (five push, three workflow_run, and one schedule, across six source SHAs): median/p90 end-to-end 110/131.2 seconds, initial queue 4/4.2 seconds, queue-excluded execution 107/127.4 seconds, build job 77/81.4 seconds, and deploy job 12/40.2 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful producer workflows were 31/39.6 seconds median/p90 end-to-end and their build jobs were 16/25 seconds. Dependency installation was 22/28.8 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2.2 seconds, and Pages upload 2/3 seconds. Bounded trusted logs verified npm package-cache hits of about 301 MiB and reusable dashboard-cache hits of about 3 MiB on the five newest comparable builds; trusted step metadata showed all nine builds skipped dashboard artifact fallback. Although dependency installation was 20.6% of median queue-excluded execution, it was already consistently cached, and the 16-36 second observed range does not identify a concrete correctness-preserving cache change expected to save 60 seconds or at least 16.1 seconds (15%). Caching node_modules would bypass npm ci clean-install semantics and transfer a similarly large platform-specific tree. No actionable dependency-cache recommendation met the threshold, so the category advanced. The 65-second Deploy Pages step on run 39851881587 was disclosed rather than attributed to dependency caching."
+    },
+    {
+      "evaluated_at": "2026-10-22T22:21:01Z",
+      "worker_run_id": "39863949279",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39861817815,
+        39860009827,
+        39859869900,
+        39858147029,
+        39856721920,
+        39853841365,
+        39851881587,
+        39850101910,
+        39849775463,
+        39848891781,
+        39848482868,
+        39848428490,
+        39848107063,
+        39846338334,
+        39845758662,
+        39845403154,
+        39845248093,
+        39843325812,
+        39843076599,
+        39842243038
+      ],
+      "outcome": "incomplete: the 2026-10-22T19:41:07Z to 2026-10-22T22:01:36Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. During bounded job-and-step metadata collection for the successful build-and-deploy paths, the runner hit an OS-thread resource limit (failed to create a new OS thread); only run 39849775463 returned complete job metadata before collection stopped. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful build-and-deploy runs, workflow/job median and p90 timings, repeated trusted cache-hit verification, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the Astro documentation generation category remains next."
     }
   ]
 }
