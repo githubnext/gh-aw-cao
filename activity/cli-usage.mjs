@@ -72,7 +72,8 @@ export const USAGE = `Usage:
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
-  cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+  cao repair-database [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+    Mutates SQLite: backs up before repairs and prunes expired/orphaned records, even without corruption.
   cao validate [--json] [--strict-warnings]
   cao download [--url URL] [--output DIRECTORY] [--manifest-sha256 DIGEST]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE] [--max-bytes BYTES] [--max-cache-bytes BYTES]

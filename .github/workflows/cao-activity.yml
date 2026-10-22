@@ -616,10 +616,10 @@ jobs:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
         run: node activity/cao.mjs cluster-problems --database "$ACTIVITY_DATABASE" --root .
 
-      - name: Validate activity database
+      - name: Repair activity database and apply retention
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
-        run: node activity/cao.mjs doctor --database "$ACTIVITY_DATABASE" --ttl-days 7 --run-ttl-days 30
+        run: node activity/cao.mjs repair-database --database "$ACTIVITY_DATABASE" --ttl-days 7 --run-ttl-days 30
 
       - name: Hash activity payloads
         env:

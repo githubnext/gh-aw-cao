@@ -180,13 +180,13 @@ test("CAO command guide covers the operator-facing command surface", () => {
   ]) {
     assert.match(docs, new RegExp(`gh cao ${command.replaceAll("-", "\\-")}`));
     const legacy = command.replace(/^campaigns /, "").replace(/^setup auth /, "setup-auth ");
-    assert.match(help, new RegExp(`cao ${legacy.split(" ")[0]}`));
+    assert.match(help, new RegExp(`cao ${legacy === "doctor" ? "repair-database" : legacy.split(" ")[0]}`));
   }
 });
 
 test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
   for (const command of [
-    "setup-auth hosted-cli", "doctor", "operational-value", "cluster-problems",
+    "setup-auth hosted-cli", "repair-database", "operational-value", "cluster-problems",
     "dashboard-complexity", "prune-dashboard", "validate --json",
   ]) {
     assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
@@ -221,7 +221,7 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /There is intentionally no `cao run` command/);
   assert.match(docs, /gh-aw owns workflow execution/);
   assert.match(docs, /`gh cao campaigns mode preview` writes `mode: review`/);
-  assert.match(docs, /different from `gh aw doctor`/);
+  assert.match(docs, /different from\s+`gh aw doctor`/);
   assert.match(docs, /Control-plane validation is Actions-only/);
   assert.match(docs, /node activity\/cao\.mjs validate --json/);
   assert.doesNotMatch(docs, /gh cao validate/);

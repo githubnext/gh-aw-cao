@@ -1087,7 +1087,7 @@ and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
-`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
+`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`
 and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
 not as an alternative operator surface.
