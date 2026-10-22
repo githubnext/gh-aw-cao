@@ -64,6 +64,19 @@ test("keeps every CAO command in its own command module", async () => {
   assert.deepEqual(moduleNames, [...commandHandlers.keys()].sort());
 });
 
+test("retains registered workflow-agent evidence APIs independently of the operator CLI", async () => {
+  const help = await caoApi.runCli(["--help"]);
+  for (const command of [
+    "queries", "query-info", "prompt", "query", "gh", "computation", "mcp", "download",
+  ]) {
+    assert.equal(typeof commandHandlers.get(command), "function", `${command} must stay registered`);
+    assert.ok(help.includes(`cao ${command} `), `${command} must stay discoverable`);
+  }
+  assert.match(help, /supported evidence APIs for agents inside agentic workflows/);
+  assert.match(help, /node activity\/cao\.mjs <command>/);
+  assert.match(help, /without building or installing gh cao/);
+});
+
 test("quickstart is not registered or advertised by the Node CLI", async () => {
   assert.equal(commandHandlers.has("quickstart"), false);
   assert.doesNotMatch(await caoApi.runCli(["--help"]), /quickstart/i);

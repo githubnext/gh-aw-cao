@@ -134,39 +134,51 @@ async function ready(page, route) {
   });
 }
 
-async function audit(page, auditPage, origin, state, profile, network, scenario, directory, port) {
+async function audit(context, browser, origin, state, profile, network, scenario, directory, port) {
   const samples = [];
   for (let repeat = 1; repeat <= repeats; repeat++) {
-    const session = await page.context().newCDPSession(page);
-    try { await session.send('Network.clearBrowserCache'); } finally { await session.detach(); }
-    await auditPage.setBypassServiceWorker(network === 'cold');
-    const result = await lighthouse(routeUrl(origin, state, scenario.routes[0]), {
-      port, logLevel: 'error', output: ['json', 'html'], disableStorageReset: true,
-      onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
-      maxWaitForLoad: 180_000,
-      ...(profile === 'mobile' ? {
-        formFactor: 'mobile',
-        screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 3, disabled: false }
-      } : {})
-    }, profile === 'desktop' ? desktopConfig : undefined, auditPage);
-    if (!result || result.lhr.runtimeError) throw new Error(`Lighthouse failed: ${JSON.stringify(result?.lhr.runtimeError)}`);
-    if (result.lhr.configSettings.formFactor !== profile) throw new Error('Lighthouse used the wrong device profile.');
-    if (network === 'cold' && !result.lhr.audits['network-requests'].details.items.some((item) => (
-      item.url.includes('/src/main.js') && item.transferSize > 0
-    ))) throw new Error('The cold audit did not measure an uncached application transfer.');
-    await ready(page, scenario.routes[0]);
-    const repeatRoot = join(directory, String(repeat));
-    await mkdir(repeatRoot, { recursive: true });
-    await Promise.all([
-      writeFile(join(repeatRoot, 'lighthouse.report.json'), JSON.stringify(result.lhr, null, 2)),
-      writeFile(join(repeatRoot, 'lighthouse.report.html'), result.report[1]),
-      writeFile(join(repeatRoot, 'trace.json'), JSON.stringify(result.artifacts.Trace)),
-      writeFile(join(repeatRoot, 'devtoolslog.json'), JSON.stringify(result.artifacts.DevtoolsLog))
+    // Preserve canonical storage and the service worker, not prior audits' renderer state.
+    const [page, auditPage] = await Promise.all([
+      context.waitForEvent('page'),
+      browser.newPage()
     ]);
-    samples.push({
-      scores: Object.fromEntries(Object.entries(result.lhr.categories).map(([name, category]) => [name, category.score])),
-      metrics: Object.fromEntries(Object.keys(budgets).map((name) => [name, result.lhr.audits[name].numericValue]))
-    });
+    try {
+      const errors = [];
+      page.on('pageerror', (error) => errors.push(error.message));
+      const session = await page.context().newCDPSession(page);
+      try { await session.send('Network.clearBrowserCache'); } finally { await session.detach(); }
+      await auditPage.setBypassServiceWorker(network === 'cold');
+      const result = await lighthouse(routeUrl(origin, state, scenario.routes[0]), {
+        port, logLevel: 'error', output: ['json', 'html'], disableStorageReset: true,
+        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
+        maxWaitForLoad: 180_000,
+        ...(profile === 'mobile' ? {
+          formFactor: 'mobile',
+          screenEmulation: { mobile: true, width: 390, height: 844, deviceScaleFactor: 3, disabled: false }
+        } : {})
+      }, profile === 'desktop' ? desktopConfig : undefined, auditPage);
+      if (!result || result.lhr.runtimeError) throw new Error(`Lighthouse failed: ${JSON.stringify(result?.lhr.runtimeError)}`);
+      if (result.lhr.configSettings.formFactor !== profile) throw new Error('Lighthouse used the wrong device profile.');
+      if (network === 'cold' && !result.lhr.audits['network-requests'].details.items.some((item) => (
+        item.url.includes('/src/main.js') && item.transferSize > 0
+      ))) throw new Error('The cold audit did not measure an uncached application transfer.');
+      await ready(page, scenario.routes[0]);
+      if (errors.length) throw new Error(`${state} audit page errors: ${errors.join('; ')}`);
+      const repeatRoot = join(directory, String(repeat));
+      await mkdir(repeatRoot, { recursive: true });
+      await Promise.all([
+        writeFile(join(repeatRoot, 'lighthouse.report.json'), JSON.stringify(result.lhr, null, 2)),
+        writeFile(join(repeatRoot, 'lighthouse.report.html'), result.report[1]),
+        writeFile(join(repeatRoot, 'trace.json'), JSON.stringify(result.artifacts.Trace)),
+        writeFile(join(repeatRoot, 'devtoolslog.json'), JSON.stringify(result.artifacts.DevtoolsLog))
+      ]);
+      samples.push({
+        scores: Object.fromEntries(Object.entries(result.lhr.categories).map(([name, category]) => [name, category.score])),
+        metrics: Object.fromEntries(Object.keys(budgets).map((name) => [name, result.lhr.audits[name].numericValue]))
+      });
+    } finally {
+      await page.close();
+    }
   }
   const metrics = Object.fromEntries(Object.keys(budgets).map((name) => [name, median(samples.map((sample) => sample.metrics[name]))]));
   const score = median(samples.map((sample) => sample.scores.performance));
@@ -245,10 +257,8 @@ async function main() {
             await page.goto(routeUrl(origin, state, scenario.routes[0]), { waitUntil: 'domcontentloaded' });
             await ready(page, scenario.routes[0]);
             await page.screenshot({ path: join(directory, 'dashboard.png'), fullPage: true });
-            const auditPage = (await browser.pages()).find((candidate) => candidate.url() === page.url());
-            if (!auditPage) throw new Error('The Lighthouse audit page was not found.');
             for (const network of networkModes) {
-              const result = await audit(page, auditPage, origin, state, profile, network, scenario, join(directory, network), port);
+              const result = await audit(context, browser, origin, state, profile, network, scenario, join(directory, network), port);
               results.push(result);
               await writeSummary('running');
               console.log(`${result.id}: performance ${Math.round(result.score * 100)}, CLS ${result.metrics['cumulative-layout-shift'].toFixed(3)}`);

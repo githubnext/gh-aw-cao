@@ -1081,8 +1081,8 @@ profile fails before side effects; unreferenced Node App-creation administration
 removed while Actions credential profiles and inspection remain in
 `.github/workflows/shared/github-apps.mjs`.
 Repository enrollment (`gh cao repos add OWNER/REPO`),
-updates, onboarding, downloads, computations, and all evidence commands
-run entirely in Go. No production command invokes Node.js, npm, or JavaScript
+updates, onboarding, downloads, computations, and all evidence commands in `gh cao`
+run entirely in Go. No extension command invokes Node.js, npm, or JavaScript
 modules; `CAO_RUNTIME_ROOT` is no longer an extension input. The default reviewed
 catalog, fragments, canonical source projections, and MCP contract are embedded
 directly from the dashboard's JSON documents, not duplicated as a second catalog.
@@ -1107,16 +1107,24 @@ and exports are removed: `init`, `setup`, `setup-auth`, campaign `add`, `mode`,
 `enable`, `disable`, `update`, and `upgrade-gh-aw` fail with native replacement
 guidance before option parsing, stdin, or legacy two-argument ingestion.
 There are no Node compatibility wrappers or native-to-Node bridges.
-Node evidence, query, discovery, computation, MCP and download APIs remain
-intentional agentic-workflow interfaces, not deprecated operator duplicates.
+Node evidence APIs remain supported for agents inside agentic workflows.
+The registered `queries`, `query-info`, `prompt`, `query`, `gh runs|issues|prs`,
+`computation`, `mcp`, and `download` commands and their dependencies must remain
+available in the installed runtime. Similar reads in the operator extension are
+intentional; the workflow APIs are neither deprecated duplicates nor test-only
+parity implementations. They preserve canonical Dashboard Language execution,
+bounded evidence/output contracts and existing authentication boundaries, without
+granting policy authority or GitHub writes.
 `activity/authentication.mjs` retains only Actions credential profiles, naming,
 and bounded Activity collection planning, not credential provisioning.
 Root runtime upgrades remove only
 content-verified retired launchers; consumer-owned files, links, and directories
 are preserved. Verified older archives may contain the retired launcher but
 never install it.
-User-facing commands belong in the Go extension; Actions execution support
-belongs in the shipped JavaScript runtime under `activity/` and `dashboard/`.
+Human/operator commands belong in the Go extension; server hosting and
+administration belong to `cao-dashboard`. Actions execution support, including
+workflow-agent evidence APIs, belongs in the shipped JavaScript runtime under
+`activity/` and `dashboard/`.
 Agentic workflow execution and agent evidence preparation must not build,
 install, or invoke the native extension. Copilot setup stages dashboard evidence
 with `node activity/cao.mjs download`. Dedicated extension build, release, and

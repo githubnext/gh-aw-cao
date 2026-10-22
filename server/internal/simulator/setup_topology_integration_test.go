@@ -280,7 +280,7 @@ func testSetupCapabilityFailures(t *testing.T, ctx context.Context, root, catalo
 			f.api.Repositories["platform/control"].Variables["GH_AW_GITHUB_AUTH_MODE"] = "app"
 			target := "other/app"
 			f.api.Repositories[target].Private = test.pat
-			f.handle = func(w http.ResponseWriter, r *http.Request) bool {
+			f.setHandler(func(w http.ResponseWriter, r *http.Request) bool {
 				if r.URL.Path != test.path {
 					return false
 				}
@@ -295,7 +295,7 @@ func testSetupCapabilityFailures(t *testing.T, ctx context.Context, root, catalo
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]string{"message": "Simulator capability denied"})
 				return true
-			}
+			})
 			setupSaveFixturePolicy(t, f)
 			before, state := setupRead(t, f.policyPath()), f.state(t)
 			steps := [][2]string{{"Repositories (", target}}
