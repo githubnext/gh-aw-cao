@@ -513,3 +513,33 @@ Dates are UTC. Corrections are new events; original observations remain.
   audit receiver/upstream runtimes, production configuration, scanning and
   organizational/period evidence remain unverified. No new demonstrated
   runtime design gap established; readiness remains undetermined.
+
+## 2026-10-22 - SOC2-LOG-023 - Follow-up hardening and metadata proposal
+
+- Type: operator-directed bounded hardening and received component report.
+- Authorization: operator directed "start separate sessions to apply
+  improvements". Five independent sessions own metadata byte bounds,
+  PostgreSQL budgets, missing-terminal audit detection, release evidence
+  collection and key custody/rotation. No merge or production authority.
+- Specification: RFC-035, record schema version 1.
+- Received DATA-10 metadata report at commit
+  `7f22e61b5f81b8891b2be01023b486d25cc73cf2`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`.
+  Coordinator verified [#19422](https://github.com/githubnext/gh-cao/pull/19422)
+  open/draft/head/base. Target files were reported unchanged from assessment
+  `53458a46d983356cdc2b8c5f27903026ca707a82` before the patch.
+- Proposal: predecode manifest 8 MiB and generic marketplace JSON 16 MiB
+  bounds, complete-document validation and explicit failure semantics.
+  Narrow claims are design-supported at the proposal SHA, not integrated
+  on the assessment branch or demonstrated deployed.
+- Session-reported verification: 215 focused race test/subtest passes,
+  zero skips/failures; selected consumers six passes/six PostgreSQL skips;
+  scoped lint/vet/build, whitespace and 73-workflow compilation passed.
+  Coordinator did not rerun runtime validation.
+- Decision/lifecycle: DATA-10 authorized slices remediate/in-progress;
+  broader evidence-needed status and outstanding closure requests retained.
+  Other four final reports remain pending.
+- Limitations: intentional larger-input rejection needs workload review;
+  decoded heap, concurrency/physical DB/temp budgets, file I/O deadlines,
+  deployment and historical operation remain unverified. No finding closed,
+  risk accepted, exclusion approved or compliance assertion made.

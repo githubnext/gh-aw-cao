@@ -150,6 +150,60 @@ retroactively create that evidence. Stronger isolation, KMS/HSM signing or HA
 may be appropriate against approved commitments, but are not universal SOC 2
 requirements or automatically authorized changes.
 
+### Follow-up hardening authorization and metadata-read proposal
+
+After the current-source assessment, the operator directed: "start separate
+sessions to apply improvements". This authorizes the five bounded repository
+workstreams below, with separate PRs; it does not authorize merges, production
+changes, risk acceptance, exclusions or control closure.
+
+| Workstream | Coordinated session | Current evidence |
+| --- | --- | --- |
+| DATA-10 metadata input bounds | `84846eb9-d1aa-42e5-876e-1371572695ea` | Draft [#19422](https://github.com/githubnext/gh-cao/pull/19422); proposal received |
+| DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Implementation/validation pending final report |
+| OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Implementation pending |
+| OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Read-only collector implementation pending |
+| IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Offline rollover preflight selected; supported managed-signing deployment contract remains a separate decision |
+
+The metadata proposal is commit
+`7f22e61b5f81b8891b2be01023b486d25cc73cf2`, based on
+`4beb309dd0e415e7bb82e156cdc463d6c21fb55f`. The reporting session verified
+that both affected production files were unchanged from the assessment SHA
+before its patch. Coordinator independently checked open/draft/head/base
+identity; it did not rerun the child session's tests.
+
+At the proposal SHA, `server/internal/repositorymemory/memory.go:20-27,123-134`
+caps manifest input at 8 MiB before decoding;
+`server/internal/marketplace/resolve.go:82-105` caps generic JSON input at
+16 MiB independent of Content-Length. Both read at most limit plus one byte,
+reject overflow and validate the complete document. Existing file/path/hash
+and repository-signal bounds remain. Required oversized registry responses
+produce visible diagnostics; optional README failure behavior is retained
+(`server/internal/marketplace/marketplace.go:392-402`;
+`server/internal/marketplace/resolve.go:615-631`).
+
+These two byte-bound claims are **design-supported at the proposal SHA**,
+working mapping CC7 with candidate A1/PI1. This assessment branch does not
+contain their runtime changes. The proposal intentionally rejects larger
+inputs and trailing JSON documents/garbage; production workload suitability
+still needs verification.
+
+Session-reported verification: focused repositorymemory/marketplace race tests
+passed 215 test/subtest events, zero failures/skips; selected server consumers
+passed six events with six PostgreSQL-dependent skips. Scoped CI-pinned
+golangci-lint reported zero issues; vet/build, whitespace and 73-workflow
+compilation passed. Boundary-minus/exact/plus, dishonest length, bounded reads,
+malformed/trailing input, closure, cancellation/read failures and caller
+diagnostics were covered. Supporting report:
+`/Users/peli/.copilot/session-state/84846eb9-d1aa-42e5-876e-1371572695ea/files/metadata-read-hardening-evidence.md`.
+
+**DATA-10 remains evidence-needed and open.** Decision `remediate`, lifecycle
+`in-progress` applies only to these authorized hardening slices; it is not
+authorization to change fleet resource policy. Review/integration, decoded
+heap/concurrency/DB/temp ceilings, filesystem I/O deadlines, deployed workload
+suitability and period evidence remain outstanding. Operating effectiveness
+is **not-assessed**. No exploitability or compliance conclusion follows.
+
 ## Assessment boundary and current status
 
 Started 2026-10-21 against source revision
