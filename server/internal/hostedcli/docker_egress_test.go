@@ -250,3 +250,45 @@ func TestDockerEgressCancellationCutsProxyButRetainsUnconfirmedClaim(t *testing.
 		t.Fatal("unconfirmed command resources were removed")
 	}
 }
+
+func TestDockerEgressStopWaitsForConcurrentProxyShutdown(t *testing.T) {
+	closing := make(chan struct{})
+	release := make(chan struct{})
+	closed := make(chan struct{})
+	lifecycle := &DockerContainerLifecycle{
+		egressClosers: map[string]func(){
+			"command": func() {
+				close(closing)
+				<-release
+				close(closed)
+			},
+		},
+	}
+	firstDone := make(chan struct{})
+	go func() {
+		lifecycle.stopEgress("command")
+		close(firstDone)
+	}()
+	<-closing
+	secondDone := make(chan struct{})
+	go func() {
+		lifecycle.stopEgress("command")
+		close(secondDone)
+	}()
+	select {
+	case <-secondDone:
+		t.Error("concurrent stop returned before proxy shutdown completed")
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	<-firstDone
+	<-secondDone
+	select {
+	case <-closed:
+	default:
+		t.Fatal("stop returned without closing the proxy")
+	}
+	if len(lifecycle.egressClosers) != 0 {
+		t.Fatal("stopped proxy retained its cleanup callback")
+	}
+}

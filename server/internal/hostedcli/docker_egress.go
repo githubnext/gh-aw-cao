@@ -123,10 +123,11 @@ func (r *DockerContainerLifecycle) prepareEgress(ctx context.Context, execution 
 
 func (r *DockerContainerLifecycle) stopEgress(name string) {
 	r.egressMu.Lock()
+	defer r.egressMu.Unlock()
 	closeProxy := r.egressClosers[name]
-	delete(r.egressClosers, name)
-	r.egressMu.Unlock()
 	if closeProxy != nil {
+		// Concurrent cancellation and cleanup must both wait for shutdown.
 		closeProxy()
+		delete(r.egressClosers, name)
 	}
 }

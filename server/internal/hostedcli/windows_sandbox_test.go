@@ -759,12 +759,14 @@ func TestWindowsSandboxReceiptAndLauncherExitDoNotProveTermination(t *testing.T)
 	if err := runner.Lifecycle.Create(t.Context(), execution, f.spec(t, "still-running")); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 40*time.Millisecond)
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	if err := runner.Lifecycle.Start(ctx, execution); err != nil {
 		t.Fatal(err)
 	}
-	if err := runner.Lifecycle.CollectOutput(ctx, execution, nil); err == nil {
+	outputCtx, endOutput := context.WithTimeout(ctx, 40*time.Millisecond)
+	defer endOutput()
+	if err := runner.Lifecycle.CollectOutput(outputCtx, execution, nil); err == nil {
 		t.Fatal("a guest receipt exposed an exit before the VM was stopped")
 	}
 	state, err := runner.Lifecycle.Inspect(t.Context(), execution)
