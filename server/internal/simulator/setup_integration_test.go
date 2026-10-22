@@ -183,6 +183,7 @@ func TestCAOSetupIntegration(t *testing.T) {
 		})
 	}
 	testSetupOptions(t, ctx, root, catalog, binary, runtimeFiles)
+	testSetupGitHubApp(t, ctx, root, catalog, binary, runtimeFiles)
 }
 
 type setupFixture struct {
