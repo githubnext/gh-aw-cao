@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 )
 
 // HTTPDoer is the minimal client interface Resolve needs, satisfied by
@@ -27,7 +29,7 @@ type HTTPDoer interface {
 type Options struct {
 	// HTTPClient issues GitHub REST requests. Defaults to http.DefaultClient.
 	HTTPClient HTTPDoer
-	// Env resolves secret environment variable names. Defaults to os.LookupEnv.
+	// Env resolves secret names and input-limit overrides. Defaults to os.LookupEnv.
 	Env EnvLookup
 	// Now supplies the current time for GitHub App JWT minting. Defaults to time.Now.
 	Now func() time.Time
@@ -80,6 +82,14 @@ func githubRequest(ctx context.Context, opts Options, method, requestURL, token 
 }
 
 func githubJSON(ctx context.Context, opts Options, method, requestURL, token string) (map[string]any, error) {
+	return githubJSONWithLimit(ctx, opts, method, requestURL, token, inputlimits.MarketplaceJSON)
+}
+
+func githubJSONWithLimit(ctx context.Context, opts Options, method, requestURL, token string, setting inputlimits.ByteLimit) (map[string]any, error) {
+	limit, err := setting.Resolve(opts.env())
+	if err != nil {
+		return nil, err
+	}
 	response, err := githubRequest(ctx, opts, method, requestURL, token)
 	if err != nil {
 		return nil, err
@@ -87,8 +97,15 @@ func githubJSON(ctx context.Context, opts Options, method, requestURL, token str
 	defer func() {
 		_ = response.Body.Close()
 	}()
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	if err != nil {
+		return nil, fmt.Errorf("read GitHub API response: %w", err)
+	}
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("GitHub API response exceeds size limit")
+	}
 	var payload map[string]any
-	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("decode GitHub API response: %w", err)
 	}
 	return payload, nil
@@ -397,8 +414,8 @@ func ResolveRegistry(ctx context.Context, registry Registry, precedence int, opt
 		return nil, fmt.Errorf("registry ref did not resolve to a commit")
 	}
 
-	treePayload, err := githubJSON(ctx, opts, http.MethodGet,
-		fmt.Sprintf("%s/repos/%s/git/trees/%s?recursive=1", base, repositoryPath, commit), token)
+	treePayload, err := githubJSONWithLimit(ctx, opts, http.MethodGet,
+		fmt.Sprintf("%s/repos/%s/git/trees/%s?recursive=1", base, repositoryPath, commit), token, inputlimits.MarketplaceTreeJSON)
 	if err != nil {
 		return nil, err
 	}

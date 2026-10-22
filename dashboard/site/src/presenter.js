@@ -38,6 +38,7 @@ import { renderDashboardFooter } from './components/dashboard-footer.js';
 import { renderDashboardFrame } from './components/dashboard-frame.js';
 import { declaredRouteTabs, renderDeclaredRouteTabs, renderPageTabs } from './components/route-tabs.js';
 import { buildChartPoints, prepareChartPoints, prepareTableRows, toViewText } from './components/view-data.js';
+import { restoreCardListPagination } from './components/card-list-pagination.js';
 import { enableDashboardKeyboardNavigation, updateWithViewTransition } from './components/dashboard-interactions.js';
 import { enablePullRefresh } from './components/pull-refresh.js';
 import { resolveModeIndicator } from './components/mode-indicator.js';
@@ -1186,6 +1187,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
         const active = target.ownerDocument.activeElement;
         const focusedId = active instanceof HTMLElement && target.contains(active) ? active.id : '';
         if (target.parentNode) target.replaceWith(replacement);
+        restoreCardListPagination(target, replacement);
         restoreCardFilterState(replacement, filterState);
         if (disclosure !== 'supplemental') rendered = replacement;
         if (focusedId) {
@@ -1848,6 +1850,7 @@ export function enableDashboardPageNavigation(root, dashboardTitle = '', renderP
           pendingQueryFocusId = '';
           renderedPage.dataset.routeValue = currentPage.dataset.routeValue ?? '';
           currentPage.replaceWith(renderedPage);
+          restoreCardListPagination(currentPage, renderedPage);
           restoreCardFilterState(renderedPage, filterState);
           pages[pageIndex] = renderedPage;
           currentPage = renderedPage;

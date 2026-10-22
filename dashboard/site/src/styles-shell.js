@@ -81,17 +81,28 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .marketplace-page .custom-view > header { padding-inline: 0; }
 .marketplace-page .document-list-header { padding: 0 0 16px; }
 .entity-card-list.entity-card-list-marketplace { overflow: visible; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; border: 0; background: transparent; }
-.entity-card-list-marketplace .entity-card-list-card, .entity-card-list-marketplace .entity-card-list-card:first-child { min-height: 220px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; align-content: start; justify-items: center; gap: 8px; padding: 12px 20px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas); text-align: center; }
+.entity-card-list-marketplace .entity-card-list-card, .entity-card-list-marketplace .entity-card-list-card:first-child { min-height: 280px; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; align-content: start; justify-items: stretch; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); text-align: left; }
+.entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]) { cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease; }
 .entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]):hover { border-color: var(--accent); background: var(--canvas-subtle); }
-.entity-card-list-marketplace .issue-list-card-icon { grid-row: 2; width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas-subtle); color: var(--fg); }
+.entity-card-list-marketplace .entity-card-list-card:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.entity-card-list-marketplace .issue-list-card-icon { grid-column: 1; grid-row: 1; width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--accent-muted); border-radius: 12px; background: var(--accent-muted); color: var(--accent); }
 .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 28px; height: 28px; }
-.entity-card-list-marketplace .issue-list-card-content { grid-row: 3; display: grid; justify-items: center; gap: 6px; }
-.entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1rem; }
-.entity-card-list-marketplace .issue-list-card-subtitle { max-width: 36ch; color: var(--muted); font-size: .875rem; line-height: 1.5; }
-.entity-card-list-marketplace .issue-list-card-meta { justify-content: center; margin-top: 4px; color: var(--muted); }
+.entity-card-list-marketplace .issue-list-card-content { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1.0625rem; }
+.entity-card-list-marketplace .issue-list-card-title a { display: inline-block; }
+.entity-card-list-marketplace .issue-list-card-subtitle { max-width: 100%; color: var(--muted); font-size: .875rem; line-height: 1.5; }
+.entity-card-list-marketplace .entity-card-list-card:has([data-card-drill]) .issue-list-card-subtitle { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.entity-card-list-marketplace .issue-list-card-meta { max-width: 100%; justify-content: flex-start; margin-top: auto; padding-top: 4px; color: var(--muted); overflow-wrap: anywhere; }
 .entity-card-list-marketplace .issue-list-card-meta dt { text-transform: none; }
-.entity-card-list-marketplace .issue-list-labels { grid-row: 1; max-width: 100%; margin: 0; justify-self: end; justify-content: flex-end; }
+.entity-card-list-marketplace .issue-list-labels { grid-column: 1; grid-row: 3; min-width: 0; max-width: 100%; margin: 0; padding-top: 12px; border-top: 1px solid var(--border-muted); justify-self: stretch; justify-content: flex-start; }
+.entity-card-list-marketplace .issue-list-labels li { min-width: 0; max-width: 100%; }
+.entity-card-list-marketplace .issue-list-labels .entity-card-list-ref { background: var(--canvas-subtle); border-color: var(--border); color: var(--muted); }
 .entity-card-list-marketplace .entity-card-list-chevron { display: none; }
+.entity-card-list-boundary { grid-column: 1 / -1; display: grid; justify-items: center; gap: 8px; padding: 16px; list-style: none; }
+.entity-card-list-load-more { min-height: 44px; padding: 8px 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--canvas-subtle); color: var(--fg); font: inherit; font-size: .875rem; cursor: pointer; }
+.entity-card-list-load-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.entity-card-list-load-more:disabled { cursor: progress; color: var(--muted); }
+.entity-card-list-load-status { color: var(--muted); font-size: .75rem; text-align: center; }
 .marketplace-detail-page .custom-view { border: 0; background: transparent; box-shadow: none; }
 .marketplace-detail-page .custom-view > header { padding-inline: 0; }
 .marketplace-detail-page .layout-section { padding: 0; border: 0; background: transparent; }
@@ -102,8 +113,8 @@ export const shellStyles = `.app-shell { height: 100vh; min-height: 0; display: 
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-content { grid-column: 2; grid-row: 1; justify-items: start; }
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-title { color: var(--fg); font-size: 1.5rem; font-weight: 600; }
 .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-subtitle { max-width: none; }
-.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-meta { justify-content: flex-start; }
-.marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 2; grid-row: 2; justify-self: start; justify-content: flex-start; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-card-meta { justify-content: flex-start; margin-top: 0; }
+.marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 2; grid-row: 2; padding-top: 4px; border: 0; justify-self: start; justify-content: flex-start; }
 .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin: 0; }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button { min-height: 36px; padding: 6px 18px; border-color: var(--accent); background: var(--accent); color: var(--canvas); font-weight: 600; }
 .marketplace-detail-page .entity-card-list-actions .table-cli-action-button:hover { filter: brightness(1.08); }

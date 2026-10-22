@@ -151,7 +151,8 @@ export function compileDashboardViewPayloadQueries(page, pageId, options = {}) {
       if (!shared) scopedGraphs.set(graphKey, { ...compiled, query: { ...compiled.query } });
       /** @type {Record<string, unknown>} */
       const query = compiled.query;
-      if (isPlainObject(view) && view.mark === 'element' && Number.isSafeInteger(viewData?.limit)) {
+      if (isPlainObject(view) && (view.mark === 'element' || view.mark === 'list' && view['lazy-list'] === true)
+          && Number.isSafeInteger(viewData?.limit)) {
         query.limit = Math.min(
           Number(viewData?.limit),
           typeof query.limit === 'number' ? query.limit : Infinity
@@ -293,7 +294,7 @@ function usesNativeSource(view, sourceName, predicates, queryContext, definition
   const declared = Array.isArray(definitions)
     && definitions.some((definition) => isPlainObject(definition) && definition.name === sourceName);
   const data = isPlainObject(view) && isPlainObject(view.data) ? view.data : null;
-  if (declared && isPlainObject(view) && view.mark !== 'element' && view.controls !== 'filter-only' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
+  if (declared && isPlainObject(view) && view['lazy-list'] !== true && view.mark !== 'element' && view.controls !== 'filter-only' && view.chart !== 'treemap' && data?.['query-context'] === false && predicates.length === 0
       && !(queryContext?.search?.query.trim()) && !(queryContext?.orderBy?.length)
       && !requiresContextualQuery(sourceName, definitions)) return true;
   return isPlainObject(view)

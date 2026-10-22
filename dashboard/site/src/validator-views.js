@@ -266,10 +266,12 @@ export function validateView(view, viewNode, path, viewIds, errors) {
         `${path}.lazy-list`
       ));
     }
-    if (view.mark !== 'table' || (view['lazy-list'] === true && view.controls === 'static')) {
+    const supportsLazyList = view.mark === 'table' && !(view['lazy-list'] === true && view.controls === 'static')
+      || view.mark === 'list' && isPlainObject(view.list) && view.list.style === 'entity-cards';
+    if (!supportsLazyList) {
       errors.push(createError(
         ERROR_CODES.missingOrInvalidRequiredField,
-        'lazy-list is allowed only on interactive table views.',
+        'lazy-list is allowed only on interactive table views or entity-card lists.',
         `${path}.lazy-list`
       ));
     }

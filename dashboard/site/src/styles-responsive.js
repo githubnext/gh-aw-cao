@@ -22,6 +22,22 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .document-list-header .cli-action-trigger { width: 44px; min-height: 44px; justify-content: center; padding: 0; }
   .document-list-header .cli-action-trigger > .octicon { margin-top: 0; }
   .document-list-header .cli-action-trigger-copy { display: none; }
+  .marketplace-page .custom-view > .document-list-header { padding: 4px 16px 16px; }
+  .marketplace-page .document-list-header > p { font-size: .875rem; line-height: 1.6; }
+  .entity-card-list.entity-card-list-marketplace { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .entity-card-list-marketplace .entity-card-list-card, .entity-card-list-marketplace .entity-card-list-card:first-child { min-height: 0; grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: auto auto; gap: 12px; padding: 16px; }
+  .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; }
+  .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
+  .entity-card-list-marketplace .issue-list-card-content { grid-column: 2; grid-row: 1; gap: 6px; }
+  .entity-card-list-marketplace .issue-list-card-title a { min-height: 44px; display: inline-flex; align-items: center; }
+  .entity-card-list-marketplace .issue-list-card-meta { margin-top: 0; }
+  .entity-card-list-marketplace .issue-list-labels { grid-column: 1 / -1; grid-row: 2; }
+  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 16px; }
+  .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; grid-row: 1; }
+  .marketplace-detail-page .entity-card-list-marketplace .issue-list-labels { grid-column: 1 / -1; }
+  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 1 / -1; grid-row: 3; justify-self: stretch; margin: 0; }
+  .marketplace-detail-page .entity-card-list-actions .table-cli-action-button { width: 100%; min-height: 44px; justify-content: center; }
+  .marketplace-detail-page .dashboard-markdown { padding: 16px; }
   .custom-table :is(th.table-compact-column, td.table-cli-action-cell) { width: auto; min-width: 120px; max-width: none; }
   .table-cli-action-button { width: auto; min-height: 44px; padding: 8px; text-align: left; }
   .table-cli-action-control { max-width: 100%; }
@@ -428,15 +444,6 @@ export const responsiveStyles = `@media (min-width: 701px) and (max-width: 900px
   .issue-list-labels { grid-column: 2; justify-content: flex-start; }
   .entity-card-list-card:has(.entity-card-list-timing) { grid-template-columns: 20px minmax(0, 1fr); }
   .entity-card-list-timing { grid-column: 2; }
-  .marketplace-page > .page-chrome { padding: 28px 20px; border-radius: 8px; }
-  .entity-card-list.entity-card-list-marketplace { grid-template-columns: 1fr; gap: 12px; }
-  .entity-card-list-marketplace .entity-card-list-card, .entity-card-list-marketplace .entity-card-list-card:first-child { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 16px 20px; }
-  .entity-card-list-marketplace .issue-list-card-icon { width: 48px; height: 48px; }
-  .entity-card-list-marketplace .issue-list-card-icon .octicon { width: 24px; height: 24px; }
-  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-card { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 18px 16px; }
-  .marketplace-detail-page .entity-card-list-marketplace .issue-list-card-icon { width: 40px; height: 40px; }
-  .marketplace-detail-page .entity-card-list-marketplace .entity-card-list-actions { grid-column: 2; grid-row: auto; margin-top: 12px; }
-  .marketplace-detail-page .dashboard-markdown { padding: 16px; }
   .outcome-meta { grid-template-columns: 1fr; }
   .problem-view-header { align-items: stretch; flex-direction: column; }
   .problem-view-highlights { grid-template-columns: 1fr; }

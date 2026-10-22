@@ -2398,6 +2398,74 @@ attesting both build provenance and the SBOM for the exact OCI digest.
 Those package guarantees apply to consumers of the published image, not to
 locally source-built images.
 
+#### Owner-selected release evidence collection
+
+Use the native Go extension to collect a bounded, machine-readable record without
+publishing, promoting, deploying, or changing workflow authority:
+
+```sh
+gh cao evidence release \
+  --repo githubnext/gh-cao \
+  --revision FULL_40_CHARACTER_SOURCE_SHA \
+  --image ghcr.io/githubnext/gh-cao/cao-server@sha256:EXACT_64_CHARACTER_DIGEST \
+  --package-run PACKAGE_RUN_ID \
+  --output /secure/evidence/release-evidence.json
+```
+
+The `gh cao evidence` group hosts operator evidence collection. No Node.js,
+repository-local scripts or checkout are required. Use a release containing this
+command; merging source does not update an already installed extension.
+
+Use the existing package workflow run ID and immutable published image digest,
+not a tag. Optional `--promotion-run RUN_ID` collects references from the existing
+prerelease-to-latest workflow; its workflow SHA is **not** the product source
+SHA. Optional `--azure-receipt /secure/evidence/deploy-azure-receipt.json` consumes
+the existing `cao deploy azure` receipt, requiring its source revision to match
+the selected revision. It preserves development-only assurance, dirty-worktree
+state, context/plan hashes, per-target digests and reported verification outcomes.
+Private registry references are hashed; cloud resource identifiers, raw responses,
+actor names, comments, job/step names, secrets and credential-bearing URLs are
+not copied. No Azure API or deployment is invoked.
+
+With `--verify-provenance`, the collector invokes the installed GitHub CLI's
+`gh attestation verify` for the exact OCI digest, repository, reusable publisher,
+source-digest constraint and SLSA v1 predicate. It additionally requires the
+verified statement's image subject and package run-attempt invocation to match.
+Registry authentication and read access must already be configured; no credentials
+are accepted as collector arguments. A failed/unavailable verifier or mismatched
+receipt leaves provenance and image/source binding unknown. Manual builds whose
+certificate source identity differs from the selected product revision can fail
+this constraint; the collector does not relax verification to accept them.
+The normalized receipt includes the verification command and raw receipt hash,
+but does not retain raw attestation bundles or assert builder isolation.
+
+The collector currently targets GitHub.com and GHCR. Schema version 1
+(`kind: cao.release.evidence`) records the collector binary hash, extension/Go/GitHub CLI
+versions and collection time, and always reports `incomplete`.
+Run/job/check references are attempt-scoped; artifacts and approval history are
+run-scoped with **unknown** attempt binding. Approval records do not establish
+independent human approval or effective environment policy. Unavailable/invalid
+optional API evidence is explicitly unknown; invalid selected run identities or
+deployment receipts fail collection. API reads stop after five 100-record pages,
+marking bounded inventories incomplete; responses are limited to 2 MiB with a
+60-second command timeout, local receipts to 1 MiB, and step lists to 100.
+The complete operation has a 30-minute deadline and honors cancellation.
+The new output uses mode `0600` where supported and never overwrites an existing
+file. Operators must restrict destination-directory ACLs, especially on Windows
+where POSIX mode bits do not enforce private access.
+
+This is collection-time evidence, not a governance decision, production acceptance,
+proof of running image measurements, independent retention, or Type 2 operating
+effectiveness. Azure configured-reference read-back is not a measured running
+image digest, and its development images do not inherit official-package scans,
+SBOM or provenance. Owners must retain the original candidate metadata/checksums,
+SBOM, signed bundles and verification receipts through their approved evidence
+channel, along with this JSON and exact collector/tool versions. Existing Actions
+artifact references/expiry metadata are not independent delivery receipts; export
+before expiry, verify destination retention and access, supply actual deployment
+measurements and approval/check evidence, and agree the examination period and
+governance requirements with the auditor. Nothing is uploaded automatically.
+
 The Dockerfile includes the base `cao.json` policy. Configure a reviewed
 `control-plane.web.host` before building, or mount a reviewed policy and set
 `CAO_POLICY_PATH` at runtime. Supply database, OAuth, session, and webhook
@@ -2481,6 +2549,67 @@ terminal event. A crash or simultaneous outage can leave an incomplete
 lifecycle: reconcile canonical revision state and independent logs manually;
 neither status reads nor a later rebuild reconstruct a missing outcome.
 See [administrative rebuild evidence](../specs/server-operational-storage.md#administrative-rebuild-evidence).
+
+#### Missing rebuild terminal evidence
+
+Use the configured PostgreSQL operational namespace with the **SELECT-only
+evidence-reader credential** described in [POSTGRES.md](POSTGRES.md), not the
+runtime or schema-owner credential:
+
+```bash
+cao-dashboard audit lifecycles --grace 1h --max-events 10000 --timeout 2m
+# Local debugging only, against an already provisioned file:
+cao-dashboard audit lifecycles --sqlite .tmp/hosted-cli.sqlite
+```
+
+This is a one-shot read-only check; it does not append a verification event,
+open the JSON audit mirror, repair status/history, replay a rebuild, or enable
+a deployment schedule or service. JSON goes to stdout, including a scan failure
+result when reads fail after opening; command errors go to stderr. It exits
+nonzero for `attention`, `incomplete`, invalid configuration or unavailable
+storage. Store the result, source/deployment/namespace identity and exit status
+in an independent monitoring destination. Open/configuration failures may have
+no JSON result; absence of a result is not a healthy heartbeat.
+
+Route alerts on `missing_terminal > 0`, per-ID issues (including
+`status_write_failed`, duplicate or conflicting events), and `status=incomplete`.
+`pending` means the first observed event is within grace and may still be active;
+it is not a failure or a liveness assertion. The minimum grace is 35 minutes,
+above the current work timeout/lease; the default is one hour. Approve a larger
+grace if deployment clock skew or cleanup latency requires it, and review this
+bound whenever execution deadlines change. Age uses stored timestamps; large
+future timestamps are clock uncertainty, not successful completion.
+
+The command scans at most the configured rows plus one lookahead, paginating
+all audit event types in sequence order. It does not run full chain verification.
+If `event_limit` is reported, increase the budget within the 100,000-row hard
+limit and rerun **from the same starting point**. Do not use `last_sequence` as
+a checkpoint: unresolved admissions would be forgotten. A truncated scan
+reports their classification as `unknown`, not a missing terminal alert.
+`--after SEQUENCE` explicitly selects a suffix and always reports incomplete
+historical coverage. A retained oldest prefix (`retained_prefix`) likewise
+requires independent evidence; an interior `history_gap` blocks missing-terminal
+classification. For a contiguous observed suffix, missing terminals for IDs
+actually observed can still be reported, but IDs wholly outside it are unknown.
+Use the independent full committed-row pipeline for history beyond the bound.
+Verification with approved external anchors and `audit deliver` remain separate
+checks; `history_complete` describes sequence coverage, not authenticity.
+
+On an alert, preserve the JSON, anchored verification/delivery evidence and
+relevant `stored=false` audit telemetry first. Rerun the check to account for a
+late terminal append. Correlate each server-generated `rebuild_id` and sequence
+range with the original receipt, authenticated audit events, trace-correlated
+logs, canonical prior/current revisions, and replaceable status. A newer
+canonical revision or expired lease alone cannot establish that ID's outcome:
+another operation may have published, or work may remain uncertain. Record the
+reconciliation, evidence references, uncertainty and accountable disposition
+in the incident/evidence system. Never synthesize a completion event, rewrite
+history, retry ingestion automatically, or treat a canceled/failed completion
+as a success. Any separately authorized rebuild must receive a fresh ID.
+The operator must separately approve cadence, monitor missing-check heartbeats,
+and exercise alert acknowledgement and outage/retention-gap response.
+
+#### Operational-value publication
 
 `POST /api/v1/value` publishes one prepared operational-value evidence envelope
 (JSON or one JSONL record, at most 8 MiB). It requires PostgreSQL and an already

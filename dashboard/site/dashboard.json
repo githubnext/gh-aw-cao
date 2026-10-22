@@ -590,25 +590,13 @@
             "field": "registry-name",
             "title": "Registry",
             "display": "label"
-          },
-          {
-            "field": "package-version",
-            "title": "Version",
-            "display": "ref"
-          },
-          {
-            "field": "stars",
-            "title": "Public stars"
           }
         ],
+        "detail-labels": "visible",
         "details": [
           {
             "field": "publisher",
             "title": "By"
-          },
-          {
-            "field": "forks",
-            "title": "Public forks"
           }
         ]
       },
@@ -634,20 +622,21 @@
             "field": "package-version",
             "title": "Version",
             "display": "ref"
-          },
-          {
-            "field": "stars",
-            "title": "Public stars"
           }
         ],
+        "detail-labels": "visible",
         "details": [
           {
             "field": "publisher",
             "title": "By"
           },
           {
+            "field": "stars",
+            "title": "Stars"
+          },
+          {
             "field": "forks",
-            "title": "Public forks"
+            "title": "Forks"
           }
         ],
         "actions": [

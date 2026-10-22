@@ -153,6 +153,17 @@
       ]
     },
     {
+      "name": "marketplace-directory",
+      "subject": "Browse packages from configured marketplace registries.",
+      "objective": "Present a stable alphabetical directory that can be loaded in bounded pages.",
+      "acceptance": "Preserve resolver-produced provenance and package metadata. Order by package name and immutable source so continuation pages neither skip nor duplicate entries; discovery grants no installation authority.",
+      "from": "marketplace-packages",
+      "order-by": [
+        { "field": "package-name", "direction": "asc" },
+        { "field": "package-source", "direction": "asc" }
+      ]
+    },
+    {
       "name": "marketplace-package-detail",
       "subject": "Expose normalized marketplace package records for source-coordinate lookup by the detail view.",
       "objective": "Locate the resolver-produced package record for a source coordinate supplied by the consuming view.",
@@ -1532,15 +1543,17 @@
         {
           "id": "marketplace-packages",
           "title": "Campaign packages for agentic operations",
-          "description": "Discover packages from your configured registries. Select a package to review its contents and copy an immutable add command. Installing packages with cao add or gh aw add does not use AI; AI is used only when installed agentic workflows run.",
+          "description": "Explore packages from your configured registries. Select one to review it and copy an immutable cao add or gh aw add command. Adding a package does not use AI; workflows use AI when they run.",
           "data": {
-            "source": "marketplace-packages",
+            "source": "marketplace-directory",
             "query-context": false
           },
           "mark": "list",
+          "lazy-list": true,
           "list": {
             "style": "entity-cards",
             "appearance": "marketplace",
+            "layout": "grid",
             "icon": "archive",
             "card": "marketplace-package-summary",
             "drill": {

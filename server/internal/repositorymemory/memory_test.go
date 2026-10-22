@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 )
 
 func TestLoadMissingManifest(t *testing.T) {
@@ -19,6 +22,95 @@ func TestLoadMissingManifest(t *testing.T) {
 	manifest := decodeManifest(t, snapshot.Manifest)
 	if manifest.Version != 1 || len(manifest.Campaigns) != 0 || len(snapshot.Files) != 0 {
 		t.Fatalf("unexpected empty snapshot: %#v", snapshot)
+	}
+}
+
+func TestLoadManifestByteLimit(t *testing.T) {
+	const MaxManifestSize = inputlimits.DefaultRepositoryMemoryManifestBytes
+	const valid = `{"version":1,"campaigns":[]}`
+	for _, test := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "below limit", body: valid + strings.Repeat(" ", MaxManifestSize-1-len(valid))},
+		{name: "exact limit", body: valid + strings.Repeat(" ", MaxManifestSize-len(valid))},
+		{name: "one byte over", body: valid + strings.Repeat(" ", MaxManifestSize+1-len(valid)), want: "exceeds size limit"},
+		{name: "oversized malformed", body: strings.Repeat("{", MaxManifestSize+1), want: "exceeds size limit"},
+		{name: "malformed", body: `{"version":`, want: "parse repository-memory manifest"},
+		{name: "trailing JSON", body: valid + `{}`, want: "parse repository-memory manifest"},
+		{name: "invalid version", body: `{"version":2,"campaigns":[]}`, want: "manifest is invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			memoryRoot := filepath.Join(root, "memory")
+			if err := os.Mkdir(memoryRoot, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(memoryRoot, "manifest.json"), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := Load(root)
+			if test.want != "" {
+				if err == nil || !strings.Contains(err.Error(), test.want) {
+					t.Fatalf("error = %v, want substring %q", err, test.want)
+				}
+				if snapshot.Manifest != nil || snapshot.Files != nil || snapshot.Revision != "" {
+					t.Fatal("rejected manifest returned a partial snapshot")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest := decodeManifest(t, snapshot.Manifest)
+			if manifest.Version != 1 || len(manifest.Campaigns) != 0 {
+				t.Fatal("unexpected manifest at byte boundary")
+			}
+		})
+	}
+}
+
+func TestLoadManifestLimitEnvironment(t *testing.T) {
+	const valid = `{"version":1,"campaigns":[]}`
+	for _, test := range []struct {
+		name  string
+		limit int
+		size  int
+		want  string
+	}{
+		{name: "lower exact limit", limit: 64, size: 64},
+		{name: "lower limit exceeded", limit: 64, size: 65, want: "exceeds size limit"},
+		{name: "raised limit", limit: inputlimits.DefaultRepositoryMemoryManifestBytes + 1, size: inputlimits.DefaultRepositoryMemoryManifestBytes + 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv(string(inputlimits.RepositoryMemoryManifest), strconv.Itoa(test.limit))
+			root := t.TempDir()
+			memoryRoot := filepath.Join(root, "memory")
+			if err := os.Mkdir(memoryRoot, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			body := valid + strings.Repeat(" ", test.size-len(valid))
+			if err := os.WriteFile(filepath.Join(memoryRoot, "manifest.json"), []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, err := Load(root)
+			if test.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsInvalidManifestLimitBeforeOpeningRoot(t *testing.T) {
+	t.Setenv(string(inputlimits.RepositoryMemoryManifest), "invalid")
+	_, err := Load(filepath.Join(t.TempDir(), "missing"))
+	if err == nil || !strings.Contains(err.Error(), string(inputlimits.RepositoryMemoryManifest)) {
+		t.Fatalf("error = %v, want explicit environment configuration error", err)
 	}
 }
 
