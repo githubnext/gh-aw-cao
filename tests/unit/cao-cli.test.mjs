@@ -91,6 +91,21 @@ test("keeps every CAO command in its own command module", async () => {
   assert.deepEqual(moduleNames, [...commandHandlers.keys()].sort());
 });
 
+test("pages is not registered or advertised by the Node CLI", async () => {
+  assert.equal(commandHandlers.has("pages"), false);
+  assert.doesNotMatch(await caoApi.runCli(["--help"]), /\bcao pages\b/);
+  for (const args of [
+    ["pages"], ["pages", "--help"], ["pages", "--json"], ["pages", "overview", "--json"],
+  ]) {
+    await assert.rejects(executeFile(process.execPath, [cao, ...args]), (error) => {
+      assert.equal(error.code, 1);
+      assert.equal(error.stdout, "");
+      assert.equal(error.stderr, "Error: Unknown command: pages\n");
+      return true;
+    });
+  }
+});
+
 test("quickstart is not registered or advertised by the Node CLI", async () => {
   assert.equal(commandHandlers.has("quickstart"), false);
   assert.doesNotMatch(await caoApi.runCli(["--help"]), /quickstart/i);

@@ -264,7 +264,7 @@ The dashboard workflow remains manual and does not enable Pages automatically.
 
 Central Agentic Ops can give an agent its dashboard data without a browser or
 shell. Install CAO, run `gh cao download`, and then either query the snapshot from
-a shell with `gh cao pages`, `gh cao queries`, and `gh cao query QUERY_ID`, or start the
+a shell with `gh cao status pages`, `gh cao queries`, and `gh cao query QUERY_ID`, or start the
 read-only MCP server with `gh cao mcp` and let an agent call `cao_catalog` and
 `cao_query`. See [Agent analysis](docs/agent-analysis.md) for the GitHub Actions
 bootstrap.

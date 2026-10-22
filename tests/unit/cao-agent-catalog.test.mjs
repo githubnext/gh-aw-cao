@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 import {
+  describeAgentPages,
   loadAgentDashboardDocument,
   readAgentCatalog,
 } from "../../activity/agent-catalog.mjs";
@@ -126,12 +127,12 @@ test("cao prompt rejects unknown queries and undeclared parameters without a sta
   }
 });
 
-test("cao pages relates pages to the queries they read", async () => {
-  const payload = JSON.parse(await runCao(["pages", "--json"]));
+test("shared page catalog relates pages to the queries they read", async () => {
+  const payload = await describeAgentPages({ json: true });
   assert.ok(payload.pages.length > 0);
   const page = payload.pages.find((entry) => entry.queries.length > 0);
   assert.ok(page, "at least one page declares queries");
-  const detail = JSON.parse(await runCao(["pages", page.id, "--json"]));
+  const detail = await describeAgentPages({ pageId: page.id, json: true });
   assert.deepEqual(detail.page, page);
   for (const field of ["intent", "subject", "objective", "acceptance"]) {
     assert.equal(typeof detail.page[field], "string");
@@ -157,7 +158,6 @@ test("cao --help documents the agent analysis bootstrap", async () => {
   assert.match(output, /Agent analysis:/);
   for (const line of [
     "cao download",
-    "cao pages",
     "cao queries",
     "cao query-info",
     "cao prompt QUERY_ID",
@@ -345,17 +345,17 @@ test("cao query rejects an option it does not declare", async () => {
   assert.match(result.stderr, /Unknown option --json/);
 });
 
-test("cao pages reports an unknown page without a stack trace", async () => {
-  const result = await runCaoResult(["pages", "not-a-page"]);
-  assert.equal(result.code, 1);
-  assert.match(result.stderr, /Unknown dashboard page: not-a-page/);
-  assert.doesNotMatch(result.stderr, /\n\s+at /);
+test("shared page catalog rejects an unknown page", async () => {
+  await assert.rejects(
+    describeAgentPages({ pageId: "not-a-page", json: true }),
+    { message: "Unknown dashboard page: not-a-page" },
+  );
 });
 
-test("cao pages prints a human readable catalog by default", async () => {
-  const output = await runCao(["pages"]);
+test("shared page catalog formats a human readable report by default", async () => {
+  const output = await describeAgentPages();
   assert.doesNotMatch(output, /^\{/);
-  const { pages } = JSON.parse(await runCao(["pages", "--json"]));
+  const { pages } = await describeAgentPages({ json: true });
   assert.ok(output.includes(pages[0].id));
 });
 
@@ -372,7 +372,7 @@ test("cao query-info requires a query identifier", async () => {
 });
 
 test("cao discovery writes JSON to stdout and nothing else", async () => {
-  for (const args of [["queries", "--json"], ["pages", "--json"], ["query-info", "campaign-runs", "--json"]]) {
+  for (const args of [["queries", "--json"], ["query-info", "campaign-runs", "--json"]]) {
     const result = await runCaoResult(args);
     assert.equal(result.code, 0);
     assert.doesNotThrow(() => JSON.parse(result.stdout), `${args[0]} emits JSON only`);
@@ -395,7 +395,7 @@ test("every catalogued query reports an execution verdict an agent can act on", 
 
 test("every page relates only to catalogued queries", async () => {
   const { queries } = JSON.parse(await runCao(["queries", "--json"]));
-  const { pages } = JSON.parse(await runCao(["pages", "--json"]));
+  const { pages } = await describeAgentPages({ json: true });
   const catalogued = new Set(queries.map((query) => query.id));
   for (const page of pages) {
     for (const queryId of page.queries) assert.ok(catalogued.has(queryId), `${queryId} is catalogued`);

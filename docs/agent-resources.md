@@ -85,7 +85,7 @@ boundaries:
 | Boundary | Source of truth | Enforcement |
 | --- | --- | --- |
 | Documentation routes | Astro content collection | The build requires every HTML-advertised JSON route and index entry to agree in both directions. |
-| CLI bindings | `activity/commands/index.mjs` | The validator rejects unknown subcommands and malformed positional/option shapes. |
+| CLI bindings | `activity/commands/index.mjs` plus native `status pages` | The validator rejects unknown command paths and malformed positional/option shapes. |
 | CLI MCP bindings | `activity/mcp-server.mjs` | The validator checks capability names and arguments against each registered tool's input schema. |
 | WebMCP bindings | Dashboard Language pages through `webmcp/manifest.js` | The validator requires the generated capability and page identifier to match the current dashboard manifest. |
 

@@ -111,8 +111,8 @@ function interfacesFor(binding?: AgentBinding) {
       cli: [
         {
           command: "cao",
-          subcommand: "pages",
-          arguments: { positional: [], options: { "--json": true } },
+          subcommand: "status",
+          arguments: { positional: ["pages"], options: { "--json": true } },
           purpose: "Discover agent-facing dashboard pages.",
           readOnly: true,
         },
@@ -182,8 +182,8 @@ function interfacesFor(binding?: AgentBinding) {
   return {
     cli: [{
       command: "cao",
-      subcommand: "pages",
-      arguments: { positional: [resourceId], options: { "--json": true } },
+      subcommand: "status",
+      arguments: { positional: ["pages", resourceId], options: { "--json": true } },
       resourceId,
       purpose: "Inspect this dashboard page and its named queries.",
       readOnly: true,

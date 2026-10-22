@@ -19,7 +19,7 @@ list of pages or queries:
 | Agent | Transport | Discovery | Execution |
 | --- | --- | --- | --- |
 | Browser agent | [WebMCP](dashboard-webmcp.md) | Generated page tools | Dashboard query engine |
-| Shell agent | `gh cao` | `gh cao pages`, `gh cao queries` | `gh cao query QUERY_ID` |
+| Shell agent | `gh cao` | `gh cao status pages`, `gh cao queries` | `gh cao query QUERY_ID` |
 | Agent without a shell | HTTP MCP server | `cao_catalog` | `cao_query` |
 
 ## Decide which path applies
@@ -51,8 +51,8 @@ Do you have shell access?
 2. Discover the dashboard pages an operator reads:
 
    ```bash
-   gh cao pages
-   gh cao pages insights --json
+   gh cao status pages
+   gh cao status pages insights --json
    ```
 
 3. Discover the named queries behind those pages:

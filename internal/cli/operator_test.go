@@ -48,8 +48,8 @@ func TestOperatorCommandInventory(t *testing.T) {
 	slices.Sort(names)
 	want := []string{
 		"add", "admission", "campaigns", "computation", "deploy", "doctor", "download", "evidence", "gh", "init",
-		"mcp", "pages", "prompt", "queries", "query", "query-info",
-		"repos", "setup", "update", "upgrade-gh-aw", "value", "version",
+		"mcp", "prompt", "queries", "query", "query-info",
+		"repos", "setup", "status", "update", "upgrade-gh-aw", "value", "version",
 	}
 	if !reflect.DeepEqual(names, want) {
 		t.Fatalf("command inventory = %v, want %v", names, want)
@@ -171,7 +171,8 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		{[]string{"setup", "--json"}, []string{"setup", "--json"}},
 		{[]string{"setup", "--json=false"}, []string{"setup"}},
 		{[]string{"download", "--url=https://example.test/cao/payload-hashes.json", "--output", "space dir"}, []string{"download", "--output", "space dir", "--url", "https://example.test/cao/payload-hashes.json"}},
-		{[]string{"pages", "--json", "overview"}, []string{"pages", "overview", "--json"}},
+		{[]string{"status", "pages", "--json", "overview"}, []string{"status", "pages", "overview", "--json"}},
+		{[]string{"status", "pages", "--dashboard", "space dir/custom.json", "--json=false"}, []string{"status", "pages", "--dashboard", "space dir/custom.json"}},
 		{[]string{"queries", "--dashboard", "custom.json"}, []string{"queries", "--dashboard", "custom.json"}},
 		{[]string{"query-info", "cost-by-campaign", "--json"}, []string{"query-info", "cost-by-campaign", "--json"}},
 		{[]string{"prompt", "campaign-runs", "--param", "campaign=one,two", "--param", "label=a=b"}, []string{"prompt", "campaign-runs", "--param", "campaign=one,two", "--param", "label=a=b"}},
@@ -215,6 +216,9 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 	for _, args := range [][]string{
 		{"setup", "extra"}, {"setup", "--unknown"}, {"query-info"}, {"prompt"},
+		{"status"}, {"status", "unknown"}, {"status", "--json"},
+		{"status", "pages", "overview", "extra"}, {"status", "pages", "--unknown"},
+		{"status", "pages", "--dashboard", "one", "--dashboard", "two"},
 		{"download", "--url", "one", "--url", "two"}, {"query", "--stdin", "--collection", "runs"},
 		{"query", "--stdin", "--where", "x=y"}, {"query", "--stdin", "--limit", "5"},
 		{"gh", "runs", "extra"}, {"gh", "issues", "--status", "open"},

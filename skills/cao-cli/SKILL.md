@@ -50,7 +50,7 @@ below; do not build or install the extension when the runtime or cache is absent
 | Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
 | Download published Activity | `gh cao download [--url URL]` |
 | Audit source coverage | `node activity/cao.mjs audit-jsonl` |
-| Discover reviewed dashboard queries | `gh cao pages`, `gh cao queries`, `gh cao query-info QUERY_ID` |
+| Discover reviewed dashboard queries | `gh cao status pages`, `gh cao queries`, `gh cao query-info QUERY_ID` |
 | Run a reviewed query | `gh cao query QUERY_ID --limit N [--param NAME=VALUE]` |
 | Query a canonical collection | `gh cao query --collection COLLECTION [--where FIELD=VALUE] --limit N` |
 | Query one known record | `gh cao query --collection COLLECTION --id ID` |

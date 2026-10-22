@@ -291,7 +291,7 @@ export async function validateAgentDocs({
   const interfaceKinds = new Set();
   const resourceIds = new Set();
   const resourceInterfaces = new Map();
-  const cliCommands = new Set(commandHandlers.keys());
+  const cliCommands = new Set(["status pages", ...commandHandlers.keys()]);
   const cliMcpCapabilities = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
   const dashboardDocument = await loadAgentDashboardDocument();
   const webMcpTools = new Map(
@@ -363,7 +363,10 @@ export async function validateAgentDocs({
     }
     for (const binding of resource.interfaces?.cli ?? []) {
       interfaceKinds.add("cli");
-      if (binding.command !== "cao" || !cliCommands.has(binding.subcommand)) {
+      const commandPath = binding.subcommand === "status"
+        ? `status ${binding.arguments?.positional?.[0]}`
+        : binding.subcommand;
+      if (binding.command !== "cao" || !cliCommands.has(commandPath)) {
         errors.push(`${relative} references an unregistered CLI command`);
       }
       if (!Array.isArray(binding.arguments?.positional)

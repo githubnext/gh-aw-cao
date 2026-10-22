@@ -86,7 +86,7 @@ function formatQuery(query) {
 }
 
 /**
- * Describes dashboard pages for the `cao pages` command.
+ * Describes dashboard pages for the read-only MCP server.
  *
  * @param {{ dashboardPath?: string, pageId?: string, json?: boolean }} [request]
  */

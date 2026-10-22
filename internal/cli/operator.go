@@ -34,6 +34,13 @@ func addOperatorCommands(root *cobra.Command, execute runtimeExecutor, github gh
 		textFlag("manifest-sha256", "Trusted SHA-256 digest of the manifest"),
 	}, execute)
 	pages := operatorCommand("pages [PAGE_ID]", "List or describe agent-facing dashboard pages", cobra.MaximumNArgs(1), []operatorFlag{dashboardFlag, jsonFlag}, execute)
+	status := &cobra.Command{
+		Use: "status", Short: "Inspect CAO dashboard evidence", Args: cobra.NoArgs,
+		RunE: func(*cobra.Command, []string) error {
+			return fmt.Errorf("status requires pages")
+		},
+	}
+	status.AddCommand(pages)
 	queries := operatorCommand("queries", "List reviewed dashboard queries", cobra.NoArgs, []operatorFlag{dashboardFlag, jsonFlag}, execute)
 	info := operatorCommand("query-info QUERY_ID", "Describe one reviewed dashboard query", cobra.ExactArgs(1), []operatorFlag{dashboardFlag, jsonFlag}, execute)
 	prompt := operatorCommand("prompt QUERY_ID", "Render a reviewed query as an agent prompt", cobra.ExactArgs(1), []operatorFlag{dashboardFlag, databaseFlag, paramFlag}, execute)
@@ -123,7 +130,7 @@ Success is JSON; stale or conflicting captures fail without retrying.`
 	disable := operatorCommand("disable OWNER/REPO WORKFLOW", "Stage local revocation of recurring Value collection; retain history", cobra.ExactArgs(2), nil, execute)
 	disable.Long = "Persist an explicit disable for the exact workflow without deleting evidence. Automatic skill registration respects it. Review, commit, and deploy/push cao.json before scheduled collection stops."
 	value.AddCommand(publish, enable, disable)
-	root.AddCommand(setupCommand(execute, github), download, pages, queries, info, prompt, query, mcp, upgrade, gh, computation,
+	root.AddCommand(setupCommand(execute, github), download, status, queries, info, prompt, query, mcp, upgrade, gh, computation,
 		value,
 		passthroughCommand("update [REF] [GH_AW_OPTIONS...]", "Update installed CAO packages without widening rollout", execute),
 	)

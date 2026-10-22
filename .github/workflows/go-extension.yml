@@ -117,7 +117,7 @@ jobs:
           binary="$PWD/gh-cao"
           cd "$RUNNER_TEMP"
           PATH="" "$binary" version
-          PATH="" "$binary" pages --json > /dev/null
+          PATH="" "$binary" status pages --json > /dev/null
           PATH="" "$binary" queries --json > /dev/null
           PATH="" "$binary" query-info campaign-runs --json > /dev/null
           PATH="" "$binary" query --database explicit.sqlite --collection runs
@@ -131,7 +131,7 @@ jobs:
           ./gh-cao setup auth github-app --help
           ./gh-cao setup auth enterprise-app --help
           ./gh-cao setup auth token --help
-          ./gh-cao pages --json > /dev/null
+          ./gh-cao status pages --json > /dev/null
 
   extension-setup-simulator:
     name: Setup against local GitHub and Azure simulators

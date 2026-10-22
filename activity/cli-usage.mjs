@@ -61,7 +61,6 @@ export const USAGE = `Usage:
   cao compact-jsonl --input-dir SHARD_DIRECTORY --group OWNER/REPOSITORY=SHARD_PREFIX [--group OWNER/REPOSITORY=SHARD_PREFIX...] [--max-bytes BYTES]
   cao recycle-cache --input-dir SHARD_DIRECTORY [--retention-days DAYS|all] [--max-bytes BYTES]
   cao issue-status [--database FILE] --input-dir SHARD_DIRECTORY [--batch-size COUNT] [--graphql-cost-budget POINTS] [--graphql-min-remaining POINTS]
-  cao pages [PAGE_ID] [--dashboard FILE] [--json]
   cao queries [--dashboard FILE] [--json]
   cao query-info QUERY_ID [--dashboard FILE] [--json]
   cao prompt QUERY_ID [--dashboard FILE] [--param NAME=VALUE...] [--database FILE]
@@ -119,8 +118,6 @@ Update CAO:
 Agent analysis:
   Download the current CAO snapshot:
     cao download
-  Discover dashboard pages:
-    cao pages
   Discover named queries:
     cao queries
   Inspect a query:

@@ -30,7 +30,7 @@ func TestNativeStandaloneBinary(t *testing.T) {
 	inventory := filepath.Join(t.TempDir(), "inventory.json")
 	writeTestFile(t, inventory, `{"campaigns":{"rows":[{"campaign":"dependabot","observed-at":"2026-01-01T00:00:00.000Z"}]}}`)
 	for _, args := range [][]string{
-		{"version"}, {"pages", "--json"}, {"queries", "--json"}, {"query-info", "campaign-runs", "--json"},
+		{"version"}, {"status", "pages", "--json"}, {"queries", "--json"}, {"query-info", "campaign-runs", "--json"},
 		{"prompt", "campaign-runs", "--param", "campaign=dependabot"},
 		{"query", "--database", "explicit.sqlite", "--collection", "runs"},
 		{"query", "--database", "explicit.sqlite", "--stdin"},

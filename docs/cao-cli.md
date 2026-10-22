@@ -205,7 +205,7 @@ to invoke it as `gh cao`.
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
-| Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
+| Read-only analysis | `download`, `status pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
 | Operator evidence | `evidence release` | Native Go; bounded read-only GitHub references, optional provenance verification and development Azure receipt summaries. No Node runtime or checkout required. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
@@ -216,10 +216,18 @@ to invoke it as `gh cao`.
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
 projections, and MCP contract are embedded from the same JSON documents used by
-the dashboard. `pages`, `queries`, `query-info`, and definition-only `prompt`
+the dashboard. `status pages`, `queries`, `query-info`, and definition-only `prompt`
 work outside an installed control repository. Use `--dashboard FILE` to read
 an explicit dashboard document and its directory-confined fragments.
 `CAO_RUNTIME_ROOT` is no longer used by the extension.
+
+Use `gh cao status pages [PAGE_ID] [--dashboard FILE] [--json]` to list or
+describe dashboard pages and their reviewed queries. It replaces the retired
+top-level `gh cao pages` command; flags, text output, and JSON envelopes
+(including `"command": "pages"`) are unchanged. This is offline catalog
+discovery, not GitHub Pages deployment or hosting status. The unused internal
+Node `pages` command is also removed; MCP page discovery still uses the shared
+catalog API.
 
 Evidence queries read the canonical `__idb_records` projection through a
 read-only SQLite connection; they do not run migrations or repair the snapshot.
@@ -240,7 +248,7 @@ gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
 gh cao campaigns disable dependabot
 gh cao doctor --json
-gh cao pages --json
+gh cao status pages --json
 gh cao query campaign-runs --param campaign=dependabot
 ```
 

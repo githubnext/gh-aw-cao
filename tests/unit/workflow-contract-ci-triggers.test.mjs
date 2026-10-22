@@ -173,7 +173,8 @@ test("Go extension quality checks cover root-module sources and lint configurati
   ].join("\n"));
   assert.equal(lint.run, "golangci-lint run ./cmd/... ./internal/... ./dashboard");
   const standalone = steps.find((step) => step.name === "Check standalone execution without Node.js");
-  assert.match(standalone.run, /PATH="" "\$binary" pages --json/);
+  assert.match(standalone.run, /PATH="" "\$binary" status pages --json/);
+  assert.doesNotMatch(standalone.run, /"\$binary" pages\b/);
   assert.match(standalone.run, /PATH="" "\$binary" query --database explicit.sqlite --collection runs/);
   const parity = steps.find((step) => step.name === "Install JavaScript parity-oracle dependencies");
   const check = steps.find((step) => step.run === "make check");

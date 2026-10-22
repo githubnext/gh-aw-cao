@@ -81,7 +81,7 @@ running commands. See [Agent analysis](https://github.com/githubnext/gh-cao/blob
 5. Prefer the reviewed named queries the dashboard itself renders. Discover and run them with:
 
    ```bash
-   gh cao pages
+   gh cao status pages
    gh cao queries
    gh cao query-info QUERY_ID
    gh cao query QUERY_ID --limit 50

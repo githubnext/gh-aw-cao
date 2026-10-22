@@ -35,6 +35,23 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
+test("rejects retired pages and unsupported status command bindings", async () => {
+  const root = await createFixture();
+  const resourcePath = path.join(root, "dist", "dashboard", "index.json");
+  const resource = JSON.parse(await readFile(resourcePath, "utf8"));
+  for (const [subcommand, positional] of [
+    ["pages", ["overview"]],
+    ["status", ["invented"]],
+    ["status", []],
+  ]) {
+    resource.interfaces.cli[0].subcommand = subcommand;
+    resource.interfaces.cli[0].arguments.positional = positional;
+    await writeFile(resourcePath, JSON.stringify(resource));
+    const errors = await validateAgentDocs({ root });
+    assert.ok(errors.some((error) => error.includes("unregistered CLI command")));
+  }
+});
+
 async function createFixture() {
   const root = await mkdtemp(path.join(tmpdir(), "cao-agent-docs-"));
   roots.push(root);
@@ -58,8 +75,8 @@ async function createFixture() {
     const interfaces = route === "dashboard" ? {
       cli: [{
         command: "cao",
-        subcommand: "pages",
-        arguments: { positional: ["overview"], options: { "--json": true } },
+        subcommand: "status",
+        arguments: { positional: ["pages", "overview"], options: { "--json": true } },
         readOnly: true,
       }],
       mcp: [

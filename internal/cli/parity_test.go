@@ -52,8 +52,6 @@ func TestNativeOperatorOutputParity(t *testing.T) {
 		input        string
 		code         int
 	}{
-		{args: []string{"pages", "--json"}},
-		{args: []string{"pages", "overview", "--json"}},
 		{args: []string{"queries", "--json"}},
 		{args: []string{"query-info", "campaign-inventory", "--json"}},
 		{args: []string{"prompt", "campaign-runs", "--param", "campaign=dependabot"}},

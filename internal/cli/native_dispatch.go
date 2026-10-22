@@ -24,7 +24,7 @@ func nativeOperator(gh ghExecutor) runtimeExecutor {
 			return nativeUpgrade(cmd, args[1], gh)
 		case "update":
 			return nativeUpdate(cmd, args[1:], gh)
-		case "pages", "queries", "query-info":
+		case "status", "queries", "query-info":
 			return nativeCatalogCommand(cmd, cmd.Flags().Args())
 		case "query":
 			return nativeQuery(cmd, cmd.Flags().Args())

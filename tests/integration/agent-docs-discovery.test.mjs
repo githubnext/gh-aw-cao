@@ -108,9 +108,9 @@ test("an external agent can traverse static discovery and resource metadata", as
   assert.ok(Number.isFinite(Date.parse(relatedResource.freshness.generatedAt)));
 
   const dashboard = JSON.parse(await readFile(path.join(dist, "dashboard", "index.json"), "utf8"));
-  assert.equal(dashboard.interfaces.cli[0].subcommand, "pages");
+  assert.equal(dashboard.interfaces.cli[0].subcommand, "status");
   assert.deepEqual(dashboard.interfaces.cli[0].arguments, {
-    positional: ["overview"],
+    positional: ["pages", "overview"],
     options: { "--json": true },
   });
   assert.deepEqual(
@@ -120,6 +120,11 @@ test("an external agent can traverse static discovery and resource metadata", as
   assert.equal(dashboard.recommendedInterface.default, "web-mcp");
 
   const catalog = JSON.parse(await readFile(path.join(dist, "agent-analysis", "index.json"), "utf8"));
+  assert.equal(catalog.interfaces.cli[0].subcommand, "status");
+  assert.deepEqual(catalog.interfaces.cli[0].arguments, {
+    positional: ["pages"],
+    options: { "--json": true },
+  });
   assert.deepEqual(
     catalog.interfaces.mcp.map((binding) => binding.arguments),
     [{ kind: "pages" }, { kind: "queries" }],

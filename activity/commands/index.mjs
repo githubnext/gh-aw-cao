@@ -19,7 +19,6 @@ import { runIssueStatus } from "./issue-status.mjs";
 import { runMcp } from "./mcp.mjs";
 import { runMode } from "./mode.mjs";
 import { runOperationalValueCommand } from "./operational-value.mjs";
-import { runPages } from "./pages.mjs";
 import { runPruneDashboard } from "./prune-dashboard.mjs";
 import { runPrompt } from "./prompt.mjs";
 import { runRecycleCache } from "./recycle-cache.mjs";
@@ -55,7 +54,6 @@ export const commandHandlers = new Map([
   ["mcp", runMcp],
   ["mode", runMode],
   ["operational-value", runOperationalValueCommand],
-  ["pages", runPages],
   ["prune-dashboard", runPruneDashboard],
   ["prompt", runPrompt],
   ["recycle-cache", runRecycleCache],
