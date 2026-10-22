@@ -81,6 +81,7 @@ type azureSetupAPI struct {
 	referenceReads   int
 	drift            bool
 	failProvision    bool
+	snapshot         bool
 	images           map[string]string
 	locked           map[string]bool
 	configured       map[string]string

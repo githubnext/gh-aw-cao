@@ -183,7 +183,9 @@ jobs:
           GITHUB_TOKEN: ""
           GH_ENTERPRISE_TOKEN: ""
           GITHUB_ENTERPRISE_TOKEN: ""
-        run: npm run test:integration:setup-azure
+        run: |
+          npm run test:integration:setup-azure
+          npm run test:integration:azure-install-journey
 
   extension-authtests:
     name: Doctor authenticated integration tests

@@ -59,6 +59,9 @@ func (a *azureSetupAPI) apply(r *http.Request, command string, args []string) (a
 		image := azureFlag(args, "--image")
 		repository, _, ok := strings.Cut(image, ":")
 		target := map[string]string{"cao-functions": "azure-functions-runtime", "cao-ingest": "azure-empty-ingest-runtime", "cao-db-provision": "azure-db-provision"}[repository]
+		if repository == "cao-ingest" && a.snapshot {
+			target = "azure-ingest-runtime"
+		}
 		if !ok || target == "" || azureFlag(args, "--target") != target || a.images[image] != "" {
 			return nil, fmt.Errorf("unexpected or repeated image build")
 		}
