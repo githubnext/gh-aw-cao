@@ -453,7 +453,8 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(activity, /Checkout installed CAO control source|\.cao-runtime/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/);
-  assert.doesNotMatch(quickstart, /gh extension install/);
+  assert.match(quickstart, /gh extension install githubnext\/gh-cao/);
+  assert.match(quickstart, /Native setup prepares missing runtime, policy, and gh-aw/);
   assert.match(quickstart, /gh cao setup/);
   assert.match(quickstart, /No campaigns or agentic work are installed/);
   assert.match(quickstart, /Commit and push these CAO monitoring changes\? \[y\/N\]/);

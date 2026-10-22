@@ -187,7 +187,8 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.match(index, /\[REDACTED\]/);
     const markdownResponse = await fetch(`${preview.url}/guide.md`);
     assert.equal(markdownResponse.status, 200);
-    assert.equal(markdownResponse.headers.get("content-type"), "text/plain; charset=utf-8");
+    // Go's MIME registry uses the operating system's Markdown association.
+    assert.match(markdownResponse.headers.get("content-type"), /^text\/(?:plain|markdown); charset=utf-8$/);
     assert.doesNotMatch(await markdownResponse.text(), new RegExp(syntheticToken));
     const imageResponse = await fetch(`${preview.url}/image.png`);
     assert.equal(imageResponse.status, 200);

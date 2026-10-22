@@ -15,12 +15,10 @@ other topologies, see [setup combinations](setup-compatibility.md).
 ## Prerequisites
 
 - **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+.
-  The installer alternative also needs Bash, curl, and Node.js 24+
-  (Git Bash on Windows).
+  Installer alternative: Bash, curl, Node.js 24+ (Git Bash on Windows).
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
-- **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
-  Existing Agentic Workflow history is useful, not required.
+- **Repository:** exact `OWNER/REPOSITORY`; Agentic Workflow history is optional.
 
 Use a **private control repository** for private or internal evidence. A private
 repository does **not** guarantee a private Pages site: confirm restricted access
@@ -32,27 +30,25 @@ separate [hosted server deployment](deployment.md).
 
 ### Extension-first quickstart
 
-The short GitHub.com walkthrough starts with the native CLI extension:
+On GitHub.com:
 
 ```bash
 gh extension install githubnext/gh-cao
 gh cao --version
 ```
 
-Create or clone a clean default-branch control checkout, then continue to Step 2.
+Create or clone a clean default-branch control checkout.
 Native setup prepares missing runtime, policy, and gh-aw without a separate
 installer or local Node.js.
 
 <details>
 <summary>Match the recorded public-only example.</summary>
 
-The recorded example creates a **public** control repository with
+The recording creates a **public** control with
 `gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
-at **Repositories**, reviews the exact names, accepts public Pages, and approves
-the separate commit-and-push prompt. Use that visibility only when every target
-and all evidence may be public. An interactive wildcard that includes a private
-or internal target is rejected for a public control repository, not silently
-trimmed. Prefer an exact repository for your first setup.
+at **Repositories**, reviews the exact names, accepts public Pages, then approves
+commit-and-push. All evidence must be public. Interactive wildcards containing
+private/internal targets are rejected for public controls, not silently trimmed.
 
 </details>
 
@@ -63,7 +59,7 @@ The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
 and the baseline monitoring runtime and policy.
 
 :::tip[Installation and authentication]
-If authentication fails, sign in and retry:
+If authentication fails:
 
 ```bash
 gh auth login
@@ -75,21 +71,15 @@ and downloaded anonymously, avoiding enterprise SAML cross-organization failures
 Stored credentials are unchanged.
 :::
 
-Use a clean default-branch control checkout; see
-[other topologies](deployment-and-governance.md).
-
 <details>
-<summary>No control checkout yet? Explicitly create or clone one.</summary>
-
-Replace `OWNER/CONTROL_REPOSITORY` with your repository:
+<summary>Create or clone a control checkout.</summary>
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
 cd CONTROL_REPOSITORY
 ```
 
-Use `--public` only for public evidence. Guided setup needs no App/PAT for
-public targets, including private controls.
+Use `--public` only for public evidence.
 
 To use an existing remote repository instead:
 
@@ -97,9 +87,6 @@ To use an existing remote repository instead:
 gh repo clone OWNER/CONTROL_REPOSITORY
 cd CONTROL_REPOSITORY
 ```
-
-Alternatively, the installer supports explicit `--create-repo OWNER/NAME`
-to create and clone a private control repository.
 
 </details>
 
@@ -110,11 +97,8 @@ curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-c
 gh cao --version
 ```
 
-**Ready:** tools, runtime, and policy are prepared.
 Existing policy is preserved. No campaign is added or run.
-Use `--setup` to open guided configuration immediately.
-Runtime artifact/provenance access is unchanged;
-see [installer details](cao-cli.md#control-plane-installer).
+See [installer details](cao-cli.md#control-plane-installer).
 
 </details>
 
@@ -205,26 +189,25 @@ gh workflow run cao-activity.yml
 Activity collects evidence, not new agentic work. Successful collection triggers
 dashboard publication. Check Actions for progress instead of dispatching again.
 
-**Ready:** your dashboard opens. Find the repository in **Overview**, open
-**Runs**, and follow a run to its evidence. Costs and outcomes appear where available;
+**Ready:** your dashboard opens. From **Overview**, open **Runs** and inspect evidence.
+Costs and outcomes appear where available;
 missing evidence is not proof of zero cost or success.
 
 **No Agentic Workflow history yet?** An empty dashboard is expected. CAO monitors
-GitHub Agentic Workflows, not every ordinary Actions job. No new run is required.
-Preview the [sample dashboard](https://githubnext.github.io/gh-cao/cao/), or return
-after Activity collects new runs.
+GitHub Agentic Workflows, not every ordinary Actions job.
+Preview the [sample dashboard](https://githubnext.github.io/gh-cao/cao/).
 
 ## Optional: add automation later
 
 Monitoring is enough. For automation, [derive the simplest suitable structure](operation-patterns.md)
 from your outcome and scope.
 
-Try the **[Daily Repo Status quickstart](setup/quickstart.md)** for your first optional
-automation: one bounded report in the control repository, without repeating setup.
-Other choices include a [Direct operation](authority-envelopes.md) for supplied
-targets, a [Standalone fleet workflow](configuration.md#standalone-agentic-workflows)
-for bounded inventory selection, a [campaign](https://githubnext.github.io/gh-cao/catalog/) for independent
-workers, or ordinary GitHub Actions for deterministic work and approvals.
+For optional automation, try the **[Daily Repo Status quickstart](setup/quickstart.md)**:
+one bounded control-repository report.
+Other choices: [Direct operation](authority-envelopes.md) for supplied targets,
+[Standalone fleet workflow](configuration.md#standalone-agentic-workflows) for fleets,
+[campaign](https://githubnext.github.io/gh-cao/catalog/) for independent workers,
+or ordinary GitHub Actions for deterministic work.
 
 None is enrolled, enabled or run by setup. Installation is not execution:
 review and commit workflows and policy together before enabling them. Start in

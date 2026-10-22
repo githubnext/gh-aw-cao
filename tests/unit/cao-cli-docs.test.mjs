@@ -13,7 +13,7 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.ok(optional > 0);
   const monitoring = gettingStarted.slice(0, optional);
   const commands = [
-    installation,
+    "gh extension install githubnext/gh-cao",
     "gh cao --version",
     "gh cao setup",
     "gh cao doctor",
@@ -33,20 +33,25 @@ test("getting started reaches monitoring before optional campaign execution", ()
     "Publish and open your dashboard",
   ]);
   assert.match(monitoring, /\*\*Estimated time: 15 minutes\*\*/);
-  assert.match(monitoring, /:::note\[Video TODO\]/);
-  assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
+  assert.doesNotMatch(monitoring, /Video TODO|recording not yet available/);
+  assert.match(monitoring, /one monitoring path[\s\S]*setup-compatibility\.md/);
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
+  const extension = install.slice(install.indexOf("### Extension-first quickstart"), install.indexOf("<details>"));
+  assert.ok(extension.includes("```bash\ngh extension install githubnext/gh-cao\ngh cao --version\n```"));
+  assert.match(extension, /Native setup prepares missing runtime, policy, and gh-aw/);
+  assert.match(extension, /without a separate\s+installer or local Node\.js/);
+  const installer = install.slice(install.indexOf("<summary>Installer alternative"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
   assert.match(install, /Existing policy is preserved/);
   assert.match(install, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
   assert.match(install, /gh repo clone OWNER\/CONTROL_REPOSITORY/);
-  assert.ok(install.includes(`\`\`\`bash\n${installation}\ngh cao --version\n\`\`\``));
-  assert.match(monitoring, /Setup reuses the installed runtime and policy/);
+  assert.ok(installer.includes(`\`\`\`bash\n${installation}\ngh cao --version\n\`\`\``));
+  assert.match(monitoring, /Setup prepares or reuses runtime and policy/);
   assert.match(monitoring, /No separate `init` is needed/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
   assert.match(install, /downloaded anonymously, avoiding enterprise SAML cross-organization failures/);
-  assert.doesNotMatch(install, /gh extension install|--scopes repo,workflow/);
+  assert.doesNotMatch(install, /--scopes repo,workflow/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
   assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
   assert.match(monitoring, /## Prerequisites/);

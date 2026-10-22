@@ -343,11 +343,14 @@ func testSetupQuickstartPublication(t *testing.T, ctx context.Context, root, cat
 			remote := filepath.Join(f.root, "remotes/platform/control.git")
 			bootstrapRun(t, ctx, f.root, f.env, "git", "init", "--bare", "--initial-branch=main", remote)
 			bootstrapRun(t, ctx, f.root, f.env, "git", "--git-dir="+remote, "config", "http.receivepack", "true")
-			f.api.Git = &cgi.Handler{Path: git, Args: []string{"http-backend"}, Root: "/", Env: []string{
+			gitHandler := &cgi.Handler{Path: git, Args: []string{"http-backend"}, Root: "/", Env: []string{
 				"GIT_PROJECT_ROOT=" + filepath.Join(f.root, "remotes"), "GIT_HTTP_EXPORT_ALL=1",
 				"GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null",
 				"GIT_EXEC_PATH=" + strings.TrimSpace(bootstrapRun(t, ctx, f.root, f.env, "git", "--exec-path")),
 			}}
+			f.api.mu.Lock()
+			f.api.Git = gitHandler
+			f.api.mu.Unlock()
 			bootstrapRun(t, ctx, f.checkout, f.env, "git", "config", "user.name", "CAO simulator")
 			bootstrapRun(t, ctx, f.checkout, f.env, "git", "config", "user.email", "simulator@example.invalid")
 			bootstrapRun(t, ctx, f.checkout, f.env, "git", "add", ".github", "activity", "dashboard")
@@ -355,7 +358,9 @@ func testSetupQuickstartPublication(t *testing.T, ctx context.Context, root, cat
 			bootstrapRun(t, ctx, f.checkout, f.env, "git", "push", "origin", "HEAD:main")
 			// The GitHub.com case follows the recording; GHE.com uses a private
 			// control, non-public scope, retained PATs and restricted Pages.
+			f.api.mu.Lock()
 			delete(f.api.Repositories, "platform/secret")
+			f.api.mu.Unlock()
 			steps := [][2]string{{"Repositories (", "platform/*"}}
 			if enterprise {
 				steps = append(steps, [2]string{"Authentication (", "token"})
