@@ -310,7 +310,7 @@ func TestLinkedRetentionDoesNotProvisionOldShards(t *testing.T) {
 	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "")
 	store, _ := nativeTestStore(t)
 	now := time.Now().UTC()
-	week := weekStart(now.AddDate(0, 0, -21)).Format("20060102")
+	day := dayStart(now.AddDate(0, 0, -21)).Format("20060102")
 	for _, table := range []struct {
 		name string
 		want bool
@@ -320,7 +320,7 @@ func TestLinkedRetentionDoesNotProvisionOldShards(t *testing.T) {
 		{"tools", false},
 	} {
 		var exists bool
-		if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", table.name+"_w"+week).Scan(&exists); err != nil || exists != table.want {
+		if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", table.name+"_d"+day).Scan(&exists); err != nil || exists != table.want {
 			t.Fatalf("%s historical partition exists=%v, want %v: %v", table.name, exists, table.want, err)
 		}
 	}
@@ -359,7 +359,7 @@ func TestLinkedRetentionDoesNotProvisionOldShards(t *testing.T) {
 	}
 }
 
-func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
+func TestDailyRunPartitionsAndRetention(t *testing.T) {
 	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "30")
 	store, _ := nativeTestStore(t)
 	now := time.Now().UTC()
@@ -404,16 +404,16 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 			}
 		}
 	}
-	if _, err := writer.Publish(t.Context(), "weekly"); err != nil {
+	if _, err := writer.Publish(t.Context(), "daily"); err != nil {
 		t.Fatal(err)
 	}
 	var partitions int
 	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 3 {
-		t.Fatalf("runs did not route to three weekly partitions: %d %v", partitions, err)
+		t.Fatalf("runs did not route to three daily partitions: %d %v", partitions, err)
 	}
 	var future bool
-	if err := store.db.QueryRowContext(t.Context(), `SELECT to_regclass('runs_w' || to_char(date_trunc('week', now() AT TIME ZONE 'UTC') + interval '3 weeks','YYYYMMDD')) IS NOT NULL`).Scan(&future); err != nil || !future {
-		t.Fatalf("future weekly partition was not pre-created: %v %v", future, err)
+	if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", "runs_d"+now.AddDate(0, 0, futureRunDays).Format("20060102")).Scan(&future); err != nil || !future {
+		t.Fatalf("future daily partition was not pre-created: %v %v", future, err)
 	}
 	result, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{{Name: "runs", From: "$runs", Select: []query.SelectedField{{Field: "id"}}}}, []string{"runs"})
 	if err != nil || len(result["runs"].Rows) != 3 {
@@ -476,9 +476,8 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 	if repeat, err := store.State(t.Context()); err != nil || repeat.Revision != state.Revision || repeat.Counts["$runs"] != 2 {
 		t.Fatalf("repeated maintenance changed logical state: %+v %v", repeat, err)
 	}
-	missingWeek := now.AddDate(0, 0, 7*futureRunWeeks)
-	missingWeek = missingWeek.AddDate(0, 0, -((int(missingWeek.Weekday()) + 6) % 7))
-	missingName := "tools_w" + missingWeek.Format("20060102")
+	missingDay := now.AddDate(0, 0, futureRunDays)
+	missingName := "tools_d" + missingDay.Format("20060102")
 	if _, err := store.db.ExecContext(t.Context(), "DROP TABLE "+missingName); err != nil {
 		t.Fatal(err)
 	}
@@ -491,14 +490,78 @@ func TestWeeklyRunPartitionsAndRetention(t *testing.T) {
 		WHERE i.inhparent='tools'::regclass AND c.relname=$1)`, missingName).Scan(&restored); err != nil || !restored {
 		t.Fatalf("missing child partition was not restored: %v %v", restored, err)
 	}
-	later := now.AddDate(0, 0, 7)
+	later := now.AddDate(0, 0, 1)
 	if err := store.RunPartitionMaintenance(t.Context(), later, 14, 7); err != nil {
 		t.Fatal(err)
 	}
-	futureWeek := later.AddDate(0, 0, 7*futureRunWeeks)
-	futureWeek = futureWeek.AddDate(0, 0, -((int(futureWeek.Weekday()) + 6) % 7))
+	futureDay := later.AddDate(0, 0, futureRunDays)
 	var ready bool
-	if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", "runs_w"+futureWeek.Format("20060102")).Scan(&ready); err != nil || !ready {
-		t.Fatalf("weekly rollover did not pre-create the next future partition: %v %v", ready, err)
+	if err := store.db.QueryRowContext(t.Context(), "SELECT to_regclass($1) IS NOT NULL", "runs_d"+futureDay.Format("20060102")).Scan(&ready); err != nil || !ready {
+		t.Fatalf("daily rollover did not pre-create the next future partition: %v %v", ready, err)
+	}
+}
+
+func TestDailyPartitionsRetainPartialCutoffDay(t *testing.T) {
+	t.Setenv("CAO_POSTGRES_LINKED_RETENTION_DAYS", "14")
+	store, _ := nativeTestStore(t)
+	now := dayStart(time.Now()).Add(12 * time.Hour)
+	cutoffDay := dayStart(now.AddDate(0, 0, -7))
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer writer.Abort(t.Context())
+	writer.ingestedAt = now
+	for _, record := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$repositories", model.Row{"id": "repository"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repository"}},
+	} {
+		if err := writer.Append(t.Context(), record.source, record.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for index, at := range []time.Time{cutoffDay.Add(-time.Microsecond), cutoffDay, cutoffDay.AddDate(0, 0, 1)} {
+		id := fmt.Sprintf("run-%d", index)
+		if err := writer.Append(t.Context(), "$runs", model.Row{
+			"id": id, "repositoryId": "repository", "workflowId": "workflow", "createdAt": at.Format(time.RFC3339Nano),
+		}); err != nil {
+			t.Fatal(err)
+		}
+		for _, source := range []string{"$tools", "$domains"} {
+			if err := writer.Append(t.Context(), source, model.Row{"id": source + id, "runId": id}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if _, err := writer.Publish(t.Context(), "daily-boundary"); err != nil {
+		t.Fatal(err)
+	}
+	var partitions int
+	if err := store.db.QueryRowContext(t.Context(), "SELECT count(DISTINCT tableoid) FROM runs WHERE namespace=$1", store.namespace).Scan(&partitions); err != nil || partitions != 3 {
+		t.Fatalf("adjacent UTC days did not route to separate partitions: %d %v", partitions, err)
+	}
+	for _, step := range []struct {
+		at   time.Time
+		want int
+	}{
+		{now, 2},
+		{dayStart(now).AddDate(0, 0, 1).Add(-time.Nanosecond), 2},
+		{dayStart(now).AddDate(0, 0, 1), 1},
+	} {
+		if err := store.RunPartitionMaintenance(t.Context(), step.at, 7, 7); err != nil {
+			t.Fatal(err)
+		}
+		state, err := store.State(t.Context())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, source := range []string{"$runs", "$tools", "$domains"} {
+			if state.Counts[source] != step.want {
+				t.Fatalf("%s at %s retained %d rows, want %d", source, step.at, state.Counts[source], step.want)
+			}
+		}
 	}
 }

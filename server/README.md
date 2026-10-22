@@ -3315,32 +3315,40 @@ owning entity tables. No canonical JSON/JSONB or serialized documents are
 stored, and canonical scalar rows are not copied into generic source/value
 tables.
 `runs` and its run-owned records (including sessions and their events) use
-matching UTC Monday-to-Monday PostgreSQL RANGE partitions. `run_at` uses the
+matching UTC midnight-to-midnight PostgreSQL RANGE partitions named
+`<table>_dYYYYMMDD`. `run_at` uses the
 run's `createdAt`, then `startedAt`, `completedAt`, or `updatedAt`; records
 without any of these use ingestion time. Linked records inherit their run's
-partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
+partition timestamp. PostgreSQL routes parent-table inserts; missing days
 fail closed rather than creating partitions during ingestion. The separately
 scheduled owner-run `database maintain --store canonical` checks existing
-partitions, creates any missing current and four future weeks first, and removes complete
-run weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
+partitions, creates any missing current and 28 future days first, and removes complete
+run days ending at or before the cutoff set by
+`CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
 Run-linked tables (audits, domains, eval observations, experiment assignments,
 friction, grader observations, issues, skills, and tools) independently expire
-complete weekly shards older than `CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7,
-allowed 7 up to the run retention). A partial week remains until the entire
+complete daily shards ending at or before the cutoff set by
+`CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7,
+allowed 7 up to the run retention). A partial cutoff day remains until the entire
 shard is past its cutoff. Maintenance detaches and drops linked shards before
 expired run shards, updating affected source counts and revisions. Repeated maintenance
 is a no-op when partitions are already present and none have expired. Run it
 at least daily and before restarting after downtime; runtime startup checks the
 full provisioned window but never repairs it. Alert on missed maintenance before
-the four-week runway expires. Choose a window
+the 28-day runway expires. Choose a window
 that covers all authoritative run timestamps before ingestion; historical linked
 records outside the linked window are skipped while their retained runs are
-still ingested.
+still ingested. For a seven-day window for both runs and detail, explicitly set
+both retention variables to `7`; existing defaults and overrides are unchanged.
+Whole-day expiry can retain less than one extra day at the maintenance instant;
+schedule lag can extend physical retention further.
 
 Owner-run `database bootstrap --store canonical` initializes the schema and its
-partitions. Runtime opens it without DDL. There is no old-layout detection,
-conversion, backfill, or backward-compatible import. Use a new database and
-re-ingest authoritative inputs when changing the physical contract; never drop
+partitions. Runtime opens it without DDL. There is no old-layout conversion,
+backfill, or backward-compatible import. Use a new database and
+re-ingest authoritative inputs when changing the physical contract. Existing
+`<table>_wYYYYMMDD` weekly layouts are rejected without conversion; rebuild
+canonical storage in a fresh schema or database. Never drop
 operational audit/queue state if it shares the old database.
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.

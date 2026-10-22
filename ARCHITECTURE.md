@@ -316,9 +316,12 @@ proof and original evidence clocks; failed refreshes retain the previous capture
 without reporting a fresh success or zero. Disabling collection retains history.
 No dashboard navigation, report upload or workflow discovery creates an opt-in,
 and no per-workflow schedule or model call is introduced.
-Owner-run bootstrap initializes this schema and its weekly partitions; runtime
+Owner-run bootstrap initializes this schema and its UTC daily partitions; runtime
 opens and validates provisioned state without DDL. Daily owner-run maintenance
-keeps historical and four upcoming weeks provisioned. A fixed schema-qualified
+keeps historical, current, and 28 upcoming days provisioned, expiring only
+complete days at each configured retention cutoff. Weekly layouts require a
+fresh canonical schema rebuilt from authoritative inputs without removing
+operational audit/queue state. A fixed schema-qualified
 ANALYZE capability preserves ingestion statistics without runtime ownership.
 Bootstrap performs no legacy conversion or
 backward-compatible import. There are no persistent Postgres generations or

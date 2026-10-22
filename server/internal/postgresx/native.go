@@ -459,7 +459,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		return State{}, err
 	}
 	if duplicate {
-		return State{}, errors.New("duplicate run identity across weeks")
+		return State{}, errors.New("duplicate run identity across days")
 	}
 	// Staged run-owned rows are linked after all run records have
 	// arrived. The copied batches remain bounded; PostgreSQL routes the insert.
@@ -478,7 +478,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			quoted[i] = "s." + query.SQLIdentifier(column)
 		}
 		stage := query.SQLIdentifier(name + "_stage")
-		cutoff := weekStart(w.ingestedAt.AddDate(0, 0, -w.store.linkedRetentionDays))
+		cutoff := dayStart(w.ingestedAt.AddDate(0, 0, -w.store.linkedRetentionDays))
 		var expired int64
 		if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+stage+" s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at<$1", cutoff).Scan(&expired); err != nil {
 			return State{}, err
@@ -497,7 +497,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			return State{}, err
 		}
 		if duplicate {
-			return State{}, fmt.Errorf("duplicate %s identity across weeks", name)
+			return State{}, fmt.Errorf("duplicate %s identity across days", name)
 		}
 		w.staged[source] = false
 	}

@@ -62,7 +62,7 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
   ].sort());
 });
 
-test('all run-owned tables share weekly partitions and maintenance coverage', () => {
+test('all run-owned tables share daily partitions and maintenance coverage', () => {
   const runOwned = new Set(['runs']);
   let size;
   do {
@@ -80,7 +80,7 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
   }
   const maintenance = readFileSync(new URL('../internal/postgresx/partitions.go', import.meta.url), 'utf8');
   const registered = maintenance.match(/var partitionTables = \[\]string\{([^}]+)\}/);
-  assert.ok(registered, 'weekly maintenance must declare its partitioned tables');
+  assert.ok(registered, 'daily maintenance must declare its partitioned tables');
   assert.match(maintenance, /tables := partitionTables/);
   const provisioned = readFileSync(new URL('../internal/postgresx/provisioned.go', import.meta.url), 'utf8');
   assert.match(provisioned, /range partitionTables/, 'runtime readiness must validate the same partition tables');
@@ -96,7 +96,7 @@ test('all run-owned tables share weekly partitions and maintenance coverage', ()
     }
   }
   const discovered = maintenance.match(/p\.relname IN\s*\(([^)]+)\)/);
-  assert.ok(discovered, 'weekly maintenance must discover every partitioned table');
+  assert.ok(discovered, 'daily maintenance must discover every partitioned table');
   assert.deepEqual([...discovered[1].matchAll(/'([^']+)'/g)].map((match) => match[1]).sort(), names);
 });
 

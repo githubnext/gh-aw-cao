@@ -18,24 +18,19 @@ import (
 
 const defaultRunRetentionDays = 30
 const defaultLinkedRetentionDays = 7
-const futureRunWeeks = 4
+const futureRunDays = 28
 const partitionMaintenanceInterval = 24 * time.Hour
 
 var partitionsLog = logger.New("cao:postgresx:partitions")
 var partitionTables = []string{"audits", "domains", "eval_observations", "experiment_assignments", "friction", "grader_observations", "issues", "skills", "tools", "runs"}
 
-// weekStart truncates t (interpreted in UTC) to the Monday 00:00:00 that
-// begins its partition week. It is extracted from RunPartitionMaintenance so
-// the week-boundary computation is a single, independently testable pure
-// function, separate from the maintenance transaction it drives.
-func weekStart(t time.Time) time.Time {
+func dayStart(t time.Time) time.Time {
 	t = t.UTC()
-	day := (int(t.Weekday()) + 6) % 7
-	return time.Date(t.Year(), t.Month(), t.Day()-day, 0, 0, 0, 0, time.UTC)
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // RunPartitionMaintenance is an administrative operation, never part of
-// ingestion. Only whole weeks strictly older than each retention cutoff go.
+// ingestion. Only whole days ending at or before each retention cutoff go.
 func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, retentionDays, linkedRetentionDays int) error {
 	if retentionDays < 7 || retentionDays > 3650 {
 		return fmt.Errorf("run retention days must be between 7 and 3650")
@@ -58,46 +53,46 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	tables := partitionTables
 	cutoff := now.UTC().AddDate(0, 0, -retentionDays)
 	linkedCutoff := now.UTC().AddDate(0, 0, -linkedRetentionDays)
-	start := weekStart(cutoff)
-	linkedStart := weekStart(linkedCutoff)
-	current := weekStart(now)
-	end := current.AddDate(0, 0, 7*(futureRunWeeks+1))
+	start := dayStart(cutoff)
+	linkedStart := dayStart(linkedCutoff)
+	current := dayStart(now)
+	end := current.AddDate(0, 0, futureRunDays+1)
 	existing, expired, err := s.existingPartitions(ctx, cutoff, linkedCutoff)
 	if err != nil {
 		return err
 	}
-	partitionsLog.Printf("partition maintenance started namespace=%s retention_days=%d linked_retention_days=%d expired_weeks=%d", s.namespace, retentionDays, linkedRetentionDays, len(expired))
+	partitionsLog.Printf("partition maintenance started namespace=%s retention_days=%d linked_retention_days=%d expired_days=%d", s.namespace, retentionDays, linkedRetentionDays, len(expired))
 	defer func() {
 		partitionsLog.Printf("partition maintenance finished namespace=%s window_start=%s window_end=%s", s.namespace, start.Format("20060102"), end.Format("20060102"))
 	}()
-	// Provision the current and upcoming weeks before any historical backlog.
-	for at := current; at.Before(end); at = at.AddDate(0, 0, 7) {
-		if err := s.createWeek(ctx, tables, at, existing); err != nil {
+	// Provision the current and upcoming days before any historical backlog.
+	for at := current; at.Before(end); at = at.AddDate(0, 0, 1) {
+		if err := s.createDay(ctx, tables, at, existing); err != nil {
 			return err
 		}
 	}
-	for at := start; at.Before(current); at = at.AddDate(0, 0, 7) {
+	for at := start; at.Before(current); at = at.AddDate(0, 0, 1) {
 		needed := []string{"runs"}
 		if !at.Before(linkedStart) {
 			needed = tables
 		}
-		if err := s.createWeek(ctx, needed, at, existing); err != nil {
+		if err := s.createDay(ctx, needed, at, existing); err != nil {
 			return err
 		}
 	}
 	for _, at := range expired {
 		var drop []string
 		for _, table := range tables {
-			name := table + "_w" + at.Format("20060102")
+			name := table + "_d" + at.Format("20060102")
 			tableCutoff := linkedCutoff
 			if table == "runs" {
 				tableCutoff = cutoff
 			}
-			if existing[name] && !at.AddDate(0, 0, 7).After(tableCutoff) {
+			if existing[name] && !at.AddDate(0, 0, 1).After(tableCutoff) {
 				drop = append(drop, table)
 			}
 		}
-		if err := s.maintainWeek(ctx, drop, at, true); err != nil {
+		if err := s.maintainDay(ctx, drop, at, true); err != nil {
 			return err
 		}
 	}
@@ -173,10 +168,10 @@ func (s *Store) existingPartitions(ctx context.Context, cutoff, linkedCutoff tim
 			return nil, nil, err
 		}
 		existing[name] = true
-		if !strings.HasPrefix(name, table+"_w") || len(name) != len(table+"_w")+8 {
-			return nil, nil, fmt.Errorf("unexpected %s partition", table)
+		if !strings.HasPrefix(name, table+"_d") || len(name) != len(table+"_d")+8 {
+			return nil, nil, fmt.Errorf("unexpected %s partition: daily partitions required; rebuild canonical storage in a fresh schema without removing operational audit history", table)
 		}
-		date, err := time.Parse("20060102", strings.TrimPrefix(name, table+"_w"))
+		date, err := time.Parse("20060102", strings.TrimPrefix(name, table+"_d"))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -184,7 +179,7 @@ func (s *Store) existingPartitions(ctx context.Context, cutoff, linkedCutoff tim
 		if table == "runs" {
 			tableCutoff = cutoff
 		}
-		if !date.AddDate(0, 0, 7).After(tableCutoff) && !seen[date] {
+		if !date.AddDate(0, 0, 1).After(tableCutoff) && !seen[date] {
 			expired = append(expired, date)
 			seen[date] = true
 		}
@@ -196,26 +191,26 @@ func (s *Store) existingPartitions(ctx context.Context, cutoff, linkedCutoff tim
 	return existing, expired, nil
 }
 
-func (s *Store) createWeek(ctx context.Context, tables []string, at time.Time, existing map[string]bool) error {
+func (s *Store) createDay(ctx context.Context, tables []string, at time.Time, existing map[string]bool) error {
 	var missing []string
 	for _, table := range tables {
-		if !existing[table+"_w"+at.Format("20060102")] {
+		if !existing[table+"_d"+at.Format("20060102")] {
 			missing = append(missing, table)
 		}
 	}
 	if len(missing) == 0 {
 		return nil
 	}
-	if err := s.maintainWeek(ctx, missing, at, false); err != nil {
+	if err := s.maintainDay(ctx, missing, at, false); err != nil {
 		return err
 	}
 	for _, table := range missing {
-		existing[table+"_w"+at.Format("20060102")] = true
+		existing[table+"_d"+at.Format("20060102")] = true
 	}
 	return nil
 }
 
-func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time, drop bool) error {
+func (s *Store) maintainDay(ctx context.Context, tables []string, at time.Time, drop bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -225,7 +220,7 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 	if drop {
 		seen := make(map[string]bool)
 		for _, table := range tables {
-			found, err := partitionNamespaces(ctx, tx, table+"_w"+at.Format("20060102"))
+			found, err := partitionNamespaces(ctx, tx, table+"_d"+at.Format("20060102"))
 			if err != nil {
 				return err
 			}
@@ -243,7 +238,7 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 		}
 	}
 	for _, table := range tables {
-		name := table + "_w" + at.Format("20060102")
+		name := table + "_d" + at.Format("20060102")
 		if drop {
 			if _, err := tx.ExecContext(ctx, "ALTER TABLE "+table+" DETACH PARTITION "+name); err != nil {
 				return fmt.Errorf("detach expired %s: %w", name, err)
@@ -255,12 +250,12 @@ func (s *Store) maintainWeek(ctx context.Context, tables []string, at time.Time,
 			statement, _, err := sqlbuilder.Build("CREATE TABLE {} PARTITION OF {} FOR VALUES FROM ({}) TO ({})",
 				sqlbuilder.Identifier(name), sqlbuilder.Identifier(table),
 				sqlbuilder.Fragment("'"+at.Format(time.RFC3339)+"'"),
-				sqlbuilder.Fragment("'"+at.AddDate(0, 0, 7).Format(time.RFC3339)+"'"))
+				sqlbuilder.Fragment("'"+at.AddDate(0, 0, 1).Format(time.RFC3339)+"'"))
 			if err != nil {
 				return err
 			}
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
-				return fmt.Errorf("create weekly %s: %w", name, err)
+				return fmt.Errorf("create daily %s: %w", name, err)
 			}
 		}
 	}

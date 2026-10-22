@@ -281,7 +281,10 @@ establish SOC 2 compliance.
 
 Run canonical maintenance **at least daily** under the owner job, not a runtime
 service. It provisions the configured retained historical window plus the
-current and **four upcoming weeks**, then detaches/drops expired whole weeks.
+current and **28 upcoming UTC days**, then detaches/drops expired whole days.
+Partitions are named `<table>_dYYYYMMDD` and cover midnight to midnight UTC.
+Only days ending at or before the applicable retention cutoff are removed;
+the partial cutoff day remains. Maintenance lag can extend physical retention.
 Use the same `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30) and
 `CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7) as runtime:
 
@@ -289,11 +292,18 @@ Use the same `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30) and
 cao-dashboard database maintain --store canonical --namespace hosted-dashboard
 ```
 
+For a seven-day window for both runs and linked detail, explicitly set both
+retention variables to `7` in the owner job and runtime. Defaults and existing
+overrides are unchanged. Weekly layouts (`<table>_wYYYYMMDD`) are rejected;
+provision a fresh canonical schema or database and re-ingest authoritative
+inputs. There is no in-place conversion. Preserve separately owned operational
+audit, queue, and revocation state.
+
 Runtime startup verifies the complete expected partition window without DDL.
 Missing schema, statistics capability/grant, or partitions fail startup with an
 operator action. Long-running processes do not repair partitions: alert on any
-missed/failed daily maintenance job and repair before the four-week runway is
-exhausted. Missing ingestion weeks remain a hard error, not silent data loss.
+missed/failed daily maintenance job and repair before the 28-day runway is
+exhausted. Missing ingestion days remain a hard error, not silent data loss.
 After extended downtime, run maintenance before restarting. Parent-table
 runtime grants cover future partitions; do not grant privileges on each child.
 

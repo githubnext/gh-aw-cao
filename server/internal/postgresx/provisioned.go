@@ -67,15 +67,15 @@ func (s *Store) checkProvisionedPartitions(ctx context.Context, now time.Time, r
 	if err != nil {
 		return err
 	}
-	start := weekStart(now.AddDate(0, 0, -retention))
-	linkedStart := weekStart(now.AddDate(0, 0, -linkedRetention))
-	end := weekStart(now).AddDate(0, 0, 7*(futureRunWeeks+1))
-	for at := start; at.Before(end); at = at.AddDate(0, 0, 7) {
+	start := dayStart(now.AddDate(0, 0, -retention))
+	linkedStart := dayStart(now.AddDate(0, 0, -linkedRetention))
+	end := dayStart(now).AddDate(0, 0, futureRunDays+1)
+	for at := start; at.Before(end); at = at.AddDate(0, 0, 1) {
 		for _, table := range partitionTables {
 			if table != "runs" && at.Before(linkedStart) {
 				continue
 			}
-			if !existing[table+"_w"+at.Format("20060102")] {
+			if !existing[table+"_d"+at.Format("20060102")] {
 				return errors.New("canonical partitions are not provisioned through the required window; run database maintain as owner")
 			}
 		}
