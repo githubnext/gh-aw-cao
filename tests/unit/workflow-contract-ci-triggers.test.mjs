@@ -226,8 +226,13 @@ test("Go extension setup simulator runs independently without live credentials",
   const go = steps.find((step) => step.uses?.startsWith("actions/setup-go@"));
   const install = steps.find((step) => step.uses === "./.github/actions/setup-gh-aw");
   const run = steps.find((step) => step.run === "npm run test:integration:setup");
-  const azure = steps.find((step) => step.run === "npm run test:integration:setup-azure");
+  const azure = steps.find((step) => step.name === "Run Azure setup with official Azurite and local control-plane simulation");
   const azurePrerequisites = steps.find((step) => step.name === "Prepare offline Azure simulation prerequisites");
+  assert.ok(azure);
+  assert.deepEqual(azure.run.trim().split("\n"), [
+    "npm run test:integration:setup-azure",
+    "npm run test:integration:azure-install-journey",
+  ]);
   assert.deepEqual(permissions, { contents: "read" });
   assert.equal(checkout.with["persist-credentials"], false);
   assert.equal(go.with["go-version-file"], "go.mod");
@@ -267,6 +272,8 @@ test("Go extension setup simulator runs independently without live credentials",
   assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAO\(Setup\|HostedCLISetup\)Integration\|TestSetup\)'/);
   assert.match(scripts["test:integration:setup-azure"], /CAO_SETUP_AZURE_INTEGRATION=1 GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOVCS='\*:off' go -C server test -race/);
   assert.match(scripts["test:integration:setup-azure"], /-run '\^\(TestCAOSetupAzureIntegration\|TestSetupAzure\|TestLocalTransport\)'/);
+  assert.match(scripts["test:integration:azure-install-journey"], /CAO_SETUP_AZURE_INTEGRATION=1 GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOVCS='\*:off' go -C server test -race/);
+  assert.match(scripts["test:integration:azure-install-journey"], /-run '\^TestCAOAzureInstallJourneyIntegration\$'/);
 });
 
 test("Docker samples runtime has an independent read-only workflow", () => {

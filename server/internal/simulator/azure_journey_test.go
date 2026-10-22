@@ -32,10 +32,13 @@ func TestCAOAzureInstallJourneyIntegration(t *testing.T) {
 // approvals are fixture inputs, not authority to contact either cloud.
 func setupAzurePrivateFarm(t *testing.T, ctx context.Context, f *setupFixture, catalog, binary string) {
 	t.Helper()
-	f.api.Assets = bootstrapReleaseAssets(t, binary)
+	assets := bootstrapReleaseAssets(t, binary)
+	f.api.mu.Lock()
+	f.api.Assets = assets
 	for _, repository := range f.api.Repositories {
 		repository.Private = true
 	}
+	f.api.mu.Unlock()
 	for _, item := range f.env {
 		if data, ok := strings.CutPrefix(item, "XDG_DATA_HOME="); ok {
 			if err := os.Remove(filepath.Join(data, "gh/extensions/gh-cao/gh-cao")); err != nil {
@@ -68,7 +71,9 @@ func setupAzurePrivateFarm(t *testing.T, ctx context.Context, f *setupFixture, c
 	setupAssertGitHubAppPlans(t, apps, false, "", "", "github.com")
 	// Model the owner completing selected-repository installation and storing
 	// PEMs outside the agent. Secret-name presence is not working-key proof.
+	f.api.mu.Lock()
 	f.api.Repositories["platform/control"].Secrets = []string{"GH_AW_GITHUB_READ_APP_PRIVATE_KEY", "GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY"}
+	f.api.mu.Unlock()
 	for name, value := range map[string]string{
 		"GH_AW_GITHUB_READ_APP_ID": "1001", "GH_AW_GITHUB_WRITE_APP_ID": "1002", "GH_AW_GITHUB_AUTH_MODE": "app",
 	} {
@@ -87,11 +92,11 @@ func setupAzurePrivateFarm(t *testing.T, ctx context.Context, f *setupFixture, c
 	if !bytes.Equal(bytes.TrimSpace([]byte(published)), bytes.TrimSpace(setupRead(t, f.policyPath()))) {
 		t.Fatal("published policy differs from reviewed private farm authority")
 	}
+	f.api.mu.Lock()
+	defer f.api.mu.Unlock()
 	if f.api.Repositories["platform/control"].Pages != nil {
 		t.Fatal("private Azure installation enabled Pages")
 	}
-	f.api.mu.Lock()
-	defer f.api.mu.Unlock()
 	if len(f.api.Unhandled) != 0 {
 		t.Fatalf("installer used unsupported GitHub routes: %v", f.api.Unhandled)
 	}
