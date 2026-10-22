@@ -166,6 +166,10 @@ The provider-neutral storage contract in `server/internal/operational/` that exp
 
 A control repository whose own visibility is public, so its policy, workflow runs, operational metadata, dashboard data, and review outputs are also public. Activity and Server Ingestion both fail closed and refuse to collect evidence when a public control repository's credentials can reach any non-public repository, reporting only a rejected-repository count. See [Control Repository Visibility](authentication.md#control-repository-visibility).
 
+## Public-only monitoring
+
+A setup profile for a public control repository that monitors currently public repositories with the workflow `GITHUB_TOKEN` and no App or PAT. Policy records it as `control-plane.activity.public-only: true` with exact repository names, never a wildcard. Activity verifies public visibility and unchanged repository identity before discovery and again before log collection, and blocks publication if either check fails. It grants no campaign activation, safe output, or live authority. See [Public-only monitoring quickstart](authentication.md#public-only-monitoring-quickstart).
+
 ## Repo memory
 
 The canonical gh-aw capability that persists files with unlimited retention in a dedicated `memory/<campaign-slug>` Git branch, distinct from the 7-day `cache-memory`. CAO campaigns configure it with `repo-memory.branch-name` so a coordinator can read and update bounded, advisory cross-run state through `$GH_AW_MEMORY_DIR` before dispatch selection; workers share the branch only when their work benefits from that shared history. Repo memory is never policy, target authority, credential storage, or a substitute for current repository evidence. See the canonical gh-aw definition of [Repo Memory](https://github.github.com/gh-aw/reference/glossary/#repo-memory).
@@ -197,6 +201,10 @@ A repository enrolled for a campaign. A target can provide data and receive decl
 ## Unified session
 
 gh-aw's version-1 `usage/aw_session.jsonl` evidence for a run. CAO collection validates it against the run's execution identity and stores only a safe projection of allowlisted event metadata, never message bodies, prompts, or tool inputs and outputs. An available unified session replaces legacy MCP, firewall, and skill event projections for that run; when none exists, the legacy parsers remain in use. See the [gh-aw JSONL mapping specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md).
+
+## Webhook gateway
+
+An opt-in, disabled-by-default GitHub App webhook receiver and durable dispatcher that routes authenticated deliveries to explicitly approved workflow subscriptions in a control repository. It identifies sources and destinations by immutable IDs rather than names, and is separate from the dashboard collector's webhook endpoint. CAO rollout policy and gh-aw capabilities remain independent ceilings; the gateway grants no permission or target authority. See [RFC-033](https://github.com/githubnext/gh-cao/blob/main/specs/rfc-033-webhook-gateway.md).
 
 ## WebMCP
 

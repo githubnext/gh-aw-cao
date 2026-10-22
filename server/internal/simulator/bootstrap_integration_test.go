@@ -198,7 +198,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 
 func bootstrapRun(t *testing.T, ctx context.Context, directory string, environment []string, name string, args ...string) string {
 	t.Helper()
-	command := exec.CommandContext(ctx, name, args...) // #nosec G204 -- executable and args are test-owned, never API input.
+	command := exec.CommandContext(ctx, name, args...) // #nosec G204,G702 -- test-owned executable/argument arrays without shell interpolation, never API input.
 	command.Dir = directory
 	if environment != nil {
 		command.Env = environment
@@ -333,15 +333,23 @@ func bootstrapAssertPolicy(t *testing.T, file string) {
 
 // The real gh and curl still address github.com and api.github.com. CONNECT
 // terminates only at this simulator; no upstream connection or DNS is possible.
-func bootstrapProxy(t *testing.T, handler http.Handler) (proxyURL, certificateFile string) {
+func bootstrapProxy(t *testing.T, handler http.Handler, additionalHosts ...string) (proxyURL, certificateFile string) {
 	t.Helper()
+	return bootstrapProxyWithRejection(t, handler, func(method, host string) {
+		t.Errorf("blocked unexpected bootstrap destination: %s %s", method, host)
+	}, additionalHosts...)
+}
+
+func bootstrapProxyWithRejection(t *testing.T, handler http.Handler, rejected func(string, string), additionalHosts ...string) (proxyURL, certificateFile string) {
+	t.Helper()
+	hosts := append([]string{"github.com", "api.github.com"}, additionalHosts...)
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "CAO bootstrap simulator"},
-		DNSNames:  []string{"github.com", "api.github.com"},
+		DNSNames:  hosts,
 		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
 		KeyUsage:    x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, IsCA: true, BasicConstraintsValid: true,
@@ -368,8 +376,8 @@ func bootstrapProxy(t *testing.T, handler http.Handler) (proxyURL, certificateFi
 		t.Fatal(err)
 	}
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodConnect || (r.Host != "github.com:443" && r.Host != "api.github.com:443") {
-			t.Errorf("blocked unexpected bootstrap destination: %s %s", r.Method, r.Host)
+		if r.Method != http.MethodConnect || !slices.ContainsFunc(hosts, func(host string) bool { return r.Host == host+":443" }) {
+			rejected(r.Method, r.Host)
 			http.Error(w, "simulator destination not allowed", http.StatusForbidden)
 			return
 		}

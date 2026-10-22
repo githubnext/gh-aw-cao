@@ -47,7 +47,7 @@ func deployAzureRestartAndAwaitReferences(ctx context.Context, deps deployAzureD
 				last = "unresolved Key Vault references: " + strings.Join(pending, ", ")
 			}
 		}
-		if err := deps.pause(ctx, deployAzureReferencePause); err != nil {
+		if err := deployAzurePause(ctx, deps, deployAzureReferencePause); err != nil {
 			if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 				return fmt.Errorf("the Function App's Key Vault references did not resolve within %s after restart (%s); verify the Function App identity's Key Vault Secrets User grant", deployAzureReferenceTimeout, last)
 			}
