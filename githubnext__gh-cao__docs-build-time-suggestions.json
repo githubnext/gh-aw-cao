@@ -1,14 +1,7 @@
 {
-  "source_sha": "2bd5d7e5fbf2b92ebd7d514a345cdd47948042cd",
-  "next_category": "reusable dashboard generation",
+  "source_sha": "cf53719535fcebea76de1791671f8c4b769c98d6",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-21T22:37:33Z",
-      "worker_run_id": "39687499641",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs from the preceding 14 days was blocked immediately by the GitHub REST API rate limit. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, and trusted cache hit/miss evidence could not be collected, so no actionable recommendation was made and the Astro documentation generation category remains next."
-    },
     {
       "evaluated_at": "2026-10-22T00:48:04Z",
       "worker_run_id": "39701516967",
@@ -671,6 +664,34 @@
         39838784195
       ],
       "outcome": "no-op: the 2026-10-22T19:17:29Z to 2026-10-22T20:34:56Z latest-20 completed docs.yml window contained 16 successful, three skipped, and one cancelled run; the cancelled workflow_run was excluded. Eleven successful build-and-deploy runs were comparable (five push, three workflow_run, and three schedule, across six source SHAs): median/p90 end-to-end 108/114 seconds, initial queue 4/4 seconds, queue-excluded execution 104/109 seconds, build job 79/87 seconds, and deploy job 11/30 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful producer workflows were 31/39.6 seconds median/p90 end-to-end and their build jobs were 16/25 seconds. Dependency installation was 23/34 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2 seconds, and Pages artifact upload 2/3 seconds. Bounded trusted logs verified npm package-cache hits of about 315 MB and reusable dashboard-cache hits of about 3.4 MB on five representative builds; trusted step metadata showed all eleven builds skipped dashboard artifact fallback. Astro generation was 14.4% of median queue-excluded execution, and eliminating it entirely would save only 15 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving Astro change met the threshold, so the category advanced. The cancelled run and 30-33 second deploy variance were disclosed rather than attributed to Astro."
+    },
+    {
+      "evaluated_at": "2026-10-22T20:54:32Z",
+      "worker_run_id": "39852356560",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        39851881587,
+        39850101910,
+        39849775463,
+        39848891781,
+        39848482868,
+        39848428490,
+        39848107063,
+        39846338334,
+        39845758662,
+        39845403154,
+        39845248093,
+        39843325812,
+        39843076599,
+        39842243038,
+        39840996309,
+        39840164347,
+        39839755798,
+        39839599997,
+        39839577721,
+        39839166240
+      ],
+      "outcome": "no-op: the 2026-10-22T19:20:10Z to 2026-10-22T20:50:20Z latest-20 completed docs.yml window contained 17 successful, two skipped, and one cancelled run; the cancelled workflow_run was excluded. Twelve successful build-and-deploy runs were comparable (six push, four workflow_run, and two schedule, across eight source SHAs): median/p90 end-to-end 109/121.2 seconds, initial queue 2/4 seconds, queue-excluded execution 106/119.8 seconds, build job 79/86.4 seconds, and deploy job 11/32.7 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. Dependency installation was 23/33.4 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2 seconds, and Pages artifact upload 2/3 seconds. Trusted step metadata showed all twelve reusable-dashboard restores hit and skipped dashboard lookup/artifact fallback; a bounded trusted log on the newest build verified a 301 MiB npm package-cache hit and a 3 MiB reusable-dashboard-cache hit. The latest five successful dashboard producer workflows had median/p90 end-to-end 31/39.6 seconds and build jobs 16/25 seconds; activity-data upgrade was 1/2 seconds, dashboard assembly 2/3.2 seconds, artifact upload 2/2 seconds, and cache publication 6/8.6 seconds. Reuse is already effective: eliminating the 1-second median docs restore would save under 1% of median queue-excluded execution, while the complete producer path is only 31 seconds median. No concrete correctness- and freshness-preserving reusable-dashboard change can reasonably save 60 seconds or 15% of median docs execution, so no actionable recommendation was made and the category advanced. The cancelled run and the newest run's 69-second deploy job were disclosed rather than attributed to dashboard reuse."
     }
   ]
 }
