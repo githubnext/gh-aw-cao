@@ -112,7 +112,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install-gh-cao.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install-gh-cao.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot `repair-database`, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 

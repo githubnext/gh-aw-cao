@@ -830,7 +830,7 @@ values, or logical schema version. Inserts, updates, replacement, deletion,
 and rollback SHALL keep the mirror consistent with the object store. Store or
 database deletion SHALL remove only the corresponding database's mirror rows.
 Campaigns SHALL remain exempt from run-detail retention.
-The SQLite doctor SHALL diagnose a missing Campaign table or required column
+The SQLite `repair-database` command SHALL diagnose a missing Campaign table or required column
 and restore the table from retained canonical records inside its backed-up
 repair transaction.
 
@@ -862,7 +862,7 @@ mirror rows in the same SQLite transaction.
 Outdated mirror layouts SHALL be rebuilt transactionally from
 `__idb_records`, preserving every logical database's scope, rather than
 converting or trusting the obsolete mirror's stored document. Failed rebuilds
-MUST roll back both DDL and data changes. The SQLite doctor SHALL diagnose
+MUST roll back both DDL and data changes. The SQLite `repair-database` command SHALL diagnose
 missing or unexpected columns in all seven mirrors and use its backed-up
 repair transaction to restore the current layout.
 

@@ -125,7 +125,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   );
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?doctor[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
+    /ingest-jsonl[\s\S]*?--runs-dir "\$REPORT_GH_AW_LOGS_RUNS"[\s\S]*?--records-dir "\$REPORT_GH_AW_LOGS_RECORDS"[\s\S]*?repair-database[\s\S]*?--database "\$ACTIVITY_DATABASE"/,
   );
   assert.match(
     workflow,
@@ -151,7 +151,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   assert.equal(collection.env.REPORT_LOG_TIMEOUT, "${{ inputs.fast == true && '5' || '10' }}");
   assert.match(
     workflow,
-    /ingest-jsonl[\s\S]*?--retention-days 7[\s\S]*?--run-retention-days 30[\s\S]*?doctor[\s\S]*?--ttl-days 7[\s\S]*?--run-ttl-days 30/,
+    /ingest-jsonl[\s\S]*?--retention-days 7[\s\S]*?--run-retention-days 30[\s\S]*?repair-database[\s\S]*?--ttl-days 7[\s\S]*?--run-ttl-days 30/,
   );
   assert.doesNotMatch(
     workflow,

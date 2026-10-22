@@ -424,12 +424,12 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [
       script,
-      'doctor',
+      'repair-database',
       '--database', filename,
       '--ttl-days', '36500'
     ], { encoding: 'utf8' }));
     expect(diagnosis).toMatchObject({
-      command: 'doctor',
+      command: 'repair-database',
       healthy: true,
       after: {
         counts: {
@@ -592,7 +592,7 @@ describe('SQLite IndexedDB compatibility layer', { timeout: 30000 }, () => {
 
     const diagnosis = JSON.parse(execFileSync(process.execPath, [
       script,
-      'doctor',
+      'repair-database',
       '--database', filename,
       '--run-ttl-days', 'all'
     ], { encoding: 'utf8' }));

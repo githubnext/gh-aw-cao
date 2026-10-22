@@ -276,7 +276,11 @@ export async function validatePolicy(root, source) {
       }
     }
   }
-  for (const campaign of Object.keys(policyCampaigns).filter((name) => name !== "dashboard" && !installedNames.has(name))) {
+  const internalCampaigns = new Set(["dashboard"]);
+  if ((await filesIn(path.join(root, WORKFLOW_DIRECTORY), ".yml")).includes("cao-activity.yml")) {
+    internalCampaigns.add("activity");
+  }
+  for (const campaign of Object.keys(policyCampaigns).filter((name) => !internalCampaigns.has(name) && !installedNames.has(name))) {
     findings.push(finding("policy-campaign-not-installed", "error", "policy", "Policy references a campaign that is not installed", {
       campaign,
       files: [POLICY_PATH],

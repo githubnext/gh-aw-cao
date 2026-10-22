@@ -85,6 +85,41 @@ it is not a fresh success or zero. Collection timing is bounded by the existing
 cycle and available credentials, not a guarantee of an observation at every
 wall-clock instant.
 
+### Daily File Diet collector
+
+`.github/value-collectors/daily-file-diet.mjs` reuses the existing read-only
+File Diet acquisition and report instrument for `github/gh-aw` only. This
+source-managed control-repository collector is not installed into catalog
+consumers or registered there automatically. It keeps
+the named retrospective 800-line structural measure unchanged; full
+behavior-preserving acceptance remains unverified. The collector retains
+immutable inventories, applied receipts and all previously accepted snapshot
+cutoffs under its supplied workspace's `latest/proof/` directory. Failed or
+incomplete refreshes do not replace that accepted proof.
+On a cold start it retrieves only the skill's historical evidence archives at
+immutable source revision `0782148c0af21f4f1d10b7cb5e81b571ed58c463`, validates
+their digests, then acquires fresh discovery and lifecycle evidence. This
+preserves verified receipts after upstream artifact expiry without treating the
+historical capture as fresh. Subsequent collections reuse their own retained proof.
+Rich evidence acquisition has a ten-minute per-collector runtime ceiling
+(the hosted wrapper allows ten additional seconds for shutdown), independent
+of the shorter compact-measurement budget.
+
+The control policy explicitly lists the same six repositories previously
+collected from `scope.allowed-repositories`; this pins Activity enrollment
+without adding targets or activating Daily File Diet itself. Only the exact
+File Diet pair is registered for recurring Value acquisition.
+Registration takes effect after the collector and policy are reviewed and
+deployed together. It does not override `campaigns.dashboard.deploy: false`:
+this repository intentionally disables standalone Pages deployment because
+Documentation Pages owns the combined site. The existing publication chain is
+CAO Activity, then the CAO Dashboard artifact/cache, then Documentation Pages
+mounting that artifact at `/cao/`. No hosted OAuth session is needed for this
+Pages path. Verify the collected packet in the deployed snapshot after that
+chain completes; acquisition or merge alone does not prove publication.
+A separately selected hosted publication still needs its actual server URL and
+administrator OAuth session.
+
 ## Existing compact repository measurements
 
 CAO uses one shared campaign module for both collection paths:

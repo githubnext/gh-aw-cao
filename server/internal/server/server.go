@@ -1849,6 +1849,9 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 		a.serveIndex(response, request, "")
 		return
 	}
+	if strings.EqualFold(filepath.Ext(clean), ".md") {
+		response.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	}
 	http.ServeContent(response, request, info.Name(), info.ModTime(), file)
 }
 

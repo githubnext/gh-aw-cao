@@ -98,7 +98,7 @@ test('recycle-only bypasses repository collection and API evidence requests but 
   assert.ok(steps.indexOf(verify) < steps.indexOf(step('index', 'Force recycling of restored activity cache')));
   assert.ok(steps.indexOf(reset) < steps.indexOf(step('index', 'Generate phased activity shards')));
   for (const name of [
-    'Generate phased activity shards', 'Ingest activity database', 'Validate activity database',
+    'Generate phased activity shards', 'Ingest activity database', 'Repair activity database and apply retention',
     'Hash activity payloads', 'Upload activity snapshot'
   ]) {
     assert.equal(step('index', name).if, undefined);
