@@ -1,5 +1,155 @@
 # Go server SOC 2 readiness assessment
 
+## Current-source reassessment - 2026-10-22 UTC
+
+Assessed source **`53458a46d983356cdc2b8c5f27903026ca707a82`**, RFC-035
+record schema version 1, on macOS/arm64 with Go 1.27.3. This section supersedes
+the older snapshots below **only for current-source implementation presence
+and the bounded test results stated here**. Original observations, decisions,
+and lifecycle history remain intact. No production configuration, examination
+period, organizational evidence, or operator/auditor approval was supplied.
+Operating effectiveness remains **not-assessed**.
+
+**Conclusion:** the current checkout contains technical corrections for all
+ten original design gaps and DATA-08's stale test fixture. The ten corrected
+properties below are now `design-supported` at this SHA within the stated
+limits; this does not close the original findings or their rollout/evidence
+requirements. In particular, older statements that DATA-01/02, EXEC-01 and
+OPS-01/03 remain unintegrated proposals are historical, not current-source
+descriptions. No new demonstrated runtime design gap was established by this
+bounded reassessment. SOC 2 readiness is **undetermined**, not compliant.
+
+### Scope, source drift and coverage
+
+Scope is the maintained Go server inventory and direct shared-query/deployment
+dependencies. Source was compared with the original investigation baseline
+`e3daa5d7ad4fa537e6432359076b44f4a90be171`; changed claims were inspected and
+rechecked rather than carrying the original test results forward as current.
+The original investigation runtime was
+`ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`.
+The current code includes the assessment/remediation integration in
+`d4f06dd01` and the development-only source-build restriction in `1f05c9663`.
+This is source ancestry evidence, not remote deployment or live PR-state
+verification.
+
+The data-flow and profile inventory below still applies: browser/listener to
+OAuth/API/query store; signed GitHub ingress to collection/admission/gateway;
+step-up administrator to hosted CLI queue/executor; committed audit rows to an
+independent destination; reviewed source to packaged deployment. Data classes
+include repository/workflow evidence, account IDs and logins, OAuth credentials,
+session/revocation state, execution output, audit history and telemetry.
+GitHub, database/volume providers, Azure, the independent evidence receiver,
+image registries and identity/organizational processes remain external
+boundaries.
+
+| Inventory surface | Current coverage and limitation |
+| --- | --- |
+| Entrypoints, hosting, HTTP/OAuth/MCP | Current authentication/session/stream/rebuild code and focused synthetic tests; no deployed ingress, membership, provider or proxy validation |
+| Canonical stores, SQL and shared query engine | Current resource/transport/temporal contracts and local evaluator tests; PostgreSQL execution, roles and snapshot parity remain partly skipped |
+| Ingestion, collection and operational adapters | Current erasure, replay intent, shared filtering, adapter contracts and tests; real PostgreSQL/Redis restart, withdrawal and fault paths skipped |
+| Derived services and model | Repository memory, marketplace, operational-value and SQLite tests; external registries, physical resource ceilings and governed disposal unverified |
+| Admission, gateway and execution | Synthetic policy, replay, requester identity, broker, egress and gateway tests; real executor kernels, upstream compiled runtimes and durable provider operation unverified |
+| Audit, telemetry, diagnostics and lifecycle | Synthetic chain/export faults, TLS telemetry receipts, rebuild lifecycle and doctor tests; real independent destination, alerts and recovery unverified |
+| Build, release, deployment and API contract | Current source-build guard, template telemetry and candidate scan/SBOM definitions reviewed; mocked deployment checks only, no image scan/build/provenance or full generated-contract gate run |
+| Test infrastructure and clock/shared contracts | Exercised transitively by selected deterministic tests; simulator/bootstrap stress and platform integration are not independently reassessed |
+
+Local SQLite/capability, hosted/external, Azure Functions, PostgreSQL/Redis/memory,
+admission-only, gateway and experimental CLI are **separate evaluated designs**,
+not an asserted deployed feature inventory. Native Apple/Windows, real Docker
+egress, fleet stress, live integrations and production access were excluded
+from execution. These exclusions do not approve DATA-09 or EXEC-07.
+
+### Current control/evidence matrix
+
+Source citations in this table are repository-relative at the reassessment SHA.
+Each row is a narrow claim, not satisfaction of a whole TSC criterion.
+
+| Control claim | Working TSC mapping | Status | Source evidence | Test evidence | Deployment/period evidence needed |
+| --- | --- | --- | --- | --- | --- |
+| DATA-01: repository shard identity is prefix-free and erasure preflights ownership | CC6.1; candidate PI1/A1 | design-supported | `server/internal/collect/lake.go:80-88,143-211` | passed: collision/legacy/preflight cases in component log | Collision inventory, preserved legacy repair evidence, effective rollout and filesystem behavior |
+| DATA-02: collector withdrawal filters shared/derived values and revision-keys affected cache results | CC6.5; candidate C1/P | design-supported | `server/internal/collect/lake_values.go:15-89`; `server/internal/collect/projector.go:236-250`; `server/internal/server/query_cache.go:101-145` | passed: local shared/zero-enrollment cases; skipped: backend-dependent end-to-end withdrawal | Actual withdrawal through canonical/cache copies; independent publication/hold disposal decision |
+| DATA-03: erasure retains work until projection intent is recorded; completion records the captured generation after canonical commit | CC7.2; candidate PI1/C1 | design-supported | `server/internal/collect/worker.go:289-309`; `server/internal/collect/projector.go:125-142,185-216` | passed: marker/cancellation/generation synthetic faults; skipped: real-backend canonical recovery | Real backend restart/outage, volume guarantees, accepted-work recovery evidence |
+| IAM-001: provider expiry, rather than session deadlines, governs cleanup expiry; failed cleanup retains ownership | CC6.2-CC6.3, CC7.4 | design-supported | `server/internal/server/oauth.go:163-165,795-799,1264-1278`; `server/internal/server/oauth_expiry_test.go:16-344` | passed: unknown-expiry/no-refresh, restart/key and capacity synthetic cases | Coordinated old-replica retirement, legacy grant reconciliation, actual key/revocation lifecycle |
+| IAM-002: OAuth revision-stream authorization has fixed deadlines and heartbeat session checks | CC6.2-CC6.3 | design-supported | `server/internal/server/server.go:1264-1360` | passed: stream revocation/deadline/outage/drain tests | Effective proxy/write behavior; approve residual heartbeat/read-timeout and membership windows |
+| EXEC-01: queued attribution carries numeric account ID and execution checks its live identity | CC6.2-CC6.3; candidate PI1 | design-supported | `server/internal/operational/cli_commands.go:101-105`; `server/internal/hostedcli/executor.go:278-315` | passed: same-login/different-ID, legacy and prefetch recheck fixtures | Coordinated web/executor rollout, old work disposition and live provider/access evidence |
+| OPS-01: hosted rebuild requires durable admission/start audit and reports terminal audit failures | CC6.3, CC7.2-CC7.3 | design-supported | `server/internal/server/operations.go:86-89,116-170,183-223` | passed: synthetic lifecycle/admission/terminal faults; skipped: PostgreSQL independent history | Reconcile missing terminal IDs; retained independent lifecycle evidence; cross-store commits are not atomic |
+| OPS-02: Azure templates explicitly support optional Go OTLP and log opt-in | CC7.2-CC7.3 | design-supported | `server/azure/main.bicep:45-69,615-625`; `server/azure/collector.bicep:299-307`; `server/internal/telemetry/azure_deployment_test.go:31-120` | passed: template-driven synthetic TLS receipts/failure isolation and CLI config tests | Effective per-role collector configuration, backend receipts, absent-signal/failure alerts and acknowledgements |
+| OPS-03: Azure source-build apply refuses non-development config/plan | CC7.1, CC8.1 | design-supported | `internal/cli/deploy_azure_apply.go:43-54`; `.github/workflows/cao-package.yml:432-518` | passed: mocked source-build, digest binding/read-back and context tests | Production image/source/digest assurance and promotion evidence; development declaration is not environment attestation |
+| OPS-04: Redis persistence diagnostics preserve unknown and narrowly describe observed AOF success | CC7.1-CC7.2; candidate A1 | design-supported | `server/internal/doctor/checks_redis.go:371-450` | passed: missing/invalid/RDB/AOF diagnostic fixtures | Provider persistence settings and restore proof; INFO success does not establish durability |
+| DATA-08: native-measure temporal contract uses the maintained shared fixture | CC8.1; candidate PI1 | design-supported | `server/internal/query/sql_temporal_test.go:182-225` | passed: current query package; PostgreSQL execution cases skipped | Remaining provider-backed SQL/fixture gate, applicable release evidence and authorized closure |
+| Transport, durable store selection and privilege separation design | CC6.1, CC6.3, CC6.7 | design-supported | `server/internal/postgresconn/config.go:29-61`; `server/internal/server/operational_factory.go:82-119`; `server/postgres/operational-grants.sql:1-45` | passed: transport/composition tests; skipped: real DB privilege/adapter tests | Actual roles/inheritance/PUBLIC/default ACLs, no runtime owner credentials, encryption/key/TLS exceptions |
+| Independent anchored audit delivery design | CC7.2-CC7.3, CC9.2 | design-supported | `server/internal/auditdelivery/delivery.go:96-200`; `server/audit-delivery/README.md:3-57` | passed: local TLS/chain/replay/fault fixtures; skipped: real destination | Independently administered retention/anchors, conformance, scheduler/backlog/deadman alerts and period receipts |
+| Governance, people, risk, communication, monitoring ownership and vendors | CC1-CC5, CC9 | evidence-needed | `server/SECURITY.md:1037-1062`; RFC-035 sections 3-5 | not-run: organizational examination | Approved controls/owners, personnel/access process, risk register, vendor reviews and operating samples |
+| Scope, commitments, Type 1/Type 2 objective and additional category applicability | CC1-CC9; A1/PI1/C1/P1-P8 | evidence-needed | RFC-035 sections 3 and 14; SCOPE-01/02 | not-run: operator/auditor decisions | Approved system description, categories, providers, complementary user controls and date/period |
+| Recovery, retention/deletion, real executor isolation and physical resource ceilings | CC6-CC9; candidate A1/PI1/C1/P | evidence-needed | DATA-04/05/06/07/10, IAM-003/004/005/006, EXEC-02 through EXEC-08, OPS-05 through OPS-08 below | skipped/not-run for providers/platforms/restore/period | Sanitized deployment evidence, intended-platform tests, restore/deletion exercises and approved residual-risk decisions |
+| Local/volatile profile exclusion from specific durability commitments | CC6.3; candidate A1/C1 | not-applicable-proposed | DATA-09 below; `server/internal/server/operational_factory.go:84-100` | passed: explicit volatile-mode guards only | Operator/auditor-approved narrow scope; local data confidentiality/privacy remains accounted for |
+
+The source-only scan exception remains an **OPS-08 evidence request**, not a
+new proven vulnerability: `.grype.yaml:1-7` excludes a zlib CVE with a reason
+but no in-file approver/expiry. An external approved exception may exist.
+Current CVE/fix status was not verified. DATA-10 also remains evidence-needed:
+SQL limits are checked using executed statistics
+(`server/internal/postgresx/sql_plan.go:50-155`), repository-memory manifest
+loading precedes bounded file checks
+(`server/internal/repositorymemory/memory.go:112-170`), and generic marketplace
+JSON decoding has no explicit byte cap
+(`server/internal/marketplace/resolve.go:83-95`). No exploit, measured resource
+failure or newly mandatory control is inferred.
+
+### Executed evidence and limitations
+
+All commands below exited **0** on this source. Counts are Go test/subtest
+events, not unique controls; skipped children remain unverified even when a
+parent passes. PostgreSQL/Redis endpoints and opt-in live/stress/native tests
+were unset for assessment commands. No service was started, provider accessed,
+runtime changed or dependency installed.
+
+Evidence directory:
+`/Users/peli/.copilot/session-state/3f68bcfc-fea5-4512-8db5-91db11b972e2/files/`.
+
+| Check / evidence file | Actual outcome |
+| --- | --- |
+| `go -C server test -p 1 -count=1 -timeout=180s -json` over collect, ingest, query, sqlbuilder, postgresconn, operational/..., redisx, admission, hostedcli, githubapp, cliegress, githubquota, webhookgateway, webhookgatewayhost, webhookgatewaylocal, audit, auditdelivery, telemetry, logger, doctor; `soc2-component-tests.jsonl` | 3,149 passed / 250 skipped test events; 23 package passes; no failures |
+| Same runner, `./internal/server -run 'Test.*(OAuth\|Session\|Revocation\|Expired\|EventStream\|Rebuild\|Admin\|CSRF\|CORS\|OIDC\|Proxy\|RateLimit\|Listen\|HostedModes\|Capability\|Authorization)'`; `soc2-http-tests.jsonl` | 332 passed / 19 skipped; one package pass; no failures |
+| `go test -p 1 -count=1 -timeout=180s -json ./internal/cli -run '^TestDeployAzure(SourceBuild\|ImageBindings\|ImageReadBack\|DevelopmentContext\|Telemetry)'`; `soc2-deployment-tests.jsonl` | 44 passed / zero skipped; one package pass; mocked Azure only |
+| Server runner over repositorymemory, marketplace, operationalvalue, model, sqlitex, postgresx; `soc2-data-support-tests.jsonl` | 447 passed / 56 skipped; five package passes; model package has no tests |
+| `go -C internal/dashboardquery test -p 1 -count=1 -timeout=180s -json ./...`; `soc2-shared-query-tests.jsonl` | 1,125 passed / zero skipped; one package pass |
+
+The artifact report records exact commands and full exclusions. Skips include
+durable role/adapter/restart/atomicity/erasure cases, PostgreSQL query/storage,
+Redis, destination conformance, external OpenObserve, published upstream
+interoperability and native executor boundaries. Intentional subprocess helper
+skips are not provider failures. Full repository validation, race detection,
+image scanning, TypeSpec regeneration and historical operation were not run
+as part of this bounded read-only review. The AICPA framework landing page was
+checked on 2026-10-22; approved engagement criteria still require the auditor.
+
+### Prioritized work and operator decisions
+
+This is a proposed delivery sequence, **not new authorization, assignment,
+risk acceptance or closure**. Existing remediation decisions below remain
+unchanged. Calendar estimates would be unreliable without the deployed
+inventory, evidence availability and auditor-approved examination objective.
+
+| Finding/request | Operator choice | Suggested owner | Evidence needed to close | Decision |
+| --- | --- | --- | --- | --- |
+| First: SCOPE-01/02, GOV-01 | Approve system boundary, security baseline, additional categories and Type 1/Type 2 objective; assign accountable control owners | Service/compliance owner + independent auditor | System description, commitments, provider carve-outs, complementary user controls, approved criteria, date/period, policies/risk/personnel/vendor records | pending |
+| Before production reliance: DATA-01/02/03, IAM-001/002, EXEC-01, OPS-01/02/03/04, DATA-08 | Verify current corrections on the intended release and perform coordinated rollout checks; do not open duplicate fixes from historical snapshots | Server/release + IAM/data/SRE | Release/deployed SHA and digests, relevant real-backend gates, legacy identity/grant/shard reconciliation, effective proxy/collector behavior, retained closure approval | existing remediate; lifecycle in-progress, not closed |
+| High priority: DATA-04/05, IAM-003/005/006, EXEC-05, OPS-07 | Collect effective least-privilege, identity, transport and key evidence; separately authorize any proven deployment corrections | IAM/cloud security + DBA | Sanitized effective access/grants/ingress/secret inventory, reviews/offboarding, current/previous-key retirement and credential-revocation exercises | pending |
+| High priority: OPS-05, OPS-OP-01 | Provision or verify independent audit custody and operate scheduled delivery/monitoring | SecOps/evidence platform | Independent anchors/retention/deletion protection, real adapter conformance, committed-row completeness, checkpoint/backlog/deadman alerts and acknowledged outage exercise | pending |
+| High priority: OPS-06, DATA-07, EXEC-04, BCP-OP-01 | Define RTO/RPO and perform an approved isolated restore/failover exercise | SRE/data/platform | Timed restore including queues, revocation debt, permanent replay receipts, audit/anchors, keys and lake; measured loss and failback reconciliation | pending |
+| Before enabling privileged executors: EXEC-02/05/07 | Validate intended Linux isolation/egress and process/key separation; approve narrow native-development exclusions if justified | Execution/platform security | Real intended-platform boundary and termination evidence, daemon/host ownership, digest/egress records and legacy-work disposition | pending |
+| Before audit: DATA-06, EXEC-08, DATA-OP-01 | Approve per-copy data classification, retention/deletion/hold rules and verify maintenance | Data/privacy/compliance + DBA | Lake/canonical/cache/output/audit/independent-packet/backup inventory, deletion SLA/backlog/hold samples and backup expiry evidence | pending |
+| Before audit: OPS-08, REL-OP-01 | Verify release enforcement, scanner exceptions and evidence retention | Release/change/security | Protected review/check/environment/bypass policy, exact artifact provenance/deployed digest, exception approver/rationale/expiry, rollback exercise and retained samples | pending |
+| Before engagement close: IAM-004, EXEC-03/06, DATA-09/10 | Approve accurate assurance/cooperative-admission/race commitments, profile scope and resource limits | Service/security/auditor + query/SRE | Actual MFA/SSO policy, client/accounting failure behavior, ambiguous-send runbooks, explicit exclusions and physical capacity measurements | pending |
+| Throughout a Type 2 period: all operating controls | Operate controls and retain attributable samples for the agreed period; complete independent examination | Accountable control owners + auditor | Access/change reviews, alerts/incidents, vulnerability dispositions, restore/rotation/deletion records and approved evidence sampling/retention | pending |
+
+Type 1 assesses design at the agreed date; Type 2 additionally needs sustained
+operating evidence. Neither today's tests nor the daily SelfCare worker can
+retroactively create that evidence. Stronger isolation, KMS/HSM signing or HA
+may be appropriate against approved commitments, but are not universal SOC 2
+requirements or automatically authorized changes.
+
 ## Assessment boundary and current status
 
 Started 2026-10-21 against source revision

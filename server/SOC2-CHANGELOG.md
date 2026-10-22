@@ -479,3 +479,37 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: remediation remains in progress. No deployed identity,
   collector/alert, legacy migration, key/debt reconciliation, provider/period
   control or main/control-branch activation closed.
+
+## 2026-10-22 - SOC2-LOG-022 - Current-source readiness reassessment
+
+- Type: user-requested read-only reassessment and prioritized remaining work.
+- Source baseline: `53458a46d983356cdc2b8c5f27903026ca707a82`;
+  compared with original investigation
+  `e3daa5d7ad4fa537e6432359076b44f4a90be171` and runtime
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`.
+- Specification: RFC-035, record schema version 1.
+- Current implementation includes all ten original technical corrections
+  and DATA-08's maintained fixture. The register's new leading section
+  records narrowly scoped design-supported claims and supersedes older
+  unintegrated-proposal descriptions only for current-source presence.
+  Original observations, approvals and lifecycle history are preserved.
+- Evidence: five bounded Go invocations exited 0: component 3,149 pass /
+  250 skip, HTTP 332 pass / 19 skip, mocked deployment 44 pass / zero skip,
+  data support 447 pass / 56 skip, shared query 1,125 pass / zero skip
+  test/subtest events. Counts are not unique controls or a compliance score.
+  Raw JSONL evidence is in the assessment session artifact directory
+  referenced from the current register.
+- Coverage: component inventory, CC1-CC9 evidence obligations, separate
+  optional profiles and A1/PI1/C1/P1-P8 applicability accounted for.
+  Prioritized scope/governance, rollout/principal/key, independent audit,
+  restore, executor, retention, release and period-evidence work.
+- Authorization: assessment/report maintenance only. No runtime, rollout,
+  retention, credential, permission or deployment change; no issue, PR,
+  remediation session, provider probe or service startup.
+- Decisions/lifecycle: existing remediate/in-progress records retained;
+  evidence-only and applicability decisions remain pending. No risk
+  acceptance, exclusion, finding closure or operating-effectiveness claim.
+- Limitations: real PostgreSQL/Redis, intended executor platforms, external
+  audit receiver/upstream runtimes, production configuration, scanning and
+  organizational/period evidence remain unverified. No new demonstrated
+  runtime design gap established; readiness remains undetermined.
