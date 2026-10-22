@@ -30,7 +30,7 @@ const supportedActions = new Set([
   "actions/upload-artifact", "actions/download-artifact",
   "actions/create-github-app-token",
 ]);
-const report = { jobs: {}, requests: [], unhandled: [], simulated: [], artifacts: [] };
+const report = { identity: { uid: process.getuid(), gid: process.getgid() }, jobs: {}, requests: [], unhandled: [], simulated: [], artifacts: [] };
 
 async function command(program, args, env, cwd, log) {
   await new Promise((resolve, reject) => {
@@ -236,7 +236,7 @@ async function run() {
           GITHUB_ACTOR: github.actor, GITHUB_TRIGGERING_ACTOR: github.actor, GITHUB_EVENT_NAME: config.eventName,
           GITHUB_EVENT_PATH: `${temp}/event.json`, GITHUB_API_URL: api.url, GITHUB_SERVER_URL: github.server_url,
           GITHUB_TOKEN: github.token, GH_TOKEN: github.token, ...stringify(context.env),
-          GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0",
+          GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: `${temp}/home/.gitconfig`, GIT_TERMINAL_PROMPT: "0",
         };
         const steps = {};
         for (let index = 0; index < job.steps.length; index++) {

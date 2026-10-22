@@ -1408,6 +1408,10 @@ rejects every mutation. Docker has no network, Docker socket, host credentials,
 privileges, or writable host checkout; only the explicit results directory is
 writable, with bounded memory, CPUs, PIDs and temporary storage. This runs
 trusted test fixtures, not arbitrary untrusted workflows.
+The container uses the invoking host user's UID and GID so the results bind
+mount remains writable on Linux without restoring capabilities or broadening
+directory permissions. The report records that identity, and integration
+assertions verify it.
 
 The integration first uses production discovery, signed ingress, SQLite queue
 and authenticated GitHub HTTP dispatch against `NewGatewayAPI`. It rejects a

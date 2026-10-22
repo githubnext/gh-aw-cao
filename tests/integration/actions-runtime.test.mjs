@@ -29,6 +29,7 @@ test("signed gateway delivery runs compiled AWI and CAO samples in Docker", { ti
     const output = join(directory, name);
     const report = simulate({ workspace, workflow: `.github/workflows/${name}.lock.yml`, event, output, upstream, tools,
       vars: { GH_AW_GITHUB_AUTH_MODE: "workflow-token" } });
+    assert.deepEqual(report.identity, { uid: process.getuid(), gid: process.getgid() });
     for (const id of ["pre_activation", "activation", "agent", "safe_outputs", "conclusion"]) {
       assert.equal(report.jobs[id].result, "success", `${name}/${id}`);
     }

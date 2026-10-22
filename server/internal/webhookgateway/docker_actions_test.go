@@ -21,13 +21,18 @@ func TestGitHubSimulatorDockerDispatch(t *testing.T) {
 	if directory == "" || eventFile == "" {
 		t.Skip("run npm run test:integration:actions-runtime")
 	}
+	workspace, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = workspace.Close() })
 	gateway := newDiscoverySimulator(t, sqliteSimulatorStorage)
 	// The pinned compiler's webhook manifest conformance fixture supplies the
 	// subscription; the sibling sample locks consume its repository_dispatch.
 	files := map[string][]byte{".github/workflows/test.lock.yml": gateway.lock}
 	for _, name := range []string{"sample", "cao"} {
 		filename := ".github/workflows/" + name + ".lock.yml"
-		data, err := os.ReadFile(filepath.Join(directory, filename)) // #nosec G304 -- explicit integration-owned fixture directory.
+		data, err := workspace.ReadFile(filename)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +79,12 @@ func TestGitHubSimulatorDockerDispatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(eventFile, data, 0o600); err != nil { // #nosec G703 -- explicit integration-owned result file.
+	output, err := os.OpenRoot(filepath.Dir(eventFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = output.Close() })
+	if err := output.WriteFile(filepath.Base(eventFile), data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

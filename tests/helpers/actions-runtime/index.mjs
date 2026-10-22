@@ -96,6 +96,7 @@ export function simulate({ workspace, workflow, event, eventName = "repository_d
   const name = `cao-actions-test-${randomUUID()}`;
   const result = spawnSync("docker", [
     "run", "--name", name, "--rm", "--pull=never", "--network=none", "--read-only", "--cap-drop=ALL",
+    "--user", `${process.getuid()}:${process.getgid()}`,
     "--security-opt=no-new-privileges", "--pids-limit=128", "--memory=1g", "--cpus=2",
     "--tmpfs", "/tmp:rw,exec,nosuid,size=768m",
     "--mount", `type=bind,src=${workspace},dst=/fixture,readonly`,
