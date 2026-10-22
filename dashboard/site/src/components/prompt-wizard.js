@@ -1,11 +1,11 @@
 import { h } from '../dom.js';
-import { effect, render, state } from '../reactive.js';
+import { effect, state } from '../reactive.js';
 import { normalizeAction } from '../action-model.js';
 import { octicon } from '../octicons.js';
-import { parsePromptWizard, initialWizardValues, updateWizardValues, wizardFieldVisible, wizardFieldError, wizardReview, buildWizardPrompt } from '../prompt-wizard.js';
+import { parsePromptWizard, initialWizardValues, updateWizardValues, wizardFieldVisible, wizardFieldError, buildWizardPrompt } from '../prompt-wizard.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderPromptPreviewAction } from './data-view.js';
-import { renderDlRow, renderLiveRegion } from './ui-primitives.js';
+import { renderLiveRegion } from './ui-primitives.js';
 import { publishNotification } from '../notification-service.js';
 import { createDebug, diagnosticErrorName } from '../debug.js';
 
@@ -20,7 +20,6 @@ export function renderPromptWizard(context) {
   const active = state(0);
   const error = state('');
   const reviewedPrompt = state('');
-  const reviewEntries = state(/** @type {ReturnType<typeof wizardReview>} */ ([]));
   const fieldsById = new Map(wizard.steps.flatMap((step) => step.fields.map((field) => [field.id, field])));
   const prefix = `prompt-wizard-${++nextWizardId}`;
   /** @type {Map<string, { root: HTMLElement, control: HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|HTMLButtonElement, description: HTMLElement }>} */
@@ -105,22 +104,13 @@ export function renderPromptWizard(context) {
     return root;
   }))));
   const status = renderLiveRegion('output', 'prompt-wizard-status');
-  const stepButtons = [...wizard.steps.map((step) => step.title), 'Review'].map((title, index) =>
+  const stepButtons = wizard.steps.map((step, index) =>
     /** @type {HTMLButtonElement} */ (h('button', {
-      type: 'button', 'aria-label': `Return to ${title}`,
+      type: 'button', 'aria-label': `Return to ${step.title}`,
       onClick: () => goBack(index)
-    }, `${index + 1}. ${title}`)));
+    }, `${index + 1}. ${step.title}`)));
   const progress = h('ol', { className: 'prompt-wizard-progress', 'aria-label': 'Wizard progress' },
     ...stepButtons.map((button) => h('li', null, button)));
-  const summary = h('dl', { className: 'prompt-wizard-summary' });
-  render(summary, () => reviewEntries.get().map((entry) => renderDlRow(entry.label, entry.value, entry.description)), { signal: scope.signal });
-  const preview = renderPromptPreviewAction(normalizeAction({
-    level: 'propose', label: wizard.prompt.label, presentation: 'copy-prompt'
-  }, { id: `${context.viewId ?? 'wizard'}-generate`, type: 'prompt' }), reviewedPrompt.get);
-  const review = h('section', { className: 'prompt-wizard-review', 'aria-label': 'Review your design' },
-    h('h3', { tabindex: -1 }, 'Review your design'),
-    h('p', null, 'Confirm the scenario, outputs and capabilities below. A title and file name will be inferred. Generate opens a preview; then start a Copilot app session in canvas mode or copy the prompt for your coding agent. Nothing is installed or activated here.'),
-    summary);
   const validateStep = () => {
     const step = wizard.steps[active.get()];
     for (const field of step?.fields ?? []) {
@@ -137,9 +127,7 @@ export function renderPromptWizard(context) {
     return true;
   };
   const focusPanel = () => {
-    const heading = active.get() === wizard.steps.length ? review.querySelector('h3') : null;
-    if (heading instanceof HTMLElement) heading.focus();
-    else wizard.steps[active.get()]?.fields.some((field) => {
+    wizard.steps[active.get()]?.fields.some((field) => {
       if (!wizardFieldVisible(field, values.get())) return false;
       const item = controls.get(field.id);
       const selected = item?.root.querySelector('input:checked, button[aria-pressed="true"]');
@@ -160,30 +148,37 @@ export function renderPromptWizard(context) {
     onClick: () => goBack(active.get() - 1)
   }, 'Back'));
   const advance = () => {
-      if (scope.signal.aborted || !validateStep()) return;
-      try {
-        if (active.get() === wizard.steps.length - 1) {
-          reviewedPrompt.set(buildWizardPrompt(wizard, values.get()));
-          reviewEntries.set(wizardReview(wizard, values.get()));
-        }
-        active.set(active.get() + 1);
-        error.set('');
-        focusPanel();
-      } catch (cause) {
-        const message = cause instanceof Error ? cause.message : 'Could not prepare generation prompt.';
-        error.set(message);
-        publishNotification({ message, tone: 'error' });
-        debugWizard({ event: 'prompt-rejected', errorName: diagnosticErrorName(cause) });
-      }
+    if (scope.signal.aborted || active.get() >= wizard.steps.length - 1 || !validateStep()) return;
+    active.set(active.get() + 1);
+    error.set('');
+    focusPanel();
+  };
+  const preparePrompt = () => {
+    if (scope.signal.aborted || active.get() !== wizard.steps.length - 1 || !validateStep()) return false;
+    try {
+      reviewedPrompt.set(buildWizardPrompt(wizard, values.get()));
+      error.set('');
+      return true;
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : 'Could not prepare generation prompt.';
+      error.set(message);
+      publishNotification({ message, tone: 'error' });
+      debugWizard({ event: 'prompt-rejected', errorName: diagnosticErrorName(cause) });
+      return false;
+    }
   };
   const next = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'cli-action-confirm', onClick: advance
   }, 'Next'));
+  const preview = renderPromptPreviewAction(normalizeAction({
+    level: 'propose', label: wizard.prompt.label, presentation: 'copy-prompt'
+  }, { id: `${context.viewId ?? 'wizard'}-generate`, type: 'prompt' }), reviewedPrompt.get,
+  undefined, undefined, undefined, preparePrompt);
   const navigation = h('div', { className: 'prompt-wizard-actions' }, back, next, preview);
   const root = h('section', { className: 'prompt-wizard', 'aria-label': context.title },
     h('p', null, wizard.intro),
     progress,
-    ...panels, review, status,
+    ...panels, status,
     navigation);
   effect(() => {
     const current = active.get();
@@ -196,11 +191,9 @@ export function renderPromptWizard(context) {
       else item.removeAttribute('aria-current');
     });
     back.disabled = current === 0;
-    next.hidden = current === wizard.steps.length;
-    preview.hidden = current !== wizard.steps.length;
-    next.textContent = current === wizard.steps.length - 1 ? 'Review' : 'Next';
-    review.hidden = current !== wizard.steps.length;
-    status.textContent = error.get() || `Step ${current + 1} of ${wizard.steps.length + 1}: ${wizard.steps[current]?.title ?? 'Review'}`;
+    next.hidden = current === wizard.steps.length - 1;
+    preview.hidden = current !== wizard.steps.length - 1;
+    status.textContent = error.get() || `Step ${current + 1} of ${wizard.steps.length}: ${wizard.steps[current].title}`;
     for (const step of wizard.steps) {
       for (const field of step.fields) {
         const item = controls.get(field.id);

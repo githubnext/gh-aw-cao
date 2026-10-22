@@ -118,9 +118,9 @@ single-choice option. Hidden answers survive Back navigation but are excluded
 from prompts. Earlier step buttons allow direct Back navigation; future steps
 cannot bypass validation. Invalid configuration fails closed.
 
-Review shows labels, descriptions and empty-value messages, not raw JSON.
-`prompt` declares `label` and `instructions`. **Generate**
-button replaces Next in bottom navigation and opens the shared `propose`-level
+`prompt` declares `label` and `instructions`. **Generate** replaces Next on the
+last configured step, with no extra Review pane. It validates answers and opens
+the shared `propose`-level
 preview. **Copy prompt** copies up to 100000 characters. App canvases instead offer
 **Start session** through the native Copilot session tool. Opening previews does
 nothing; handoff requires a click, never a CLI task or automation activation.

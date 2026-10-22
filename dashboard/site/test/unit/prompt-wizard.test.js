@@ -56,10 +56,9 @@ function fillGoal(root, artifact = 'workflow', pattern = 'custom') {
   button(root, 'Next').click();
 }
 /** @param {HTMLElement} root */
-function review(root) {
+function fillBehavior(root) {
   fillGoal(root);
   input(root, 'Per-run scope and limits', 'Only the triggering issue.');
-  button(root, 'Review').click();
 }
 
 beforeEach(() => {
@@ -248,7 +247,7 @@ describe('wizard interaction and lifecycle', () => {
     const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     vi.stubGlobal('fetch', fetch);
     const root = mount();
-    review(root);
+    fillBehavior(root);
     button(root, 'Generate').click();
     expect(fetch).not.toHaveBeenCalled();
     expect(root.textContent).not.toContain('Copy prompt');
@@ -272,7 +271,7 @@ describe('wizard interaction and lifecycle', () => {
     const fetch = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'Session unavailable.' }) });
     vi.stubGlobal('fetch', fetch);
     const root = mount();
-    review(root);
+    fillBehavior(root);
     button(root, 'Generate').click();
     const start = button(root, 'Start session');
     start.click();
@@ -288,18 +287,21 @@ describe('wizard interaction and lifecycle', () => {
   it('allows direct backward step navigation without losing answers or bypassing validation', async () => {
     const root = mount();
     const tabs = [...root.querySelectorAll('button')].filter((button) => button.closest('.prompt-wizard-progress'));
-    expect(tabs).toHaveLength(wizard.steps.length + 1);
+    expect(tabs).toHaveLength(wizard.steps.length);
     expect(tabs.every((tab) => tab.hasAttribute('disabled'))).toBe(true);
     fillGoal(root, 'campaign', 'issue-triage');
     const comment = /** @type {HTMLInputElement} */ (root.querySelector('input[value="add-comment"]'));
     comment.click();
-    button(root, 'Review').click();
+    button(root, 'Generate').click();
     expect(root.querySelector('.prompt-wizard-status')?.textContent).toContain('Campaign target repositories is required.');
     tabs.at(-1)?.dispatchEvent(new MouseEvent('click'));
-    expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(true);
+    expect(root.querySelector('dialog')?.hasAttribute('open')).toBe(false);
     input(root, 'Campaign target repositories', 'acme/one');
-    button(root, 'Review').click();
+    button(root, 'Generate').click();
+    expect(root.querySelector('dialog')?.hasAttribute('open')).toBe(true);
     expect(tabs.at(-1)?.getAttribute('aria-current')).toBe('step');
+    expect(root.querySelector('.prompt-wizard-status')?.textContent).toBe('Step 3 of 3: Scope and behavior');
+    button(root, 'Close prompt preview').click();
     tabs[1].click();
     expect(root.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
     expect(root.querySelector('[id$="-purpose"]')).toHaveProperty('value', 'Triage issues.');
@@ -310,14 +312,31 @@ describe('wizard interaction and lifecycle', () => {
     button(root, 'Next').click();
     expect(comment.checked).toBe(false);
     expect(root.querySelector('[id$="-targets"]')).toHaveProperty('value', 'acme/one');
-    button(root, 'Review').click();
-    tabs[2].click();
-    expect(root.querySelector('[id$="-targets"]')).toBe(document.activeElement);
+    button(root, 'Generate').click();
+    button(root, 'Close prompt preview').click();
+    expect(tabs[2].disabled).toBe(true);
+    expect(document.activeElement).toBe(button(root, 'Generate'));
     expect(queue.enqueue).not.toHaveBeenCalled();
     root.remove();
     await new Promise((resolve) => setTimeout(resolve, 0));
     tabs[0].click();
     expect(tabs[2].getAttribute('aria-current')).toBe('step');
+  });
+
+  it('generates directly from the last pane and refreshes the prompt after edits', () => {
+    const root = mount();
+    button(root, 'Generate').click();
+    expect(root.querySelector('dialog')?.hasAttribute('open')).toBe(false);
+    fillBehavior(root);
+    button(root, 'Generate').click();
+    expect(root.querySelector('.table-intent-preview')?.textContent).toContain('Only the triggering issue.');
+    button(root, 'Close prompt preview').click();
+    input(root, 'Per-run scope and limits', 'Only issues with the help-wanted label.');
+    button(root, 'Generate').click();
+    expect(root.querySelector('.table-intent-preview')?.textContent).toContain('Only issues with the help-wanted label.');
+    expect(root.querySelector('.table-intent-preview')?.textContent).not.toContain('Only the triggering issue.');
+    expect(root.querySelector('.prompt-wizard-review')).toBeNull();
+    expect(root.querySelector('.prompt-wizard-status')?.textContent).toBe('Step 3 of 3: Scope and behavior');
   });
 
   it.each(['workflow', 'campaign'])('uses the standard prompt button for %s even when command execution is available', async (artifact) => {
@@ -328,12 +347,9 @@ describe('wizard interaction and lifecycle', () => {
     fillGoal(root, artifact);
     input(root, 'Per-run scope and limits', 'Only the triggering issue.');
     if (artifact === 'campaign') input(root, 'Campaign target repositories', 'acme/one');
-    button(root, 'Review').click();
-    expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(false);
-    expect(root.querySelector('.prompt-wizard-review pre')).toBeNull();
-    expect(root.querySelector('.prompt-wizard-review')?.textContent).not.toContain('Selected requirements and historical pattern guidance');
-    expect(root.querySelector('.prompt-wizard-summary')?.tagName).toBe('DL');
-    expect(root.querySelector('.prompt-wizard-summary')?.textContent).toContain('Triage issues.');
+    expect(root.querySelector('.prompt-wizard-review')).toBeNull();
+    expect(root.querySelector('.prompt-wizard-summary')).toBeNull();
+    expect(root.querySelector('.prompt-wizard-actions > .cli-action-confirm')?.hasAttribute('hidden')).toBe(true);
     expect(queue.enqueue).not.toHaveBeenCalled();
     const promptButton = button(root, contract['prompt-label']);
     expect(promptButton.closest('.prompt-wizard-actions')).not.toBeNull();
@@ -355,7 +371,6 @@ describe('wizard interaction and lifecycle', () => {
     button(root, 'Close prompt preview').click();
     button(root, 'Back').click();
     expect(root.querySelector('[id$="-scope"]')).toHaveProperty('value', 'Only the triggering issue.');
-    button(root, 'Back').click();
     expect(root.querySelector('[id$="-purpose"]')).toHaveProperty('value', 'Triage issues.');
   });
 
@@ -388,11 +403,10 @@ describe('wizard interaction and lifecycle', () => {
     const root = mount();
     fillGoal(root, 'campaign', 'issue-triage');
     input(root, 'Per-run scope and limits', 'One dispatched target per worker.');
-    button(root, 'Review').click();
+    button(root, 'Generate').click();
     expect(root.textContent).toContain('Campaign target repositories is required.');
     expect(root.querySelectorAll('.prompt-wizard-options input:checked')).toHaveLength(3);
     input(root, 'Campaign target repositories', 'acme/one');
-    button(root, 'Review').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('.table-intent-preview')?.textContent).toContain('acme/one');
   });
@@ -454,8 +468,8 @@ describe('wizard interaction and lifecycle', () => {
     button(root, 'Next').click();
     input(root, 'Per-run scope and limits', '');
     input(root, 'Safety constraints and non-goals', '');
-    button(root, 'Review').click();
-    expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(false);
+    button(root, 'Generate').click();
+    expect(root.querySelector('dialog')?.hasAttribute('open')).toBe(true);
   });
 
   it('provides copy-only handoff when execution is unavailable and treats input as text', async () => {
@@ -465,7 +479,6 @@ describe('wizard interaction and lifecycle', () => {
     const root = mount();
     fillGoal(root);
     input(root, 'Per-run scope and limits', '<img src=x onerror=alert(1)> $(touch /tmp/not-run)');
-    button(root, 'Review').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('img')).toBeNull();
     button(root, 'Copy prompt').click();
@@ -478,7 +491,7 @@ describe('wizard interaction and lifecycle', () => {
     const writeText = vi.fn().mockRejectedValue(new Error('Clipboard unavailable.'));
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const root = mount();
-    review(root);
+    fillBehavior(root);
     button(root, contract['prompt-label']).click();
     button(root, 'Copy prompt').click();
     await vi.waitFor(() => expect(root.textContent).toContain('Could not copy prompt.'));
@@ -496,7 +509,7 @@ describe('wizard interaction and lifecycle', () => {
     const writeText = vi.fn().mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const root = mount();
-    review(root);
+    fillBehavior(root);
     button(root, contract['prompt-label']).click();
     button(root, 'Copy prompt').click();
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));

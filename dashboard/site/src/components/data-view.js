@@ -1749,8 +1749,9 @@ export function renderIntentAction(action, row) {
  * @param {string | undefined} [actionId]
  * @param {string} [iconName]
  * @param {string} [presentation]
+ * @param {() => boolean} [beforeOpen]
  */
-export function renderPromptPreviewAction(action, getContent, actionId, iconName, presentation) {
+export function renderPromptPreviewAction(action, getContent, actionId, iconName, presentation, beforeOpen) {
   if (typeof action === 'string') action = normalizeAction({
     label: action, actionId, icon: iconName, presentation
   }, { id: action, type: 'prompt' });
@@ -1825,7 +1826,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
       'data-intent-presentation': action.presentation ?? 'semantic-prompt',
       'data-action-level': action.level,
       onClick: () => {
-        if (scope.signal.aborted) return;
+        if (scope.signal.aborted || (beforeOpen && !beforeOpen())) return;
         activeControl.reset();
         opened.set(true);
         openPreview();

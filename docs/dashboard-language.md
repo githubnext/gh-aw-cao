@@ -38,9 +38,9 @@ are optional; leave them blank to use the scenario. Fixed safety boundaries stil
 apply. Back/Next navigation appears below the active pane. Click an earlier step
 tab to return directly without losing answers; future steps cannot bypass validation.
 
-Choose **Review** to read the scenario, selected outputs and refinements in plain
-language. **Generate** replaces Next at the bottom right and opens the full prompt
-preview. In the Copilot app canvas, **Start session** creates a new app session with
+On **Scope and behavior**, **Generate** replaces Next at the bottom right.
+It validates your answers and opens the full prompt preview directly; there is
+no separate Review tab. In the Copilot app canvas, **Start session** creates a new app session with
 that prompt. Outside the app, **Copy prompt** copies it for your coding agent.
 The prompt is natural language, beginning “Create a Pull Request for the following
 task:”. It includes only relevant selected requirements, with Campaign guidance
