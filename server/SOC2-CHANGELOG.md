@@ -711,3 +711,29 @@ Dates are UTC. Corrections are new events; original observations remain.
   platform-dependent. Actual registry/API verification, deployment,
   retention/rollback/governance and period evidence remain unverified.
   No merge, production/authority change or finding closure.
+
+## 2026-10-22 - SOC2-LOG-031 - Native collector usefulness review
+
+- Type: user-requested component usefulness review;
+  RFC-035 record schema version 1.
+- Same source `ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b`; coordinator
+  verified [#19423](https://github.com/githubnext/gh-cao/pull/19423)
+  open/ready and not merged. Earlier draft observations remain historical.
+- Review concludes useful bounded evidence index/exact-identity checkpoint,
+  not a self-contained independently retained CC8 audit packet.
+- Added OPS-USE-01 through OPS-USE-04 to the maintained register: replayable
+  signed-evidence retention; candidate/promotion/source/assets/approval
+  binding; allowlisted semantic gate/policy/result references; sanitized
+  actionable reasons and an opt-in required-evidence profile. All are
+  evidence-needed/open with pending operator decisions, not confirmed bugs.
+  Source citations, counter-evidence, owners, tradeoffs and closure evidence
+  are recorded there.
+- Session reports focused native collector/helper/command/inventory tests
+  and whitespace checks passing; security/fix-first reviews found no
+  high-confidence vulnerability or implementation defect requiring a fix.
+  Coordinator read the report and verified source identity, not those tests
+  or an independent security review.
+- No real registry/attestation/Azure/archive/period observation or runtime,
+  policy, deployment change. REL-OP-01/OPS-08 remain unresolved;
+  operating effectiveness not-assessed; no new implementation authorization
+  or finding closure.

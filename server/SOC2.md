@@ -283,6 +283,36 @@ Windows). Actual registry/API verification, production image measurements,
 independent retention/approval, exceptions/rollback and period evidence
 remain unverified. Operating effectiveness is **not-assessed**.
 
+**Usefulness review, 2026-10-22:** same source
+`ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b`; coordinator verified the PR is
+now open/ready, not merged. This operator-invoked GitHub/GHCR and optional
+local Azure-receipt tool is useful as a bounded evidence index and
+exact-identity checkpoint, not a self-contained independently retained CC8
+audit packet. The following are conditional capability/evidence requests,
+not confirmed security defects or violations of its documented contract.
+Each is **evidence-needed/open**, confidence **high**, decision **pending**;
+no additional implementation is authorized by this review.
+
+| Request / severity / working mapping | Expected property and source-bound observation | Counter-evidence | Operator choice / suggested owner / closure evidence / tradeoff |
+| --- | --- | --- | --- |
+| OPS-USE-01 / medium / CC7.2, CC8.1 | A self-contained packet remains inspectable after source expiry. `internal/cli/evidence_provenance.go:7-15,61-66` retains a normalized response/hash, not the signed bundle/original bytes; a hash cannot reconstruct absent evidence. | Exact subject/source/signer/invocation and collector identity remain useful index evidence; missing retention is explicit. | Keep index-only scope or authorize bounded export of existing signed bundles/minimized verifier receipts/checksum manifest through approved delivery. Release owner/evidence custodian; close with original retained artifacts plus independent delivery/access/retention proof. Export alone is not independent retention and requires approved privacy/access handling. |
+| OPS-USE-02 / medium / CC8.1 | A change sample binds candidate source/assets, approval and promotion. `internal/cli/evidence_release.go:249-272,299-307` checks workflow/run identity but lacks candidate/release/asset bindings; run-scoped approvals do not prove attempt-specific approval. | Unknown source binding is explicit; workflow SHA is not treated as product SHA; existing promotion artifacts can supply evidence. | Authorize consumption/checksums of existing candidate/validation artifacts, with exact source/release/assets/run/attempt/approval links. Release/change manager; close with an approved linked sample. Expired/conflicting artifacts remain incomplete; correlation must not duplicate promotion authority or infer independent approval. |
+| OPS-USE-03 / low / CC7.1, CC8.1 | Reviewers can identify a declared gate and applicable policy. `internal/cli/evidence_release.go:168-191` records job IDs/step numbers/conclusions, not semantic test/scan/policy/database/exception references. | Excluding arbitrary names minimizes untrusted disclosure; exact workflow/job references permit investigation. | Define allowlisted immutable gate/policy/results/exception mappings. Release security owner; close with a reviewed control-to-result map and exception evidence. Exact supported contracts require maintenance; unknown shapes remain unmapped, without fuzzy inference or arbitrary name export. |
+| OPS-USE-04 / low / CC7.2, CC8.1 | Operators distinguish recoverable collection failures and require evidence for an agreed purpose. `internal/cli/evidence_release.go:169,194,224,324-333` and `internal/cli/evidence_provenance.go:41` collapse some reasons to unavailable-or-invalid and always report incomplete. | Sanitized failures avoid raw-data exposure; mandatory identity failures stop output, and missing evidence is never promoted to success. | Define sanitized reason codes and an opt-in required-evidence profile with nonzero unmet-requirement results. Operator tooling owner; close with an agreed diagnostic/profile contract and checks. Collection completeness must remain separate from approval, retention and compliance; diagnostics must not expose raw responses or credentials. |
+
+Session-reported source traces and focused synthetic checks passed:
+`go test ./internal/cli ./internal/ghcli -run 'TestEvidence|TestExecBounded|TestBoundedGHHelper|TestCommands|TestInvalidCommands|TestOperatorCommandInventory' -count=1`
+and `git diff --check main...HEAD`, both exit zero. No real attestation,
+registry, Azure, approval, archive or examination-period observation occurred.
+The session reports no high-confidence vulnerabilities in its delegated
+security review and no safe bug fix/unresolved high-confidence defect in
+fix-first review; this is not an independent coordinator security assessment.
+Report:
+`/Users/peli/.copilot/session-state/bb48a53b-9959-4b2a-88ce-5f7f7c703f42/files/evidence-command-usefulness-review.md`.
+REL-OP-01/OPS-08 remain open. Examination scope, commitments, sampling,
+retention and deployment coverage still require service-owner/auditor
+agreement; operating effectiveness remains **not-assessed**.
+
 #### Offline App key rollover preflight proposal
 
 Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424), commit
