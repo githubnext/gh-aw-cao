@@ -244,6 +244,17 @@ access/expiry, and supply deployed measurements, enforced approvals/checks,
 scan-exception dispositions, rollback and period records. Operating
 effectiveness is **not-assessed**; no finding is closed.
 
+**2026-10-22 user-directed implementation correction:** the collection session
+is replacing the JavaScript collector with native Go operator command
+`gh cao evidence release` under `internal/cli`, reusing Azure receipt types
+and bounded `internal/ghcli` execution without a dashboard-server dependency.
+The JavaScript citations and 73-test result above remain historical evidence
+at the original proposal SHA, not validation of the replacement. Coordinator
+observed open/draft head `4b5caa6483cb861df2988b70d7036fdbb7b7ddd6`;
+final source-bound native implementation evidence and broader validation
+handoff are pending. No new authority, retention or operating-evidence claim
+is authorized by this language/location correction.
+
 #### Offline App key rollover preflight proposal
 
 Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424), commit
@@ -351,6 +362,18 @@ cost, fleet-wide replica/worker capacity, PostgreSQL 16/managed-provider
 cancellation, legitimate workload suitability and period evidence remain
 unverified. Deployed-artifact benchmarking was not run because local server/
 data prerequisites were absent. Operating effectiveness is **not-assessed**.
+
+**2026-10-22 constant-centralization follow-up:** verified open/draft head
+`c623141efe611da61117875b2a004319c2b7787d` follows the session-reported merge
+of main `bf11b39b0`. The published follow-up diff moves the unchanged 60-second
+value to `server/internal/inputlimits/limits.go:20` as
+`PostgresReadTransactionTimeout`, updating PostgreSQL consumers and tests.
+The session reports post-merge inputlimits/postgresx/query tests, scoped lint
+and build passing, with database-backed cases explicitly skipped in this
+constant-only rerun. The owned-local physical observations above remain
+attributed to `95d5da40f14c75b8c12d0436419e9e2980b0afd7`, not the new
+merged head. Coordinator inspected the follow-up diff, not a combined
+database-backed rerun; resource behavior/policy conclusions remain unchanged.
 
 #### Revised metadata budgets supersede the initial proposal
 

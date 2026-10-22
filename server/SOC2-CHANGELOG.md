@@ -665,3 +665,26 @@ Dates are UTC. Corrections are new events; original observations remain.
   runtime-signing vulnerability or closure is inferred. Runtime signing,
   managed-provider decisions, custody evidence and operating effectiveness
   (not-assessed) are unchanged. No merge, deployment or key lifecycle action.
+
+## 2026-10-22 - SOC2-LOG-029 - PostgreSQL constant and native collector revision
+
+- Type: follow-up source revision and pending user-directed implementation
+  correction; RFC-035 record schema version 1.
+- Verified draft [#19425](https://github.com/githubnext/gh-cao/pull/19425)
+  head `c623141efe611da61117875b2a004319c2b7787d`. Session reports merging
+  main `bf11b39b0`; follow-up diff centralizes the unchanged 60-second
+  PostgreSQL timeout in inputlimits without a resource-policy change.
+- Session reports post-merge inputlimits/postgresx/query tests, scoped lint
+  and build passing; database-backed tests skipped. SOC2-LOG-026 physical
+  observations remain bound to `95d5da40f14c75b8c12d0436419e9e2980b0afd7`.
+  Coordinator inspected the published delta, not a combined database rerun.
+- User-directed release collector correction requires native Go
+  `gh cao evidence release`, replacing the repository-local JavaScript tool.
+  Verified [#19423](https://github.com/githubnext/gh-cao/pull/19423) remains
+  open/draft at observed head `4b5caa6483cb861df2988b70d7036fdbb7b7ddd6`;
+  final native source/validation handoff pending. Original JavaScript
+  citations/results remain historical, not evidence for its replacement.
+- DATA-10, REL-OP-01 and OPS-08 remain evidence-needed/open; source slices
+  remediate/in-progress. Authority, retention, operator decisions and
+  operating effectiveness (not-assessed) are unchanged. No deployment or
+  compliance conclusion.
