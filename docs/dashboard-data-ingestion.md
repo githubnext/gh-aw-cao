@@ -182,16 +182,18 @@ failed resolutions appear in the Model routing Problems view once per run, with
 an unknown time unless the session clock is recorded, and per-run resolution roles
 stay on the run page. Routed sessions are expected
 to lack these events, and legacy sessions report no resolution evidence rather
-than failure. Canonical schema 33 / IndexedDB version 43 rebuild older browser
+than failure. Canonical schema 34 / IndexedDB version 44 rebuild older browser
 projections; hosted PostgreSQL needs a fresh generated schema with the new
-Audit columns.
+Audit columns and compact Run routing aggregates. Ingestion derives the aggregate
+with shared Dashboard Language accounting, retains request evidence needed by
+run-page views, and drops unused inventory and generic proxy events.
 
 The activity shard manifest is the dashboard's published operational input. The worker downloads and processes each listed schema-v2 JSONL shard independently through a versioned ingestion expression. Raw `workflow_runs` payload rows create Repository, Workflow, and Run observations. Enriched `run` envelopes update the same Run identities and create deterministic Domain, Tool, Audit, and Issue records owned directly by those Runs. `github_api_rate_limit` envelopes create Audits only when explicit collection context identifies their owning run; browser ingestion does not fabricate that ownership. Unknown kinds and unsupported non-empty schema versions fail explicitly.
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 33. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 43. Its canonical stores are
+The canonical model is version 34. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,

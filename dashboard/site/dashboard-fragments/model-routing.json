@@ -643,6 +643,8 @@
     {
       "name": "routing-weekly-paired-totals", "from": "routing-runs",
       "subject": "Weekly paired complete main-request costs by baseline model.",
+      "objective": "Compare routing cost trends with each named baseline using identical main-request populations.",
+      "acceptance": "Only timed runs with complete positive baseline estimates and matching known main-request costs contribute to both medians.",
       "filter": { "predicates": [{ "field": "paired", "equals": true }, { "field": "run-clock", "gte": 0 }] },
       "compute": [{ "as": "week", "function": "date-bucket", "args": [{ "field": "observed-at" }, { "value": "week" }] }],
       "aggregate": { "by": ["week", "baseline-model"], "values": [
@@ -654,6 +656,8 @@
     {
       "name": "routing-weekly-paired-cost", "from": "routing-weekly-paired-totals",
       "subject": "Paired main-request samples that meet the chosen evidence floor.",
+      "objective": "Avoid changing routing policy based on insufficient paired evidence.",
+      "acceptance": "Observed and estimated series share the same complete-run count and configurable minimum sample.",
       "parameters": [{ "name": "minimum-sample", "type": "number" }],
       "compute": [
         { "as": "sample-floor", "function": "difference", "args": [{ "parameter": "minimum-sample" }, { "value": 1 }] },
@@ -663,6 +667,8 @@
     {
       "name": "routing-weekly-main-observed", "from": "routing-weekly-paired-cost",
       "subject": "Observed main-request AIC for the same eligible runs as each baseline.",
+      "objective": "Identify weeks when routed main-request costs exceed the matching baseline estimate.",
+      "acceptance": "Observed medians exclude classifier and sub-agent costs and remain unknown below the paired sample floor.",
       "compute": [
         { "as": "cost-series", "function": "concat", "args": [{ "value": "Main requests observed (baseline: " }, { "field": "baseline-model" }, { "value": ")" }] },
         { "as": "median-aic", "function": "if", "args": [{ "field": "enough-samples" }, { "field": "observed-main-median" }, { "value": null }] }
@@ -671,6 +677,8 @@
     {
       "name": "routing-weekly-baseline-estimate", "from": "routing-weekly-paired-cost",
       "subject": "Explicitly estimated baseline AIC for paired main-agent requests.",
+      "objective": "Show the named counterfactual against which owners can assess routing goal or mode.",
+      "acceptance": "The series is labelled estimated, separates baseline models and uses exactly the observed series' eligible runs.",
       "compute": [
         { "as": "cost-series", "function": "concat", "args": [{ "value": "Baseline estimate (estimated, main requests): " }, { "field": "baseline-model" }] },
         { "as": "median-aic", "function": "if", "args": [{ "field": "enough-samples" }, { "field": "baseline-estimate-median" }, { "value": null }] }
@@ -687,6 +695,8 @@
     {
       "name": "routing-failure-problems", "from": "routing-runs",
       "subject": "Runs whose routing failure codes require investigation.",
+      "objective": "Investigate routing configuration or execution failures before changing rollout.",
+      "acceptance": "Emit one row per run with recorded routing failure identifiers, excluding upstream errors handled by their own kind.",
       "filter": { "predicates": [{ "field": "routing-failure-codes", "gte": "" }] },
       "compute": [
         { "as": "problem-kind", "function": "literal", "args": [{ "value": "routing failure" }] },
@@ -697,6 +707,8 @@
     {
       "name": "routing-deviation-problems", "from": "routing-runs",
       "subject": "Runs whose requests deviated from the routing pick.",
+      "objective": "Investigate why requests did not follow the selected model or effort.",
+      "acceptance": "Emit one row per run with distinct recorded deviation causes, without inferring causes from model names.",
       "filter": { "predicates": [{ "field": "routing-deviation-codes", "gte": "" }] },
       "compute": [
         { "as": "problem-kind", "function": "literal", "args": [{ "value": "deviation" }] },
@@ -707,6 +719,8 @@
     {
       "name": "routing-resolution-problems", "from": "routing-runs",
       "subject": "Runs whose configured models could not be resolved.",
+      "objective": "Correct model aliases or restore catalogue availability for failed resolutions.",
+      "acceptance": "Emit one row per run with recorded resolution failure causes, not absence of resolution evidence.",
       "filter": { "predicates": [{ "field": "routing-resolution-codes", "gte": "" }] },
       "compute": [
         { "as": "problem-kind", "function": "literal", "args": [{ "value": "resolution failure" }] },
@@ -717,6 +731,8 @@
     {
       "name": "routing-upstream-problems", "from": "routing-runs",
       "subject": "Provider-rejected requests with distinct upstream error codes.",
+      "objective": "Correct model or effort settings rejected by the provider.",
+      "acceptance": "Emit one upstream-error row per run with distinct safe codes or unknown, never a duplicate generic routing failure.",
       "filter": { "predicates": [{ "field": "routing-upstream-codes", "gte": "" }] },
       "compute": [
         { "as": "problem-kind", "function": "literal", "args": [{ "value": "upstream error" }] },
@@ -727,6 +743,8 @@
     {
       "name": "routing-candidate-problems", "from": "routing-runs",
       "subject": "Runs whose full eligible pool contains choices the router cannot rank.",
+      "objective": "Review allowed models when the router cannot rank the complete eligible pool.",
+      "acceptance": "Emit one row only when both pool counters are known and overlap is below eligibility, displaying the observed ratio.",
       "filter": { "predicates": [{ "field": "candidate-coverage", "gte": "" }] },
       "compute": [
         { "as": "problem-kind", "function": "literal", "args": [{ "value": "candidates not rankable" }] },
