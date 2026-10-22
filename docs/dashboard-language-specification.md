@@ -108,12 +108,15 @@ Workflow or a Campaign.
 `config.wizard` contains `intro`, `steps`, `prompt` and optional `provenance`.
 Each step has a unique kebab-case `id`, `title`, optional `description` and
 non-empty `fields`. Each field has a globally unique kebab-case `id`, `label`,
-and `control` (`text`, `textarea`, `select` or `checkboxes`). It may declare
+and `control` (`text`, `textarea`, `select`, `cards` or `checkboxes`). `cards`
+presents accessible marketplace choice buttons. Its optional Boolean
+`advance-on-select` opens the next pane on activation. Fields may declare
 `required`, `default`, `placeholder`, `max-length` (1–8000), or text
 `format: identifier` or `format: repositories` (exact owner/repository names
 separated by commas or whitespace). Choice fields require `options` with unique `value`,
-`label`, optional `description` and optional JSON `context`. A field's optional
-`when: { field, equals }` must match an option in an earlier select field.
+`label`, optional `description`, concise `summary`, canonical Octicon `icon` and
+optional JSON `context`. A field's optional `when: { field, equals }` must
+match an option in an earlier `select` or `cards` field.
 Hidden answers are retained locally for Back navigation but excluded from the
 generation prompt. Required fields, unknown choices and invalid defaults fail
 closed. Unknown configuration keys are rejected.
@@ -126,6 +129,10 @@ agent task, including when the dashboard has command execution available.
 Opening the preview does not copy or execute anything. Answers are never shell
 substitutions. Prompts are limited to 100000 characters. Neither preview nor
 copying installs, runs, merges or activates the resulting automation.
+
+The wizard opens a workflow-type marketplace, then collects artifact kind,
+intent and scope. The prompt infers the title and kebab-case workflow or campaign
+name; there is no manual naming field.
 
 The default wizard's immutable `githubnext/gh-aw-wizard` pattern snapshot is
 authoring configuration, not canonical operational data. `provenance` retains

@@ -29,11 +29,15 @@ for (const width of [390, 1280]) {
     await page.addStyleTag({ content: getPrimerStyles() });
     const root = page.locator('.prompt-wizard');
     await expect(root).toBeVisible();
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
-    await expect(page.getByLabel('Workflow or campaign name (required)')).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeHidden();
+    await expect(page.getByLabel('What should the agent do? (required)')).toBeHidden();
+    await expect(page.getByLabel('Workflow or campaign name (required)')).toHaveCount(0);
+    const choices = page.locator('.prompt-wizard-cards .entity-card-list-marketplace');
+    await expect(choices.locator('.prompt-wizard-card')).toHaveCount(35);
+    await page.getByRole('button', { name: 'Issue Triage', exact: true }).click();
+    await expect(page.getByLabel('What do you want to generate? (required)')).toBeFocused();
+    await expect(choices).toBeHidden();
     await page.getByLabel('What do you want to generate? (required)').selectOption('campaign');
-    await page.getByLabel('Workflow or campaign name (required)').fill('issue-triage');
-    await page.getByLabel('Starting pattern (required)').selectOption('issue-triage');
     await page.getByLabel('What should the agent do? (required)').fill('Label new issues and leave uncertain reports for human review.');
     await page.getByLabel('Intent and acceptance criteria (required)').fill('Never close issues. Use the existing label taxonomy.');
     await page.getByLabel('Intent and acceptance criteria (required)').press('Tab');
@@ -58,12 +62,19 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('button', { name: 'Generate prompt', exact: true })).toBeFocused();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(page.getByLabel('Campaign target repositories (required)')).toHaveValue('acme/one\nacme/two');
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    const selected = page.getByRole('button', { name: 'Issue Triage', exact: true });
+    await expect(selected).toHaveAttribute('aria-pressed', 'true');
+    await expect(selected).toBeFocused();
+    await selected.press('Enter');
+    await expect(page.getByLabel('What do you want to generate? (required)')).toBeFocused();
     expect(await root.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   });
 }
 
 test.describe('populated dashboard wizard', () => {
-  for (const width of [390, 1280]) {
+  for (const width of [390, 594, 1280]) {
     test(`full-site workflow prompt button copies without command execution at ${width}px`, async ({ page }, testInfo) => {
       /** @type {Array<{ id: string, command: string, input?: string }>} */
       const commands = [];
@@ -97,7 +108,17 @@ test.describe('populated dashboard wizard', () => {
         await page.goto(`${server.url}/#page-wizard`);
         await expect(page.locator('.prompt-wizard')).toBeVisible();
         await expect(page.locator('.first-load-overlay')).toHaveCount(0);
-        await page.getByLabel('Workflow or campaign name (required)').fill('issue-helper');
+        await expect(page.getByRole('button', { name: 'Custom automation', exact: true })).toBeVisible();
+        const cardContent = page.locator('.prompt-wizard-card .issue-list-card-content').first();
+        const description = page.locator('.prompt-wizard-card .issue-list-card-subtitle').first();
+        await expect(description).toHaveText('Design an automation from your own requirements.');
+        expect(await cardContent.evaluate((element) => getComputedStyle(element).gridColumnStart)).toBe('1');
+        expect(await cardContent.evaluate((element) => getComputedStyle(element).gridRowStart)).toBe('2');
+        await expect(page.getByText('Use this type', { exact: true })).toHaveCount(0);
+        const typeScreenshot = testInfo.outputPath(`workflow-wizard-types-${width}.png`);
+        await page.screenshot({ path: typeScreenshot, fullPage: false });
+        await testInfo.attach(`Workflow type marketplace (${width}px)`, { path: typeScreenshot, contentType: 'image/png' });
+        await page.getByRole('button', { name: 'Custom automation', exact: true }).click();
         await page.getByLabel('What should the agent do? (required)').fill('Triage new issues.');
         await page.getByLabel('Intent and acceptance criteria (required)').fill('Never close issues.');
         await page.getByRole('button', { name: 'Next', exact: true }).click();
@@ -114,6 +135,7 @@ test.describe('populated dashboard wizard', () => {
         await page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true }).click();
         await expect(page.getByRole('dialog')).toContainText('Prompt copied.');
         expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('Triage new issues.');
+        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('Infer a concise title and kebab-case workflow file name');
         expect(commands).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       } finally {

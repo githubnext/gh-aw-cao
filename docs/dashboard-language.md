@@ -22,11 +22,14 @@ main-thread JavaScript data derivation.
 
 ### Design an Agentic Workflow or Campaign
 
-Open **Workflow wizard** (`#page-wizard`) to design a generation prompt. Choose
-a mined pattern or start from a custom goal, record intent and acceptance
-criteria, then select explicit triggers, per-run limits, safe outputs and
-optional capabilities. Campaigns also require proposed target repositories.
-Pattern recommendations do not automatically enable permissions.
+Open **Workflow wizard** (`#page-wizard`) to design a generation prompt. The
+first step is a marketplace-style workflow-type gallery: select a mined pattern
+or **Custom automation**. Next, choose an AW or Campaign, record intent and
+acceptance criteria, then select explicit triggers, per-run limits, safe outputs
+and optional capabilities. Titles and file/package names are inferred from the
+intent and selected type, not requested as separate inputs. Campaigns also
+require proposed target repositories. Pattern recommendations do not
+automatically enable permissions.
 
 Choose **Review design**, then the standard **Generate prompt** button.
 Review the complete prompt and use **Copy prompt** with your coding agent.

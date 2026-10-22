@@ -1,6 +1,7 @@
 import { h } from '../dom.js';
 import { effect, state } from '../reactive.js';
 import { normalizeAction } from '../action-model.js';
+import { octicon } from '../octicons.js';
 import { parsePromptWizard, initialWizardValues, wizardFieldVisible, wizardFieldError, wizardDesign, buildWizardPrompt } from '../prompt-wizard.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderPromptPreviewAction } from './data-view.js';
@@ -21,7 +22,7 @@ export function renderPromptWizard(context) {
   const reviewedPrompt = state('');
   const reviewJson = state('');
   const prefix = `prompt-wizard-${++nextWizardId}`;
-  /** @type {Map<string, { root: HTMLElement, control: HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement, description: HTMLElement }>} */
+  /** @type {Map<string, { root: HTMLElement, control: HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|HTMLButtonElement, description: HTMLElement }>} */
   const controls = new Map();
   /** @param {string} id @param {string|string[]} value */
   const update = (id, value) => {
@@ -39,10 +40,33 @@ export function renderPromptWizard(context) {
     const id = `${prefix}-${field.id}`;
     const description = h('p', { id: `${id}-help`, className: 'prompt-wizard-help' });
     const label = `${field.label}${field.required ? ' (required)' : ''}`;
-    /** @type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement} */
+    /** @type {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|HTMLButtonElement} */
     let control;
     let root;
-    if (field.control === 'checkboxes') {
+    if (field.control === 'cards') {
+      const cards = (field.options ?? []).map((option) => {
+        const titleId = `${id}-${option.value}-title`;
+        const summaryId = `${id}-${option.value}-summary`;
+        return /** @type {HTMLButtonElement} */ (h('button', {
+          type: 'button', value: option.value,
+          className: 'issue-list-card entity-card-list-card prompt-wizard-card',
+          'aria-labelledby': titleId, 'aria-describedby': summaryId,
+          'aria-pressed': String(values.get()[field.id] === option.value),
+          onClick: () => {
+            update(field.id, option.value);
+            if (field['advance-on-select']) advance();
+          }
+        },
+            h('span', { className: 'issue-list-card-icon', 'aria-hidden': 'true' }, octicon(option.icon ?? 'workflow')),
+            h('span', { className: 'issue-list-card-content' },
+              h('strong', { id: titleId, className: 'issue-list-card-title' }, option.label),
+              h('span', { id: summaryId, className: 'issue-list-card-subtitle' }, option.summary ?? option.description ?? ''))));
+      });
+      control = cards[0];
+      root = h('fieldset', { className: 'prompt-wizard-field prompt-wizard-cards' },
+        h('legend', null, label),
+        h('div', { className: 'entity-card-list entity-card-list-marketplace' }, ...cards));
+    } else if (field.control === 'checkboxes') {
       const inputs = (field.options ?? []).map((option) => {
         const input = /** @type {HTMLInputElement} */ (h('input', {
           type: 'checkbox', value: option.value,
@@ -109,7 +133,10 @@ export function renderPromptWizard(context) {
     if (heading instanceof HTMLElement) heading.focus();
     else wizard.steps[active.get()]?.fields.some((field) => {
       if (!wizardFieldVisible(field, values.get())) return false;
-      controls.get(field.id)?.control.focus();
+      const item = controls.get(field.id);
+      const selected = item?.root.querySelector('input:checked, button[aria-pressed="true"]');
+      if (selected instanceof HTMLElement) selected.focus();
+      else item?.control.focus();
       return true;
     });
   };
@@ -117,9 +144,7 @@ export function renderPromptWizard(context) {
     type: 'button', className: 'cli-action-trigger',
     onClick: () => { if (!scope.signal.aborted) { active.set(Math.max(0, active.get() - 1)); error.set(''); focusPanel(); } }
   }, 'Back'));
-  const next = /** @type {HTMLButtonElement} */ (h('button', {
-    type: 'button', className: 'cli-action-confirm',
-    onClick: () => {
+  const advance = () => {
       if (scope.signal.aborted || !validateStep()) return;
       try {
         if (active.get() === wizard.steps.length - 1) {
@@ -135,14 +160,17 @@ export function renderPromptWizard(context) {
         publishNotification({ message, tone: 'error' });
         debugWizard({ event: 'prompt-rejected', errorName: diagnosticErrorName(cause) });
       }
-    }
+  };
+  const next = /** @type {HTMLButtonElement} */ (h('button', {
+    type: 'button', className: 'cli-action-confirm', onClick: advance
   }, 'Next'));
+  const navigation = h('div', { className: 'prompt-wizard-actions' }, back, next);
   const source = wizard.provenance;
   const root = h('section', { className: 'prompt-wizard', 'aria-label': context.title },
     h('p', null, wizard.intro),
     progress,
+    navigation,
     ...panels, review, status,
-    h('div', { className: 'prompt-wizard-actions' }, back, next),
     source ? h('aside', { className: 'prompt-wizard-provenance' },
       h('p', null, h('a', { href: source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Patterns from gh-aw-wizard'),
         ` · ${source['source-repositories']} repositories · ${source['total-workflows']} workflows · mined ${source['generated-at'].slice(0, 10)} · revision ${source.revision.slice(0, 12)}`),
@@ -150,6 +178,8 @@ export function renderPromptWizard(context) {
       h('details', null, h('summary', null, 'Upstream dataset license'), h('pre', null, source.license))) : null);
   effect(() => {
     const current = active.get();
+    const fields = wizard.steps[current]?.fields;
+    navigation.hidden = current === 0 && fields?.length === 1 && fields[0]['advance-on-select'] === true;
     panels.forEach((panel, index) => { panel.hidden = index !== current; panel.disabled = index !== current; });
     [...progress.children].forEach((item, index) => {
       if (index === current) item.setAttribute('aria-current', 'step');
@@ -168,6 +198,10 @@ export function renderPromptWizard(context) {
         item.root.hidden = !wizardFieldVisible(field, values.get());
         if (field.control === 'select') {
           item.description.textContent = field.options?.find((option) => option.value === values.get()[field.id])?.description ?? '';
+        } else if (field.control === 'cards') {
+          for (const choice of item.root.querySelectorAll('button')) {
+            choice.setAttribute('aria-pressed', String(choice.value === values.get()[field.id]));
+          }
         }
       }
     }

@@ -19,19 +19,21 @@ const view = page.views[0];
 const wizard = parsePromptWizard(view.config.wizard);
 /** @returns {import('../../src/prompt-wizard.js').WizardValues} */
 function completeValues() {
-  return { ...initialWizardValues(wizard), name: 'issue-helper', purpose: 'Triage issues.', success: 'Never close an issue.', scope: 'Only the triggering issue.' };
+  return { ...initialWizardValues(wizard), pattern: 'custom', purpose: 'Triage issues.', success: 'Never close an issue.', scope: 'Only the triggering issue.' };
 }
-function mount() {
+/** @param {import('../../src/prompt-wizard.js').PromptWizard} [configuration] */
+function mount(configuration = wizard) {
   const root = renderPromptWizard({
     pageId: page.id, viewId: view.id, title: view.title, sourceNames: [], sources: {},
-    contextDetails: [], elementConfig: view.config, headingTag: 'h2'
+    contextDetails: [], elementConfig: { wizard: configuration }, headingTag: 'h2'
   });
   document.body.append(root);
   return root;
 }
 /** @param {HTMLElement} root @param {string} label */
 function button(root, label) {
-  const button = [...root.querySelectorAll('button')].find((button) => button.textContent?.trim() === label || button.getAttribute('aria-label') === label);
+  const button = [...root.querySelectorAll('button')].find((button) => button.textContent?.trim() === label
+    || button.getAttribute('aria-label') === label || button.querySelector('.issue-list-card-title')?.textContent === label);
   if (!button) throw new Error(`Missing button: ${label}`);
   return button;
 }
@@ -44,9 +46,11 @@ function input(root, label, value) {
   control.dispatchEvent(new Event(control.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
   return control;
 }
-/** @param {HTMLElement} root */
-function fillGoal(root) {
-  input(root, 'Workflow or campaign name', 'issue-helper');
+/** @param {HTMLElement} root @param {string} [artifact] @param {string} [pattern] */
+function fillGoal(root, artifact = 'workflow', pattern = 'custom') {
+  const choice = /** @type {HTMLButtonElement} */ (root.querySelector(`.prompt-wizard-card[value="${pattern}"]`));
+  choice.click();
+  input(root, 'What do you want to generate?', artifact);
   input(root, 'What should the agent do?', 'Triage issues.');
   input(root, 'Intent and acceptance criteria', 'Never close issues.');
   button(root, 'Next').click();
@@ -81,6 +85,9 @@ describe('declarative wizard contract', () => {
     expect(authoritativeDashboard.dashboard.navigation[0].pages).toContain(contract.page);
     expect(wizard.steps.map((step) => step.id)).toEqual(contract.steps);
     expect(wizard.steps.flatMap((step) => step.fields.map((field) => field.id))).toEqual(contract.fields);
+    expect(wizard.steps[0].fields[0]).toMatchObject({ id: 'pattern', control: 'cards', required: true, 'advance-on-select': true });
+    expect(wizard.steps[0].fields[0]).not.toHaveProperty('default');
+    expect(wizard.steps.flatMap((step) => step.fields.map((field) => field.id))).not.toContain('name');
     expect(wizard.provenance).toMatchObject({ repository: contract.upstream, revision: contract.revision });
     expect(wizard.provenance?.license).toContain('Copyright (c) 2026 GitHub Next');
     expect(wizard.steps[0].fields.find((field) => field.id === 'pattern')?.options).toHaveLength(contract['pattern-count'] + 1);
@@ -123,6 +130,8 @@ describe('declarative wizard contract', () => {
     expect(prompt).toContain(contract.revision);
     expect(prompt).toContain('gh aw compile');
     expect(prompt).toContain('draft pull request');
+    expect(prompt).toContain('Infer a concise title and kebab-case campaign package name');
+    expect(wizardDesign(wizard, values)).not.toHaveProperty('name');
     expect(prompt).not.toContain('MIT License');
     expect(values.outputs).toEqual(['add-comment']);
     expect(wizardDesign(wizard, { ...values, artifact: 'workflow' })).not.toHaveProperty('targets');
@@ -130,7 +139,7 @@ describe('declarative wizard contract', () => {
 
   it('rejects missing, forged, duplicate and oversized answers instead of generating a partial prompt', () => {
     const changes = /** @type {import('../../src/prompt-wizard.js').WizardValues[]} */ ([
-      { purpose: '' }, { name: 'bad name' }, { pattern: 'not-a-pattern' }, { outputs: ['not-an-output'] },
+      { purpose: '' }, { pattern: '' }, { pattern: 'not-a-pattern' }, { outputs: ['not-an-output'] },
       { outputs: ['add-comment', 'add-comment'] }, { artifact: 'campaign', targets: '' },
       { artifact: 'campaign', targets: 'acme/*' },
       { purpose: 'x'.repeat(6001) }, { triggers: 'issues' }
@@ -141,12 +150,14 @@ describe('declarative wizard contract', () => {
   it('fails closed on malformed and unknown declarative configuration', () => {
     for (const change of [
       (/** @type {any} */ value) => { value.extra = 'unknown'; },
-      (/** @type {any} */ value) => { value.steps[0].fields[1].id = 'artifact'; },
-      (/** @type {any} */ value) => { value.steps[0].fields[1].control = 'script'; },
-      (/** @type {any} */ value) => { value.steps[0].fields[1]['max-length'] = -1; },
-      (/** @type {any} */ value) => { value.steps[0].fields[1].when = { field: 'missing', equals: 'x' }; },
+      (/** @type {any} */ value) => { value.steps[1].fields[0].id = 'pattern'; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].control = 'script'; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0]['max-length'] = -1; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].when = { field: 'missing', equals: 'x' }; },
       (/** @type {any} */ value) => { value.steps[0].fields[0].default = 'missing'; },
       (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].callback = 'script'; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].icon = 'not-an-icon'; },
+      (/** @type {any} */ value) => { value.steps[1].fields[0]['advance-on-select'] = true; },
       (/** @type {any} */ value) => { value.provenance.revision = 'main'; }
     ]) {
       const invalid = structuredClone(wizard);
@@ -161,11 +172,8 @@ describe('wizard interaction and lifecycle', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     const root = mount();
-    button(root, 'Next').click();
-    expect(root.textContent).toContain('Workflow or campaign name is required.');
-    expect(document.activeElement?.getAttribute('id')).toMatch(/-name$/);
-    input(root, 'What do you want to generate?', artifact);
-    fillGoal(root);
+    expect(root.querySelector('.prompt-wizard-actions')?.hasAttribute('hidden')).toBe(true);
+    fillGoal(root, artifact);
     input(root, 'Per-run scope and limits', 'Only the triggering issue.');
     if (artifact === 'campaign') input(root, 'Campaign target repositories', 'acme/one');
     button(root, 'Review design').click();
@@ -196,9 +204,7 @@ describe('wizard interaction and lifecycle', () => {
 
   it('requires explicit Campaign targets and never auto-selects recommended outputs or capabilities', () => {
     const root = mount();
-    input(root, 'What do you want to generate?', 'campaign');
-    input(root, 'Starting pattern', 'issue-triage');
-    fillGoal(root);
+    fillGoal(root, 'campaign', 'issue-triage');
     input(root, 'Per-run scope and limits', 'One dispatched target per worker.');
     button(root, 'Review design').click();
     expect(root.textContent).toContain('Campaign target repositories is required.');
@@ -207,6 +213,28 @@ describe('wizard interaction and lifecycle', () => {
     button(root, 'Review design').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('.table-intent-preview')?.textContent).toContain('acme/one');
+  });
+
+  it('uses declarative advance-on-select and preserves an explicitly reviewed card choice on Back', () => {
+    const root = mount();
+    button(root, 'Issue Triage').click();
+    expect(root.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
+    expect(root.querySelector('.prompt-wizard-cards')?.closest('fieldset.prompt-wizard-step')?.hasAttribute('hidden')).toBe(true);
+    button(root, 'Back').click();
+    const chosen = button(root, 'Issue Triage');
+    expect(chosen.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(chosen);
+    chosen.click();
+    expect(root.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
+    root.remove();
+    const explicit = structuredClone(wizard);
+    explicit.steps[0].fields[0]['advance-on-select'] = false;
+    const explicitRoot = mount(explicit);
+    button(explicitRoot, 'Issue Triage').click();
+    expect(explicitRoot.querySelector('.prompt-wizard-actions')?.hasAttribute('hidden')).toBe(false);
+    expect(explicitRoot.querySelector('.prompt-wizard-cards')?.closest('fieldset.prompt-wizard-step')?.hasAttribute('hidden')).toBe(false);
+    button(explicitRoot, 'Next').click();
+    expect(explicitRoot.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
   });
 
   it('provides copy-only handoff when execution is unavailable and treats input as text', async () => {

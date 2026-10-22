@@ -16,7 +16,14 @@ export const promptWizardStyles = `
 .prompt-wizard-options>.prompt-wizard-choice{display:flex;gap:12px;align-items:flex-start;padding:10px;margin:0;font-weight:400;min-height:44px;cursor:pointer}
 .prompt-wizard-choice input{margin-top:4px;flex:none}
 .prompt-wizard-choice small{display:block;color:var(--muted)}
-.prompt-wizard-actions{display:flex;justify-content:space-between;gap:12px;margin:20px 0}
+.prompt-wizard-actions{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:12px;margin:16px 0;padding:12px 0;background:var(--canvas);border-bottom:1px solid var(--border)}
+.prompt-wizard-cards{border:0;padding:0}
+.prompt-wizard .prompt-wizard-cards .entity-card-list-marketplace .prompt-wizard-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:48px 1fr;min-height:200px;gap:14px;padding:20px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--fg);font:inherit;text-align:left}
+.prompt-wizard-cards .prompt-wizard-card .issue-list-card-icon{grid-column:1;grid-row:1;width:48px;height:48px}
+.prompt-wizard-cards .prompt-wizard-card .issue-list-card-content{grid-column:1;grid-row:2;gap:8px}
+.prompt-wizard-cards .prompt-wizard-card .issue-list-card-subtitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.prompt-wizard .prompt-wizard-cards .prompt-wizard-card[aria-pressed="true"]{border-color:var(--accent);background:var(--canvas-subtle);box-shadow:inset 0 0 0 1px var(--accent)}
+.prompt-wizard .prompt-wizard-cards .prompt-wizard-card:hover{border-color:var(--accent)}
 .prompt-wizard :is(button,.table-intent-button){min-height:44px}
 .prompt-wizard-summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:16px;background:var(--canvas-subtle);border:1px solid var(--border);border-radius:6px;max-height:480px;overflow:auto}
 .prompt-wizard-review>.table-intent-control{display:block;margin:20px 0}

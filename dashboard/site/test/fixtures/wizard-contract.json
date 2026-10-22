@@ -8,6 +8,6 @@
   "upstream": "githubnext/gh-aw-wizard",
   "revision": "2e1f1d62adcbfa68fd6abab65eb9372af50a8ba5",
   "pattern-count": 34,
-  "steps": ["goal", "behavior"],
-  "fields": ["artifact", "name", "pattern", "purpose", "success", "scope", "targets", "triggers", "trigger-details", "outputs", "extras", "engine", "constraints"]
+  "steps": ["type", "goal", "behavior"],
+  "fields": ["pattern", "artifact", "purpose", "success", "scope", "targets", "triggers", "trigger-details", "outputs", "extras", "engine", "constraints"]
 }

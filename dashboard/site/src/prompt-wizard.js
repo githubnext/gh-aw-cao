@@ -1,9 +1,11 @@
 import { constrainPrompt } from './action-model.js';
 import { isSafeRepositorySlug } from './validator-common.js';
+import octiconNames from './octicon-names.json' with { type: 'json' };
 
 /**
- * @typedef {{ value: string, label: string, description?: string, context?: unknown }} WizardOption
- * @typedef {{ id: string, label: string, control: 'text'|'textarea'|'select'|'checkboxes', required?: boolean,
+ * @typedef {{ value: string, label: string, description?: string, summary?: string, icon?: string, context?: unknown }} WizardOption
+ * @typedef {{ id: string, label: string, control: 'text'|'textarea'|'select'|'cards'|'checkboxes', required?: boolean,
+ *   'advance-on-select'?: boolean,
  *   format?: 'identifier'|'repositories', 'max-length'?: number, placeholder?: string, default?: string|string[],
  *   when?: { field: string, equals: string }, options?: WizardOption[] }} WizardField
  * @typedef {{ id: string, title: string, description?: string, fields: WizardField[] }} WizardStep
@@ -46,36 +48,41 @@ export function parsePromptWizard(value) {
     if (step.description !== undefined) text(step.description, 'step.description');
     if (!Array.isArray(step.fields) || !step.fields.length || step.fields.length > 20) throw new Error('Each wizard step must contain 1 to 20 fields.');
     for (const entry of step.fields) {
-      const field = mapping(entry, ['id', 'label', 'control', 'required', 'format', 'max-length', 'placeholder', 'default', 'when', 'options'], 'wizard field');
+      const field = mapping(entry, ['id', 'label', 'control', 'required', 'advance-on-select', 'format', 'max-length', 'placeholder', 'default', 'when', 'options'], 'wizard field');
       text(field.id, 'field.id', 80);
       text(field.label, 'field.label', 200);
       if (!/^[a-z][a-z0-9-]*$/.test(field.id) || fields.has(field.id)) throw new Error('Wizard field identifiers must be unique kebab-case.');
-      if (!['text', 'textarea', 'select', 'checkboxes'].includes(String(field.control))) throw new Error('Unknown wizard field control.');
+      if (!['text', 'textarea', 'select', 'cards', 'checkboxes'].includes(String(field.control))) throw new Error('Unknown wizard field control.');
       if (field.required !== undefined && typeof field.required !== 'boolean') throw new Error('field.required must be a boolean.');
+      if (field['advance-on-select'] !== undefined && (field.control !== 'cards' || typeof field['advance-on-select'] !== 'boolean')) {
+        throw new Error('field.advance-on-select must be a boolean on a cards control.');
+      }
       if (field.placeholder !== undefined) text(field.placeholder, 'field.placeholder');
       if (field['max-length'] !== undefined && (!Number.isInteger(field['max-length']) || Number(field['max-length']) < 1 || Number(field['max-length']) > 8000)) {
         throw new Error('field.max-length must be an integer from 1 to 8000.');
       }
-      const choices = field.control === 'select' || field.control === 'checkboxes';
+      const choices = field.control === 'select' || field.control === 'cards' || field.control === 'checkboxes';
       if (field.format !== undefined && (!['identifier', 'repositories'].includes(String(field.format)) || choices)) throw new Error('field.format supports identifier or repositories on text controls only.');
       if (choices) {
         if (!Array.isArray(field.options) || !field.options.length || field.options.length > 100) throw new Error('Choice fields require 1 to 100 options.');
         const values = new Set();
         for (const entry of field.options) {
-          const option = mapping(entry, ['value', 'label', 'description', 'context'], 'wizard option');
+          const option = mapping(entry, ['value', 'label', 'description', 'summary', 'icon', 'context'], 'wizard option');
           text(option.value, 'option.value', 100);
           text(option.label, 'option.label', 200);
           if (!/^[a-z][a-z0-9_-]*$/.test(option.value) || values.has(option.value)) throw new Error('Wizard option values must be unique identifiers.');
           values.add(option.value);
           if (option.description !== undefined) text(option.description, 'option.description');
+          if (option.summary !== undefined) text(option.summary, 'option.summary', 1000);
+          if (option.icon !== undefined && !octiconNames.includes(String(option.icon))) throw new Error('option.icon must be a canonical Octicon.');
           if (option.context !== undefined && JSON.stringify(option.context).length > 30_000) throw new Error('Wizard option context is too large.');
         }
       } else if (field.options !== undefined) throw new Error('Text fields cannot declare options.');
       if (field.when !== undefined) {
         const when = mapping(field.when, ['field', 'equals'], 'field.when');
         const dependency = fields.get(String(when.field));
-        if (dependency?.control !== 'select' || !dependency.options?.some((option) => option.value === when.equals)) {
-          throw new Error('field.when must match an option of an earlier select field.');
+        if (!dependency || !['select', 'cards'].includes(dependency.control) || !dependency.options?.some((option) => option.value === when.equals)) {
+          throw new Error('field.when must match an option of an earlier single-choice field.');
         }
       }
       const parsed = /** @type {WizardField} */ (field);

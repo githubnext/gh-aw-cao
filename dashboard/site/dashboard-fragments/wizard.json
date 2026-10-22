@@ -29,55 +29,29 @@
               "intro": "Choose a pattern, describe your goal, and review the prompt. Nothing is installed or activated. Do not enter secrets. Drafts stay in this page's memory and are discarded when you leave.",
               "steps": [
                 {
-                  "id": "goal",
-                  "title": "Goal and pattern",
-                  "description": "Choose what to author. Mined patterns are suggestions, not permission grants or predictions of success.",
+                  "id": "type",
+                  "title": "Choose a workflow type",
+                  "description": "Browse the mined workflow patterns and select a starting point. You can describe a custom automation instead. Patterns are guidance, not permission grants.",
                   "fields": [
                     {
-                      "id": "artifact",
-                      "label": "What do you want to generate?",
-                      "control": "select",
-                      "required": true,
-                      "default": "workflow",
-                      "options": [
-                        {
-                          "value": "workflow",
-                          "label": "Agentic Workflow",
-                          "description": "One bounded agentic workflow for the authoring repository.",
-                          "context": "Author an editable .github/workflows/<name>.md workflow and compile it with gh aw compile. Do not hand-write generated lock YAML."
-                        },
-                        {
-                          "value": "campaign",
-                          "label": "Campaign",
-                          "description": "A reusable campaign package with explicit control and worker boundaries.",
-                          "context": "Author an aw.yml campaign manifest and editable workflow sources with shared control. Separate orchestration from one-target workers when dispatch is needed. Keep the package, rollout policy, credentials and target authority separate. Do not edit campaign ownership records manually."
-                        }
-                      ]
-                    },
-                    {
-                      "id": "name",
-                      "label": "Workflow or campaign name",
-                      "control": "text",
-                      "format": "identifier",
-                      "required": true,
-                      "max-length": 80,
-                      "placeholder": "issue-triage"
-                    },
-                    {
                       "id": "pattern",
-                      "label": "Starting pattern",
-                      "control": "select",
+                      "label": "Workflow type",
+                      "control": "cards",
+                      "advance-on-select": true,
                       "required": true,
-                      "default": "custom",
                       "options": [
                         {
                           "value": "custom",
                           "label": "Custom automation",
+                          "summary": "Design an automation from your own requirements.",
+                          "icon": "sparkle",
                           "description": "Start from your own requirements."
                         },
                         {
                           "value": "code-improvement",
                           "label": "Code Improvement",
+                          "summary": "Diagnose and fix code or CI issues",
+                          "icon": "tools",
                           "description": "Diagnose and fix code or CI issues\nUse schedule triggers for continuous maintenance coverage\nAdd pre-steps to run tests/linters before the agent starts — validates baseline\nScope each run to one narrow, well-defined improvement (a single failing check or a named category of fix) rather than an open-ended \"fix anything broken\" mandate — broad, unscoped code-improvement workflows have the lowest observed success rates\nUse explicit DO NOT constraints to keep changes scoped to the requested improvement\nUse protected-files: fallback-to-issue for manifests, CI configuration, and agent instructions\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers",
                           "context": {
                             "pattern": {
@@ -187,6 +161,8 @@
                         {
                           "value": "status-report",
                           "label": "Status Report",
+                          "summary": "Generate periodic status summaries",
+                          "icon": "graph",
                           "description": "Generate periodic status summaries\nPre-fetch data in a steps: block — #1 predictor of workflow health\nUse schedule triggers for repeatable reporting\nKeep prompts focused on one report — multi-source reports need pre-steps\nUse DO NOT constraints to prevent repository changes while generating reports\nUse skip-if-match and expires on create-issue so scheduled reports don't accumulate as duplicate open issues\nFor recurring reports, prefer close-older-issues: true on create-issue over skip-if-match so each scheduled run always executes and supersedes the previous report instead of being skipped while an old one is still open",
                           "context": {
                             "pattern": {
@@ -295,6 +271,8 @@
                         {
                           "value": "pr-review",
                           "label": "PR Review",
+                          "summary": "Review pull requests for quality and issues",
+                          "icon": "eye",
                           "description": "Review pull requests for quality and issues\nFocus on specific review criteria (security, performance, style)\nUse pull_request triggers focused on ready-to-review activity\nInclude DO NOT constraints to avoid false positive comments",
                           "context": {
                             "pattern": {
@@ -416,6 +394,8 @@
                         {
                           "value": "documentation-updater",
                           "label": "Documentation Updater",
+                          "summary": "Keep docs accurate and up-to-date",
+                          "icon": "book",
                           "description": "Keep docs accurate and up-to-date\n80% success rate — reliable when scoped to specific doc areas\nAdd pre-steps to validate docs build before the agent starts\nUse DO NOT constraints to prevent deleting existing content\nUse protected-files: fallback-to-issue for manifests, CI configuration, and agent instructions\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers",
                           "context": {
                             "pattern": {
@@ -523,6 +503,8 @@
                         {
                           "value": "content-moderation",
                           "label": "Content Moderation",
+                          "summary": "Review content for quality or policy",
+                          "icon": "shield",
                           "description": "Review content for quality or policy\nNever auto-close or lock — label and comment only\nInclude explicit rules for what IS legitimate to reduce false positives\nUse DO NOT constraints for actions the agent should never take",
                           "context": {
                             "pattern": {
@@ -617,6 +599,8 @@
                         {
                           "value": "issue-triage",
                           "label": "Issue Triage",
+                          "summary": "Classify and label new issues",
+                          "icon": "tag",
                           "description": "Classify and label new issues\nPrefer event-driven triggers like issues and schedule over manual-only execution\nInclude explicit label taxonomy in your prompt so the agent knows valid options\nUse DO NOT constraints (e.g., 'Do NOT close issues') — 61% more likely to be healthy",
                           "context": {
                             "pattern": {
@@ -720,6 +704,8 @@
                         {
                           "value": "dependency-monitor",
                           "label": "Dependency Monitor",
+                          "summary": "Track and update dependencies",
+                          "icon": "workflow",
                           "description": "Track and update dependencies\nUse schedule triggers for reliable periodic checks\nInclude a checklist of specific dependencies to monitor — don't leave it open-ended\nEnable network access for fetching upstream release data\nAdd this repo's package ecosystem identifier(s) (e.g. node, python, go, rust) under network.allowed — \"defaults\" and \"github\" alone do not include package registry domains\nUse DO NOT constraints to prevent unrelated dependency or source changes\nUse skip-if-match to prevent duplicate scheduled findings\nUse protected-files: fallback-to-issue for CI configuration and agent instructions (not the dependency manifests themselves, since updating those is the intended change)",
                           "context": {
                             "pattern": {
@@ -833,6 +819,8 @@
                         {
                           "value": "daily-test-improver",
                           "label": "Daily Test Improver",
+                          "summary": "Add high-value tests and improve test quality",
+                          "icon": "check",
                           "description": "Add high-value tests and improve test quality\nEstablish a passing baseline before changing tests\nPrefer regression-prone and critical paths over coverage inflation\nCreate one focused draft pull request per run\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers",
                           "context": {
                             "pattern": {
@@ -929,6 +917,8 @@
                         {
                           "value": "repo-maintainer",
                           "label": "Repo Maintainer",
+                          "summary": "Proactively triage, fix, and maintain a repository",
+                          "icon": "tools",
                           "description": "Proactively triage, fix, and maintain a repository\nUse persistent memory and check for existing work before acting\nLimit each run to one high-value maintenance task\nLeave merges, approvals, and destructive actions to maintainers\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers\nSet concurrency.job-discriminator to ${{ github.event_name == 'schedule' && 'scheduled' || github.run_id }} so a manually- or slash-command-triggered run doesn't get cancelled by (or cancel) the recurring scheduled run",
                           "context": {
                             "pattern": {
@@ -1038,6 +1028,8 @@
                         {
                           "value": "skill-pr-reviewer",
                           "label": "Skill PR Reviewer",
+                          "summary": "Review pull requests with installed expert skills",
+                          "icon": "eye",
                           "description": "Review pull requests with installed expert skills\nSelect skills that match the pull request's change type\nName the skill that informed each actionable finding\nReview changed lines only and avoid duplicate feedback",
                           "context": {
                             "pattern": {
@@ -1129,6 +1121,8 @@
                         {
                           "value": "pr-iteration-loop",
                           "label": "PR Iteration Loop",
+                          "summary": "Solve a problem through verified iterations on one long-running draft pull request",
+                          "icon": "git-pull-request",
                           "description": "Solve a problem through verified iterations on one long-running draft pull request\nSelect one bounded checkpoint per run and preserve accepted progress on one deterministic branch and draft pull request\nPersist iteration history, evidence, lessons, and blockers in repo-memory so later runs do not repeat failed approaches\nAccept an iteration only when it improves the defined metric or completion contract and passes verification\nPause after bounded retries or a repeated failure signature instead of retrying indefinitely",
                           "context": {
                             "pattern": {
@@ -1224,6 +1218,8 @@
                         {
                           "value": "accessibility-expert",
                           "label": "Web Accessibility Expert",
+                          "summary": "Audit web interfaces for accessibility barriers",
+                          "icon": "eye",
                           "description": "Audit web interfaces for accessibility barriers\nTest keyboard, screen-reader, focus, and responsive behavior\nUse Playwright against a local preview and cite reproducible evidence\nReport only actionable barriers introduced or exposed by the change",
                           "context": {
                             "pattern": {
@@ -1306,6 +1302,8 @@
                         {
                           "value": "performance-nut",
                           "label": "Performance Nut",
+                          "summary": "Find and fix one measurable performance bottleneck",
+                          "icon": "graph",
                           "description": "Find and fix one measurable performance bottleneck\nMeasure a representative baseline before optimizing\nMake one focused change and compare before-and-after results\nDo not trade correctness or maintainability for speculative speedups\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers\nConstrain create-pull-request with allowed-files scoped to the changed source files, and set protected-files: fallback-to-issue for manifests, CI config, or agent instruction files\nWhen scanning multiple bottleneck categories (e.g. code-level, data, network/I-O), persist previously-selected categories in cache-memory and weight toward ones not covered in recent runs so a scheduled cadence explores the full space over time",
                           "context": {
                             "pattern": {
@@ -1380,6 +1378,8 @@
                         {
                           "value": "user-simulator",
                           "label": "User Simulator",
+                          "summary": "Simulate representative users and evaluate their workflows",
+                          "icon": "device-desktop",
                           "description": "Simulate representative users and evaluate their workflows\nDefine personas by goals, responsibilities, and constraints rather than demographics\nSimulate a small, representative set of technical and nontechnical tasks\nUse repeatable criteria and concise evidence when reporting friction or gaps",
                           "context": {
                             "pattern": {
@@ -1458,6 +1458,8 @@
                         {
                           "value": "linter-workflows",
                           "label": "Linter Workflows",
+                          "summary": "Create workflows to mine, refine, and apply lint rules",
+                          "icon": "tools",
                           "description": "Create workflows to mine, refine, and apply lint rules\nGenerate separate workflows for mining, refining, and applying lint rules\nKeep each workflow focused on one linting responsibility\nRoute all code changes through pull requests",
                           "context": {
                             "pattern": {
@@ -1514,6 +1516,8 @@
                         {
                           "value": "linter-miner",
                           "label": "Linter Miner",
+                          "summary": "Discover recurring defects and create custom lint rules",
+                          "icon": "tools",
                           "description": "Discover recurring defects and create custom lint rules\nRequire repository evidence for every proposed rule\nInclude positive and negative fixtures to control false positives\nPropose at most one high-signal rule per run",
                           "context": {
                             "pattern": {
@@ -1584,6 +1588,8 @@
                         {
                           "value": "linter-refiner",
                           "label": "Linter Refiner",
+                          "summary": "Improve lint rule accuracy, diagnostics, and performance",
+                          "icon": "tools",
                           "description": "Improve lint rule accuracy, diagnostics, and performance\nRequire concrete false-positive or missed-case evidence\nAdd a regression fixture for every behavior change\nRefine only one rule per pull request",
                           "context": {
                             "pattern": {
@@ -1652,6 +1658,8 @@
                         {
                           "value": "linter-applier",
                           "label": "Linter Applier",
+                          "summary": "Fix a focused group of existing lint findings",
+                          "icon": "tools",
                           "description": "Fix a focused group of existing lint findings\nGroup fixes by one rule and subsystem\nNever disable rules or add blanket suppressions\nValidate semantics with relevant tests after applying fixes\nConstrain create-pull-request with allowed-files scoped to the fix's file types, and set protected-files: fallback-to-issue for manifests, CI config, or agent instruction files\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers",
                           "context": {
                             "pattern": {
@@ -1722,6 +1730,8 @@
                         {
                           "value": "issue-hierarchy-manager",
                           "label": "Issue Hierarchy Manager",
+                          "summary": "Organize issues into parent/sub-issue relationships and keep the hierarchy in sync",
+                          "icon": "tools",
                           "description": "Organize issues into parent/sub-issue relationships and keep the hierarchy in sync\nPre-fetch open issues in a steps: block before reasoning about relationships\nUse link-sub-issue with parent/sub label or title-prefix filters to bound which issues can be linked\nRecursively close parent issues only after confirming every sub-issue is complete\nRead-only issues permission is enough — rely on safe-outputs like link-sub-issue and update-issue for writes\nWhen this run needs to create several new findings as a set, use create-issue's group: true so they land as linked sub-issues under one parent instead of unrelated top-level issues",
                           "context": {
                             "pattern": {
@@ -1769,6 +1779,8 @@
                         {
                           "value": "security-scanner",
                           "label": "Security Scanner",
+                          "summary": "Scan recent commits for malicious or suspicious code patterns",
+                          "icon": "shield",
                           "description": "Scan recent commits for malicious or suspicious code patterns\nScope analysis to a bounded recent window (e.g. last 3 days of commits) rather than the whole history\nReport findings as code-scanning alerts, not issues, so they surface in the Security tab\nCall noop when the scan is clean instead of leaving no output\nAdd skip-if-match to the schedule trigger and expires to create-issue so scheduled runs don't reopen a duplicate finding every day",
                           "context": {
                             "pattern": {
@@ -1818,6 +1830,8 @@
                         {
                           "value": "code-health-auditor",
                           "label": "Code Health Auditor",
+                          "summary": "Find one structural code-health issue (oversized file, duplication) and report or fix it",
+                          "icon": "tools",
                           "description": "Find one structural code-health issue (oversized file, duplication) and report or fix it\nScope each run to one structural dimension (file size, duplication, complexity) rather than a broad audit\nUse tracker-id and skip-if-match so a scheduled run doesn't reopen the same finding every day\nSet expires on the created issue or pull request so stale findings don't accumulate\nAssign findings to copilot so remediation can be picked up automatically\nPersist the history of previously-audited structural dimensions in cache-memory and weight selection toward ones not covered in recent runs, so scheduled runs rotate through file size, duplication, and complexity instead of repeating the same dimension\nBefore creating a new finding, search the most recently closed items from this workflow and read the close reason and any review feedback — treat a rejecting comment or 'not planned' close as a negative signal and avoid re-proposing the same fix",
                           "context": {
                             "pattern": {
@@ -1906,6 +1920,8 @@
                         {
                           "value": "ci-failure-triage",
                           "label": "CI Failure Triage",
+                          "summary": "Investigate a failed GitHub Actions run and report a root cause with remediation steps",
+                          "icon": "alert",
                           "description": "Investigate a failed GitHub Actions run and report a root cause with remediation steps\nScope `workflows:` to the named CI workflow(s) and gate execution with `if:` on `github.event.workflow_run.conclusion` so only failing runs are analyzed\nDerive a stable failure key (workflow + job + failing step or error signature) before writing anything\nSearch for an existing open incident by that key before creating a new issue\nCall noop when the monitored run concludes success, the failure self-recovered on rerun, or an open incident already exists for the same key\nDiagnostic only — report the root cause and next steps, do not attempt to fix the failure directly",
                           "context": {
                             "pattern": {
@@ -1987,6 +2003,8 @@
                         {
                           "value": "batched-ci-doctor",
                           "label": "Batched CI Doctor",
+                          "summary": "Investigate recent CI failures in batches on a schedule and consolidate actionable diagnoses",
+                          "icon": "alert",
                           "description": "Investigate recent CI failures in batches on a schedule and consolidate actionable diagnoses\nQuery a bounded lookback window of completed GitHub Actions runs and analyze only failures that have not recovered on rerun\nCluster failures by a stable key such as workflow, job, failing step, and normalized error signature before investigating root causes\nKeep one stable tracking issue for the batch: search before creating, then add a comment with materially new findings on later runs\nDiagnostic only — report evidence-backed root causes and remediation steps, but do not rerun workflows or modify repository code",
                           "context": {
                             "pattern": {
@@ -2073,6 +2091,8 @@
                         {
                           "value": "community-digest",
                           "label": "Community Digest",
+                          "summary": "Publish a periodic narrative digest of repository activity as a GitHub Discussion",
+                          "icon": "comment-discussion",
                           "description": "Publish a periodic narrative digest of repository activity as a GitHub Discussion\nUse create-discussion instead of create-issue when the output is a periodic narrative or audit rather than an actionable task\nSet close-older-discussions: true so scheduled digests don't accumulate as duplicate open discussions\nPick a category that matches the content (e.g. announcements, audits, q-a) so digests are easy to find\nPre-fetch issue, PR, and commit activity in a steps: block before the agent starts writing the narrative\nSet mentions: false, allowed-github-references: [], and max-bot-mentions: 0 on safe-outputs so periodic digests don't notify users or create backlinks/bot-trigger side effects every run\nWhen the digest includes trend charts, generate them with Python (matplotlib/seaborn) in a pre-step, publish each with the upload-asset safe output, and embed the returned URLs in the discussion body rather than inlining raw data",
                           "context": {
                             "pattern": {
@@ -2157,6 +2177,8 @@
                         {
                           "value": "agent-cost-tracker",
                           "label": "Agent Cost Tracker",
+                          "summary": "Report the token/AI-credit spend of another agentic workflow after it completes",
+                          "icon": "graph",
                           "description": "Report the token/AI-credit spend of another agentic workflow after it completes\nScope `workflows:` to the named agent workflow(s) being tracked so cost reports aren't generated for unrelated runs\nDownload the run's artifact and parse its token-usage log rather than re-running the agent — this keeps the tracker cheap\nExit without creating any output when the artifact or token-usage log is missing, so non-agent or firewall-disabled runs stay silent\nPost the cost summary as a comment on the associated pull request when one exists; fall back to a capped, deduplicated issue otherwise",
                           "context": {
                             "pattern": {
@@ -2241,6 +2263,8 @@
                         {
                           "value": "contribution-guidelines-checker",
                           "label": "Contribution Guidelines Checker",
+                          "summary": "Check pull requests against CONTRIBUTING.md and label them ready or needing work",
+                          "icon": "checklist",
                           "description": "Check pull requests against CONTRIBUTING.md and label them ready or needing work\nSearch CONTRIBUTING.md, .github/CONTRIBUTING.md, docs/CONTRIBUTING.md, and README contribution sections in order before falling back to general best practices\nLabel the pull request ready when it complies and leave one constructive comment when it does not — never both\nUse a small model since this runs on every pull request open/synchronize event and cost adds up\nFor high-volume repositories, pre-filter and fetch PR data in a steps: block, then dispatch each PR to an inline sub-agent for evaluation so the parent workflow only compiles results\nUse DO NOT constraints to avoid merging, approving, or closing contributions — label and comment only\nTo monitor a different repository than the one the workflow runs in, enable the GitHub toolsets needed for the external repo, set target-repo on add-labels and add-comment, and document the required token scopes in the prompt",
                           "context": {
                             "pattern": {
@@ -2321,6 +2345,8 @@
                         {
                           "value": "link-checker",
                           "label": "Broken Link Checker",
+                          "summary": "Find and fix broken links in documentation on a recurring schedule",
+                          "icon": "link",
                           "description": "Find and fix broken links in documentation on a recurring schedule\nPre-fetch and test every link in a steps: block before the agent starts — link testing is deterministic and does not need agent judgment\nPersist a list of previously-confirmed unfixable links in cache-memory so scheduled runs don't repeatedly retry links with no available replacement\nUse protected-files: fallback-to-issue so link fixes in protected paths open an issue instead of silently failing\nSet if-no-changes: warn on create-pull-request and pair with noop so a run with no broken links exits cleanly instead of failing\nOnly replace a broken link when a working equivalent or redirect target is confirmed — do not guess at replacement URLs\nAdd a pre-activation step that skips scheduled runs once too many open PRs share your title prefix, to avoid spamming maintainers",
                           "context": {
                             "pattern": {
@@ -2392,6 +2418,8 @@
                         {
                           "value": "repo-qa-assistant",
                           "label": "Repo Q&A Assistant",
+                          "summary": "Answer ad hoc questions about the repository via a slash command, posting the result as a comment",
+                          "icon": "comment-discussion",
                           "description": "Answer ad hoc questions about the repository via a slash command, posting the result as a comment\nUse a reaction (e.g. eyes) alongside slash_command so requesters get immediate acknowledgement while the agent works\nGrant read-only permissions and rely on bash/web-fetch tools for investigation instead of write access\nSet tools.github.min-integrity: none so the assistant can read any issue or pull request context regardless of author trust, since it only answers questions\nCap add-comment at max: 1 so a single consolidated answer is posted instead of a running commentary\nKeep answers scoped to the triggering issue/PR content and repository inspection — avoid speculative external claims",
                           "context": {
                             "pattern": {
@@ -2467,6 +2495,8 @@
                         {
                           "value": "nitpick-reviewer",
                           "label": "Nitpick Reviewer",
+                          "summary": "Review a pull request on demand via slash command and leave line-level nitpicks with a final review verdict",
+                          "icon": "eye",
                           "description": "Review a pull request on demand via slash command and leave line-level nitpicks with a final review verdict\nTrigger with slash_command on pull_request_comment and pull_request_review_comment events so reviewers invoke it on demand rather than on every push\nPair create-pull-request-review-comment with submit-pull-request-review to post line comments plus one final review verdict\nSet submit-pull-request-review allowed-events to [COMMENT, REQUEST_CHANGES] — the default GITHUB_TOKEN cannot APPROVE a pull request\nUse cache-memory to record prior findings per PR so repeated invocations do not repost the same nitpicks\nSet tools.github.min-integrity to approved or none depending on whether only trusted authors or any maintainer-invoked command can trigger it\nCap max on both create-pull-request-review-comment and submit-pull-request-review to keep reviews focused",
                           "context": {
                             "pattern": {
@@ -2551,6 +2581,8 @@
                         {
                           "value": "pr-fix-assistant",
                           "label": "PR Fix Assistant",
+                          "summary": "Fix a failing pull request on demand via slash command by pushing corrections directly to its branch",
+                          "icon": "git-pull-request",
                           "description": "Fix a failing pull request on demand via slash command by pushing corrections directly to its branch\nUse push-to-pull-request-branch instead of create-pull-request — the fix belongs on the existing PR branch, not a new one\nSet required-title-prefix or required-labels on push-to-pull-request-branch so pushes are restricted to PRs this workflow is meant to touch\nAnalyze failing CI logs to identify the root cause before making any change; run tests and formatters locally to verify the fix before pushing\nAdd a comment summarizing the change and reason once the fix is pushed, so reviewers can see what happened without re-reading the diff\nUse tools.github.min-integrity: none since a maintainer-invoked slash command already establishes trust for the triggering PR\nPair with reaction: \"eyes\" so the requester gets immediate acknowledgement while the agent works\nDo NOT open a second pull request or push to unrelated branches — scope every change to the triggering PR only",
                           "context": {
                             "pattern": {
@@ -2644,6 +2676,8 @@
                         {
                           "value": "backlog-drip",
                           "label": "Backlog Drip",
+                          "summary": "Serve one open-ended backlog item at a time, activating again only after the previous item is closed",
+                          "icon": "checklist",
                           "description": "Serve one open-ended backlog item at a time, activating again only after the previous item is closed\nWake up frequently (e.g. every 30 minutes) but cap the safe output at max: 1 and set skip-if-match to a query that matches the workflow's own still-open item, so a new one is never produced while the last is unconsumed\nMatch on a stable identity marker (the hidden gh-aw-workflow-id footer, or a consistent title-prefix) rather than free text, since humans rename titles\nSet expires on the created issue or pull request so an abandoned, never-closed item eventually unblocks the schedule instead of stalling it forever\nBefore proposing a new item, search the last few closed items from this workflow and read the close reason and any review feedback — treat 'not planned' or a rejecting comment as a negative signal and avoid re-proposing the same idea\nPersist a compact accept/reject history across runs in cache-memory (or repo-memory if it must survive cache eviction) so the backlog improves over time instead of repeating rejected proposals\nUse this pattern for open-ended, non-event-driven backlogs (improvement ideas, maintenance chores, research notes) — prefer the community-digest archetype instead when the output is a periodic report tied to a time window\nCall noop when nothing in the backlog clears the quality bar left by past rejections\nTo hand the served item directly to an implementation agent instead of leaving it for a human, add assign-to-agent (allowed: [copilot], max: 1) alongside create-issue, and set ignore-if-error: true so the run doesn't fail when the agent is temporarily unavailable",
                           "context": {
                             "pattern": {
@@ -2714,6 +2748,8 @@
                         {
                           "value": "responsive-docs-tester",
                           "label": "Responsive Docs Tester",
+                          "summary": "Build and serve a local web app or docs site, then test it with Playwright across mobile, tablet, and desktop viewports on a recurring schedule",
+                          "icon": "device-desktop",
                           "description": "Build and serve a local web app or docs site, then test it with Playwright across mobile, tablet, and desktop viewports on a recurring schedule\nBuild and start the app or docs site locally in a pre-step, then poll localhost until the server responds before Playwright navigates to it\nTest a small, named set of representative viewports (e.g. one mobile, one tablet, one desktop size) rather than an open-ended device list\nUse playwright-cli commands in bash (browser_resize, browser_navigate, browser_snapshot) instead of installing Playwright as an npm dependency\nCheck navigation usability, content overflow, image sizing, and basic accessibility (headings, alt text, contrast) at each viewport, not just that the page loads\nCapture screenshots only on failure and publish them with the upload-asset safe output so evidence is attached without bloating the report\nAlways stop the local preview server in a cleanup step even if earlier steps fail\nCall noop when every viewport passes instead of leaving no output\nSet expires and close-older-issues (or skip-if-match) on create-issue so scheduled runs don't accumulate duplicate reports\nIf workflow_dispatch exposes inputs (e.g. devices, docs_dir, build_command) alongside the schedule trigger, set concurrency.job-discriminator to ${{ github.event_name == 'schedule' && 'scheduled' || github.run_id }} so an ad hoc dispatched run with different inputs doesn't cancel or get cancelled by the recurring scheduled run",
                           "context": {
                             "pattern": {
@@ -2796,6 +2832,8 @@
                         {
                           "value": "vex-statement-generator",
                           "label": "VEX Statement Generator",
+                          "summary": "Generate a machine-readable OpenVEX statement when a Dependabot alert is dismissed with a security justification",
+                          "icon": "shield",
                           "description": "Generate a machine-readable OpenVEX statement when a Dependabot alert is dismissed with a security justification\nPass the dismissed Dependabot alert's fields (alert number, GHSA/CVE id, package, ecosystem, severity, dismissal reason) as typed workflow_dispatch inputs rather than having the agent search for them\nMap the Dependabot dismissal reason to an OpenVEX status and justification: not_used -> not_affected / vulnerable_code_not_present, inaccurate -> not_affected / vulnerable_code_not_in_execute_path, tolerable_risk -> not_affected / inline_mitigations_already_exist\nSkip generating a statement when the dismissal reason is no_bandwidth, since that dismissal is not a security assessment\nWrite each statement to .vex/<ghsa-id>.json as a standalone OpenVEX v0.2.0 document so it stays independently readable by downstream scanners\nConstruct the package URL (purl) from the repository's own manifest version, not the dismissed alert's vulnerable version range\nOpen the result as a pull request rather than committing directly, so a maintainer reviews the generated VEX statement and impact wording before it is published",
                           "context": {
                             "pattern": {
@@ -2871,6 +2909,8 @@
                         {
                           "value": "cross-repo-monitor",
                           "label": "Cross-Repository Monitor",
+                          "summary": "Read and evaluate activity in a different target repository on a schedule, dispatch per-item evaluation, and write a consolidated report plus labels/comments back to the target repo",
+                          "icon": "repo",
                           "description": "Read and evaluate activity in a different target repository on a schedule, dispatch per-item evaluation, and write a consolidated report plus labels/comments back to the target repo\nSet target-repo (an env var or repository variable, not a hardcoded string) on every safe output that writes to the external repository, and read from that same repository via GitHub toolsets\nPre-filter and fetch the target repository's items in a steps: block before the agent starts, so the agent only evaluates a bounded, pre-computed list\nAct as an orchestrator: dispatch each item to a stateless, self-contained evaluation (inline sub-agent or per-item prompt) and compile the results into one report rather than evaluating everything inline\nPublish the consolidated report as an issue in the home repository, and use close-older-issues: true so each run replaces the previous report instead of accumulating\nUse add-labels and add-comment with target-repo to apply verdicts and feedback directly on items in the target repository, each capped with max: to bound write volume\nDocument the required token scopes (contents, issues, pull-requests, or actions:write for cross-repo dispatch) in the prompt since the default GITHUB_TOKEN cannot write to another repository",
                           "context": {
                             "pattern": {
@@ -2948,6 +2988,34 @@
                               ]
                             }
                           }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "goal",
+                  "title": "Describe your goal",
+                  "description": "Choose an AW or Campaign and describe the outcome. The title and file name will be inferred from your intent and selected pattern.",
+                  "fields": [
+                    {
+                      "id": "artifact",
+                      "label": "What do you want to generate?",
+                      "control": "select",
+                      "required": true,
+                      "default": "workflow",
+                      "options": [
+                        {
+                          "value": "workflow",
+                          "label": "Agentic Workflow",
+                          "description": "One bounded agentic workflow for the authoring repository.",
+                          "context": "Author an editable .github/workflows/<name>.md workflow and compile it with gh aw compile. Infer a concise title and kebab-case workflow file name from the user's purpose and selected pattern. Do not hand-write generated lock YAML."
+                        },
+                        {
+                          "value": "campaign",
+                          "label": "Campaign",
+                          "description": "A reusable campaign package with explicit control and worker boundaries.",
+                          "context": "Author an aw.yml campaign manifest and editable workflow sources with shared control. Infer a concise title and kebab-case campaign package name from the user's purpose and selected pattern. Separate orchestration from one-target workers when dispatch is needed. Keep the package, rollout policy, credentials and target authority separate. Do not edit campaign ownership records manually."
                         }
                       ]
                     },

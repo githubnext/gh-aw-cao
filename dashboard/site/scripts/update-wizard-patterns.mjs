@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { parsePromptWizard } from '../src/prompt-wizard.js';
+import octiconNames from '../src/octicon-names.json' with { type: 'json' };
 
 const run = promisify(execFile);
 const repository = 'githubnext/gh-aw-wizard';
@@ -31,13 +32,15 @@ for (let start = 0; start < manifest.archetypes.length; start += 6) {
     }
     return {
       value: id, label: pattern.label,
+      summary: pattern.description,
+      icon: octiconNames.includes(generation.archetypes?.[id]?.icon) ? generation.archetypes[id].icon : 'workflow',
       description: [pattern.description, ...pattern.tips].join('\n'),
       context: { pattern, generation: generation.archetypes?.[id] ?? null }
     };
   })));
 }
 fields.get('pattern').options = [
-  { value: 'custom', label: 'Custom automation', description: 'Start from your own requirements.' }, ...patterns
+  { value: 'custom', label: 'Custom automation', summary: 'Design an automation from your own requirements.', icon: 'sparkle', description: 'Start from your own requirements.' }, ...patterns
 ];
 for (const [field, definitions] of [['triggers', generation.triggers], ['outputs', generation.outputs], ['extras', generation.extras]]) {
   fields.get(field).options = Object.entries(definitions).filter(([, definition]) => !definition.alias).map(([value, context]) => ({
