@@ -106,10 +106,14 @@ without adding targets or activating Daily File Diet itself. Only the exact
 File Diet pair is registered for recurring Value acquisition.
 Registration takes effect after the collector and policy are reviewed and
 deployed together. It does not override `campaigns.dashboard.deploy: false`:
-Activity can refresh its snapshot while the deployed Pages dashboard remains
-unchanged. A hosted publication additionally needs its actual server URL and
-administrator OAuth session; a successful acquisition or merged PR alone is not
-proof of dashboard publication.
+this repository intentionally disables standalone Pages deployment because
+Documentation Pages owns the combined site. The existing publication chain is
+CAO Activity, then the CAO Dashboard artifact/cache, then Documentation Pages
+mounting that artifact at `/cao/`. No hosted OAuth session is needed for this
+Pages path. Verify the collected packet in the deployed snapshot after that
+chain completes; acquisition or merge alone does not prove publication.
+A separately selected hosted publication still needs its actual server URL and
+administrator OAuth session.
 
 ## Existing compact repository measurements
 
