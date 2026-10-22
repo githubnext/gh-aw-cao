@@ -160,7 +160,7 @@ changes, risk acceptance, exclusions or control closure.
 | Workstream | Coordinated session | Current evidence |
 | --- | --- | --- |
 | DATA-10 metadata input bounds | `84846eb9-d1aa-42e5-876e-1371572695ea` | Draft [#19422](https://github.com/githubnext/gh-cao/pull/19422); proposal received |
-| DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Implementation/validation pending final report |
+| DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Draft [#19425](https://github.com/githubnext/gh-cao/pull/19425); elapsed-time/operator-ceiling proposal received |
 | OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Implementation pending |
 | OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Draft [#19423](https://github.com/githubnext/gh-cao/pull/19423); proposal received |
 | IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424); offline rollover preflight proposed, not managed signing |
@@ -288,6 +288,53 @@ fresh mint/old-key-denial and issued-token cleanup, approvals and period
 records. No KMS/provider call, key rotation/revocation, production or
 permission change occurred. Operating effectiveness is **not-assessed**;
 managed-signing decisions remain pending and no finding is closed.
+
+#### PostgreSQL read-lifetime and operator-ceiling proposal
+
+Draft [#19425](https://github.com/githubnext/gh-cao/pull/19425), commit
+`95d5da40f14c75b8c12d0436419e9e2980b0afd7`, starts from
+`4beb309dd0e415e7bb82e156cdc463d6c21fb55f`. Coordinator verified
+open/draft/head/base identity; validation below is attributed to the session.
+
+At this proposal SHA, `server/internal/postgresx/store.go:319-348` starts the
+existing 60-second canonical read deadline before pool admission, honors
+shorter caller deadlines and installs transaction-local statement/lock/idle
+timeouts without widening stricter nonzero operator settings. Previously the
+statement setting could replace a stricter ceiling and pool admission had no
+whole-read deadline. The narrow elapsed-time/operator-ceiling claim is
+**design-supported**, working CC7.1 with candidate A1.1. It deliberately bounds
+cumulative setup/wait/statements rather than allowing each statement another
+60 seconds. Result semantics and the existing per-store pool remain unchanged.
+
+Session-reported PostgreSQL 18.6 validation used an owned private Unix-socket
+cluster with synthetic schemas, subsequently stopped and removed. Full
+postgresx tests passed in 587.663 seconds; focused physical/planner race cases
+passed without skips. Query/sqlbuilder/command tests, vet/build, full server
+lint (zero issues), final scoped lint/format and 73-workflow compilation passed.
+Focused cases before service setup explicitly skipped; those were not service
+evidence. Source and measurements:
+`server/internal/postgresx/read_limits_test.go:23-245`;
+`server/POSTGRES.md:69-127` at the proposal SHA.
+
+Bounded observations included inherited 50ms statement cancellation at about
+51ms, saturated pool cancellation at about 51ms without admitting its callback,
+a 100ms caller deadline at about 101ms, and lock rejection with SQLSTATE 55P03
+through the actual production statistics boundary. A generated 20,000-row
+sort at inherited work_mem=64kB spilled 1,652 written temporary blocks /
+6,448kB disk; inherited temp_file_limit=64kB rejected it with SQLSTATE 53400.
+Times are local observations, not universal deadline guarantees. The spill
+fixture uses the read wrapper, not representative Dashboard Language data.
+Report:
+`/Users/peli/.copilot/session-state/e8629f70-f53a-4dce-b9f8-4da29d04de4f/files/postgres-resource-budgets.md`.
+
+**DATA-10 remains evidence-needed overall**. Only this source slice is
+authorized `remediate` / `in-progress`; no closure or deployed setting change.
+Physical statistics still precede logical rejection. No new guessed
+work_mem/temp/parallel-worker policy was installed. CPU/I/O/memory/disk total
+cost, fleet-wide replica/worker capacity, PostgreSQL 16/managed-provider
+cancellation, legitimate workload suitability and period evidence remain
+unverified. Deployed-artifact benchmarking was not run because local server/
+data prerequisites were absent. Operating effectiveness is **not-assessed**.
 
 ## Assessment boundary and current status
 

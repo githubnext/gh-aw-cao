@@ -590,3 +590,25 @@ Dates are UTC. Corrections are new events; original observations remain.
   managed-signing decisions pending. Two other final reports remain pending.
 - No risk acceptance, exclusion, finding closure, provider/key/permission
   action or operating-effectiveness/compliance assertion.
+
+## 2026-10-22 - SOC2-LOG-026 - PostgreSQL read-budget proposal received
+
+- Type: bounded DATA-10 hardening report; RFC-035 record schema version 1.
+- Proposal `95d5da40f14c75b8c12d0436419e9e2980b0afd7`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`; coordinator verified
+  [#19425](https://github.com/githubnext/gh-cao/pull/19425) open/draft/head/base.
+- Narrow source support: whole canonical-read deadline begins before pool
+  wait; transaction-local timeouts preserve stricter operator ceilings.
+  No new memory/disk/worker policy or deployed settings.
+- Session-reported owned-local PostgreSQL 18.6 evidence: full store suite
+  passed in 587.663s; focused race suites passed without skips. Measured
+  statement/pool/caller cancellation, production statistics lock rejection,
+  synthetic physical sort spill and inherited temp-file-limit rejection.
+  Query/sqlbuilder/command tests, vet/build, full server lint and seeded
+  73-workflow compilation passed. Cluster stopped and removed.
+- Coordinator did not rerun provider tests. Deployed-data benchmark absent;
+  local measurements do not establish PostgreSQL 16/managed-provider/fleet
+  capacity, total physical cost or historical operation.
+- Decision/lifecycle: source slice remediate/in-progress, not merged/deployed;
+  broader DATA-10 evidence-needed/open. One final audit-detection report
+  remains pending. No control closure, risk acceptance or deployment action.
