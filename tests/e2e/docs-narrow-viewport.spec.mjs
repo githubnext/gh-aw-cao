@@ -1044,16 +1044,20 @@ for (const { name, viewport } of [
       await expect(phone).toBeVisible();
       await expect(page.locator(".terminal")).toBeAttached();
       await expect(page.locator(".terminal code")).toHaveText([
-        "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash",
+        "gh extension install githubnext/gh-cao",
         "gh cao setup",
         "Add the Dependabot campaign to CAO",
       ]);
       await expect(page.locator(".terminal a")).toHaveCount(0);
-      await expect(page.locator('[data-terminal-output="install"]')).toHaveText("==> CAO runtime materialized and verified.");
+      await expect(page.locator('[data-terminal-output="install"]')).toHaveText("Installed extension githubnext/gh-cao");
       await expect(page.locator('[data-terminal-output="setup"]')).toHaveText(
-        "Monitoring configured. Automation is optional; no workflows run.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/",
+        "Monitoring configured locally. No commit or push was performed.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/",
       );
-      await expect(page.locator(".terminal-label")).toHaveText("Example agent request — not a CLI command");
+      await expect(page.locator(".terminal-label")).toHaveText([
+        "In an existing control repository checkout",
+        "Setup can separately offer reviewed publication; declining leaves files local.",
+        "Example agent request — not a CLI command",
+      ]);
       await expect(page.locator('[data-terminal-request="integration"]')).toHaveText(
         "Install githubnext/gh-cao/dependabot.\nUse its central orchestrator and one-target workers.\nKeep policy disabled, review-only, and scoped to one repo.\nReview the campaign files and policy. Do not enable or run.",
       );

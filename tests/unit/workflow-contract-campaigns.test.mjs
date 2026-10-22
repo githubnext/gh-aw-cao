@@ -455,13 +455,15 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/);
   assert.match(quickstart, /gh extension install githubnext\/gh-cao/);
   assert.match(quickstart, /Native setup prepares missing runtime, policy, and gh-aw/);
+  assert.ok(quickstart.indexOf("gh extension install") < quickstart.indexOf("curl -fsSL"));
+  assert.match(quickstart, /:::tip\[SAML-token installation failure\]/);
   assert.match(quickstart, /gh cao setup/);
   assert.match(quickstart, /No campaigns or agentic work are installed/);
   assert.match(quickstart, /Commit and push these CAO monitoring changes\? \[y\/N\]/);
   assert.match(quickstart, /deployment pending.*links immediately/);
   assert.match(quickstart, /Declining, blocked, or unattended setup stays local/);
   const campaignWalkthrough = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
-  assert.match(campaignWalkthrough, /gh cao campaigns add githubnext\/gh-cao\/repo-assist/);
+  assert.match(campaignWalkthrough, /gh cao add githubnext\/gh-cao\/repo-assist/);
   assert.match(campaignWalkthrough, /gh aw run repo-assist/);
   assert.doesNotMatch(campaignWalkthrough, /--quickstart|node activity\/cao\.mjs quickstart/);
   assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
@@ -495,7 +497,9 @@ test("authentication setup guides share unified onboarding and explicit publicat
     assert.match(document, /gh repo clone "\$CONTROL_REPO"/, guide);
     assert.match(document, /No separate `init` is required/, guide);
     assert.match(document, /Node\.js\s+24\+/);
-    assert.match(document, /anonymously installs[\s\S]*without changing[\s\S]*stored credentials/);
+    assert.match(document, /:::tip\[SAML-token installation failure\]/);
+    assert.ok(document.indexOf("gh extension install") < document.indexOf("curl -fsSL"), guide);
+    assert.match(document, /preserves stored credentials/);
     assert.ok(document.includes(`**\`${profile}\`**`), guide);
     assert.match(document, /exact value of `\$TARGET_REPO`; the control\s+repository stays included/, guide);
     assert.match(document, /require restricted\s+access for non-public evidence/, guide);
@@ -505,7 +509,8 @@ test("authentication setup guides share unified onboarding and explicit publicat
     assert.match(document, /Commit and push these CAO monitoring\s+changes\? \[y\/N\]/, guide);
     assert.match(document, /deployment-pending links immediately, without waiting for Actions/, guide);
     assert.match(document, /Declining, blocked publication, or unattended setup leaves files local/, guide);
-    assert.doesNotMatch(document, /gh extension install|\bgh cao init\b|node -e/, guide);
+    assert.match(document, /gh extension install githubnext\/gh-cao/, guide);
+    assert.doesNotMatch(document, /\bgh cao init\b|node -e/, guide);
   }
 });
 
@@ -694,8 +699,9 @@ test("README routes zero-to-CAO requests to the setup skill", () => {
   assert.match(setupSkill, /separate default-No prompt can publish reviewed CAO files/);
   assert.match(setupSkill, /declining\/CI stays\s+local/);
   assert.match(setupSkill, /deployment-pending links without waiting/);
-  assert.doesNotMatch(setupSkill, /gh extension install/);
-  assert.match(setupReferences["implementation-details"], /primary operator path is the root `install-gh-cao\.sh`/);
+  assert.match(setupSkill, /gh extension install githubnext\/gh-cao/);
+  assert.ok(setupSkill.indexOf("gh extension install") < setupSkill.indexOf("curl -fsSL"));
+  assert.match(setupReferences["implementation-details"], /primary operator path is `gh extension install githubnext\/gh-cao`/);
   assert.doesNotMatch(setupSkill, /gh release view|cao_release=|cao-ref|cao-release/);
   assert.doesNotMatch(setupSkill, /commits\/main|githubnext\/gh-cao@main|full commit SHA/);
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);

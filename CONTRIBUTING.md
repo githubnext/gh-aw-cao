@@ -202,7 +202,7 @@ are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
 root-level `setup-auth` command. These native commands preserve the setup and
 setup-auth JSON result contracts and secure credential prompts.
 Actions and Node-only tools invoke `node activity/cao.mjs <command>` directly,
-including SQLite `doctor` and `setup-auth hosted-cli`. There is no shell launcher;
+including SQLite `repair-database` and `setup-auth hosted-cli`. There is no shell launcher;
 retained internal Node implementations serve Actions and parity tests, not operators.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.
@@ -220,7 +220,9 @@ source mappings are embedded directly from their authoritative JSON; do not
 maintain a separate catalog. SQLite evidence access is read-only and does not
 migrate or repair downloaded projections. `TestNativeStandaloneBinary` runs
 the built binary with an empty `PATH` outside the checkout to enforce this boundary.
-`campaigns add` and `update` pass evolving gh-aw options unchanged.
+Campaign installation through `add` and package updates through `update` pass
+evolving gh-aw options unchanged. Standalone workflow installation retains its
+bounded `--force` and `--engine` options.
 Activity/Dashboard pipeline commands are deliberately not registered in Go;
 their Actions, Node command modules and runtime ownership remain unchanged.
 CI invokes the shipped JavaScript validator directly with

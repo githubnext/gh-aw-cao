@@ -47,9 +47,9 @@ describe('CLI action command templates', () => {
   });
 
   it('renders immutable marketplace package coordinates', () => {
-    expect(renderCliActionCommand('gh cao campaigns add {{package-source}}', {
+    expect(renderCliActionCommand('gh cao add {{package-source}}', {
       'package-source': 'octo/packages/demo@0123456789abcdef'
-    })).toBe('gh cao campaigns add octo/packages/demo@0123456789abcdef');
+    })).toBe('gh cao add octo/packages/demo@0123456789abcdef');
   });
 
   it.each([

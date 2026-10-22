@@ -48,11 +48,11 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Dependabot campaign, pairing a central orchestrator with one-target workers/);
   assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
   assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
-  assert.match(terminalText, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/);
+  assert.match(terminalText, /gh extension install githubnext\/gh-cao/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
   assert.match(terminalText, /Add the Dependabot campaign to CAO/);
-  assert.match(terminalText, /CAO installed and verified/);
+  assert.match(terminalText, /Installed extension githubnext\/gh-cao/);
   assert.match(terminalText, /Next: gh cao doctor/);
   assert.match(terminalText, /then review, commit and push the installed files/);
   assert.match(terminalText, /Monitoring configured locally\. No commit or push was performed/);
@@ -137,12 +137,15 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
   assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
 });
 
-test("terminal follows installer onboarding and matches the production CLI", () => {
+test("terminal prefers GitHub CLI installation and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
-  const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash";
+  const installation = "gh extension install githubnext/gh-cao";
   assert.ok(terminalText.includes(installation));
   assert.ok(readFileSync("README.md", "utf8").includes(installation));
-  assert.doesNotMatch(terminal, /gh extension install|\bgh cao init\b/);
+  assert.doesNotMatch(terminal, /install-gh-cao\.sh|\bgh cao init\b/);
+  const readme = readFileSync("README.md", "utf8");
+  assert.ok(readme.indexOf(installation) < readme.indexOf("curl -fsSL"));
+  assert.match(readme, /> \*\*SAML-token installation failure:\*\*/);
   assert.match(terminal, /existing control repository checkout/);
   assert.match(terminal, /separately offer reviewed publication; declining leaves files local/);
   const setupExcerpt = terminal.match(/data-terminal-output="setup">([^<]+)<\/pre>/)?.[1];
@@ -482,6 +485,5 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /--terminal-bg: #0d1117/);
   assert.match(terminal, /background: var\(--terminal-bg\)/);
   assert.match(terminal, /class="syntax-command"/);
-  assert.match(terminal, /class="syntax-command">curl<\/span> -fsSL/);
-  assert.match(terminal, /class="syntax-url"/);
+  assert.match(terminal, /class="syntax-command">gh<\/span> extension install githubnext\/gh-cao/);
 });

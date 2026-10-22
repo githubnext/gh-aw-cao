@@ -79,7 +79,7 @@ func CollectWorkflows(ctx context.Context, config Config, policy, workspace, pre
 	}
 	timeout := config.WorkerTimeout
 	if timeout <= 0 {
-		timeout = defaultWorkerTimeout + 10*time.Second
+		timeout = 10*time.Minute + 10*time.Second
 	}
 	worker, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

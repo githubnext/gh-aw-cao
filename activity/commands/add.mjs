@@ -1,7 +1,6 @@
-export function runAdd({ arguments_, addCaoCampaign, addCaoRepository, UsageError }) {
-  if (arguments_[0] === '--repository') {
-    if (arguments_.length !== 2) throw new UsageError('cao add --repository requires exactly one OWNER/REPO');
-    return addCaoRepository(arguments_[1]);
+export function runAdd({ arguments_, addCaoCampaign, UsageError }) {
+  if (arguments_.some((argument) => argument === '--repository' || argument.startsWith('--repository='))) {
+    throw new UsageError('Repository enrollment requires gh cao repos add OWNER/REPO; Node cao add --repository is no longer supported.');
   }
   return addCaoCampaign(arguments_[0], arguments_.slice(1));
 }

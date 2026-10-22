@@ -325,7 +325,7 @@ acquisition. Opening the dashboard performs queries, not collection or API calls
 
 The Actions and hosted collectors carry retained compact observations forward
 for **365 days**, independently of the run collection window. Browser storage,
-the SQLite projection and doctor also keep a year of outcomes without retaining
+the SQLite projection and `repair-database` also keep a year of outcomes without retaining
 extra run details; an explicitly longer SQLite run archive remains longer.
 At weekly cadence this is about 52 observation instants per repository and
 measure, rather than a copy of every run. Select a wider dashboard time window

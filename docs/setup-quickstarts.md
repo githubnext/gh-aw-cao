@@ -41,23 +41,6 @@ Create or clone a clean default-branch control checkout.
 Native setup prepares missing runtime, policy, and gh-aw without a separate
 installer or local Node.js.
 
-<details>
-<summary>Match the recorded public-only example.</summary>
-
-The recording creates a **public** control with
-`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
-at **Repositories**, reviews the exact names, accepts public Pages, then approves
-commit-and-push. All evidence must be public. Interactive wildcards containing
-private/internal targets are rejected for public controls, not silently trimmed.
-
-</details>
-
-<details>
-<summary>Installer alternative (Node.js 24+).</summary>
-
-The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
-and the baseline monitoring runtime and policy.
-
 :::tip[Installation and authentication]
 If authentication fails:
 
@@ -66,9 +49,7 @@ gh auth login
 gh auth status
 ```
 
-Sign-in is for control-repository access. Public tool releases are discovered
-and downloaded anonymously, avoiding enterprise SAML cross-organization failures.
-Stored credentials are unchanged.
+Sign-in is required for extension installation and control-repository access.
 :::
 
 <details>
@@ -90,15 +71,37 @@ cd CONTROL_REPOSITORY
 
 </details>
 
-At the control checkout's root:
+<details>
+<summary>Match the recorded public-only example.</summary>
+
+The recording creates a **public** control with
+`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
+at **Repositories**, reviews the exact names, accepts public Pages, then approves
+commit-and-push. All evidence must be public. Interactive wildcards containing
+private/internal targets are rejected for public controls, not silently trimmed.
+
+</details>
+
+<details>
+<summary>Installer alternative (Node.js 24+).</summary>
+
+The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
+and baseline monitoring runtime and policy.
+
+:::tip[SAML-token installation failure]
+If SAML authorization blocks extension installation, use the curl fallback
+at the control checkout's root:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
-gh cao --version
 ```
 
+Public tool downloads are anonymous;
+stored credentials and runtime-provenance access are unchanged.
+[Installer details](cao-cli.md#control-plane-installer).
+:::
+
 Existing policy is preserved. No campaign is added or run.
-See [installer details](cao-cli.md#control-plane-installer).
 
 </details>
 
@@ -112,8 +115,9 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-Setup prepares or reuses runtime and policy, then configures scope,
+Setup prepares missing runtime and policy, reuses existing installations, and configures scope,
 authentication, and Pages. No separate `init` is needed.
+See [details](cao-cli.md#guided-runtime-preparation).
 
 1. At **Repositories**, enter your exact `OWNER/REPOSITORY`.
    The control stays included. Comma-separated entries and `OWNER/*` also work:

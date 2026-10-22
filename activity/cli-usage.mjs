@@ -45,7 +45,6 @@ export const USAGE = `Usage:
     Dedicated least-privilege App for the dashboard server's execute-cli worker; never requests administration or installation permissions.
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao add --repository OWNER/REPO
   cao update [--campaign SLUG] [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
   cao update (main|master|latest|COMMIT_SHA) [--campaign SLUG] [GH_AW_ADD_OPTIONS...]
   cao upgrade-gh-aw VERSION
@@ -72,7 +71,8 @@ export const USAGE = `Usage:
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
   cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
-  cao doctor [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+  cao repair-database [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
+    Mutates SQLite: backs up before repairs and prunes expired/orphaned records, even without corruption.
   cao validate [--json] [--strict-warnings]
   cao download [--url URL] [--output DIRECTORY] [--manifest-sha256 DIGEST]
   cao hash-payloads [--database FILE] [--shard-dir SHARD_DIRECTORY] [--normalized-dir DIRECTORY] [--runs-dir DIRECTORY] [--records-dir DIRECTORY] [--inventory FILE] [--output FILE] [--max-bytes BYTES] [--max-cache-bytes BYTES]

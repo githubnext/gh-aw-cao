@@ -275,22 +275,22 @@ jobs:
               '--memory-manifest', process.env.REPORT_REPOSITORY_MEMORY,
             ])
 
-      - name: Assess activity database health
+      - name: Repair activity database and apply retention
         env:
           ACTIVITY_DATABASE: ${{ runner.temp }}/cao-activity/gh-aw-logs.sqlite
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            core.info('Assessing activity database health')
+            core.info('Repairing activity database and applying retention')
             await exec.exec(process.execPath, [
               'activity/cao.mjs',
-              'doctor',
+              'repair-database',
               '--database',
               process.env.ACTIVITY_DATABASE,
               '--run-ttl-days',
               'all',
             ])
-            core.info('Activity database health assessment completed')
+            core.info('Activity database repair and retention completed')
 
       - name: Assemble Dashboard Language site
         env:

@@ -37,7 +37,7 @@ Operational-grader design and result semantics belong to gh-aw's `operational-va
 
 For live feature-development data, run `cao download`. It downloads the deployed Pages site's shard manifest, activity shards, and `gh-aw-logs.sqlite` into `.cao/` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. Query the downloaded SQLite database with `cao query`, and use `cao help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.
 
-Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distinguish repeated source observations from duplicate canonical records, and distinguish run-summary coverage from enriched artifact coverage. Use a separate SQLite database plus `--retention-days all` and `doctor --ttl-days all` for historical backfills; do not turn browser IndexedDB into an archive.
+Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distinguish repeated source observations from duplicate canonical records, and distinguish run-summary coverage from enriched artifact coverage. Use a separate SQLite database plus `--retention-days all` and `repair-database --ttl-days all --run-ttl-days all` for historical backfills; repair mutates the database and otherwise applies retention even without corruption. Do not turn browser IndexedDB into an archive.
 
 ## Campaign file convention
 

@@ -33,7 +33,7 @@ var nativeRuntimeRequiredFiles = []string{
 	"activity/cli/download.mjs", "activity/cli/files.mjs", "activity/cli/gh-aw.mjs",
 	"activity/cli/ingestion.mjs", "activity/cli/issue-status.mjs", "activity/cli/jsonl.mjs",
 	"activity/cli/options.mjs", "activity/cli/packages.mjs", "activity/cli/payloads.mjs",
-	"activity/cli/policy.mjs", "activity/cli/queries.mjs", "activity/cli/repositories.mjs",
+	"activity/cli/policy.mjs", "activity/cli/queries.mjs",
 	"activity/cli/run.mjs", "activity/cli-usage.mjs", "activity/normalized-phase.mjs",
 	"activity/commands/index.mjs", "activity/setup.mjs", "activity/upgrade-gh-aw.mjs",
 	"activity/control-settings.mjs", "activity/repository-visibility.mjs", "activity/recycle-snapshot.mjs",

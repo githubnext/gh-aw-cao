@@ -223,7 +223,7 @@ func TestAddStandaloneRejectsInvalidPolicyBeforeInstall(t *testing.T) {
 	}
 }
 
-func TestAddStandaloneRejectsPackagesAndUnsafeOptions(t *testing.T) {
+func TestAddStandaloneRejectsInvalidSourcesAndUnsafeOptions(t *testing.T) {
 	for _, args := range [][]string{
 		{"add"}, {"add", "daily-repo-status", "other"}, {"add", "githubnext/gh-cao"},
 		{"add", "githubnext/gh-cao/dependabot/aw.yml"}, {"add", "./package"},
@@ -239,6 +239,43 @@ func TestAddStandaloneRejectsPackagesAndUnsafeOptions(t *testing.T) {
 				t.Fatalf("invalid input accepted: %v %s", err, stdout)
 			}
 		})
+	}
+}
+
+func TestAddSourceKinds(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if err := os.Mkdir("local-campaign", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, "local-report.md", standaloneFixture)
+	for _, tt := range []struct {
+		input    string
+		campaign bool
+	}{
+		{"daily-repo-status", false},
+		{"daily-repo-status@feature/report", false},
+		{"githubnext/gh-cao/daily-repo-status@v1.2.3", false},
+		{"githubnext/gh-cao/repo-status@main", false},
+		{"acme/workflows/reports/example.md@feature/report", false},
+		{"https://github.com/acme/workflows/blob/main/report.md", false},
+		{"local-report.md", false},
+		{"local-campaign", true},
+		{"./local-campaign", true},
+		{"githubnext/gh-cao/dependabot@feature/config", true},
+		{"acme/catalog", true},
+		{"acme/catalog/nested/campaign@v1.2.3", true},
+	} {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := addSourceIsCampaign(tt.input)
+			if err != nil || got != tt.campaign {
+				t.Fatalf("campaign=%v, want %v; error=%v", got, tt.campaign, err)
+			}
+		})
+	}
+	for _, input := range []string{"./missing-campaign", "/missing-cao-campaign", "acme/catalog/campaign@"} {
+		if _, err := addSourceIsCampaign(input); err == nil {
+			t.Fatalf("invalid source accepted: %s", input)
+		}
 	}
 }
 

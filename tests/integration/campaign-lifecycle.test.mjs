@@ -69,7 +69,7 @@ const activityExpectedFiles = [
   "activity/commands/dashboard-complexity.mjs",
   "activity/commands/disable.mjs",
   "activity/commands/discover-workflows.mjs",
-  "activity/commands/doctor.mjs",
+  "activity/commands/repair-database.mjs",
   "activity/commands/download.mjs",
   "activity/commands/enable.mjs",
   "activity/commands/gh.mjs",

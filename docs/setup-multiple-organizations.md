@@ -28,15 +28,20 @@ repository instead, choose visibility explicitly:
 ```bash
 gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
+gh extension install githubnext/gh-cao
 ```
 
 To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
-creating one, then run the installer from its root. Prepare the approved App pair
-below before running guided setup. The installer requires Bash, curl, and Node.js
-24+ and anonymously installs public gh-aw and gh-cao releases without changing
-stored credentials. No separate `init` is required.
+creating one, then install the extension. Prepare the approved App pair
+below before running guided setup. No separate `init` is required.
 See the [primary setup guide](setup-quickstarts.md).
+
+:::tip[SAML-token installation failure]
+If GitHub CLI cannot install the extension because of cross-organization SAML
+authorization, use the [curl fallback](cao-cli.md#control-plane-installer):
+`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+It requires Bash, curl, and Node.js 24+ and preserves stored credentials.
+:::
 
 ## Create and Install the Apps
 

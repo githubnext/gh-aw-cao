@@ -253,7 +253,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.match(guide, /gh cao add daily-repo-status/);
   assert.match(guide, /No manual registration is needed/);
   assert.match(guide, /control-plane\.workflows/);
-  assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
+  assert.doesNotMatch(guide, /gh cao add \S+\/\S+|gh cao campaigns mode|gh workflow enable/);
   assert.match(guide, /manual-only/);
   const registration = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(guide)[1]);
   assert.deepEqual(registration, {
