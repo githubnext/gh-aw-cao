@@ -3,34 +3,6 @@
   "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-21T16:40:17Z",
-      "worker_run_id": "39636377098",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        39636460970,
-        39636191724,
-        39635628706,
-        39634626872,
-        39631037256,
-        39629340314,
-        39628758781,
-        39628445425,
-        39627277047,
-        39626015394,
-        39625838661,
-        39625746827,
-        39625437025,
-        39624408807,
-        39622159763,
-        39622039362,
-        39620179896,
-        39618614317,
-        39618474343,
-        39618331312
-      ],
-      "outcome": "incomplete: the 2026-10-21T14:36:33Z to 2026-10-21T16:38:20Z latest-20 window contained 15 successful, four skipped, and one cancelled completed docs.yml run; the cancelled push was excluded. Nine successful builds were comparable (four push, four schedule, and one workflow_run, across six source SHAs). Trusted job and step metadata was collected for all successful runs and showed dependency installation between 13 and 25 seconds, all nine reusable-dashboard restores between 2 and 4 seconds, and all dashboard artifact fallbacks skipped. During the required bounded log reads to verify current npm and dashboard cache hits and misses, the GitHub REST API rate limit was exhausted. Per resource-limit policy, further API and model work stopped. Complete trusted cache-effectiveness verification and final median/p90 workflow, queue, build, deploy, dashboard, and dependency measurements were not completed, so no recommendation was made and the dependency installation and caching category remains next."
-    },
-    {
       "evaluated_at": "2026-10-21T16:58:30Z",
       "worker_run_id": "39638937963",
       "category": "dependency installation and caching",
@@ -652,6 +624,34 @@
       "category": "scheduling, concurrency, and avoidable rebuilds",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs from the preceding 14 days was blocked immediately by the GitHub REST API rate limit at 2026-10-22T11:37:46Z. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, trusted cache hit/miss evidence, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next."
+    },
+    {
+      "evaluated_at": "2026-10-22T12:32:37Z",
+      "worker_run_id": "39778672257",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39775155953,
+        39773362047,
+        39772162242,
+        39771725341,
+        39770210697,
+        39767471110,
+        39765939288,
+        39764992992,
+        39764300628,
+        39762835542,
+        39759930474,
+        39758702029,
+        39758545939,
+        39757338484,
+        39755536983,
+        39752322608,
+        39751161246,
+        39750815094,
+        39748555421,
+        39747881979
+      ],
+      "outcome": "incomplete: the 2026-10-22T08:27:35Z to 2026-10-22T12:02:46Z latest-20 window contained 16 successful and four skipped completed docs.yml runs, with no failed or cancelled runs. Trusted job and step metadata showed only one successful run executed both build and deploy (one push at source SHA d29ce7ba7a628e24988f8fbbe108396b9d037705); the other fifteen successful runs completed only the schedule-freshness path and skipped build and deploy. This is below the required minimum of five comparable successful builds. Required median/p90 workflow, queue, build, deploy, dashboard, scheduling, and repeated cache-hit measurements therefore cannot be completed. No recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next."
     }
   ]
 }
