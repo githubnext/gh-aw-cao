@@ -67,7 +67,7 @@
       "true_positive_count": 1,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-37870178954-2",
+      "txn_id": "refiner-39771988009-3",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "f748e4186de896a4c33b7b51997049f04d988ac9"
     },
@@ -83,7 +83,7 @@
       "true_positive_count": 1,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-37969204993-1",
+      "txn_id": "refiner-39771988009-3",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "8ad503f1187261224e16867b00436ee6db284125"
     },
@@ -117,7 +117,7 @@
       "true_positive_count": 1,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-37977147256-1",
+      "txn_id": "refiner-39771988009-3",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "98959bdbd898c2edfaf5e09f8d2bb1502bbcafa6"
     },
@@ -133,7 +133,7 @@
       "true_positive_count": 1,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-38110386121-1",
+      "txn_id": "refiner-39771988009-3",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7"
     },
@@ -182,7 +182,7 @@
       "target_commit": "1b716d142ce850b38944eabab5cacf91b5a96e9f",
       "readiness_for_target": "needs-work",
       "target_repo": "github/gh-aw-firewall",
-      "txn_id": "refiner-39067866988-3"
+      "txn_id": "refiner-39771988009-3"
     }
   ],
   "affected_paths": [
@@ -241,7 +241,7 @@
   "existing_plugin_coverage": "None found; this requires tracking prior `mount --make-private` calls against bind destinations across a function, which is repository/domain-specific (Linux mount-namespace shared-subtree semantics) and not modeled by any published generic ESLint rule.",
   "language": "typescript",
   "last_seen_at": "2026-10-12T22:03:43Z",
-  "last_updated": "2026-10-17T20:50:00Z",
+  "last_updated": "2026-10-22T11:45:00Z",
   "last_updated_by_run": "39067866988",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "likely_false_positives": "A bind whose destination is itself located inside a path that was already privatized (e.g. binding two paths both under the same already-private allocation root) is safe and should not be flagged; only binds that cross into a separately-rooted, potentially-shared destination are unsafe.",

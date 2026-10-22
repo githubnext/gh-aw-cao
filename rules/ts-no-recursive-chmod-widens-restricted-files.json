@@ -31,7 +31,7 @@
       "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 2,
-      "txn_id": "refiner-37467185149-1"
+      "txn_id": "refiner-39771988009-1"
     },
     {
       "false_negative_count": 0,
@@ -51,7 +51,7 @@
       "target_commit": "140c4fa52cdcdbe8389e1ab912cae975faaa54f2",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 2,
-      "txn_id": "refiner-37156057344-1"
+      "txn_id": "refiner-39771988009-1"
     },
     {
       "false_negative_count": 1,
@@ -61,7 +61,7 @@
       "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 2,
-      "txn_id": "refiner-37359981927-1"
+      "txn_id": "refiner-39771988009-1"
     },
     {
       "false_negative_count": 1,
@@ -71,7 +71,7 @@
       "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7",
       "target_repo": "github/gh-aw-firewall",
       "true_positive_count": 1,
-      "txn_id": "refiner-38110386121-3"
+      "txn_id": "refiner-39771988009-1"
     },
     {
       "txn_id": "refiner-38434456740-3",
@@ -94,7 +94,7 @@
       "target_commit": "1b716d142ce850b38944eabab5cacf91b5a96e9f",
       "readiness_for_target": "needs-work",
       "target_repo": "github/gh-aw-firewall",
-      "txn_id": "refiner-39067866988-1"
+      "txn_id": "refiner-39771988009-1"
     }
   ],
   "affected_paths": [
@@ -164,7 +164,7 @@
   "existing_plugin_coverage": "None found in eslint-plugin-security or typescript-eslint recommended configs; this is a repo-specific security pattern not covered by a published rule.",
   "language": "typescript",
   "last_seen_at": "2026-10-13T16:57:20Z",
-  "last_updated": "2026-10-17T20:50:00Z",
+  "last_updated": "2026-10-22T11:45:00Z",
   "last_updated_by_run": "39067866988",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "likely_false_positives": "Recursive chmod on directories that are guaranteed never to contain restricted-mode files (e.g. purely public build-output directories) is safe; the rule should allow an explicit exclusion/allowlist comment or a narrower non-recursive alternative to suppress.",

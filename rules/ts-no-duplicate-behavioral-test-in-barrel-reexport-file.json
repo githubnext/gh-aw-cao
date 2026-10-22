@@ -48,7 +48,7 @@
       },
       "target_commit": "f1c32827de7419894a781b765bf82d12b1cdbbc6",
       "true_positive_count": 2,
-      "txn_id": "refiner-37467185149-2",
+      "txn_id": "refiner-39771988009-2",
       "target_repo": "github/gh-aw-firewall"
     },
     {
@@ -71,7 +71,7 @@
       },
       "target_commit": "b476c7d5fd47cc3251563b2af39602dc41c0488c",
       "true_positive_count": 2,
-      "txn_id": "refiner-37359981927-2",
+      "txn_id": "refiner-39771988009-2",
       "target_repo": "github/gh-aw-firewall"
     },
     {
@@ -90,7 +90,7 @@
       "reason": "Re-confirmed unchanged: src/docker-manager.test.ts still contains the 'filterCapDrop with explicit bounding set' and 'filterCapDrop via barrel' describe blocks (lines ~137-162) duplicating capability-filter.test.ts's behavioral coverage of filterCapDrop/isCapDropSkipped, violating the file's own header comment that it verifies barrel re-exports only 'without duplicating the underlying module tests' (true positives). The shape-only typeof/Array.isArray assertions at lines 66-72 ('filterCapDrop behaves as a pass-through re-export (basic sanity)', 'isCapDropSkipped returns a boolean') remain false positives against a naive duplicate-behavioral-test heuristic since they assert shape, not logic, matching the file's stated barrel-smoke-test intent. No suppression convention (e.g. an eslint-disable or file-scoped allowlist comment) exists to distinguish the legitimate shape assertions from the duplicated behavioral blocks.",
       "target_commit": "61108a1eed42b4bbb1030538fcf2dad764e5bfd2",
       "true_positive_count": 2,
-      "txn_id": "refiner-37406671160-2",
+      "txn_id": "refiner-39771988009-2",
       "target_repo": "github/gh-aw-firewall"
     },
     {
@@ -105,7 +105,7 @@
       "true_positive_count": 2,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-37662241728-2",
+      "txn_id": "refiner-39771988009-2",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "02b881e12b1f2c3208306bfd85b7d5f2c4b7fc35"
     },
@@ -121,7 +121,7 @@
       "true_positive_count": 1,
       "unclear_diagnostic_count": 0,
       "unsafe_autofix_count": 0,
-      "txn_id": "refiner-38110386121-2",
+      "txn_id": "refiner-39771988009-2",
       "target_repo": "github/gh-aw-firewall",
       "target_commit": "b179fef889d1bd335c5cce329aee4a4cb37d20e7"
     },
@@ -162,7 +162,7 @@
       "target_commit": "1b716d142ce850b38944eabab5cacf91b5a96e9f",
       "readiness_for_target": "needs-work",
       "target_repo": "github/gh-aw-firewall",
-      "txn_id": "refiner-39067866988-2"
+      "txn_id": "refiner-39771988009-2"
     }
   ],
   "affected_paths": [
@@ -245,7 +245,7 @@
   "existing_plugin_coverage": "None found; this is a repository-specific, automated test-generation workflow pattern not covered by eslint-plugin-jest or other published rules, which generally do not model 'this file's documented testing scope' as a lint target.",
   "language": "typescript",
   "last_seen_at": "2026-10-13T16:57:20Z",
-  "last_updated": "2026-10-17T20:50:00Z",
+  "last_updated": "2026-10-22T11:45:00Z",
   "last_updated_by_run": "39067866988",
   "last_updated_target_repo": "github/gh-aw-firewall",
   "likely_false_positives": "A barrel test file without an explicit 'shape-only, no duplication' scope comment is not a violation; adding the first behavioral test for a function that has no dedicated module test file elsewhere is legitimate and should not be flagged.",
