@@ -532,7 +532,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
       errors.push(`initial diagnostics: ${initialDiagnosticError}`);
       errors.push(`backup: ${backupError instanceof Error ? backupError.message : String(backupError)}`);
       return {
-        command: 'doctor',
+        command: 'repair-database',
         database: databasePath,
         checkedAt,
         ttlDays,
@@ -548,7 +548,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
       errors.push(`initial diagnostics: ${initialDiagnosticError}`);
       errors.push(`diagnostics after repair: ${afterError instanceof Error ? afterError.message : String(afterError)}`);
       return {
-        command: 'doctor',
+        command: 'repair-database',
         database: databasePath,
         checkedAt,
         ttlDays,
@@ -566,7 +566,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     } catch (error) {
       errors.push(`backup: ${error instanceof Error ? error.message : String(error)}`);
       return {
-        command: 'doctor',
+        command: 'repair-database',
         database: databasePath,
         checkedAt,
         ttlDays,
@@ -580,7 +580,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     const afterSqlite = sqliteDiagnostics(databasePath);
     if (afterSqlite.integrity.some((result) => result !== 'ok')) {
       return {
-        command: 'doctor',
+        command: 'repair-database',
         database: databasePath,
         checkedAt,
         ttlDays,
@@ -649,7 +649,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         : 'repair';
       errors.push(`repair: ${error instanceof Error ? error.message : String(error)}`);
       return {
-        command: 'doctor',
+        command: 'repair-database',
         database: databasePath,
         checkedAt,
         ttlDays,
@@ -715,7 +715,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   debug('completed doctor run', { event: 'completed', healthy, actionCount: actions.length, errorCount: errors.length });
 
   return {
-    command: 'doctor',
+    command: 'repair-database',
     database: databasePath,
     checkedAt,
     ttlDays,

@@ -27,7 +27,7 @@ func TestParsePackageManifestNormalizesCoordinatesAndAddCommand(t *testing.T) {
 	if pkg.Source != wantSource {
 		t.Fatalf("unexpected source coordinate: %q", pkg.Source)
 	}
-	if pkg.AddCommand != "gh cao campaigns add "+wantSource {
+	if pkg.AddCommand != "gh cao add "+wantSource {
 		t.Fatalf("unexpected add-command: %q", pkg.AddCommand)
 	}
 	if len(pkg.Contents) != 1 || pkg.Contents[0] != "workflow.md" {

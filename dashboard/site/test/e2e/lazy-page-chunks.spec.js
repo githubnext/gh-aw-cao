@@ -122,7 +122,7 @@ const inventory = {
       readme: '# aw-optimization\n',
       'readme-path': 'aw-optimization/README.md',
       source: `githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
+      'add-command': `gh cao add githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
       'observed-at': '2026-09-14T10:00:00Z',
     }],
     metadata: { 'as-of': '2026-09-15T10:00:00Z', 'retrieved-at': '2026-09-15T10:00:00Z', completeness: 'complete', freshness: 'fresh', availability: 'available' },
@@ -469,7 +469,7 @@ test('dashboard status preserves refresh failure and recovery without the Overvi
   await expect(page).toHaveURL(`${origin}/#page-overview`);
 });
 
-test('marketplace page renders canonical package cards after ingestion', async ({ page }) => {
+test('marketplace page renders canonical package cards after ingestion', async ({ page }, testInfo) => {
   await page.goto(`${origin}/#page-marketplace`);
 
   const marketplace = page.locator('[data-page-id="marketplace"]');
@@ -530,7 +530,14 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
     `gh cao add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`
   );
+  await page.screenshot({ path: testInfo.outputPath('marketplace-add-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
+    `gh cao add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`
+  );
+  await page.screenshot({ path: testInfo.outputPath('marketplace-add-mobile.png') });
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 720 });
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
   const about = detail.locator('.link-button-list-view');
   await expect(about.getByRole('heading', { name: 'About' })).toBeVisible();

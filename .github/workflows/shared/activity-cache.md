@@ -111,8 +111,11 @@ refers to the output target repository, not the executing repository.
 
 For collection-level access instead of the gh-shaped surface, use
 `cao query --database ... --collection {repositories,workflows,runs,domains,tools,audits,issues,transactions} [--id ID] [--where FIELD=VALUE] [--limit COUNT]`,
-or `cao doctor --database ...` to check snapshot integrity before relying on
-its counts. Always validate cache scope, freshness, window, and completeness
+or `node activity/cao.mjs repair-database --database ...` to repair a snapshot
+before relying on its counts. Repair mutates the database, backs up before
+changes, and prunes expired/orphaned records even without corruption; use
+`--ttl-days all --run-ttl-days all` to retain historical records.
+Always validate cache scope, freshness, window, and completeness
 against the requested evidence before treating query results as authoritative,
 and fetch only missing evidence through read-only GitHub or `agentic-workflows`
 tools rather than widening this shared cache's role.

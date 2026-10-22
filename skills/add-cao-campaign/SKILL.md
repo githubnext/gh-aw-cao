@@ -27,7 +27,7 @@ Never hard-code candidates or silently install.
 
 ## Deterministic boundary
 
-`gh cao campaigns add` owns resolution, installation, policy merging, and
+`gh cao add` owns resolution, installation, policy merging, and
 installed-declaration validation. Use
 `gh cao doctor` and `gh aw doctor --dir .` for local checks; inspect CAO validation
 in Actions after approved changes are published. Do not reimplement package or
@@ -41,7 +41,7 @@ policy mutation.
   `setup-cao` when the control repository is not initialized.
 - Discovery is read-only until recommendation, safety review, exact selection,
   and installation approval.
-- Install through `gh cao campaigns add`, which validates the declaration and merges
+- Install through `gh cao add`, which validates the declaration and merges
   policy without enabling live mode or broadening scope.
 - Never edit generated `.lock.yml` files or `.github/aw/campaigns/*.json` ownership records directly.
 - Treat all installed campaign package sources as immutable. Add requested prompt guidance only through the consumer-owned `.github/cao/<campaign-slug>.md` file loaded by the installed workflows' optional `runtime-import`; do not patch installed workflow Markdown or other package-owned files.
@@ -95,7 +95,7 @@ Treat missing declarations, invalid metadata, inaccessible sources, unresolved p
 After explicit approval, run from the control repository:
 
 ```bash
-gh cao campaigns add githubnext/gh-cao/<campaign-slug>@<catalog-commit>
+gh cao add githubnext/gh-cao/<campaign-slug>@<catalog-commit>
 ```
 
 Forward additional campaign-installer options only when the user requested them and they do not weaken the reviewed boundary. Do not pass secrets in command arguments.

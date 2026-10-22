@@ -178,7 +178,7 @@ func ParsePackageManifest(source string, coordinates Coordinates) (Package, erro
 		version = coordinates.Ref
 	}
 	packagePath := awManifestSuffix.ReplaceAllString(coordinates.Path, "")
-	addCLI := "gh cao campaigns"
+	addCLI := "gh cao"
 	if workflow {
 		packagePath, addCLI = coordinates.Path, "gh aw"
 		contents = []string{coordinates.Path}

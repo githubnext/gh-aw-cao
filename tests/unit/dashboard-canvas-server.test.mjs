@@ -187,7 +187,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.match(index, /\[REDACTED\]/);
     const markdownResponse = await fetch(`${preview.url}/guide.md`);
     assert.equal(markdownResponse.status, 200);
-    assert.equal(markdownResponse.headers.get("content-type"), "text/plain; charset=utf-8");
+    assert.equal(markdownResponse.headers.get("content-type"), "text/markdown; charset=utf-8");
     assert.doesNotMatch(await markdownResponse.text(), new RegExp(syntheticToken));
     const imageResponse = await fetch(`${preview.url}/image.png`);
     assert.equal(imageResponse.status, 200);
@@ -528,7 +528,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       id: "copy-package-command",
       label: "Copy add command",
       icon: "copy",
-      command: "gh cao campaigns add octo/packages/demo@abc123",
+      command: "gh cao add octo/packages/demo@abc123",
       placement: "row",
       "copy-only": true,
     },

@@ -49,7 +49,7 @@ process.stdout.write(JSON.stringify(result));
 			archive := campaignArchive(t, map[string]string{"catalog/demo/cao.json": testCampaignDeclaration})
 			var calls [][]string
 			root, stdout, _ := testCommand(t, campaignGH(t, archive, &calls), nil)
-			root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/demo@feature/config", "--force"})
+			root.SetArgs([]string{"add", "githubnext/gh-cao/demo@feature/config", "--force"})
 			if err := root.Execute(); err != nil {
 				t.Fatal(err)
 			}

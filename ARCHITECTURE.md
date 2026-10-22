@@ -1053,7 +1053,7 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
 owns all extension implementation, argument validation and help. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
-`gh cao campaigns add` delegates package ownership and workflow generation to
+`gh cao add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
 campaign from its installed full `resolvedCommit` SHA or a local catalog's
 Git-tracked files. Archive extraction rejects escaping paths and links; staged
@@ -1087,7 +1087,7 @@ and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
-`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
+`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`
 and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
 not as an alternative operator surface.
@@ -1220,10 +1220,21 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `cao add` is the
+resources; they do not import the root catalog package. `gh cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
+
+`gh cao add WORKFLOW_OR_CAMPAIGN` is the single installation command. Bare catalog
+workflow names, explicit `.md` sources, GitHub blob URLs and the published
+Daily Repo Status qualified shorthands select standalone installation; campaign
+coordinates and existing local directories select campaign installation with
+unchanged gh-aw options. There is no separate campaign-add subcommand or
+failure-driven fallback between installation kinds.
+Standalone installation delegates installation and compilation to gh-aw, verifies the exact standalone
+identity and CAO admission gate, and registers new workflows in review mode without
+widening existing policy. Repository enrollment is separate: `gh cao repos add
+OWNER/REPO` verifies one exact repository and stages review-safe policy.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh
@@ -1234,9 +1245,11 @@ registry access, but does not create credentials or dispatch workflows.
 
 ### Operator onboarding
 
-The primary path runs the root `install-gh-cao.sh` from an existing GitHub control
-checkout, then runs `gh cao setup` (or passes `--setup` to the installer).
-The installer uses upstream `github/gh-aw`'s `install-gh-aw.sh` for gh-aw and
+The primary path uses `gh extension install githubnext/gh-cao`, then runs
+`gh cao setup` from an existing GitHub control checkout. Documentation presents
+the curl installer in a troubleshooting callout for SAML-token installation
+failures, not as the default installation path.
+The fallback installer uses upstream `github/gh-aw`'s `install-gh-aw.sh` for gh-aw and
 downloads the native gh-cao extension. Public tool release discovery and downloads
 are anonymous and ignore curl authentication configuration; only the upstream
 installer's child process loses token variables and the Actions `INPUT_VERSION`
@@ -1321,7 +1334,7 @@ Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
 Campaign installation and execution are separate operator actions through
-`gh cao campaigns add` and `gh aw run`. Operators review and commit workflows
+`gh cao add` and `gh aw run`. Operators review and commit workflows
 and bounded review-mode policy together before dispatching work. Campaign
 installation never commits, pushes or dispatches; setup's separately approved
 publication is monitoring-only.

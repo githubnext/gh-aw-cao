@@ -18,7 +18,7 @@ From your configured control repository, install Repo Assist from a reviewed
 catalog revision:
 
 ```bash
-gh cao campaigns add githubnext/gh-cao/repo-assist
+gh cao add githubnext/gh-cao/repo-assist
 gh cao campaigns mode preview repo-assist
 ```
 

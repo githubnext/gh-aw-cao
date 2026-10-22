@@ -20,9 +20,9 @@ const nativeManagementPolicy = `{
   "control-plane": {
     "scope": {"allowed-owners": ["owner"], "allowed-repositories": ["owner/repo"]},
     "activity": {"repositories": ["owner/repo"]},
-    "defaults": {"mode": "live"},
+    "defaults": {"mode": "live", "max-repositories": 3},
     "campaigns": {
-      "one": {"mode": "live", "workers": {"worker": {"workflow": "one-worker", "enabled": false, "max-mode": "review"}}},
+      "one": {"mode": "live", "targets": {"owner/repo": {"mode": "live"}}, "workers": {"worker": {"workflow": "one-worker", "enabled": false, "max-mode": "review"}}},
       "two": {"enabled": false, "mode": "live"}
     }
   }
@@ -58,16 +58,17 @@ func nativeManagementCommand() (*cobra.Command, *bytes.Buffer) {
 func TestNativeManagementRepositoryEnrollmentPinsEveryCampaign(t *testing.T) {
 	nativeManagementDirectory(t)
 	writeTestFile(t, policyPath, nativeManagementPolicy)
-	cmd, output := nativeManagementCommand()
 	calls := 0
 	gh := func(_ context.Context, args ...string) (string, string, error) {
 		calls++
-		if !reflect.DeepEqual(args, []string{"repo", "view", "Other/New", "--json", "nameWithOwner", "--jq", ".nameWithOwner"}) {
+		if !reflect.DeepEqual(args, []string{"repo", "view", "other/new", "--json", "nameWithOwner", "--jq", ".nameWithOwner"}) {
 			t.Fatalf("lookup = %q", args)
 		}
 		return "Other/New\n", "", nil
 	}
-	if err := nativeRepositoryAdd(cmd, "Other/New", gh); err != nil {
+	cmd, output, _ := testCommand(t, gh, nil)
+	cmd.SetArgs([]string{"repos", "add", "other/new"})
+	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	policy, err := nativeReadValidatedPolicy()
@@ -75,6 +76,11 @@ func TestNativeManagementRepositoryEnrollmentPinsEveryCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 	control := policy["control-plane"].(map[string]any)
+	scope := control["scope"].(map[string]any)
+	if !reflect.DeepEqual(scope["allowed-repositories"], []any{"owner/repo", "Other/New"}) ||
+		!reflect.DeepEqual(scope["allowed-owners"], []any{"owner", "Other"}) {
+		t.Fatalf("unexpected enrolled scope: %#v", scope)
+	}
 	for name, value := range control["campaigns"].(map[string]any) {
 		campaign := value.(map[string]any)
 		target := campaign["targets"].(map[string]any)["Other/New"].(map[string]any)
@@ -85,17 +91,75 @@ func TestNativeManagementRepositoryEnrollmentPinsEveryCampaign(t *testing.T) {
 	if !reflect.DeepEqual(control["activity"], map[string]any{"repositories": []any{"owner/repo"}}) {
 		t.Fatalf("activity scope changed: %#v", control["activity"])
 	}
+	original, err := nativeDecodeJSON([]byte(nativeManagementPolicy))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalControl := original.(map[string]any)["control-plane"].(map[string]any)
+	if !reflect.DeepEqual(control["defaults"], originalControl["defaults"]) {
+		t.Fatal("enrollment changed defaults")
+	}
+	campaigns := control["campaigns"].(map[string]any)
+	for name, value := range originalControl["campaigns"].(map[string]any) {
+		for key, setting := range value.(map[string]any) {
+			if key == "targets" {
+				targets := campaigns[name].(map[string]any)[key].(map[string]any)
+				for repository, target := range setting.(map[string]any) {
+					if !reflect.DeepEqual(targets[repository], target) {
+						t.Fatalf("enrollment changed existing campaign %s target %s", name, repository)
+					}
+				}
+				continue
+			}
+			if !reflect.DeepEqual(campaigns[name].(map[string]any)[key], setting) {
+				t.Fatalf("enrollment changed campaign %s setting %s", name, key)
+			}
+		}
+	}
 	if !strings.Contains(output.String(), `"alreadyEnrolled": false`) || calls != 1 {
 		t.Fatalf("output = %s; calls = %d", output, calls)
 	}
 	before, _ := os.ReadFile(policyPath)
-	output.Reset()
-	if err := nativeRepositoryAdd(cmd, "Other/New", gh); err != nil {
+	cmd, output, _ = testCommand(t, gh, nil)
+	cmd.SetArgs([]string{"repos", "add", "other/new"})
+	if err := cmd.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := os.ReadFile(policyPath)
 	if !bytes.Equal(before, after) || !strings.Contains(output.String(), `"alreadyEnrolled": true`) {
 		t.Fatal("already enrolled policy was rewritten")
+	}
+}
+
+func TestNativeManagementEnrollmentReusesOwnerCaseInsensitively(t *testing.T) {
+	nativeManagementDirectory(t)
+	writeTestFile(t, policyPath, nativeManagementPolicy)
+	gh := func(_ context.Context, args ...string) (string, string, error) {
+		if !reflect.DeepEqual(args, []string{"repo", "view", "OWNER/new", "--json", "nameWithOwner", "--jq", ".nameWithOwner"}) {
+			t.Fatalf("lookup = %q", args)
+		}
+		return "Owner/New\n", "", nil
+	}
+	cmd, output, _ := testCommand(t, gh, nil)
+	cmd.SetArgs([]string{"repos", "add", "OWNER/new"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	policy, err := nativeReadValidatedPolicy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope := policy["control-plane"].(map[string]any)["scope"].(map[string]any)
+	if !reflect.DeepEqual(scope["allowed-owners"], []any{"owner"}) ||
+		!reflect.DeepEqual(scope["allowed-repositories"], []any{"owner/repo", "Owner/New"}) {
+		t.Fatalf("unexpected scope: %#v", scope)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result["repository"] != "Owner/New" || result["alreadyEnrolled"] != false || result["policy"] != policyPath {
+		t.Fatalf("unexpected enrollment result: %#v", result)
 	}
 }
 
@@ -105,25 +169,32 @@ func TestNativeManagementEnrollmentFailsClosed(t *testing.T) {
 		lookupErr                       bool
 	}{
 		{"invalid repository", nativeManagementPolicy, "owner/*", "owner/new", false},
+		{"option as repository", nativeManagementPolicy, "--help", "owner/new", false},
+		{"shell metacharacter", nativeManagementPolicy, "owner/repo;echo", "owner/new", false},
+		{"trailing newline", nativeManagementPolicy, "owner/repo\n", "owner/new", false},
+		{"oversized identity", nativeManagementPolicy, "owner/" + strings.Repeat("x", 200), "owner/new", false},
 		{"redirected repository", nativeManagementPolicy, "owner/new", "owner/renamed", false},
 		{"failed access", nativeManagementPolicy, "owner/new", "", true},
 		{"duplicate authority", strings.Replace(nativeManagementPolicy, `"defaults":`, `"defaults": {"mode":"review"}, "defaults":`, 1), "owner/new", "owner/new", false},
 		{"unknown field", strings.Replace(nativeManagementPolicy, `"version": 1`, `"version": 1, "typo": true`, 1), "owner/new", "owner/new", false},
 		{"broad discovery", strings.Replace(nativeManagementPolicy, `"allowed-repositories": ["owner/repo"]`, `"allowed-repositories": null`, 1), "owner/new", "owner/new", false},
+		{"missing owners", strings.Replace(nativeManagementPolicy, `"allowed-owners": ["owner"], `, "", 1), "owner/new", "owner/new", false},
+		{"invalid repository list", strings.Replace(nativeManagementPolicy, `["owner/repo"]`, `[12]`, 1), "owner/new", "owner/new", false},
 		{"invalid existing campaign", strings.Replace(nativeManagementPolicy, `"mode": "live"`, `"mode": "debug"`, 1), "owner/new", "owner/new", false},
 	}
 	for _, tt := range cases {
 		t.Run(tt.name, func(t *testing.T) {
 			nativeManagementDirectory(t)
 			writeTestFile(t, policyPath, tt.source)
-			cmd, output := nativeManagementCommand()
 			gh := func(context.Context, ...string) (string, string, error) {
 				if tt.lookupErr {
 					return "", "permission denied", errors.New("denied")
 				}
 				return tt.lookup, "", nil
 			}
-			if err := nativeRepositoryAdd(cmd, tt.requested, gh); err == nil {
+			cmd, output, _ := testCommand(t, gh, nil)
+			cmd.SetArgs([]string{"repos", "add", "--", tt.requested})
+			if err := cmd.Execute(); err == nil {
 				t.Fatal("unsafe enrollment succeeded")
 			}
 			content, _ := os.ReadFile(policyPath)
@@ -131,6 +202,18 @@ func TestNativeManagementEnrollmentFailsClosed(t *testing.T) {
 				t.Fatal("failed enrollment modified policy or reported success")
 			}
 		})
+	}
+}
+
+func TestNativeManagementEnrollmentRequiresExistingPolicy(t *testing.T) {
+	t.Chdir(t.TempDir())
+	cmd, output, _ := testCommand(t, nil, nil)
+	cmd.SetArgs([]string{"repos", "add", "owner/new"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "required for repository enrollment") {
+		t.Fatalf("expected missing enrollment policy error, got %v", err)
+	}
+	if _, err := os.Stat(policyPath); !errors.Is(err, os.ErrNotExist) || output.Len() != 0 {
+		t.Fatal("missing policy was created or enrollment reported success")
 	}
 }
 

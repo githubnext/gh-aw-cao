@@ -43,7 +43,7 @@ describe('action validation helpers', () => {
       expect(isReadOnlyCliAction({ command, arguments: [{}] })).toBe(false);
     }
     for (const command of [
-      'gh aw run ci', 'gh aw status --extra', 'gh cao campaigns add campaign',
+      'gh aw run ci', 'gh aw status --extra', 'gh cao add campaign',
       'gh cao query invalid/name', 'gh cao query recent-runs extra', 'gh aw logs "',
       './cao.sh status', './cao.sh query recent-runs'
     ]) {

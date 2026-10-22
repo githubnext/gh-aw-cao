@@ -6,7 +6,8 @@ const docs = readFileSync("docs/cao-cli.md", "utf8");
 const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
 const gettingStarted = readFileSync("docs/setup-quickstarts.md", "utf8");
 const walkthrough = readFileSync("docs/repo-assist-quickstart.md", "utf8");
-const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash";
+const installation = "gh extension install githubnext/gh-cao";
+const fallback = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash";
 
 test("getting started reaches monitoring before optional campaign execution", () => {
   const optional = gettingStarted.indexOf("## Optional: add automation later");
@@ -41,12 +42,14 @@ test("getting started reaches monitoring before optional campaign execution", ()
   assert.match(install, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
   assert.match(install, /gh repo clone OWNER\/CONTROL_REPOSITORY/);
   assert.ok(install.includes(`\`\`\`bash\n${installation}\ngh cao --version\n\`\`\``));
-  assert.match(monitoring, /Setup reuses the installed runtime and policy/);
+  assert.match(monitoring, /Setup prepares missing runtime and policy, reuses existing installations/);
   assert.match(monitoring, /No separate `init` is needed/);
   assert.match(install, /:::tip\[Installation and authentication\]/);
   assert.match(install, /```bash\ngh auth login\ngh auth status\n```/);
-  assert.match(install, /downloaded anonymously, avoiding enterprise SAML cross-organization failures/);
-  assert.doesNotMatch(install, /gh extension install|--scopes repo,workflow/);
+  assert.match(install, /:::tip\[SAML-token installation failure\]/);
+  assert.ok(install.indexOf(installation) < install.indexOf(fallback), "prefer GitHub CLI before curl fallback");
+  assert.match(install, /Public tool downloads are anonymous/);
+  assert.doesNotMatch(install, /--scopes repo,workflow/);
   const prerequisites = monitoring.slice(monitoring.indexOf("## Prerequisites"), monitoring.indexOf("## Step 1"));
   assert.match(prerequisites, /Logged in to GitHub CLI[\s\S]*gh auth status[\s\S]*gh auth login/);
   assert.match(monitoring, /## Prerequisites/);
@@ -98,17 +101,18 @@ test("getting started reaches monitoring before optional campaign execution", ()
 });
 
 test("extension installation guidance distinguishes discovery, promotion, and runtime installation", () => {
-  assert.match(docs, /root installer is the primary supported installation path for both tools/);
   assert.ok(docs.includes(installation));
+  assert.ok(docs.indexOf(installation) < docs.indexOf(fallback), "document GitHub CLI installation first");
+  assert.match(docs, /:::tip\[SAML-token installation failure\]/);
+  assert.match(docs, /fallback when SAML-restricted tokens prevent/);
   assert.match(docs, /upstream[\s\S]*install-gh-aw\.sh/);
   assert.match(docs, /Public CAO release metadata, binaries, checksums, and the upstream installer\s+are fetched anonymously/);
   assert.match(docs, /No credentials are cleared from the parent environment/);
   assert.doesNotMatch(docs, /Legacy control-plane installer|legacy installer/);
-  assert.match(docs, /latest stable release includes native binaries for GitHub CLI discovery/);
-  assert.match(docs, /verified with `v0\.1\.24`/);
+  assert.match(docs, /CAO releases include native binaries for GitHub CLI discovery/);
   assert.match(docs, /`releases\/latest` before selecting a\s+`--pin` tag/);
-  assert.match(docs, /Merging source does not update an\s+already installed binary/);
-  assert.match(docs, /unified setup requires a newer\s+extension release/);
+  assert.match(docs, /merging source does not update an installed binary/);
+  assert.doesNotMatch(docs, /verified with `v0\.1\.24`|unified setup requires a newer/);
   assert.match(docs, /gh extension upgrade gh-cao/);
   assert.match(docs, /Extension installation alone does not install the control-repository runtime\s+or `gh-aw`/);
 });
@@ -173,20 +177,20 @@ test("outcome-to-execution guidance derives structures without granting authorit
 test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init", "setup", "setup auth github-app", "setup auth enterprise-app",
-    "setup auth token", "campaigns add OWNER/REPO/CAMPAIGN", "update",
+    "setup auth token", "add OWNER/REPO/CAMPAIGN", "update",
     "upgrade-gh-aw", "campaigns mode preview", "campaigns mode live",
     "campaigns enable", "campaigns disable", "download", "doctor",
     "computation runtime-health", "query", "gh runs", "gh issues", "gh prs",
   ]) {
     assert.match(docs, new RegExp(`gh cao ${command.replaceAll("-", "\\-")}`));
     const legacy = command.replace(/^campaigns /, "").replace(/^setup auth /, "setup-auth ");
-    assert.match(help, new RegExp(`cao ${legacy.split(" ")[0]}`));
+    assert.match(help, new RegExp(`cao ${legacy === "doctor" ? "repair-database" : legacy.split(" ")[0]}`));
   }
 });
 
 test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
   for (const command of [
-    "setup-auth hosted-cli", "doctor", "operational-value", "cluster-problems",
+    "setup-auth hosted-cli", "repair-database", "operational-value", "cluster-problems",
     "dashboard-complexity", "prune-dashboard", "validate --json",
   ]) {
     assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
@@ -221,22 +225,34 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.match(docs, /There is intentionally no `cao run` command/);
   assert.match(docs, /gh-aw owns workflow execution/);
   assert.match(docs, /`gh cao campaigns mode preview` writes `mode: review`/);
-  assert.match(docs, /different from `gh aw doctor`/);
+  assert.match(docs, /different from\s+`gh aw doctor`/);
   assert.match(docs, /Control-plane validation is Actions-only/);
   assert.match(docs, /node activity\/cao\.mjs validate --json/);
   assert.doesNotMatch(docs, /gh cao validate/);
 });
 
-test("campaign guides use supported native campaign installation", () => {
+test("campaign guides use the unified native add command", () => {
   for (const campaign of ["bug-bash", "repo-assist"]) {
     const guide = readFileSync(`${campaign}/README.md`, "utf8");
-    assert.ok(guide.includes(`gh cao campaigns add githubnext/gh-cao/${campaign}`));
+    assert.ok(guide.includes(`gh cao add githubnext/gh-cao/${campaign}`));
     assert.doesNotMatch(guide, /\.\/cao\.sh (?:add|quickstart)\b/);
   }
+  for (const filename of [
+    "docs/cao-cli.md", "docs/marketplace.md", "docs/configuration.md",
+    "docs/repo-assist-quickstart.md", "skills/cao-cli/SKILL.md",
+    "skills/add-cao-campaign/SKILL.md", "README.md", "CONTRIBUTING.md",
+    "ARCHITECTURE.md", "CODEBASE.yml",
+  ]) {
+    assert.doesNotMatch(readFileSync(filename, "utf8"), /campaigns add/, filename);
+  }
+  assert.match(docs, /gh cao add WORKFLOW_OR_CAMPAIGN/);
+  assert.match(docs, /installs standalone workflows or campaign packages, not repositories/);
+  assert.match(docs, /Campaign installation never commits, pushes\s+or dispatches work/);
+  assert.match(docs, /Standalone workflows accept only `--force` and `--engine`/);
 });
 
 test("manual Repo Assist walkthrough separates installation, execution, and evidence collection", () => {
-  const install = walkthrough.indexOf("gh cao campaigns add githubnext/gh-cao/repo-assist");
+  const install = walkthrough.indexOf("gh cao add githubnext/gh-cao/repo-assist");
   const review = walkthrough.indexOf("gh cao campaigns mode preview repo-assist");
   const run = walkthrough.indexOf("gh aw run repo-assist");
   const collect = walkthrough.indexOf("gh workflow run cao-activity.yml");

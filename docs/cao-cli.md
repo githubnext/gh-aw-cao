@@ -65,32 +65,37 @@ does not update an installed binary.
 
 ## GitHub CLI extension
 
-From an existing control-repository checkout's root, install gh-aw, the `gh cao`
-extension, and the baseline runtime with the supported root installer:
+Install the extension with GitHub CLI, then run guided setup from an existing
+control-repository checkout's root:
+
+```bash
+gh extension install githubnext/gh-cao
+gh cao --version
+gh cao setup
+```
+
+:::tip[SAML-token installation failure]
+If `gh extension install` fails because your token lacks cross-organization
+SAML authorization, use the [curl installer](#control-plane-installer):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup
-gh cao --version
 ```
 
-Omit `--setup` to leave guided configuration for a later `gh cao setup`.
-The installer requires Bash, curl, Git, Node.js 24+, and GitHub CLI 2.68+
-signed in for the control repository. Public tool downloads do not use that
-sign-in; see [installer behavior](#control-plane-installer).
+This fallback requires Bash, curl, Git, Node.js 24+, and GitHub CLI 2.68+ signed
+in for the control repository. Public tool downloads are anonymous; stored
+credentials remain available for control-repository and runtime-provenance access.
+:::
 
 ### GitHub CLI release discovery
 
-Direct `gh extension install githubnext/gh-cao` remains an alternative for
-credentials that can access cross-organization releases. It is not the
-recommended installation path for enterprise SAML-restricted tokens.
-The latest stable release includes native binaries for GitHub CLI discovery
-(verified with `v0.1.24`). There is intentionally no root executable script:
+CAO releases include native binaries for GitHub CLI discovery.
+There is intentionally no root executable script:
 CAO ships a standalone Go binary, not a source-building or Node.js launcher.
 GitHub CLI classifies the extension using `releases/latest` before selecting a
 `--pin` tag, so maintainers must keep complete native assets in the latest stable
 release. Do not modify immutable historical releases to repair discovery.
 
-Prefer rerunning `install-gh-cao.sh` to refresh an installer-managed extension.
 Refresh a GitHub-CLI-managed extension with:
 
 ```bash
@@ -98,11 +103,11 @@ gh extension upgrade gh-cao
 gh cao --version
 ```
 
+Rerun `install-gh-cao.sh` only for an installer-managed extension.
+
 Extension installation alone does not install the control-repository runtime
-or `gh-aw`. `gh cao setup` prepares them as needed. In `v0.1.24`, setup still
-requires prior runtime and policy preparation; unified setup requires a newer
-extension release containing this change. Merging source does not update an
-already installed binary.
+or `gh-aw`. `gh cao setup` prepares them as needed. Upgrade the extension to
+receive new commands and fixes; merging source does not update an installed binary.
 
 ### Guided runtime preparation
 
@@ -158,7 +163,8 @@ configuration local. Unattended/CI setup never commits or pushes.
 
 ### Control-plane installer
 
-The root installer is the primary supported installation path for both tools:
+Use the root installer as a fallback when SAML-restricted tokens prevent
+GitHub CLI extension installation:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
@@ -170,7 +176,7 @@ rename. It honors `XDG_DATA_HOME` and Windows `LOCALAPPDATA`, defaulting to
 `~/.local/share/gh/extensions/gh-cao`. Rerun the installer to update this
 manually installed extension; `gh extension upgrade` does not manage it.
 Linked/source installations are not overwritten. Release binaries use the
-`gh-cao-OS-ARCH` naming convention (legacy releases use `OS-ARCH`), with `.exe` for Windows, and cover Linux,
+`gh-cao-OS-ARCH` naming convention, with `.exe` for Windows, and cover Linux,
 macOS, and Windows on amd64 and arm64. `checksums.txt` contains their SHA-256
 digests. Downloads fail closed unless the asset's exact checksum and embedded
 version match. Verification finishes before replacing an existing binary.
@@ -194,6 +200,8 @@ sources still select their own runtime revision independently.
 Node.js 24+ is required by this installer, but not by native setup
 or the other Go operator commands.
 
+### Command reference
+
 For local development, build with `make build` and use `./gh-cao` directly, or follow the
 [local extension installation guide](https://github.com/githubnext/gh-cao/blob/main/CONTRIBUTING.md#go-extension-development)
 to invoke it as `gh cao`.
@@ -202,7 +210,7 @@ to invoke it as `gh cao`.
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Standalone workflow installation | `add WORKFLOW [--force] [--engine ENGINE]` | gh-aw installs and compiles; CAO registers the standalone workflow in policy. Interactive publication and first run require separate default-No approvals. |
-| Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
+| Campaign installation | `add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
@@ -211,7 +219,7 @@ to invoke it as `gh cao`.
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
-| Node-only administration | `node activity/cao.mjs doctor`, `node activity/cao.mjs setup-auth hosted-cli` | SQLite check/repair and dedicated hosted-executor App creation; neither has an equivalent Go command. |
+| Node-only administration | `node activity/cao.mjs repair-database`, `node activity/cao.mjs setup-auth hosted-cli` | Mutating SQLite repair/retention and dedicated hosted-executor App creation; neither has an equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -219,7 +227,6 @@ projections, and MCP contract are embedded from the same JSON documents used by
 the dashboard. `pages`, `queries`, `query-info`, and definition-only `prompt`
 work outside an installed control repository. Use `--dashboard FILE` to read
 an explicit dashboard document and its directory-confined fragments.
-`CAO_RUNTIME_ROOT` is no longer used by the extension.
 
 Evidence queries read the canonical `__idb_records` projection through a
 read-only SQLite connection; they do not run migrations or repair the snapshot.
@@ -234,7 +241,7 @@ gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
 gh cao setup auth token --help
 gh cao add daily-repo-status
-gh cao campaigns add githubnext/gh-cao/dependabot
+gh cao add githubnext/gh-cao/dependabot
 gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
@@ -245,10 +252,10 @@ gh cao query campaign-runs --param campaign=dependabot
 ```
 
 All help works offline, including `gh cao setup --help` and
-`gh cao campaigns --help`. Campaign controls are available only under
-`campaigns` in the extension.
+`gh cao campaigns --help`. Campaign mode and enablement controls are available
+under `campaigns`; installation uses the root `add` command.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; root-level `add`
-installs standalone workflows, not repositories or campaign packages.
+installs standalone workflows or campaign packages, not repositories.
 Authentication is grouped under `gh cao setup auth`; there is no root-level
 `gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
 control-plane setup, or configure credentials independently with
@@ -274,12 +281,24 @@ guaranteed; it is not reported as complete zero activity.
 The dedicated hosted-executor App profile remains Node-only:
 `node activity/cao.mjs setup-auth hosted-cli`.
 The runtime JSON result for authentication retains `command: "setup-auth"`.
-`gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
-gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
+`gh cao setup auth token --help` also works offline. Campaign installation through
+`add` and package updates through `update` retain gh-aw option passthrough.
+JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and command exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
 
-### Add a standalone workflow
+### `gh cao add WORKFLOW_OR_CAMPAIGN`
+
+`gh cao add` is the first-class native command for installing and registering
+a standalone CAO workflow or campaign package. Both use gh-aw for installation;
+CAO verifies and registers standalone workflows or materializes and merges
+declared campaign workers without widening policy.
+
+| Operation | Command |
+| --- | --- |
+| Install one standalone workflow | `gh cao add WORKFLOW [--force] [--engine ENGINE]` |
+| Install a campaign package | `gh cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]` |
+| Enroll one exact repository | `gh cao repos add OWNER/REPO` |
 
 ```bash
 gh cao add daily-repo-status
@@ -287,15 +306,20 @@ gh cao add daily-repo-status@FULL_COMMIT_SHA
 gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
 gh cao add https://github.com/githubnext/gh-cao/blob/main/.github/workflows/daily-repo-status.md
 gh cao add ./my-report.md --force
+gh cao add githubnext/gh-cao/dependabot@FULL_COMMIT_SHA
+gh cao add ./dependabot --force
 ```
 
-Catalog names (including `githubnext/gh-cao/daily-repo-status`) resolve to CAO's
+Bare catalog workflow names resolve to CAO's
 `.github/workflows/` directory, not gh-aw's implicit `workflows/` directory.
-The former catalog name `repo-status` is a backward-compatible alias for
-`daily-repo-status`. Explicit `.md` sources are passed to gh-aw; campaign
-packages still use `gh cao campaigns add`.
-Custom install directories, renames and gh-aw publication flags are not accepted:
-the source must retain its exact standalone CAO identity.
+The published `githubnext/gh-cao/daily-repo-status` and `repo-status` shorthands
+remain workflow sources. Explicit `.md` sources and GitHub blob URLs also select
+workflow installation. Campaigns use `OWNER/REPO[/PATH][@REF]` coordinates or
+existing local directories; trailing options are passed unchanged to gh-aw.
+Missing explicit local directories fail rather than resolving remotely.
+Standalone workflows accept only `--force` and `--engine`; custom install
+directories, renames and gh-aw publication flags are not accepted because the
+source must retain its exact standalone CAO identity.
 
 After gh-aw succeeds, CAO verifies the installed standalone import and compiled
 lock, then atomically registers the workflow in `control-plane.workflows`.
@@ -306,7 +330,7 @@ repository baseline as `init`; prepare the runtime separately with `setup`.
 Failed installs do not mutate policy; files left by a partial installation are
 reported for inspection. Repeating with `--force` never resets policy.
 
-Interactive additions offer commit/push of only the installation changes using
+Interactive standalone workflow additions offer commit/push of only the installation changes using
 the same review safeguards as setup. Pre-existing edits to an installation file,
 a staged index, a non-default branch or unsynchronized remote block automated
 publication. Unrelated work is never staged. After successful publication, a
@@ -335,11 +359,12 @@ local catalog checkout. It replaces the selected campaign's resources, refreshes
 its intelligence metadata, and merges declared workers while preserving existing
 enablement, mode ceilings, campaign settings, and repository scope. It does not
 reinstall the control-plane runtime or plugin. Missing policy is initialized for
-the exact current control repository. Prepare the root runtime with `gh cao setup`,
-not `gh cao campaigns add`; review and commit generated workflows and policy together.
+the exact current control repository. Campaign installation never commits, pushes
+or dispatches work. Prepare the root runtime with `gh cao setup`, not `gh cao add`;
+review and commit generated workflows and policy together.
 
-`gh cao doctor` is deliberately **not** `node activity/cao.mjs doctor`: use the latter for
-the existing SQLite snapshot check/repair operation. Neither Activity nor
+`gh cao doctor` is deliberately **not** `node activity/cao.mjs repair-database`: use the latter for
+the existing mutating SQLite snapshot repair/retention operation. Neither Activity nor
 Dashboard Actions is switched to the Go executable.
 
 ### Publish and refresh workflow value
@@ -430,7 +455,7 @@ CAO and gh-aw have separate jobs:
 
 ```bash
 # Add a campaign and merge its workers into CAO policy.
-gh cao campaigns add githubnext/gh-cao/dependabot
+gh cao add githubnext/gh-cao/dependabot
 
 # Keep the campaign review-only and enable its workflows.
 gh cao campaigns mode preview dependabot
@@ -469,7 +494,7 @@ gh aw run dependabot --ref main \
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `node activity/cao.mjs setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
 | `gh cao setup auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
-| `gh cao campaigns add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
+| `gh cao add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `gh cao repos add OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
 | `gh cao deploy azure --plan --config FILE --template FILE --out FILE` | Review a fresh Azure Functions deployment without writing to Azure; `--apply --plan-file FILE` then repeats preflight and refuses change-set drift. See [Azure deployment](deployment-azure.md#native-fresh-deployment-command). |
 | `gh cao update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |
@@ -495,13 +520,16 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
+Repository enrollment runs entirely in the Go extension and does not require
+Node.js or installed Activity runtime files.
+
 ### Setup and manual campaign execution
 
 Use `gh cao setup` for review-before-apply configuration and optional separately
 approved publication. Setup installs no campaign or agentic execution; a push
 starts normal monitoring Actions asynchronously. To add automation
 afterward, follow the manual [Repo Assist walkthrough](repo-assist-quickstart.md)
-using `gh cao campaigns add` and `gh aw run`.
+using `gh cao add` and `gh aw run`.
 
 Without an interactive terminal or when `CI` is set, `gh cao setup` applies
 only the agent-safe public profile: exact current-repository read and Activity
@@ -720,7 +748,22 @@ gh cao prompt campaign-runs --param campaign=dependabot --database .cao/gh-aw-lo
 
 Without `--database`, the command needs no downloaded snapshot and includes no evidence rows. With `--database FILE`, it executes the named query against that existing snapshot and includes a bounded preview; this does not grant rollout authority. Use `--dashboard FILE` to experiment with a different dashboard definition.
 
-Run `node activity/cao.mjs doctor` to validate and repair the downloaded SQLite snapshot. This is different from `gh aw doctor`, which validates the workflow installation and repository setup.
+Run `node activity/cao.mjs repair-database --database snapshot.sqlite` (or the npm
+`cao repair-database` bin) to repair a SQLite snapshot and apply retention. This
+is **not a read-only check**: it creates a backup before repair and may prune
+expired or orphaned records even when SQLite integrity is healthy. Existing
+backup filenames retain the `.doctor-backup-` prefix. The default database is
+`.cao/gh-aw-logs.sqlite`; `--ttl-days` defaults to 7 and `--run-ttl-days` defaults
+to 30 when `--ttl-days` is omitted, otherwise it follows that explicit TTL.
+Use `--ttl-days all --run-ttl-days all` to retain historical records without
+age-based pruning; structural repairs still apply.
+
+The JSON report identifies `command: "repair-database"` and retains the health,
+before/after diagnostics, repair actions, errors, and backup path. Exit status
+is 0 when healthy, 2 when the report remains unhealthy, and 1 for command errors.
+The old Node `doctor` command is rejected, not aliased. This is different from
+`gh aw doctor`, which validates the workflow installation and repository setup;
+native `gh cao doctor` and `cao-dashboard doctor` are unchanged.
 
 ## Evaluate and Evolve
 
@@ -739,7 +782,7 @@ Data-pipeline and dashboard-maintainer commands are listed by `node activity/cao
 
 ## Review What Each Command Changed
 
-`init`, `add`, `campaigns add`, `update`, `upgrade-gh-aw`, and `campaigns mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
+`init`, `add`, `update`, `upgrade-gh-aw`, and `campaigns mode` can change checked-in control-plane files. Review those changes and commit workflow sources, generated locks, and `.github/workflows/cao.json` together:
 
 ```bash
 git status --short

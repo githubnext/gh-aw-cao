@@ -216,7 +216,7 @@ test("CLI actions parse quoted gh aw arguments without a shell", () => {
 
 test("CLI actions parse native gh cao command families without a shell", () => {
   for (const [command, args] of [
-    ["gh cao campaigns add githubnext/gh-cao/dependabot", ["campaigns", "add", "githubnext/gh-cao/dependabot"]],
+    ["gh cao add githubnext/gh-cao/dependabot", ["add", "githubnext/gh-cao/dependabot"]],
     ["gh cao campaigns mode preview repo-assist", ["campaigns", "mode", "preview", "repo-assist"]],
     ["gh cao repos add octo/repo", ["repos", "add", "octo/repo"]],
     ["gh cao query campaign-runs --param 'campaign=repo-assist'", ["query", "campaign-runs", "--param", "campaign=repo-assist"]],

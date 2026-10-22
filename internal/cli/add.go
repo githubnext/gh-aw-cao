@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func repositoryCommands(runtime runtimeExecutor) *cobra.Command {
+func repositoryCommands(gh ghExecutor) *cobra.Command {
 	repos := &cobra.Command{
 		Use: "repos", Short: "Manage control-plane repository enrollment", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
@@ -24,50 +24,36 @@ func repositoryCommands(runtime runtimeExecutor) *cobra.Command {
 		Long:  "Enroll one exact repository in review mode without widening existing campaign authority.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args[0]) > 200 || !repositoryPattern.MatchString(args[0]) {
-				return fmt.Errorf("repos add requires an exact OWNER/REPO")
-			}
-			return runtime(cmd, []string{"add", "--repository", args[0]})
+			return nativeRepositoryAdd(cmd, args[0], gh)
 		},
 	})
 	return repos
 }
 
-func addCampaignCommand(gh ghExecutor) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:                "add CAMPAIGN [GH_AW_ADD_OPTIONS...]",
-		Short:              "Install a campaign",
-		DisableFlagParsing: true,
-		Long: `Install a CAO campaign with gh-aw, materialize its canonical resources,
-and merge its declared workers without widening existing rollout policy.
-
-Campaign installation runs natively in Go. Options after CAMPAIGN are passed
-unchanged to gh aw add. Remote resources use the installed package's immutable
-resolvedCommit; local sources copy only Git-tracked campaign files.
-Prepare the CAO root runtime with gh cao setup.`,
+func addSourceIsCampaign(input string) (bool, error) {
+	if info, err := os.Stat(input); err == nil {
+		return info.IsDir(), nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return false, err
 	}
-	cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		for _, arg := range args {
-			if arg == "--" {
-				break
-			}
-			if arg == "--help" || arg == "-h" {
-				return cmd.Help()
-			}
+	source := input
+	if index := strings.LastIndex(source, "@"); index >= 0 {
+		source = source[:index]
+		if index == len(input)-1 {
+			return false, fmt.Errorf("add source must include a nonempty revision after @")
 		}
-		if len(args) == 0 {
-			return fmt.Errorf("campaigns add requires a campaign")
-		}
-		if strings.HasPrefix(args[0], "-") {
-			return fmt.Errorf("campaigns add requires a campaign")
-		}
-		result, err := installCampaign(cmd.Context(), gh, args[0], args[1:])
-		if err != nil {
-			return err
-		}
-		return printJSON(cmd, result)
 	}
-	return cmd
+	if slugPattern.MatchString(source) || strings.HasSuffix(source, ".md") || strings.HasPrefix(input, "https://") {
+		return false, nil
+	}
+	// Keep the published qualified shorthand for the catalog's standalone report.
+	if source == catalogRepository+"/daily-repo-status" || source == catalogRepository+"/repo-status" {
+		return false, nil
+	}
+	if filepath.IsAbs(source) || strings.HasPrefix(source, ".") {
+		return false, fmt.Errorf("add campaign directory does not exist: %s", input)
+	}
+	return true, nil
 }
 
 func campaignSlug(spec string) (string, error) {

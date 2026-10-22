@@ -7,7 +7,6 @@ import { runComputation } from "./computation.mjs";
 import { runDashboardComplexity } from "./dashboard-complexity.mjs";
 import { runDisable } from "./disable.mjs";
 import { runDiscoverWorkflows } from "./discover-workflows.mjs";
-import { runDoctor } from "./doctor.mjs";
 import { runDownload } from "./download.mjs";
 import { runEnable } from "./enable.mjs";
 import { runGh } from "./gh.mjs";
@@ -23,6 +22,7 @@ import { runPages } from "./pages.mjs";
 import { runPruneDashboard } from "./prune-dashboard.mjs";
 import { runPrompt } from "./prompt.mjs";
 import { runRecycleCache } from "./recycle-cache.mjs";
+import { runRepairDatabase } from "./repair-database.mjs";
 import { runQueries } from "./queries.mjs";
 import { runQueryInfo } from "./query-info.mjs";
 import { runQuery } from "./query.mjs";
@@ -43,7 +43,6 @@ export const commandHandlers = new Map([
   ["dashboard-complexity", runDashboardComplexity],
   ["disable", runDisable],
   ["discover-workflows", runDiscoverWorkflows],
-  ["doctor", runDoctor],
   ["download", runDownload],
   ["enable", runEnable],
   ["gh", runGh],
@@ -59,6 +58,7 @@ export const commandHandlers = new Map([
   ["prune-dashboard", runPruneDashboard],
   ["prompt", runPrompt],
   ["recycle-cache", runRecycleCache],
+  ["repair-database", runRepairDatabase],
   ["queries", runQueries],
   ["query", runQuery],
   ["query-info", runQueryInfo],

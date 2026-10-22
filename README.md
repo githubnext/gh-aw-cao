@@ -14,21 +14,26 @@ repository. Add trusted agentic operations when you are ready.
 
 ## Get started: monitor one repository
 
-From the root of an existing control-repository checkout, install **gh-aw and
-gh-cao** and open guided setup:
+Install the **`gh cao` extension** with GitHub CLI, then open guided setup
+from the root of an existing control-repository checkout:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup
+gh extension install githubnext/gh-cao
+gh cao setup
 ```
 
-The installer requires Bash, curl, Node.js 24+, Git, and authenticated GitHub CLI
-2.68+. It uses the upstream [gh-aw installer](https://github.com/github/gh-aw/blob/main/install-gh-aw.sh)
-and installs the checksum- and version-verified `gh cao` Go extension.
-Public tool release discovery and downloads are anonymous, so enterprise
-SAML-restricted tokens do not need cross-organization release access.
-Existing GitHub credentials remain available for control-repository operations.
-The installer prepares the baseline runtime and missing policy without adding
-or running a campaign. Omit `--setup` to configure later with `gh cao setup`.
+Git and authenticated GitHub CLI 2.68+ are required. Native setup prepares
+missing gh-aw, runtime files, and baseline policy without installing Node.js
+or adding or running a campaign.
+
+> [!TIP]
+> **SAML-token installation failure:** If GitHub CLI cannot download the extension
+> because your token lacks cross-organization SAML authorization, use the
+> [curl installer](docs/cao-cli.md#control-plane-installer):
+> `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup`.
+> This fallback requires Bash, curl, and Node.js 24+; public tool downloads are
+> anonymous, while stored credentials remain available for control-repository
+> and runtime-provenance operations.
 
 No checkout yet? Explicitly use `gh repo create OWNER/CONTROL --private --clone`
 or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before installation. Choose
@@ -73,7 +78,7 @@ or try one standalone report with the [Daily Repo Status quickstart](docs/setup/
 From a configured control checkout, `gh cao add daily-repo-status` installs the workflow
 and registers it in `cao.json` with review-only, one-repository limits. Interactive
 commit/push and first-run prompts are separate opt-ins; campaign packages still
-use `gh cao campaigns add`.
+use `gh cao add`.
 For the campaign pattern, follow the manual
 [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
 You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
@@ -89,7 +94,7 @@ use successful Actions artifacts retained for 90 days and wait up to five
 minutes for an already active exact-SHA runtime build. An authenticated GitHub
 CLI with artifact and attestation access is required for runtime materialization;
 this is separate from anonymous public tool downloads.
-The installer requires local Node.js 24+; installed Go commands do not.
+The curl fallback requires local Node.js 24+; native setup and Go commands do not.
 Dashboard builds retain their existing production npm dependencies.
 
 Central Agentic Ops governs shared **operations**, not one mandatory
@@ -126,7 +131,8 @@ gh cao --help
 gh cao --version
 ```
 
-Rerun the root `install-gh-cao.sh` to refresh the extension. Runtime updates
+Use `gh extension upgrade gh-cao` to refresh a GitHub-CLI-managed extension;
+rerun `install-gh-cao.sh` for a curl-installed extension. Runtime updates
 remain separate (`gh cao update --campaign root`). GitHub-CLI-managed
 installations can still use `gh extension upgrade gh-cao`, but that authenticated
 cross-organization release path can fail with enterprise SAML-restricted tokens.

@@ -17,12 +17,12 @@ install → connect → dashboard. Follow the written steps below.
 
 ## Prerequisites
 
-- **Tools:** Git, Bash, curl, Node.js 24+, and
-  [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS, or Windows (Git Bash).
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+
+  on Linux, macOS, or Windows. The curl fallback also requires Bash, curl, and Node.js 24+.
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
-  Existing Agentic Workflow history is useful, not required.
+  Existing Agentic Workflow history is optional.
 
 Use a **private control repository** for private or internal evidence. A private
 repository does **not** guarantee a private Pages site: confirm restricted access
@@ -32,8 +32,8 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
-and the baseline monitoring runtime and policy.
+Install the **`gh cao` GitHub CLI extension** with GitHub CLI.
+Guided setup prepares missing gh-aw, monitoring runtime, and policy.
 
 :::tip[Installation and authentication]
 If authentication fails, sign in and retry:
@@ -43,18 +43,16 @@ gh auth login
 gh auth status
 ```
 
-Sign-in is for control-repository access. Public tool releases are discovered
-and downloaded anonymously, avoiding enterprise SAML cross-organization failures.
-Stored credentials are unchanged.
+Sign-in is required for extension installation and control-repository access.
 :::
 
-Use a clean default-branch control checkout; see
+Use a clean default-branch checkout; see
 [other topologies](deployment-and-governance.md).
 
 <details>
 <summary>No control checkout yet? Explicitly create or clone one.</summary>
 
-Replace `OWNER/CONTROL_REPOSITORY` with your repository:
+Replace `OWNER/CONTROL_REPOSITORY`:
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
@@ -71,23 +69,30 @@ gh repo clone OWNER/CONTROL_REPOSITORY
 cd CONTROL_REPOSITORY
 ```
 
-Alternatively, the installer supports explicit `--create-repo OWNER/NAME`
-to create and clone a private control repository.
-
 </details>
 
 At the control checkout's root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
+gh extension install githubnext/gh-cao
 gh cao --version
 ```
 
-**Ready:** tools, runtime, and policy are prepared.
-Existing policy is preserved. No campaign is added or run.
-Use `--setup` to open guided configuration immediately.
-Runtime artifact/provenance access is unchanged;
-see [installer details](cao-cli.md#control-plane-installer).
+:::tip[SAML-token installation failure]
+If extension installation fails because your token lacks cross-organization
+SAML authorization, use the curl fallback:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
+```
+
+Requires Bash, curl, and Node.js 24+. Public tool downloads are anonymous;
+stored credentials and runtime-provenance access are unchanged.
+[Installer details](cao-cli.md#control-plane-installer).
+:::
+
+**Ready:** the extension is installed. Existing policy is preserved.
+No campaign is added or run.
 
 <span id="guided-setup-instead"></span>
 
@@ -99,7 +104,7 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-Setup reuses the installed runtime and policy and configures scope,
+Setup prepares missing runtime and policy, reuses existing installations, and configures scope,
 authentication, and Pages. No separate `init` is needed.
 See [details](cao-cli.md#guided-runtime-preparation).
 

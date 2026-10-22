@@ -24,7 +24,7 @@ Inside an agentic workflow, use the installed JavaScript runtime under
 below; do not build or install the extension when the runtime or cache is absent.
 
 1. Identify the task before running a command:
-   - control-plane setup or campaign lifecycle: use the compiled `gh cao` extension;
+   - control-plane setup, standalone workflow installation, repository enrollment, or campaign lifecycle: use the compiled `gh cao` extension;
    - activity analysis with shell access: use `gh cao`;
    - activity analysis without shell access: use `cao_catalog`, then `cao_query`;
    - an agentic workflow with the Activity cache: follow
@@ -39,7 +39,7 @@ below; do not build or install the extension when the runtime or cache is absent
    queries, then canonical collection queries, then raw Dashboard Language.
 4. Preserve result `availability`, `completeness`, `freshness`, and `as-of`.
    Missing, stale, partial, zero, and complete evidence are different states.
-5. Run `node activity/cao.mjs doctor` before trusting a snapshot whose health is uncertain.
+5. Run `node activity/cao.mjs repair-database` to repair a snapshot whose health is uncertain. This mutates the snapshot, backs up before repair, and applies retention even without corruption; use `--ttl-days all --run-ttl-days all` for historical data.
 6. Report the command form, source snapshot, filters, record identifiers, and
    evidence limitations. Keep downloaded `.cao/` data uncommitted.
 
@@ -47,14 +47,17 @@ below; do not build or install the extension when the runtime or cache is absent
 
 | Task | Route |
 | --- | --- |
-| Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
+| Initialize or update a control repository | `gh cao init`, `add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
+| Install and register one standalone workflow | `gh cao add WORKFLOW [--force] [--engine ENGINE]` |
+| Install a campaign package | `gh cao add CAMPAIGN` |
+| Enroll one exact repository in review mode | `gh cao repos add OWNER/REPO` |
 | Download published Activity | `gh cao download [--url URL]` |
 | Audit source coverage | `node activity/cao.mjs audit-jsonl` |
 | Discover reviewed dashboard queries | `gh cao pages`, `gh cao queries`, `gh cao query-info QUERY_ID` |
 | Run a reviewed query | `gh cao query QUERY_ID --limit N [--param NAME=VALUE]` |
 | Query a canonical collection | `gh cao query --collection COLLECTION [--where FIELD=VALUE] --limit N` |
 | Query one known record | `gh cao query --collection COLLECTION --id ID` |
-| Diagnose the projection | `node activity/cao.mjs doctor` |
+| Repair the projection and apply retention | `node activity/cao.mjs repair-database` |
 
 Use `--database FILE` only for a non-default SQLite projection. Use `--json`
 when another tool will consume the result. For raw Dashboard Language, pipe one
