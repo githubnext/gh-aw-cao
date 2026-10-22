@@ -78,10 +78,10 @@ func TestCAOHostedCLISetupIntegration(t *testing.T) {
 				t: t, base: f.api, key: key, scenario: test.name,
 				pem: string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})),
 			}
-			f.handle = func(w http.ResponseWriter, r *http.Request) bool {
+			f.setHandler(func(w http.ResponseWriter, r *http.Request) bool {
 				app.ServeHTTP(w, r)
 				return true
-			}
+			})
 			keyPath := filepath.Join(f.root, "bootstrap.pem")
 			if test.name == "existing key file refused" {
 				setupWrite(t, keyPath, []byte("keep existing bootstrap"))
