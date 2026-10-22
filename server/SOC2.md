@@ -289,6 +289,22 @@ records. No KMS/provider call, key rotation/revocation, production or
 permission change occurred. Operating effectiveness is **not-assessed**;
 managed-signing decisions remain pending and no finding is closed.
 
+**2026-10-22 parser follow-up:** verified open/draft proposal head
+`451e6e94e00d6b089e321c1d1c57e711c1fc986e` supersedes the initial
+`eb1d079ad24c62402692b9bfea2263c831e96b15` for current-source claims.
+At the revised SHA, `server/internal/githubapp/key_check.go:35-43`
+requires exactly one PEM BEGIN marker: `pem.Decode` could otherwise skip a
+malformed or unterminated leading same-type block and accept a later valid
+key. Parser regressions cover both cases; the command regression rejects
+the malformed prefix without success output. The session reports reproducing
+failures before fixing, then passing full changed-package race suites, vet,
+pinned formatting and targeted lint (zero issues). Coordinator inspected the
+published diff and verified PR identity, but did not rerun runtime tests.
+This corrects the offline diagnostic's input contract; it establishes neither
+a runtime-signing vulnerability nor closure of custody/provider/operating
+evidence requests. Existing source citations and test counts above describe
+the initial proposal; the follow-up does not change their historical scope.
+
 #### PostgreSQL read-lifetime and operator-ceiling proposal
 
 Draft [#19425](https://github.com/githubnext/gh-cao/pull/19425), commit

@@ -644,3 +644,24 @@ Dates are UTC. Corrections are new events; original observations remain.
   evidence-needed/open; operator closure/risk/exclusion decisions pending.
   No production change, permission widening, independent operating evidence
   or compliance conclusion.
+
+## 2026-10-22 - SOC2-LOG-028 - Offline key preflight parser correction
+
+- Type: follow-up proposal correction; RFC-035 record schema version 1.
+- Verified [#19424](https://github.com/githubnext/gh-cao/pull/19424) remains
+  open/draft against main at
+  `451e6e94e00d6b089e321c1d1c57e711c1fc986e`, superseding
+  `eb1d079ad24c62402692b9bfea2263c831e96b15` for current-source citations.
+  SOC2-LOG-025 remains the original observation.
+- Published diff adds single-BEGIN-marker validation to the offline parser,
+  rejecting malformed/unterminated leading same-type PEM blocks that
+  `pem.Decode` could skip before accepting a later valid key. Parser and
+  command no-success-output regressions accompany the fix.
+- Session reports reproduced failures before remediation and passing full
+  changed-package race suites, vet, pinned formatter and targeted lint
+  (zero issues). Coordinator verified proposal identity and inspected the
+  diff; runtime tests were not independently rerun.
+- EXEC-05/OPS-07 and related IAM-006 remain evidence-needed/open; no new
+  runtime-signing vulnerability or closure is inferred. Runtime signing,
+  managed-provider decisions, custody evidence and operating effectiveness
+  (not-assessed) are unchanged. No merge, deployment or key lifecycle action.
