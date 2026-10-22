@@ -82,11 +82,11 @@ export function renderPromptWizard(context) {
     ...[...wizard.steps.map((step) => step.title), 'Review'].map((title) => h('li', null, title)));
   const summary = h('pre', { className: 'prompt-wizard-summary' });
   const preview = renderPromptPreviewAction(normalizeAction({
-    level: 'propose', label: wizard.prompt.label, icon: 'copilot', actionId: wizard.prompt.action
+    level: 'propose', label: wizard.prompt.label, presentation: 'copy-prompt'
   }, { id: `${context.viewId ?? 'wizard'}-generate`, type: 'prompt' }), reviewedPrompt.get);
   const review = h('section', { className: 'prompt-wizard-review', 'aria-label': 'Review your design' },
     h('h3', { tabindex: -1 }, 'Review your design'),
-    h('p', null, 'Review the exact requirements before generation. Start agent task sends this prompt to the coding agent in the configured authoring repository. If command execution is unavailable, copy the prompt and run it with your agent. No automation is installed or activated here.'),
+    h('p', null, 'Use the prompt button to review and copy the generation prompt for your coding agent. No commands are queued, and no automation is installed or activated here.'),
     h('details', { open: true }, h('summary', null, 'Selected requirements and historical pattern guidance'), summary),
     preview);
   const validateStep = () => {

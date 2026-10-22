@@ -403,12 +403,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
   if (view.element === 'prompt-wizard' || isPlainObject(view.config) && view.config.wizard !== undefined) {
     try {
       if (view.element !== 'prompt-wizard') throw new Error('config.wizard is supported only on prompt-wizard.');
-      const wizard = parsePromptWizard(isPlainObject(view.config) ? view.config.wizard : undefined);
-      const action = state.declaredCliActions.get(wizard.prompt.action);
-      if (action?.command !== 'gh agent-task create --from-file -' || action.level !== 'propose'
-        || action.placement !== 'row' || action['copy-only'] === true || action.arguments !== undefined) {
-        throw new Error('Wizard generation must reference a propose-level row action for gh agent-task create --from-file -.');
-      }
+      parsePromptWizard(isPlainObject(view.config) ? view.config.wizard : undefined);
       if (!isPlainObject(view.data) || !Array.isArray(view.data.sources) || view.data.sources.length) {
         throw new Error('prompt-wizard is interaction-only and requires data.sources: [].');
       }

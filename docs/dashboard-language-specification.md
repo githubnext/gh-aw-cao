@@ -118,16 +118,14 @@ Hidden answers are retained locally for Back navigation but excluded from the
 generation prompt. Required fields, unknown choices and invalid defaults fail
 closed. Unknown configuration keys are rejected.
 
-`prompt` declares `label`, `instructions` and `action`, referencing a
-`propose`-level, row-placed `gh agent-task create --from-file -` CLI action
-without optional arguments. Opening the complete prompt preview does not launch
-generation. Explicit **Start agent task** approval hands the reviewed prompt
-through stdin to the existing command queue in the configured authoring
-repository. When execution is unavailable, **Copy prompt** provides the same
-prompt for an external agent. Answers are never shell substitutions. Prompts
-are limited to the command transport's 100000-character input bound. Neither
-preview nor generation installs, runs, merges or activates the resulting
-automation.
+`prompt` declares `label` and `instructions`. For both Agentic Workflows and
+Campaigns, the standard **Generate prompt** button uses `propose` semantics and
+the shared `copy-prompt` preview. **Copy prompt** copies the reviewed prompt
+for use with a coding agent. The wizard does not bind a CLI action or queue an
+agent task, including when the dashboard has command execution available.
+Opening the preview does not copy or execute anything. Answers are never shell
+substitutions. Prompts are limited to 100000 characters. Neither preview nor
+copying installs, runs, merges or activates the resulting automation.
 
 The default wizard's immutable `githubnext/gh-aw-wizard` pattern snapshot is
 authoring configuration, not canonical operational data. `provenance` retains

@@ -9,7 +9,7 @@ import { isSafeRepositorySlug } from './validator-common.js';
  * @typedef {{ id: string, title: string, description?: string, fields: WizardField[] }} WizardStep
  * @typedef {{ repository: string, revision: string, url: string, 'generated-at': string,
  *   'source-repositories': number, 'total-workflows': number, notice: string, license: string }} WizardProvenance
- * @typedef {{ intro: string, steps: WizardStep[], prompt: { label: string, action: string, instructions: string },
+ * @typedef {{ intro: string, steps: WizardStep[], prompt: { label: string, instructions: string },
  *   provenance?: WizardProvenance }} PromptWizard
  * @typedef {Record<string, string|string[]>} WizardValues
  */
@@ -31,9 +31,8 @@ function text(value, path, max = 20_000) {
 export function parsePromptWizard(value) {
   const wizard = mapping(value, ['intro', 'steps', 'prompt', 'provenance'], 'wizard');
   text(wizard.intro, 'wizard.intro');
-  const prompt = mapping(wizard.prompt, ['label', 'action', 'instructions'], 'wizard.prompt');
-  for (const key of ['label', 'action', 'instructions']) text(prompt[key], `wizard.prompt.${key}`);
-  if (!/^[a-z][a-z0-9-]*$/.test(String(prompt.action))) throw new Error('wizard.prompt.action must be a CLI action identifier.');
+  const prompt = mapping(wizard.prompt, ['label', 'instructions'], 'wizard.prompt');
+  for (const key of ['label', 'instructions']) text(prompt[key], `wizard.prompt.${key}`);
   if (!Array.isArray(wizard.steps) || !wizard.steps.length || wizard.steps.length > 8) throw new Error('wizard.steps must contain 1 to 8 steps.');
   const stepIds = new Set();
   /** @type {Map<string, WizardField>} */
@@ -150,6 +149,6 @@ export function buildWizardPrompt(wizard, values) {
     wizard.provenance ? `Historical pattern provenance:\n${JSON.stringify(wizard.provenance, (key, value) => key === 'license' ? undefined : value, 2)}` : '',
     `User design (JSON):\n${JSON.stringify(wizardDesign(wizard, values), null, 2)}`
   ].filter(Boolean).join('\n\n'), 'propose');
-  if (prompt.length > 100_000) throw new Error('Generation prompt exceeds the 100,000-character command input limit. Shorten the design.');
+  if (prompt.length > 100_000) throw new Error('Generation prompt exceeds the 100,000-character limit. Shorten the design.');
   return prompt;
 }

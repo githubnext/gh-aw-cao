@@ -44,8 +44,8 @@ for (const width of [390, 1280]) {
     await page.getByRole('checkbox', { name: 'add comment', exact: false }).check();
     await page.getByRole('button', { name: 'Review design', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Review your design', exact: true })).toBeFocused();
-    await page.getByRole('button', { name: 'Review generation prompt', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Review generation prompt prompt preview' });
+    await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Generate prompt prompt preview' });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('.table-intent-preview')).toContainText('acme/one');
     await expect(dialog.locator('.table-intent-preview')).toContainText('default to review mode');
@@ -55,7 +55,7 @@ for (const width of [390, 1280]) {
     expect(bounds?.width).toBeLessThanOrEqual(width);
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
-    await expect(page.getByRole('button', { name: 'Review generation prompt', exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Generate prompt', exact: true })).toBeFocused();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(page.getByLabel('Campaign target repositories (required)')).toHaveValue('acme/one\nacme/two');
     expect(await root.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
@@ -64,7 +64,7 @@ for (const width of [390, 1280]) {
 
 test.describe('populated dashboard wizard', () => {
   for (const width of [390, 1280]) {
-    test(`full-site workflow prompt handoff at ${width}px`, async ({ page }, testInfo) => {
+    test(`full-site workflow prompt button copies without command execution at ${width}px`, async ({ page }, testInfo) => {
       /** @type {Array<{ id: string, command: string, input?: string }>} */
       const commands = [];
       const server = await startCanvasServer({
@@ -88,13 +88,15 @@ test.describe('populated dashboard wizard', () => {
         }
       });
       try {
+        await page.addInitScript(() => {
+          Object.defineProperty(navigator, 'clipboard', {
+            value: { writeText: async (/** @type {string} */ text) => { Reflect.set(window, 'copiedWizardPrompt', text); } }
+          });
+        });
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${server.url}/#page-wizard`);
         await expect(page.locator('.prompt-wizard')).toBeVisible();
         await expect(page.locator('.first-load-overlay')).toHaveCount(0);
-        const screenshot = testInfo.outputPath(`workflow-wizard-${width}.png`);
-        await page.screenshot({ path: screenshot, fullPage: true });
-        await testInfo.attach(`Workflow wizard (${width}px)`, { path: screenshot, contentType: 'image/png' });
         await page.getByLabel('Workflow or campaign name (required)').fill('issue-helper');
         await page.getByLabel('What should the agent do? (required)').fill('Triage new issues.');
         await page.getByLabel('Intent and acceptance criteria (required)').fill('Never close issues.');
@@ -102,12 +104,17 @@ test.describe('populated dashboard wizard', () => {
         await expect(page.getByLabel('Campaign target repositories (required)')).toBeHidden();
         await page.getByLabel('Per-run scope and limits (required)').fill('Only the triggering issue.');
         await page.getByRole('button', { name: 'Review design', exact: true }).click();
-        await page.getByRole('button', { name: 'Review generation prompt', exact: true }).click();
+        await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
         expect(commands).toEqual([]);
-        await page.getByRole('dialog').getByRole('button', { name: 'Start agent task', exact: true }).click();
-        await expect.poll(() => commands.length).toBe(1);
-        expect(commands[0]).toMatchObject({ id: 'create-agent-task', command: 'gh agent-task create --from-file -', input: expect.stringContaining('Triage new issues.') });
-        await expect(page.getByRole('dialog')).toContainText('Agent task started.');
+        await expect(page.getByRole('button', { name: 'Start agent task', exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toBeUndefined();
+        const screenshot = testInfo.outputPath(`workflow-wizard-prompt-${width}.png`);
+        await page.screenshot({ path: screenshot, fullPage: true });
+        await testInfo.attach(`Workflow wizard prompt (${width}px)`, { path: screenshot, contentType: 'image/png' });
+        await page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true }).click();
+        await expect(page.getByRole('dialog')).toContainText('Prompt copied.');
+        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('Triage new issues.');
+        expect(commands).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       } finally {
         await page.goto('about:blank');

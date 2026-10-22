@@ -28,11 +28,11 @@ criteria, then select explicit triggers, per-run limits, safe outputs and
 optional capabilities. Campaigns also require proposed target repositories.
 Pattern recommendations do not automatically enable permissions.
 
-Choose **Review design**, then **Review generation prompt**. In an authorized
-command-enabled dashboard, **Start agent task** launches
-`gh agent-task create --from-file -` with the reviewed prompt in the configured
-authoring repository. Otherwise, use **Copy prompt** with your coding agent.
-Generation requests a draft pull request, not installation or live activation.
+Choose **Review design**, then the standard **Generate prompt** button.
+Review the complete prompt and use **Copy prompt** with your coding agent.
+Both AWs and Campaigns use this same prompt-button flow; the wizard never queues
+a command or starts an agent task, even in a command-enabled dashboard.
+The prompt requests a draft pull request, not installation or live activation.
 Draft answers are page-local memory; leaving the page discards them. Never
 enter secrets.
 

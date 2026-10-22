@@ -134,7 +134,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `entity-route` | Allocates a route-selected entity title and native GitHub link. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
 | `environment-defaults` | Edits the full gh-aw defaults YAML through declared `gh aw env` actions, with scope selection, dry-run preview, explicit approval, and private temporary-file transport; does not query activity evidence or grant rollout authority. |
-| `prompt-wizard` | Renders JSON-declared authoring steps and conditional fields, validates explicit choices, and hands a reviewed workflow or campaign prompt to the existing agent-task command or clipboard; has no operational data sources. |
+| `prompt-wizard` | Renders JSON-declared authoring steps and conditional fields, validates explicit choices, and uses the standard prompt button to review and copy an AW or Campaign generation prompt; has no operational data sources or command execution. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `workflow-value-report` | Presents query-prepared workflow value, a linked snapshot plot and an evidence disclosure; owns only presentation, scoped reveal/focus and reactive cleanup. |
 | `workflow-value-snapshot` | Presents exact immutable item links and distinguishes omitted item evidence from an explicitly empty population. |
