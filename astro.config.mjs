@@ -113,6 +113,7 @@ export default defineConfig({
             "operations",
             "orchestrators-*",
             "rollout-*",
+            "setup-compatibility",
             "setup-fine-*",
             "setup/quickstart",
             "setup-multiple-*",
@@ -294,6 +295,7 @@ export default defineConfig({
           label: "Setup",
           items: [
             { label: "Quickstart: install and monitor", link: "/setup-quickstarts/" },
+            { label: "Setup combinations and verification", link: "/setup-compatibility/" },
             { label: "Daily Repo Status (optional)", link: "/setup/quickstart/" },
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },

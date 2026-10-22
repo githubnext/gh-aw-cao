@@ -14,7 +14,11 @@ CAO supports private GitHub Apps as its durable authentication model and a fine-
 | Enterprise-owned private Apps | Targets span organizations in one GitHub Enterprise Cloud enterprise | Apps are installed separately on each enrolled organization |
 | Fine-grained PATs | The operator cannot install an App and the required repositories and APIs are PAT-compatible | One user-bound token pair per resource owner, repository-selected, and subject to organization approval |
 
-CAO does not publish Apps. A private App cannot support organizations outside its owning organization or enterprise. Use independent control planes for unrelated organizations or enterprises.
+CAO does not publish Apps. A private App cannot support organizations outside its
+owning organization or enterprise. Unrelated owners need separately approved
+owner-scoped PATs where supported, or independent control planes.
+See [setup combinations and verification](setup-compatibility.md) for effective
+operator permissions, visibility restrictions, and GHE.com prerequisites.
 
 ## Reuse approved Apps
 

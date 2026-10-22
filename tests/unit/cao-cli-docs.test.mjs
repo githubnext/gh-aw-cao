@@ -34,14 +34,20 @@ test("getting started reaches monitoring before optional campaign execution", ()
     "Publish and open your dashboard",
   ]);
   assert.match(monitoring, /\*\*Estimated time: 15 minutes\*\*/);
-  assert.match(monitoring, /:::note\[Video TODO\]/);
-  assert.ok(monitoring.indexOf(":::note[Video TODO]") < monitoring.indexOf("## Prerequisites"));
+  assert.doesNotMatch(monitoring, /Video TODO|recording not yet available/);
+  assert.match(monitoring, /one monitoring path[\s\S]*setup-compatibility\.md/);
   const install = monitoring.slice(monitoring.indexOf("## Step 1"), monitoring.indexOf("## Step 2"));
+  const extension = install.slice(install.indexOf("### Extension-first quickstart"), install.indexOf("<details>"));
+  assert.ok(extension.includes("```bash\ngh extension install githubnext/gh-cao\ngh cao --version\n```"));
+  assert.match(extension, /Native setup prepares missing runtime, policy, and gh-aw/);
+  assert.match(extension, /without a separate\s+installer or local Node\.js/);
+  const installer = install.slice(install.indexOf("<summary>Installer alternative"));
   assert.match(install, /`gh cao` GitHub CLI extension/);
   assert.match(install, /Existing policy is preserved/);
   assert.match(install, /gh repo create OWNER\/CONTROL_REPOSITORY --private --clone/);
   assert.match(install, /gh repo clone OWNER\/CONTROL_REPOSITORY/);
   assert.ok(install.includes(`\`\`\`bash\n${installation}\ngh cao --version\n\`\`\``));
+  assert.ok(installer.includes(`\`\`\`bash\n${fallback}\n\`\`\``));
   assert.match(monitoring, /Setup prepares missing runtime and policy, reuses existing installations/);
   assert.match(monitoring, /No separate `init` is needed/);
   assert.match(install, /:::tip\[Installation and authentication\]/);

@@ -113,6 +113,32 @@ or Azure infrastructure provisioning. The fast bootstrap API regression tests
 also run with the ordinary simulator unit suite; the external-tool integration
 is opt-in outside its dedicated npm command and CI job.
 
+## Local GitHub setup topology integration
+
+`npm run test:integration:setup` builds the current native extension and runs
+real `gh cao setup`/GitHub CLI processes against the same strict loopback
+`BootstrapAPI`. Interactive cases reuse `tests/helpers/terminal.mjs` (Linux
+`script` or macOS `python3`); Node.js is a test-driver dependency, not a native
+setup dependency. The existing Go Extension CI setup job runs this suite.
+
+The topology matrix covers public/private GitHub.com controls and
+private/internal GHE.com controls, public/private/internal/mixed targets where
+available on that host, and same/cross/mixed resource owners. Public controls
+reject non-public evidence. PAT cases retain simulated existing secret names
+and check exact owner-scoped read maps and control-only writes. App previews
+cover both hosts, separate permissions, reuse plans, and cross-owner rejection
+for newly created organization Apps. Capability failures exercise denied Pages,
+secret lookup and variable writes, declined public Pages, and unchanged consumer
+files/index. The recorded public monitoring flow and a private GHE.com PAT flow
+also publish reviewed files through real HTTPS Git to local bare repositories.
+GHE.com requests must remain on its selected web/API hosts.
+
+This is command/protocol end-to-end evidence, not live GitHub role, credential,
+Actions execution, or deployed Pages validation. Public repositories do not
+exist on GHE.com; no public GHE.com scenario is claimed. The simulator does not
+issue or validate real PATs, approve Apps, or prove restricted Pages entitlement.
+See [setup combinations and live gaps](../docs/setup-compatibility.md).
+
 ## Local Azure setup integration
 
 Run `npm run test:integration:setup-azure` with Go 1.27.3 or newer on PATH, Git, GitHub CLI, the

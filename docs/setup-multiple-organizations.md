@@ -3,7 +3,12 @@ title: Set Up Multiple Organizations
 description: Install a CAO control plane across organizations using enterprise-owned private GitHub Apps.
 ---
 
-You need permission to create enterprise GitHub Apps and install them separately on every enrolled organization.
+For non-public targets, reuse approved enterprise-owned private Apps within one
+enterprise, or create them with the required approval and install them separately
+on every enrolled organization. A permitted [owner-scoped PAT setup](setup-fine-grained-pat.md)
+is another option. Public-only monitoring needs no automation App/PAT.
+See [setup combinations](setup-compatibility.md) for visibility and role boundaries,
+including GitHub Enterprise Cloud data residency on `*.ghe.com`.
 
 > [!IMPORTANT]
 > Permission does not authorize setup. A coding agent must ask before creating or reusing the control repository, installing the extension/runtime, creating either App, storing variables or secrets, committing, or pushing.
@@ -60,8 +65,13 @@ gh cao setup
 
 At **Repositories**, enter the exact value of `$TARGET_REPO`; the control
 repository stays included. Choose **`enterprise-app`** when prompted.
-Guided setup accepts the approved App client IDs, prompts securely for keys and
-verifies that all repositories belong to the same enterprise.
+Guided setup accepts the approved App client IDs and prompts securely for keys.
+Verify independently that all selected organizations belong to the same
+enterprise and that both Apps have the required selected-repository
+installations. The legacy `enterprise-app` path stores credentials; it does not
+prove enterprise membership or installation reach. Prefer
+[verified approved-App reuse](authentication.md#reuse-approved-apps) when
+connecting existing Apps.
 Setup prepares Activity, Dashboard, validation, shared runtime and missing
 baseline policy, then configures scoped authentication and Pages.
 A private repository does not guarantee private Pages: require restricted

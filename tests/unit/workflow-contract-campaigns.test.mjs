@@ -454,6 +454,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.doesNotMatch(setupSkill, /cao_checkout|sparse-checkout/);
   assert.match(quickstart, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/);
   assert.match(quickstart, /gh extension install githubnext\/gh-cao/);
+  assert.match(quickstart, /Native setup prepares missing runtime, policy, and gh-aw/);
   assert.ok(quickstart.indexOf("gh extension install") < quickstart.indexOf("curl -fsSL"));
   assert.match(quickstart, /:::tip\[SAML-token installation failure\]/);
   assert.match(quickstart, /gh cao setup/);

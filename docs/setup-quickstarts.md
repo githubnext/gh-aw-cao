@@ -3,26 +3,22 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-Monitor one repository's existing GitHub Agentic Workflow runs, costs, and
-outcomes where evidenced.
+Monitor existing GitHub Agentic Workflow evidence in one repository.
 
 **Estimated time: 15 minutes**; approval and deployment vary.
 
 **Monitoring only:** no campaign installation or new agentic work.
 
-:::note[Video TODO]
-**CAO setup walkthrough — recording not yet available.** Video TODO: demonstrate
-install → connect → dashboard. Follow the written steps below.
-:::
+This is one monitoring path. For private targets, PATs, enterprise hosts, and
+other topologies, see [setup combinations](setup-compatibility.md).
 
 ## Prerequisites
 
-- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+
-  on Linux, macOS, or Windows. The curl fallback also requires Bash, curl, and Node.js 24+.
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+.
+  Installer alternative: Bash, curl, Node.js 24+ (Git Bash on Windows).
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
-- **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
-  Existing Agentic Workflow history is optional.
+- **Repository:** exact `OWNER/REPOSITORY`; Agentic Workflow history is optional.
 
 Use a **private control repository** for private or internal evidence. A private
 repository does **not** guarantee a private Pages site: confirm restricted access
@@ -32,11 +28,21 @@ separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
 
-Install the **`gh cao` GitHub CLI extension** with GitHub CLI.
-Guided setup prepares missing gh-aw, monitoring runtime, and policy.
+### Extension-first quickstart
+
+On GitHub.com:
+
+```bash
+gh extension install githubnext/gh-cao
+gh cao --version
+```
+
+Create or clone a clean default-branch control checkout.
+Native setup prepares missing runtime, policy, and gh-aw without a separate
+installer or local Node.js.
 
 :::tip[Installation and authentication]
-If authentication fails, sign in and retry:
+If authentication fails:
 
 ```bash
 gh auth login
@@ -46,21 +52,15 @@ gh auth status
 Sign-in is required for extension installation and control-repository access.
 :::
 
-Use a clean default-branch checkout; see
-[other topologies](deployment-and-governance.md).
-
 <details>
-<summary>No control checkout yet? Explicitly create or clone one.</summary>
-
-Replace `OWNER/CONTROL_REPOSITORY`:
+<summary>Create or clone a control checkout.</summary>
 
 ```bash
 gh repo create OWNER/CONTROL_REPOSITORY --private --clone
 cd CONTROL_REPOSITORY
 ```
 
-Use `--public` only for public evidence. Guided setup needs no App/PAT for
-public targets, including private controls.
+Use `--public` only for public evidence.
 
 To use an existing remote repository instead:
 
@@ -71,28 +71,39 @@ cd CONTROL_REPOSITORY
 
 </details>
 
-At the control checkout's root:
+<details>
+<summary>Match the recorded public-only example.</summary>
 
-```bash
-gh extension install githubnext/gh-cao
-gh cao --version
-```
+The recording creates a **public** control with
+`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
+at **Repositories**, reviews the exact names, accepts public Pages, then approves
+commit-and-push. All evidence must be public. Interactive wildcards containing
+private/internal targets are rejected for public controls, not silently trimmed.
+
+</details>
+
+<details>
+<summary>Installer alternative (Node.js 24+).</summary>
+
+The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
+and baseline monitoring runtime and policy.
 
 :::tip[SAML-token installation failure]
-If extension installation fails because your token lacks cross-organization
-SAML authorization, use the curl fallback:
+If SAML authorization blocks extension installation, use the curl fallback
+at the control checkout's root:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 ```
 
-Requires Bash, curl, and Node.js 24+. Public tool downloads are anonymous;
+Public tool downloads are anonymous;
 stored credentials and runtime-provenance access are unchanged.
 [Installer details](cao-cli.md#control-plane-installer).
 :::
 
-**Ready:** the extension is installed. Existing policy is preserved.
-No campaign is added or run.
+Existing policy is preserved. No campaign is added or run.
+
+</details>
 
 <span id="guided-setup-instead"></span>
 
@@ -108,8 +119,9 @@ Setup prepares missing runtime and policy, reuses existing installations, and co
 authentication, and Pages. No separate `init` is needed.
 See [details](cao-cli.md#guided-runtime-preparation).
 
-1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
-   not an organization wildcard. The control repository stays included.
+1. At **Repositories**, enter your exact `OWNER/REPOSITORY`.
+   The control stays included. Comma-separated entries and `OWNER/*` also work:
+   review the exact expanded names. Future repositories are not enrolled.
 2. Choose **Authentication** only if prompted. Confirmed public targets
    automatically use `public-only` with Actions' `GITHUB_TOKEN`, no App/PAT,
    even when the control repository is private. Private/internal remote targets require credentials;
@@ -181,26 +193,25 @@ gh workflow run cao-activity.yml
 Activity collects evidence, not new agentic work. Successful collection triggers
 dashboard publication. Check Actions for progress instead of dispatching again.
 
-**Ready:** your dashboard opens. Find the repository in **Overview**, open
-**Runs**, and follow a run to its evidence. Costs and outcomes appear where available;
+**Ready:** your dashboard opens. From **Overview**, open **Runs** and inspect evidence.
+Costs and outcomes appear where available;
 missing evidence is not proof of zero cost or success.
 
 **No Agentic Workflow history yet?** An empty dashboard is expected. CAO monitors
-GitHub Agentic Workflows, not every ordinary Actions job. No new run is required.
-Preview the [sample dashboard](https://githubnext.github.io/gh-cao/cao/), or return
-after Activity collects new runs.
+GitHub Agentic Workflows, not every ordinary Actions job.
+Preview the [sample dashboard](https://githubnext.github.io/gh-cao/cao/).
 
 ## Optional: add automation later
 
 Monitoring is enough. For automation, [derive the simplest suitable structure](operation-patterns.md)
 from your outcome and scope.
 
-Try the **[Daily Repo Status quickstart](setup/quickstart.md)** for your first optional
-automation: one bounded report in the control repository, without repeating setup.
-Other choices include a [Direct operation](authority-envelopes.md) for supplied
-targets, a [Standalone fleet workflow](configuration.md#standalone-agentic-workflows)
-for bounded inventory selection, a [campaign](https://githubnext.github.io/gh-cao/catalog/) for independent
-workers, or ordinary GitHub Actions for deterministic work and approvals.
+For optional automation, try the **[Daily Repo Status quickstart](setup/quickstart.md)**:
+one bounded control-repository report.
+Other choices: [Direct operation](authority-envelopes.md) for supplied targets,
+[Standalone fleet workflow](configuration.md#standalone-agentic-workflows) for fleets,
+[campaign](https://githubnext.github.io/gh-cao/catalog/) for independent workers,
+or ordinary GitHub Actions for deterministic work.
 
 None is enrolled, enabled or run by setup. Installation is not execution:
 review and commit workflows and policy together before enabling them. Start in
