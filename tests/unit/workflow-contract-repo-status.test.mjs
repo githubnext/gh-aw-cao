@@ -250,12 +250,15 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   }
   assert.match(guide, /## Continue learning/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
-  assert.match(guide, /gh aw add https:\/\/github\.com\/githubnext\/gh-cao\/blob\/main\/\.github\/workflows\/repo-status\.md/);
+  assert.match(guide, /gh cao add repo-status/);
+  assert.match(guide, /No manual registration is needed/);
   assert.match(guide, /control-plane\.workflows/);
   assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
   assert.match(guide, /manual-only/);
   const registration = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(guide)[1]);
-  assert.deepEqual(registration, { "repo-status": {} });
+  assert.deepEqual(registration, {
+    "repo-status": { mode: "review", "max-mode": "review", "max-repositories": 1 },
+  });
   const resolved = effectivePolicy({
     "control-plane": {
       scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/control", "acme/target"] },
@@ -270,7 +273,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.equal(resolved.safe_output_mode, "review");
   assert.equal(resolved.max_repositories, 1);
   assert.equal(resolved.rollout_percent, 100);
-  assert.match(guide, /unchanged `control-plane\.defaults`/);
+  assert.match(guide, /even\nwhen global defaults are live/);
   assert.match(guide, /Registered workflows are enabled/);
   assert.doesNotMatch(guide, /Once reviewed, change only|policy capped at review/);
   assert.match(guide, /--raw-field safe_output_mode="review"/);

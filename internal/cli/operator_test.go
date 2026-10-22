@@ -47,7 +47,7 @@ func TestOperatorCommandInventory(t *testing.T) {
 	}
 	slices.Sort(names)
 	want := []string{
-		"admission", "campaigns", "computation", "deploy", "doctor", "download", "evidence", "gh", "init",
+		"add", "admission", "campaigns", "computation", "deploy", "doctor", "download", "evidence", "gh", "init",
 		"mcp", "pages", "prompt", "queries", "query", "query-info",
 		"repos", "setup", "update", "upgrade-gh-aw", "value", "version",
 	}
@@ -121,7 +121,6 @@ func TestActionsValidationIsNotAnOperatorCommand(t *testing.T) {
 func TestCampaignControlsAreNotRootCommands(t *testing.T) {
 	for _, args := range [][]string{
 		{"mode", "preview", "one"}, {"enable", "one"}, {"disable", "one"},
-		{"add", "githubnext/gh-cao/demo"},
 	} {
 		t.Run(args[0], func(t *testing.T) {
 			root, stdout, stderr := testCommand(t, nil, nil)
@@ -233,7 +232,7 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"campaigns", "mode", "debug", "one"}, {"campaigns", "enable", "../one"},
 		{"setup-auth"}, {"gh"}, {"computation"}, {"add"}, {"add", "--repository"},
 		{"add", "--repository", "owner/*"}, {"add", "--repository", "owner/repo", "extra"},
-		{"add", "githubnext/gh-cao/demo"}, {"add", "githubnext/gh-cao/demo", "--force"},
+		{"add", "githubnext/gh-cao"}, {"add", "githubnext/gh-cao", "--force"},
 		{"campaigns", "add"}, {"campaigns", "add", "--repository", "owner/repo"},
 		{"repos"}, {"repos", "unknown"}, {"repos", "add"}, {"repos", "add", "owner/*"},
 		{"repos", "add", "owner/repo", "extra"}, {"repos", "add", "--repository", "owner/repo"},

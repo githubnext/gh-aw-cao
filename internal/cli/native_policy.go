@@ -255,6 +255,13 @@ func nativeValidatePolicy(document map[string]any) error {
 	for key, rule := range defaults {
 		campaign[key] = rule
 	}
+	standalone := map[string]nativePolicyRule{
+		"enabled": nativePolicyBool, "max-mode": mode,
+		"targets": nativeMapping(repositoryPattern, nativePolicyObject(map[string]nativePolicyRule{"mode": mode}, "mode")),
+	}
+	for key, rule := range defaults {
+		standalone[key] = rule
+	}
 	control := nativePolicyObject(map[string]nativePolicyRule{
 		"scope": nativePolicyObject(map[string]nativePolicyRule{
 			"allowed-owners":       nativePolicyStrings(nativeOwner, 0, math.MaxInt),
@@ -269,6 +276,7 @@ func nativeValidatePolicy(document map[string]any) error {
 		}),
 		"web":      nativePolicyObject(map[string]nativePolicyRule{"experimental": nativePolicyBool, "favicon": nativeValidateFavicon, "host": nativeValidateHost}),
 		"defaults": nativePolicyObject(defaults), "campaigns": nativeMapping(slugPattern, nativePolicyObject(campaign)),
+		"workflows": nativeMapping(slugPattern, nativePolicyObject(standalone)),
 		"operations": nativeMapping(slugPattern, nativePolicyObject(map[string]nativePolicyRule{
 			"enabled": nativePolicyBool, "mode": mode, "max-mode": mode,
 			"max-repositories": nativeInteger(1, 1000),
@@ -355,6 +363,19 @@ func nativeValidatePolicy(document map[string]any) error {
 			}
 			workflows[workflow] = true
 			workflowBindings[workflow] = true
+		}
+	}
+	standaloneWorkflows, _ := c["workflows"].(map[string]any)
+	for name, value := range standaloneWorkflows {
+		if workflowBindings[name] {
+			return fmt.Errorf("standalone workflow identity %s conflicts with an existing declaration", name)
+		}
+		workflowBindings[name] = true
+		targets, _ := value.(map[string]any)["targets"].(map[string]any)
+		for repository := range targets {
+			if err := withinScope(repository, false); err != nil {
+				return err
+			}
 		}
 	}
 	operations, _ := c["operations"].(map[string]any)

@@ -48,36 +48,47 @@ follow the written steps below.
 From your control repository's checkout, install the CAO Repo Status workflow:
 
 ```bash
-gh aw add https://github.com/githubnext/gh-cao/blob/main/.github/workflows/repo-status.md
+gh cao add repo-status
 ```
 
 This installs the CAO-adapted workflow, not the unmodified upstream workflow.
-It reuses the shared runtime installed by CAO setup. To pin a reviewed revision,
-replace `main` in the URL with its full commit SHA. Installation does not
-execute the workflow or authorize it in CAO.
+It reuses the shared runtime installed by CAO setup and delegates installation
+and compilation to `gh aw add`. To pin a reviewed revision, use
+`gh cao add repo-status@FULL_COMMIT_SHA`. The explicit source is
+`githubnext/gh-cao/.github/workflows/repo-status.md`, not
+`githubnext/gh-cao/daily-repo-status`: gh-aw's short source form searches
+`workflows/`, whereas CAO maintains this workflow under `.github/workflows/`.
+Use a released extension containing `add`; upgrade with
+`gh extension upgrade gh-cao` if the command is unavailable.
 
-### Register the workflow
+### Automatic registration
 
-In `.github/workflows/cao.json`, preserve your existing policy and add this
-entry under **`control-plane.workflows`**, not `control-plane.campaigns`:
+After a successful install, CAO adds this entry in
+`.github/workflows/cao.json` under **`control-plane.workflows`**,
+not `control-plane.campaigns`. No manual registration is needed:
 
 ```json
 {
-  "repo-status": {}
+  "repo-status": {
+    "mode": "review",
+    "max-mode": "review",
+    "max-repositories": 1
+  }
 }
 ```
 
-Keep `control-plane.scope.allowed-owners` and `allowed-repositories` restricted
-to the exact control repository and target. Keep unrelated workflow and campaign
-settings unchanged.
+Existing registrations, scope, defaults and campaign settings are preserved.
+Failed installs do not register the workflow. Adding it again with `--force`
+refreshes installed files without resetting its policy, including an explicit
+disable. Keep `control-plane.scope.allowed-owners` and `allowed-repositories`
+restricted to the exact control repository and target.
 
-The empty entry registers the workflow with no extra policy settings. With
-unchanged `control-plane.defaults`, it inherits **review** mode, a
-**one-repository** limit, and **100%** rollout. Registered workflows are enabled
-unless explicitly disabled. If your global defaults differ, explicitly set this
-entry's `mode` to `review`, `max-repositories` to `1`, and `rollout-percent` to
-`100` for this walkthrough. See [configuration](../configuration.md#standalone-agentic-workflows)
-for optional overrides and mode ceilings.
+New registrations are capped at **review** mode and **one repository**, even
+when global defaults are live. Rollout still inherits your existing defaults
+(**100%** when unspecified). Registered workflows are enabled unless explicitly
+disabled; registration does not enroll targets or dispatch a run. See
+[configuration](../configuration.md#standalone-agentic-workflows) for optional
+overrides and mode ceilings.
 
 The workflow is deliberately **manual-only**. Each invocation must name one
 target; its read credential is scoped to that repository. CAO verifies that
@@ -86,6 +97,25 @@ the model runs. More enrolled repositories do not widen that credential or
 cause an invocation to discover or dispatch additional work.
 
 ### Review and publish
+
+In an interactive terminal, `add` offers a separate default-No **commit and push**
+confirmation with a change summary and full diff. It publishes only installation
+changes, and refuses automated publication if those files had pre-existing edits,
+the index is staged, or the checkout is not synchronized with the remote default
+branch. Unrelated dirty files are not staged. Declining leaves the installation
+local for your normal review process.
+
+After publication, a separate default-No **first run** confirmation is offered.
+Supply the target and required inputs; review the request before approving.
+Running can spend AI credits and create report outputs. The first-run helper
+requests review mode on the published branch, checks explicit scope and the
+branch's revision, and verifies the returned run matches the published commit.
+It does not wait for workflow execution: if the workflow is not yet available in
+Actions, it reports that instead of retrying dispatch. The workflow's normal
+CAO admission checks still apply.
+
+Noninteractive/CI invocations never publish or run. An unchanged repeated add
+does not prompt again. If you decline either step, use the manual steps below.
 
 ```bash
 gh aw compile .github/workflows/repo-status.md --schedule-seed githubnext/gh-cao
@@ -99,7 +129,9 @@ together. Confirm there are no secrets, placeholders or extra targets in
 policy. Commit using your normal review process and publish to the control
 repository's default branch. Check **CAO validation** in Actions.
 
-Publishing this manual-only workflow does not start a run or a schedule.
+Publishing this manual-only workflow does not start a run or a schedule unless
+you separately approve its first run. If you approved that run, continue with
+Step 3 rather than dispatching it again.
 
 <span id="step-3---request-one-bounded-review"></span>
 
