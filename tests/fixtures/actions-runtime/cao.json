@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "gh-aw-version": "v0.92.6",
+  "control-plane": {
+    "scope": {
+      "allowed-owners": ["simulator"],
+      "allowed-repositories": ["simulator/repo-00001"]
+    },
+    "workflows": {
+      "cao": {
+        "enabled": true,
+        "mode": "review",
+        "max-repositories": 1,
+        "rollout-percent": 100
+      }
+    }
+  }
+}

@@ -24,6 +24,7 @@
     "dashboard:server:test": "go -C server test -p 1 ./...",
     "test:integration:dashboard-backfill": "bash scripts/test-dashboard-backfill.sh",
     "test:integration:actions-simulator": "go -C server test -race ./internal/simulator ./internal/admission ./internal/webhookgateway ./cmd/cao-webhook-gateway -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' -count=1 -timeout=2m -v",
+    "test:integration:actions-runtime": "node --test tests/integration/actions-runtime.test.mjs",
     "test:integration:bootstrap": "CAO_BOOTSTRAP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAOBootstrapIntegration|TestBootstrap)' -count=1 -timeout=10m -v",
     "test:integration:setup": "CAO_SETUP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAOSetupIntegration|TestSetup)' -count=1 -timeout=10m -v",
     "test:integration:actions-simulator-postgres": "CAO_ACTIONS_SIMULATOR_POSTGRES=1 go -C server test -race ./internal/admission ./internal/webhookgateway -run '^(TestLocalActionsPostgresIntegration|TestGitHubSimulator(Gateway|Discovery)Postgres)$' -count=1 -timeout=2m -v",
