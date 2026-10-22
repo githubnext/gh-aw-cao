@@ -1101,8 +1101,16 @@ Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
 `node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`.
 There is no shell launcher.
-Internal Node implementations remain available for Actions and parity tests,
-not as an alternative operator surface.
+Node `cao` owns the Actions runtime, `gh cao` owns the operator interface, and
+`cao-dashboard` owns the server. Node onboarding and lifecycle implementations
+and exports are removed: `init`, `setup`, `setup-auth`, campaign `add`, `mode`,
+`enable`, `disable`, `update`, and `upgrade-gh-aw` fail with native replacement
+guidance before option parsing, stdin, or legacy two-argument ingestion.
+There are no Node compatibility wrappers or native-to-Node bridges.
+Node evidence, query, discovery, computation, MCP and download APIs remain
+intentional agentic-workflow interfaces, not deprecated operator duplicates.
+`activity/authentication.mjs` retains only Actions credential profiles, naming,
+and bounded Activity collection planning, not credential provisioning.
 Root runtime upgrades remove only
 content-verified retired launchers; consumer-owned files, links, and directories
 are preserved. Verified older archives may contain the retired launcher but
@@ -1168,10 +1176,9 @@ Activity and Dashboard use the standard npm `files` contract in the dedicated
 `runtime/package.json`, rather than copying their development directories
 wholesale. The producer-side `npm run runtime:pack -- DESTINATION REVISION`
 command packs with lifecycle scripts disabled, bundles the YAML parser with
-esbuild and its dependency license notices, preserves the dependency-free setup
-prompt adapter as portable source, and seals an exact-revision inventory and
-checksums. Explicit developer source packing preserves the same adapter;
-installed setup never resolves it from a consumer's node_modules.
+esbuild and its dependency license notices, and seals an exact-revision inventory
+and checksums. Neither published nor developer-packed runtimes include retired
+Node onboarding or lifecycle administration modules.
 Filesystem-relative CLI modules, workers, and build inputs remain at their
 canonical paths rather than being forced into a single-file executable.
 The conventional `cao-runtime.yml` pipeline builds on main pushes. Read-only
@@ -1232,17 +1239,18 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `gh cao add` is the
+resources; they do not import the root catalog package. `gh cao campaigns add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
 
-`gh cao add WORKFLOW_OR_CAMPAIGN` is the single installation command. Bare catalog
+`gh cao add WORKFLOW` installs standalone workflows; `gh cao campaigns add CAMPAIGN`
+explicitly installs campaign packages. The existing native root campaign-add
+form remains a compatibility alias, not repository enrollment. Bare catalog
 workflow names, explicit `.md` sources, GitHub blob URLs and the published
 Daily Repo Status qualified shorthands select standalone installation; campaign
 coordinates and existing local directories select campaign installation with
-unchanged gh-aw options. There is no separate campaign-add subcommand or
-failure-driven fallback between installation kinds.
+unchanged gh-aw options. There is no failure-driven fallback between installation kinds.
 Standalone installation delegates installation and compilation to gh-aw, verifies the exact standalone
 identity and CAO admission gate, and registers new workflows in review mode without
 widening existing policy. Repository enrollment is separate: `gh cao repos add
@@ -1302,8 +1310,7 @@ no force, additional tags or submodule pushes are allowed. Failed pushes retain
 the local commit and report recovery guidance. Declining/cancelling publication,
 headless mode and CI leave configuration local. Successful push returns Actions
 and known dashboard links marked deployment pending, never dispatching, polling
-or waiting for collection/deployment. This native publication step is not part
-of the internal Node parity implementation.
+or waiting for collection/deployment.
 
 The root `install-gh-cao.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installing or upgrading anything. Repository creation and
@@ -1319,31 +1326,11 @@ installed campaigns fail closed. Headless repository creation still requires
 an exact `--create-repo OWNER/NAME`, and missing prerequisites fail rather than
 appearing successful. Streamed bootstrap children otherwise retain null stdin.
 
-The internal Node parity implementation `activity/setup.mjs` retains scope
-resolution and authentication orchestration for runtime tests, not a second
-operator entry point.
-`activity/setup-prompt.mjs` is a dependency-free presentation adapter built on
-Node terminal primitives. It provides keyboard prompts, inline validation,
-cancellation, and restrained elapsed progress; terminals without styling
-support, `NO_COLOR`, and `ACCESSIBLE` use plain numbered prompts without
-animation. The injectable prompt contract keeps authority decisions outside UI.
-Setup shows Repositories, Connections, and Review/apply, with default-No
-confirmation before Pages, credential, or policy changes. The Pages source is
-verified without changing visibility, with separate default-No consent to a
-public dashboard before credentials are changed. Declining or cancelling that
-consent removes only a newly created site where possible; an existing site is
-left in place with restriction/unpublication guidance. Policy is written atomically only
-after both succeed. Failures disclose possible partial external changes rather
-than claim rollback. Setup does not install campaigns or dispatch workflows;
-native commit/push requires the separate publication approval above.
-The CLI prints next actions by default and retains structured
-stdout with `setup --json`. Non-interactive setup, including setup in CI,
-requires a public control repository with empty campaigns and absent or exact
-self-only scope. It verifies public Actions-backed Pages, selects repository
-workflow-token mode, records self-only Activity scope, and writes policy last.
-Private/internal repositories and incompatible existing policy fail before
-Pages or authentication changes. A fresh bare installation remains scoped to
-the exact control repository with no campaigns before setup.
+Native setup owns terminal presentation, cancellation, explicit scope,
+public Pages consent and review/apply confirmation. `setup --json` retains
+structured stdout. Native setup/authentication and lifecycle tests exercise the
+supported operator paths without a local Node installation; Actions runtime
+tests separately enforce retired-command rejection and unchanged files.
 
 Campaign installation and execution are separate operator actions through
 `gh cao add` and `gh aw run`. Operators review and commit workflows

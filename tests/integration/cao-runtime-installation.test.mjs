@@ -7,7 +7,6 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { parse } from "yaml";
 import { extractCaoArchive, planCaoMaterialization, validateCaoRuntimeArtifact } from "../../.github/workflows/shared/materialize-cao.mjs";
-import { minimalPolicy } from "../../activity/cli/policy.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
@@ -64,7 +63,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     for (const workflow of ["cao-activity.yml", "cao-dashboard.yml", "cao-validate.yml"]) {
       cpSync(path.join(catalog, ".github/workflows", workflow), path.join(installed, ".github/workflows", workflow));
     }
-    writeFileSync(path.join(installed, ".github/workflows/cao.json"), JSON.stringify(minimalPolicy(manifest["min-version"], "example/control")));
+    writeFileSync(path.join(installed, ".github/workflows/cao.json"), JSON.stringify({version: 1, "gh-aw-version": manifest["min-version"], "control-plane": {scope: {"allowed-owners": ["example"], "allowed-repositories": ["example/control"]}, campaigns: {}}}));
     run("git", ["init", "--quiet"], installed);
     run("git", ["add", ".github", "activity", "dashboard"], installed);
     run("git", ["diff", "--cached", "--check"], installed);
@@ -82,16 +81,20 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     assert.doesNotMatch(help, /cao add --repository/);
     assert.equal(existsSync(path.join(checkout, "activity/cli/repositories.mjs")), false);
     for (const arguments_ of [
-      ["--repository", "owner/repo"],
-      ["--repository=owner/repo"],
-      ["catalog/repo/demo", "--repository", "owner/repo"],
+      ...["init", "setup", "setup-auth", "add", "mode", "enable", "disable", "update", "upgrade-gh-aw"]
+        .flatMap(command => [[command, "must-not-exist.sqlite"], [command, "--help"]]),
+      ["add", "--repository", "owner/repo"],
+      ["add", "--repository=owner/repo"],
+      ["add", "catalog/repo/demo", "--repository", "owner/repo"],
+      ...["github-app", "enterprise-app", "token"].map(profile => ["setup-auth", profile, "--dry-run"]),
     ]) {
-      const result = spawnSync(process.execPath, ["activity/cao.mjs", "add", ...arguments_], {
-        cwd: checkout, encoding: "utf8", timeout: 30_000,
+      const result = spawnSync(process.execPath, ["activity/cao.mjs", ...arguments_], {
+        cwd: checkout, encoding: "utf8", timeout: 30_000, env: { ...process.env, PATH: "" },
       });
       assert.equal(result.status, 1, result.error?.message);
       assert.equal(result.stdout, "");
-      assert.equal(result.stderr, "Error: Repository enrollment requires gh cao repos add OWNER/REPO; Node cao add --repository is no longer supported.\n");
+      assert.ok(result.stderr.startsWith(`Error: Node cao ${arguments_[0]} has been retired; use gh cao `));
+      assert.equal(existsSync(path.join(checkout, "must-not-exist.sqlite")), false);
     }
     run("git", ["diff", "--exit-code"], checkout);
     assert.match(help, /cao repair-database\b/);
@@ -116,7 +119,7 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
       "--private-key-out", path.join(checkout, "must-not-exist.pem"),
     ], { cwd: checkout, encoding: "utf8", env: { ...process.env, PATH: "" } });
     assert.equal(retiredAuth.status, 1, retiredAuth.stderr);
-    assert.match(retiredAuth.stderr, /Node setup-auth hosted-cli has been retired; use gh cao setup auth hosted-cli/);
+    assert.match(retiredAuth.stderr, /Node cao setup-auth has been retired; use gh cao setup auth/);
     assert.equal(existsSync(path.join(checkout, "must-not-exist.pem")), false);
     assert.doesNotMatch(help, /cao setup-auth hosted-cli/);
     assert.equal(existsSync(path.join(checkout, ".github/workflows/shared/setup-hosted-cli-app.mjs")), false);

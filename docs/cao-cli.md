@@ -15,8 +15,11 @@ using the CLI should follow the
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
-Internal Node implementations remain for Actions and parity tests, not as an
-alternative operator surface. Run policy commands from the control repository root:
+Node `cao` owns the Actions runtime; `gh cao` owns the operator interface and
+`cao-dashboard` owns the server. Onboarding and lifecycle administration run
+only in Go, not in Node wrappers. Node evidence, query, discovery, computation,
+MCP and download commands remain supported agentic-workflow APIs.
+Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
@@ -210,7 +213,7 @@ to invoke it as `gh cao`.
 | --- | --- | --- |
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Standalone workflow installation | `add WORKFLOW [--force] [--engine ENGINE]` | gh-aw installs and compiles; CAO registers the standalone workflow in policy. Interactive publication and first run require separate default-No approvals. |
-| Campaign installation | `add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
+| Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
 | Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|hosted-cli\|token` | Native Go, preserving separate read/write and hosted-executor credentials and explicit repository scope. |
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
@@ -242,7 +245,7 @@ gh cao setup auth enterprise-app --help
 gh cao setup auth hosted-cli --help
 gh cao setup auth token --help
 gh cao add daily-repo-status
-gh cao add githubnext/gh-cao/dependabot
+gh cao campaigns add githubnext/gh-cao/dependabot
 gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
 gh cao campaigns enable dependabot
@@ -254,9 +257,10 @@ gh cao query campaign-runs --param campaign=dependabot
 
 All help works offline, including `gh cao setup --help` and
 `gh cao campaigns --help`. Campaign mode and enablement controls are available
-under `campaigns`; installation uses the root `add` command.
+under `campaigns`, including explicit `gh cao campaigns add CAMPAIGN` installation.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; root-level `add`
-installs standalone workflows or campaign packages, not repositories.
+installs standalone workflows or campaign packages through the existing native
+compatibility form, not repositories.
 Authentication is grouped under `gh cao setup auth`; there is no root-level
 `gh cao setup-auth` command. Run `gh cao setup` without a subcommand for guided
 control-plane setup, or configure credentials independently with
@@ -304,24 +308,50 @@ Keep it separate from dashboard login and Actions read/write credentials.
 Setup does not change policy, Actions secrets, authentication mode, or enable
 hosted execution. The retired Node profile fails before any side effects and
 directs operators to `gh cao setup auth hosted-cli`; it does not wrap Go.
-The runtime JSON result for authentication retains `command: "setup-auth"`.
+The native JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. Campaign installation through
-`add` and package updates through `update` retain gh-aw option passthrough.
+`campaigns add` and package updates through `update` retain gh-aw option passthrough.
 JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and command exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
 
-### `gh cao add WORKFLOW_OR_CAMPAIGN`
+### Retired Node operator commands
+
+The following Node commands are removed, including their administration modules
+and JavaScript exports. They exit nonzero with native replacement guidance
+before reading stdin, parsing options, opening a database, or changing files or
+GitHub settings. Even two-argument calls cannot enter legacy ingestion.
+
+| Retired `node activity/cao.mjs` command | Native replacement |
+| --- | --- |
+| `init` | `gh cao init` |
+| `setup` | `gh cao setup` |
+| `setup-auth PROFILE` | `gh cao setup auth PROFILE` (`github-app`, `enterprise-app`, `token`, `hosted-cli`) |
+| `add CAMPAIGN` | `gh cao campaigns add CAMPAIGN` |
+| `mode MODE CAMPAIGN...` | `gh cao campaigns mode MODE CAMPAIGN...` |
+| `enable CAMPAIGN...` | `gh cao campaigns enable CAMPAIGN...` |
+| `disable CAMPAIGN...` | `gh cao campaigns disable CAMPAIGN...` |
+| `update [REF] [OPTIONS...]` | `gh cao update [REF] [OPTIONS...]` |
+| `upgrade-gh-aw VERSION` | `gh cao upgrade-gh-aw VERSION` |
+
+Repository enrollment remains `gh cao repos add OWNER/REPO`, not campaign or
+standalone workflow installation. No native operator command invokes Node as a
+bridge. This consolidation does not activate workflows, widen scope, or change
+review-mode defaults; review and publish policy changes separately.
+
+### `gh cao add WORKFLOW` and `gh cao campaigns add CAMPAIGN`
 
 `gh cao add` is the first-class native command for installing and registering
-a standalone CAO workflow or campaign package. Both use gh-aw for installation;
+a standalone CAO workflow. Use `gh cao campaigns add` for a campaign package.
+The existing native `gh cao add CAMPAIGN` form remains supported as an alias.
+Both use gh-aw for installation;
 CAO verifies and registers standalone workflows or materializes and merges
 declared campaign workers without widening policy.
 
 | Operation | Command |
 | --- | --- |
 | Install one standalone workflow | `gh cao add WORKFLOW [--force] [--engine ENGINE]` |
-| Install a campaign package | `gh cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]` |
+| Install a campaign package | `gh cao campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` |
 | Enroll one exact repository | `gh cao repos add OWNER/REPO` |
 
 ```bash
@@ -330,8 +360,8 @@ gh cao add daily-repo-status@FULL_COMMIT_SHA
 gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
 gh cao add https://github.com/githubnext/gh-cao/blob/main/.github/workflows/daily-repo-status.md
 gh cao add ./my-report.md --force
-gh cao add githubnext/gh-cao/dependabot@FULL_COMMIT_SHA
-gh cao add ./dependabot --force
+gh cao campaigns add githubnext/gh-cao/dependabot@FULL_COMMIT_SHA
+gh cao campaigns add ./dependabot --force
 ```
 
 Bare catalog workflow names resolve to CAO's
@@ -518,7 +548,7 @@ gh aw run dependabot --ref main \
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
 | `gh cao setup auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
 | `gh cao setup auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
-| `gh cao add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
+| `gh cao campaigns add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `gh cao repos add OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |
 | `gh cao deploy azure --plan --config FILE --template FILE --out FILE` | Review a fresh Azure Functions deployment without writing to Azure; `--apply --plan-file FILE` then repeats preflight and refuses change-set drift. See [Azure deployment](deployment-azure.md#native-fresh-deployment-command). |
 | `gh cao update` | Upgrade gh-aw when required, update installed campaigns, and refresh worker declarations while preserving operator-owned settings. |

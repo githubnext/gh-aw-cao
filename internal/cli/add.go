@@ -30,6 +30,60 @@ func repositoryCommands(gh ghExecutor) *cobra.Command {
 	return repos
 }
 
+func campaignAddCommand(gh ghExecutor) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:                "add CAMPAIGN [GH_AW_OPTIONS...]",
+		Short:              "Install a campaign without widening rollout policy",
+		DisableFlagParsing: true,
+		Long: `Install a catalog campaign by name, OWNER/REPO/PATH[@REF], or local directory.
+
+Catalog names resolve to githubnext/gh-cao/CAMPAIGN. Options are passed unchanged
+to gh aw add. CAO materializes the exact installed revision and merges declared
+workers while preserving existing scope, modes, targets, and worker controls.
+Installation never commits, pushes, enables workflows, or runs work.
+Use gh cao add WORKFLOW for standalone workflows; use gh cao setup for the root runtime.`,
+		Example: `  gh cao campaigns add dependabot
+  gh cao campaigns add dependabot@v1.2.3 --force
+  gh cao campaigns add githubnext/gh-cao/dependabot@main
+  gh cao campaigns add ./dependabot --engine copilot`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, arg := range args {
+				if arg == "--" {
+					break
+				}
+				if arg == "--help" || arg == "-h" {
+					return cmd.Help()
+				}
+			}
+			if len(args) == 0 || args[0] == "" || strings.HasPrefix(args[0], "-") {
+				return errors.New("campaigns add requires a campaign")
+			}
+			spec := args[0]
+			source, ref, hasRef := strings.Cut(spec, "@")
+			if hasRef && ref == "" {
+				return errors.New("campaign source must include a nonempty revision after @")
+			}
+			if info, err := os.Stat(spec); errors.Is(err, os.ErrNotExist) {
+				if slugPattern.MatchString(source) {
+					spec = catalogRepository + "/" + spec
+				} else if filepath.IsAbs(source) || strings.HasPrefix(source, ".") {
+					return fmt.Errorf("campaign directory does not exist: %s", spec)
+				}
+			} else if err != nil {
+				return err
+			} else if !info.IsDir() {
+				return errors.New("campaigns add requires a campaign directory, not a workflow file")
+			}
+			result, err := installCampaign(cmd.Context(), gh, spec, args[1:])
+			if err != nil {
+				return err
+			}
+			return printJSON(cmd, result)
+		},
+	}
+	return cmd
+}
+
 func addSourceIsCampaign(input string) (bool, error) {
 	if info, err := os.Stat(input); err == nil {
 		return info.IsDir(), nil

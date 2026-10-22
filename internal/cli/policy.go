@@ -39,9 +39,10 @@ func addPolicyCommands(root *cobra.Command, gh ghExecutor) {
 	campaigns := &cobra.Command{
 		Use: "campaigns", Short: "Control campaign policy modes and workflows", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("campaigns requires mode, enable, or disable; install with gh cao add")
+			return fmt.Errorf("campaigns requires add, mode, enable, or disable")
 		},
 	}
+	campaigns.AddCommand(campaignAddCommand(gh))
 	campaigns.AddCommand(&cobra.Command{
 		Use: "mode (live|preview) CAMPAIGN...", Short: "Set campaign policy mode without widening repository scope", Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

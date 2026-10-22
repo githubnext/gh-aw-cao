@@ -12,7 +12,6 @@ import {
   verifyCaoRuntime,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
-import { setupTerminalFixture, walkSetupTerminal } from "../helpers/setup-terminal.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
 const revision = "1".repeat(40);
@@ -101,7 +100,16 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.equal(metadata.revision, revision);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.js"]);
   assert.ok(metadata.files["dashboard/site/src/vendor/yaml.LICENSE"]);
-  assert.ok(metadata.files["activity/setup-prompt.mjs"]);
+  assert.equal(metadata.files["activity/setup-prompt.mjs"], undefined);
+  for (const file of [
+    "activity/setup.mjs", "activity/upgrade-gh-aw.mjs",
+    ...["authentication", "campaigns", "gh-aw", "packages", "policy"].map(name => `activity/cli/${name}.mjs`),
+    ...["init", "setup", "setup-auth", "add", "mode", "enable", "disable", "update", "upgrade-gh-aw"]
+      .map(name => `activity/commands/${name}.mjs`),
+  ]) {
+    assert.equal(metadata.files[file], undefined, file);
+    assert.equal(existsSync(path.join(root, file)), false, file);
+  }
   assert.ok(metadata.files["activity/jsonl.mjs"]);
   assert.ok(metadata.files["activity/collect-workflow-logs.mjs"]);
   assert.equal(metadata.files["activity/cli/repositories.mjs"], undefined);
@@ -126,11 +134,6 @@ test("producer artifact binds its production inventory to an immutable revision"
   assert.equal(dashboardManifest.scripts.postinstall, "node scripts/prepare-terminal.mjs");
   assert.equal(dashboardLock.packages[""].dependencies["node-pty"], dashboardManifest.dependencies["node-pty"]);
   assert.ok(dashboardLock.packages["node_modules/node-pty"].hasInstallScript);
-  const prompt = readFileSync(path.join(root, "activity/setup-prompt.mjs"), "utf8");
-  const rootManifest = JSON.parse(readFileSync(path.join(catalog, "package.json"), "utf8"));
-  assert.equal(rootManifest.devDependencies?.["@clack/prompts"], undefined);
-  assert.match(prompt, /from 'node:readline'/);
-  assert.doesNotMatch(prompt, /Bundled dependency:|@clack\/|fast-string-width|fast-wrap-ansi|sisteransi/);
   assert.equal(existsSync(path.join(root, "node_modules")), false);
   assert.match(readFileSync(path.join(root, "dashboard/site/src/validator-dashboard.js"), "utf8"), /from '\.\/vendor\/yaml\.js'/);
   assert.doesNotMatch(readFileSync(path.join(root, "dashboard/site/src/environment-defaults.js"), "utf8"), /from ['"].*yaml/);
@@ -220,20 +223,6 @@ test("verified older inventories may include a retired launcher without making i
   assert.equal(plan.resources.includes("cao.sh"), false);
   writeFileSync(filename, "tampered");
   assert.throws(() => validateCaoRuntimeArtifact(root, revision), /checksum mismatch: cao\.sh/);
-});
-
-test("the prebuilt archive runs keyboard setup without consumer npm dependencies", { skip: process.platform === "win32" }, async (t) => {
-  const root = unpack(t);
-  const fixture = setupTerminalFixture(t, path.join(root, "activity/setup.mjs"));
-  const result = await walkSetupTerminal(fixture, [
-    ["Repositories CAO should read", "\r"],
-    ["Apply this setup?", "\r"],
-  ]);
-  assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /"cancelled":true/);
-  assert.doesNotMatch(result.stdout, /How should CAO authenticate\?/);
-  assert.deepEqual(fixture.saved(), fixture.policy);
-  assert.ok(!fixture.calls().some(([command]) => command === "connect" || command === "api"));
 });
 
 test("artifact verification rejects altered, missing and unowned runtime files", (t) => {

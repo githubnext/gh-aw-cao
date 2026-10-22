@@ -47,9 +47,9 @@ below; do not build or install the extension when the runtime or cache is absent
 
 | Task | Route |
 | --- | --- |
-| Initialize or update a control repository | `gh cao init`, `add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
+| Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
 | Install and register one standalone workflow | `gh cao add WORKFLOW [--force] [--engine ENGINE]` |
-| Install a campaign package | `gh cao add CAMPAIGN` |
+| Install a campaign package | `gh cao campaigns add CAMPAIGN` |
 | Enroll one exact repository in review mode | `gh cao repos add OWNER/REPO` |
 | Download published Activity | `gh cao download [--url URL]` |
 | Audit source coverage | `node activity/cao.mjs audit-jsonl` |

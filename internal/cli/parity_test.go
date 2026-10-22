@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -45,8 +44,6 @@ func TestNativeOperatorOutputParity(t *testing.T) {
 	t.Setenv("NODE_NO_WARNINGS", "1")
 	directory := t.TempDir()
 	database := filepath.Join(directory, "snapshot.sqlite")
-	policy := filepath.Join(directory, "cao.json")
-	writeTestFile(t, policy, `{"version":1,"control-plane":{"scope":{"allowed-repositories":["owner/repo"]}}}`)
 	for _, tt := range []struct {
 		args, legacy []string
 		input        string
@@ -60,12 +57,6 @@ func TestNativeOperatorOutputParity(t *testing.T) {
 		{args: []string{"query", "--database", database, "--collection", "runs", "--where", "conclusion=failure", "--limit", "3"}},
 		{args: []string{"query", "--database", database, "--stdin"}, input: `{"name":"empty-runs","from":"runs","limit":3}`},
 		{args: []string{"gh", "runs", "--database", database, "-R", "owner/repo", "-L", "3"}},
-		{args: []string{"setup", "auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"},
-			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
-		{args: []string{"setup", "auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"},
-			legacy: []string{"setup-auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "read", "--write-client-id", "write", "--policy", policy, "--write-repository", "owner/target", "--dry-run"}},
-		{args: []string{"setup", "auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"},
-			legacy: []string{"setup-auth", "token", "--repo", "owner/repo", "--policy", policy, "--expires-in", "367", "--dry-run"}, code: 1},
 		{args: []string{"download", "--url", "file:///not-an-http-snapshot"}, code: 1},
 		{args: []string{"query-info", "not-a-real-query", "--json"}, code: 1},
 	} {
@@ -125,26 +116,9 @@ func TestNativeOperatorOutputParity(t *testing.T) {
 }
 
 func TestNativePolicyMatchesProductionContract(t *testing.T) {
-	node, repository := nodeRuntime(t)
 	t.Chdir(t.TempDir())
-	legacyPolicy := filepath.Join(t.TempDir(), "cao.json")
-	program := `
-const { initializeCaoPolicy } = await import(process.argv[1]);
-const result = await initializeCaoPolicy({
-  policyPath: process.argv[2],
-  execute(_command, args) {
-    return args[0] === "aw"
-      ? {status:0, stdout:"", stderr:"gh-aw v0.92.0"}
-      : {status:0, stdout:"Acme-Org/ops.tools\n", stderr:""};
-  }
-});
-process.stdout.write(JSON.stringify(result));
-`
-	if output, err := exec.Command(node, "--input-type=module", "-e", program,
-		filepath.Join(repository, "activity", "cli", "policy.mjs"), legacyPolicy).CombinedOutput(); err != nil {
-		t.Fatalf("production init: %v: %s", err, output)
-	}
-	root, _, _ := testCommand(t, func(_ context.Context, args ...string) (string, string, error) {
+	t.Setenv("PATH", "")
+	root, stdout, _ := testCommand(t, func(_ context.Context, args ...string) (string, string, error) {
 		if args[0] == "aw" {
 			return "", "gh-aw v0.92.0", nil
 		}
@@ -154,18 +128,26 @@ process.stdout.write(JSON.stringify(result));
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	read := func(path string) any {
-		content, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var value any
-		if err := json.Unmarshal(content, &value); err != nil {
-			t.Fatal(err)
-		}
-		return value
+	policy, err := readPolicy()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got, want := read(policyPath), read(legacyPolicy); !reflect.DeepEqual(got, want) {
-		t.Fatalf("native initial policy = %v, want production policy %v", got, want)
+	// Complete frozen initializeCaoPolicy result and policy contract.
+	const expected = `{"$schema":"https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json","version":1,"gh-aw-version":"v0.92.0","control-plane":{"scope":{"allowed-owners":["Acme-Org"],"allowed-repositories":["Acme-Org/ops.tools"]},"marketplace":{"registries":[{"id":"official","name":"Official CAO catalog","repository":"githubnext/gh-cao","ref":"main","auth":{"type":"none"}},{"id":"agentics","name":"Agentics workflows","repository":"githubnext/agentics","path":"workflows","format":"workflows","ref":"main","auth":{"type":"none"}}]},"campaigns":{}}}`
+	var want map[string]any
+	decoder := json.NewDecoder(strings.NewReader(expected))
+	decoder.UseNumber()
+	if err := decoder.Decode(&want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(policy, want) {
+		t.Fatalf("native initial policy = %v, want frozen policy %v", policy, want)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]any{"command": "init", "policy": policyPath, "gh-aw-version": "v0.92.0"}; !reflect.DeepEqual(result, want) {
+		t.Fatalf("init result = %v, want %v", result, want)
 	}
 }
