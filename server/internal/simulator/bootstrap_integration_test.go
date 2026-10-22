@@ -172,7 +172,8 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 		"GET /repos/platform/control", "POST /graphql",
 		"GET /repos/githubnext/gh-cao/releases", "GET /repos/githubnext/gh-cao/releases/tags/" + release,
 		"GET /githubnext/gh-cao/releases/download/" + release + "/checksums.txt",
-		"POST /repos/platform/control/pages", "POST /repos/platform/control/actions/variables",
+		"POST /repos/platform/control/pages", "GET /repos/platform/control/actions/variables",
+		"GET /repos/platform/control/actions/organization-variables",
 		"POST /platform/control.git/git-receive-pack", "POST /platform/control.git/git-upload-pack",
 	} {
 		if !slices.Contains(api.Requests, required) {
@@ -181,6 +182,10 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	}
 	count := 0
 	for _, request := range api.Requests {
+		if request == "POST /repos/platform/control/actions/variables" ||
+			strings.HasPrefix(request, "PATCH /repos/platform/control/actions/variables/") {
+			t.Errorf("fresh setup unnecessarily configured authentication: %s", request)
+		}
 		if request == "POST /repos/platform/control/pages" {
 			count++
 		}
@@ -283,7 +288,7 @@ func bootstrapAssertRepository(t *testing.T, api *BootstrapAPI, private, configu
 	}
 	if configured {
 		if repo.Pages["build_type"] != "workflow" || repo.Pages["public"] != true ||
-			repo.Variables["GH_AW_GITHUB_AUTH_MODE"] != "workflow-token" || len(repo.Variables) != 1 {
+			len(repo.Variables) != 0 {
 			t.Fatalf("unexpected monitoring configuration: Pages=%v variables=%v", repo.Pages, repo.Variables)
 		}
 	} else if len(repo.Variables) != 0 {

@@ -27,12 +27,13 @@ type BootstrapAPI struct {
 }
 
 type BootstrapRepository struct {
-	ID        int64
-	Owner     string
-	Name      string
-	Private   bool
-	Pages     map[string]any
-	Variables map[string]string
+	ID                    int64
+	Owner                 string
+	Name                  string
+	Private               bool
+	Pages                 map[string]any
+	Variables             map[string]string
+	OrganizationVariables map[string]string
 }
 
 func NewBootstrapAPI(release string, assets map[string][]byte) *BootstrapAPI {
@@ -192,16 +193,21 @@ func (a *BootstrapAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if len(parts) >= 5 && parts[3] == "actions" && parts[4] == "variables" {
+		if len(parts) >= 5 && parts[3] == "actions" && (parts[4] == "variables" ||
+			parts[4] == "organization-variables" && len(parts) == 5 && r.Method == http.MethodGet) {
 			if len(parts) == 5 && r.Method == http.MethodGet {
-				names := make([]string, 0, len(repo.Variables))
-				for name := range repo.Variables {
+				source := repo.Variables
+				if parts[4] == "organization-variables" {
+					source = repo.OrganizationVariables
+				}
+				names := make([]string, 0, len(source))
+				for name := range source {
 					names = append(names, name)
 				}
 				sort.Strings(names)
 				variables := make([]map[string]string, 0, len(names))
 				for _, name := range names {
-					variables = append(variables, map[string]string{"name": name, "value": repo.Variables[name]})
+					variables = append(variables, map[string]string{"name": name, "value": source[name]})
 				}
 				write(http.StatusOK, map[string]any{"total_count": len(variables), "variables": variables})
 				return

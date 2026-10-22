@@ -109,6 +109,26 @@ test('discovery fails closed without exposing upstream errors or invoking local 
   }
 });
 
+test('public-only log collection permits a private control repository but not private remote targets', async (t) => {
+  const f = await fixture(t, {
+    metadata: { full_name: 'octo/api', private: true, visibility: 'private' },
+  });
+  await execute(process.execPath, f.args, {
+    env: { ...process.env, REPORT_PUBLIC_ONLY: 'true', GITHUB_REPOSITORY: 'octo/api' },
+  });
+  assert.equal((await f.calls()).length, 3);
+  const [, binary, ...args] = f.args;
+  await assert.rejects(collectWorkflowLogs(binary, args, {
+    publicOnly: true, controlRepository: 'octo/control',
+  }), /verified public visibility/);
+  const renamed = await fixture(t, {
+    metadata: { full_name: 'octo/moved', private: true, visibility: 'private' },
+  });
+  await assert.rejects(collectWorkflowLogs(renamed.args[1], renamed.args.slice(2), {
+    publicOnly: true, controlRepository: 'octo/api',
+  }), /verified control repository visibility and unchanged identity/);
+});
+
 test('collection preserves quota-exhausted statuses from discovery and gh-aw', async (t) => {
   for (const options of [
     { discoveryStatus: 1, stderr: 'HTTP 403: API rate limit exceeded for user ID PRIVATE_ID' },

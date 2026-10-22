@@ -239,6 +239,10 @@ if [[ "$*" == "variable set GH_AW_GITHUB_AUTH_MODE --repo \${FAKE_CONTROL_REPOSI
   echo "setup-workflow-token" >> "$FAKE_COMMAND_LOG"
   exit 0
 fi
+if [[ "\${1:-}" == api && ( "\${2:-}" == repos/"$FAKE_CONTROL_REPOSITORY"/actions/variables\\?* ||
+  "\${2:-}" == repos/"$FAKE_CONTROL_REPOSITORY"/actions/organization-variables\\?* ) ]]; then
+  exit 0
+fi
 if [[ "\${1:-} \${2:-}" == "aw version" ]]; then
   [[ -f "$FAKE_GH_AW_INSTALLED" ]] || exit 1
   echo "gh aw version $(cat "$FAKE_GH_AW_INSTALLED")" >&2
@@ -1131,7 +1135,7 @@ test("install.sh rejects an unparseable GitHub CLI version before sign-in or wri
 test("streamed new-repository installation enters bundled setup without consuming script stdin", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   let step = 0;
-  const steps = ["Repositories CAO should read", "How should CAO authenticate?", "Apply this setup?"];
+  const steps = ["Repositories CAO should read", "Apply this setup?"];
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo ${repository} --setup`], {
     cwd: consumer, env: { ...env, TERM: "xterm-256color", FORCE_COLOR: "0", CI: "" }, timeout,
@@ -1143,7 +1147,7 @@ test("streamed new-repository installation enters bundled setup without consumin
     },
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.equal(step, 3);
+  assert.equal(step, 2);
   assert.match(result.stdout, /Setup cancelled/);
   assert.match(result.stdout, /Open the new checkout: cd control/);
   assert.doesNotMatch(result.stdout, /"command": "setup"/);
@@ -1196,7 +1200,7 @@ for (const [name, environment, arguments_] of [
     const installEnv = { ...env, ...environment, FAKE_CONTROL_REPOSITORY: repository };
     const result = await streamInstaller(consumer, installEnv, arguments_);
     const setup = arguments_.includes("--setup");
-    assert.equal(await log(), `${creating ? "create-private\n" : ""}add\n${setup ? "setup-workflow-token\n" : ""}`);
+    assert.equal(await log(), `${creating ? "create-private\n" : ""}add\n`);
     assert.match(result.stdout, /CAO installed and verified/);
     if (setup) {
       assert.match(result.stderr, /Non-interactive setup applied/);
@@ -1563,7 +1567,7 @@ test("install.sh in CI applies public defaults without prompting on an available
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /Non-interactive setup applied/);
-  assert.equal(await log(), "add\nsetup-workflow-token\n");
+  assert.equal(await log(), "add\n");
 });
 
 test("install.sh in CI fails an old gh-aw without reading the controlling terminal", { skip: process.platform === "win32" }, async (t) => {

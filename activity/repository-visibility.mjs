@@ -26,6 +26,18 @@ export function assertPublicRepository(metadata, repository) {
   }
 }
 
+export function assertMonitoringRepository(metadata, repository, controlRepository) {
+  if (repository.toLowerCase() !== controlRepository?.toLowerCase()) {
+    assertPublicRepository(metadata, repository);
+    return;
+  }
+  if (metadata?.full_name?.toLowerCase() !== repository.toLowerCase()
+    || !["public", "private", "internal"].includes(metadata?.visibility)
+    || metadata?.private !== (metadata.visibility !== "public")) {
+    throw new Error(`Monitoring requires verified control repository visibility and unchanged identity for ${repository}`);
+  }
+}
+
 async function ownerRepositories(paginate, owner) {
   try {
     return await paginate("GET /orgs/{org}/repos", {
@@ -67,9 +79,9 @@ export async function validateRepositoryVisibility({
     if (!Array.isArray(allowedRepositories) || allowedRepositories.length === 0) {
       throw new Error("Public-only Activity requires an exact nonempty repository scope");
     }
-    assertPublicRepository(control, controlRepository);
+    assertMonitoringRepository(control, controlRepository, controlRepository);
     for (const repository of new Set(allowedRepositories.map(repositoryName))) {
-      assertPublicRepository(await repositoryMetadata(request, repository), repository);
+      assertMonitoringRepository(await repositoryMetadata(request, repository), repository, controlRepository);
     }
     return;
   }
@@ -102,7 +114,9 @@ export async function main(actions = {}, args) {
   log.group`Validate repository visibility boundary`;
   try {
     await validateRepositoryVisibility({
-      controlRepository: process.env.ACTIVITY_VISIBILITY_REPOSITORY || process.env.GITHUB_REPOSITORY || "",
+      controlRepository: (settings.activity_public_only === true
+        ? process.env.GITHUB_REPOSITORY
+        : process.env.ACTIVITY_VISIBILITY_REPOSITORY || process.env.GITHUB_REPOSITORY) || "",
       allowedRepositories: settings.allowed_repositories || [],
       publicOnly: settings.activity_public_only === true,
       request: actions.github.request,

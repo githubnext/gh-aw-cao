@@ -13,6 +13,36 @@ function commandFailureMessage(result, fallback) {
   return (result.stderr || '').trim() || result.error?.message || fallback;
 }
 
+function selectWorkflowToken(repository, execute) {
+  for (const source of ['variables', 'organization-variables']) {
+    const result = execute('gh', [
+      'api', `repos/${repository}/actions/${source}?per_page=30`, '--paginate',
+      '--jq', '.variables[] | select(.name == "GH_AW_GITHUB_AUTH_MODE") | {value}',
+    ], { encoding: 'utf8' });
+    if (result.error || result.status !== 0) {
+      throw new Error(`Unable to inspect Actions authentication mode: ${commandFailureMessage(result, 'gh api failed')}`);
+    }
+    if (!result.stdout.trim()) continue;
+    let setting;
+    try {
+      setting = JSON.parse(result.stdout);
+    } catch {
+      throw new Error('Unable to verify the existing Actions authentication mode: invalid JSON');
+    }
+    if (!isMapping(setting) || typeof setting.value !== 'string') {
+      throw new Error('Unable to verify the existing Actions authentication mode');
+    }
+    if (setting.value === '' || setting.value === 'workflow-token') return;
+    const authentication = execute('gh', [
+      'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE', '--repo', repository, '--body', 'workflow-token',
+    ], { encoding: 'utf8' });
+    if (authentication.error || authentication.status !== 0) {
+      throw new Error(`Unable to select repository workflow-token authentication: ${commandFailureMessage(authentication, 'gh variable set failed')}`);
+    }
+    return;
+  }
+}
+
 function isMapping(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -351,14 +381,7 @@ async function setupNonInteractivePublicControl({
     }
 
     applyStage = 'workflow-token authentication';
-    const authentication = execute('gh', [
-      'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE',
-      '--repo', control.repository,
-      '--body', 'workflow-token',
-    ], { encoding: 'utf8' });
-    if (authentication.error || authentication.status !== 0) {
-      throw new Error(`Unable to select repository workflow-token authentication: ${commandFailureMessage(authentication, 'gh variable set failed')}`);
-    }
+    selectWorkflowToken(control.repository, execute);
 
     applyStage = 'policy';
     await writeJsonAtomically(path.resolve(policyPath), intendedPolicy);
@@ -552,8 +575,8 @@ export async function setupCaoControlPlane({
         hint: 'User-bound; separate credentials per owner',
       }];
     let profile = 'public-only';
-    if (uniqueInspected.every(({ visibility }) => visibility === 'public')) {
-      interactive.note('Public-only monitoring: Actions token; no App/PAT. Restricted evidence is partial.');
+    if (!hasNonPublicTarget && ['public', 'private', 'internal'].includes(control.visibility)) {
+      interactive.note('Monitoring the control repository and public targets: built-in Actions token; no App/PAT. Restricted evidence is partial.');
     } else {
       profile = await interactive.select('How should CAO authenticate?', choices);
       if (!choices.some((choice) => choice.value === profile)) {
@@ -609,7 +632,9 @@ export async function setupCaoControlPlane({
       `Authentication: ${profile}`,
       'Campaigns: none',
       'Dashboard Pages: GitHub Actions source; public visibility requires consent',
-      'Pages settings and credentials may be changed; no commit or push is made.',
+      profile === 'public-only'
+        ? 'Pages settings and the Actions authentication mode may be changed; no user credentials, commit or push.'
+        : 'Pages settings and credentials may be changed; no commit or push is made.',
     ].join('\n'), '3 / 3  Review and apply');
     if (!await interactive.confirm('Apply this setup?')) {
       interactive.cancel?.('Setup cancelled. Policy, credentials, and Pages settings are unchanged.');
@@ -632,15 +657,10 @@ export async function setupCaoControlPlane({
       }
     }
     applyStage = 'credentials';
-    interactive.step?.('Connecting read and review-output credentials');
+    interactive.step?.(profile === 'public-only' ? 'Checking Actions token defaults' : 'Connecting read and review-output credentials');
     let authentication;
     if (profile === 'public-only') {
-      const result = execute('gh', [
-        'variable', 'set', 'GH_AW_GITHUB_AUTH_MODE', '--repo', control.repository, '--body', 'workflow-token',
-      ], { encoding: 'utf8' });
-      if (result.error || result.status !== 0) {
-        throw new Error(`Unable to select workflow-token authentication: ${commandFailureMessage(result, 'gh variable set failed')}`);
-      }
+      selectWorkflowToken(control.repository, execute);
       authentication = { mode: 'workflow-token', repository: control.repository };
     } else {
       authentication = await setupAuthentication(

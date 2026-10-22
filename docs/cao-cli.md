@@ -118,10 +118,15 @@ Create or clone repositories explicitly with `gh repo create` or `gh repo clone`
 before setup. Setup never creates repositories, enrolls campaigns, or dispatches
 workflows. A failed or cancelled setup can leave prepared runtime files and
 already applied Pages or credential settings; inspect them before retrying.
+After approval, brief progress lines identify each setup step before it starts,
+including release download, workflow preparation, Pages, authentication, and
+policy saving. Progress goes to stderr, keeping `--json` stdout machine-readable.
 
 Interactive setup offers a separate **“Commit and push these CAO monitoring
-changes? [y/N]”** after configuration. It shows a file summary and policy diff,
-with a complete diff in a temporary file available while the prompt is open.
+changes? [y/N]”** after configuration. It shows a one-line change summary,
+with additions in green and deletions in red when terminal color is enabled.
+The complete diff is in a temporary file available while the prompt is open;
+file-by-file statistics and the policy patch are not printed inline.
 Review uses an isolated Git index and does not stage your files. Only the exact
 runtime/package files prepared by this setup and policy are eligible, never
 unrelated files, including files alongside the runtime.
@@ -137,6 +142,9 @@ the local commit with recovery guidance.
 
 Success reports Actions and known dashboard URLs as **deployment pending** and
 returns immediately: no workflow dispatch, polling, or deployment wait.
+Interactive color output separates the success message from the prompt, highlights
+the link labels, and underlines the URLs. Redirected, no-color, and accessible
+output stays plain.
 `--json` includes `publication.status` and, after a push, its commit, links, and
 `deploymentStatus: "pending"`. Declining or cancelling publication leaves
 configuration local. Unattended/CI setup never commits or pushes.
@@ -227,10 +235,14 @@ control-plane setup, or configure credentials independently with
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
 After wildcard expansion, guided setup skips authentication prompts when every
-repository (including the control repository) is confirmed public, using
-Actions' built-in token for public-only monitoring. Review and public Pages
-consent still require confirmation. Nonpublic or unknown visibility never
-qualifies; lookup failures stop setup. For authenticated operations, use
+remote target is confirmed public, using Actions' built-in token for public-only
+monitoring. The control repository itself may be private or internal: its own
+job token can read it without an App or PAT. Fresh setup leaves the authentication
+mode unset and stores no credentials. An existing conflicting repository or
+inherited organization mode receives an explicit `workflow-token` override.
+Review and public Pages
+consent still require confirmation. Nonpublic remote targets or unknown visibility
+never qualify; lookup failures stop setup. For authenticated operations, use
 `gh cao setup auth`. Its unattended monitoring shortcut is to repeat
 `--repository OWNER/REPO` or pass a quoted `OWNER/*` to snapshot
 currently public repositories. This public monitoring quickstart accepts a public Pages

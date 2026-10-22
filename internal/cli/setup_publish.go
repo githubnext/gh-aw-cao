@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -95,10 +96,42 @@ func setupPublishBlocked(cmd *cobra.Command, reason string) (map[string]any, err
 	return map[string]any{"status": "blocked", "reason": reason}, err
 }
 
+func setupPublishSummary(stat string, styled bool) string {
+	summary := strings.TrimSpace(stat)
+	if !styled {
+		return summary
+	}
+	return regexp.MustCompile(`\d+ (?:insertions?\(\+\)|deletions?\(-\))`).ReplaceAllStringFunc(summary, func(change string) string {
+		color := "\x1b[32m"
+		if strings.HasSuffix(change, "(-)") {
+			color = "\x1b[31m"
+		}
+		return color + change + "\x1b[0m"
+	})
+}
+
+func setupPublishOutput(publication map[string]any, styled bool) string {
+	message := "Monitoring configuration pushed. Deployment pending; setup is not waiting for Actions.\n"
+	link := "%s: %s\n"
+	if styled {
+		message = "\n\x1b[1;32mMonitoring configuration pushed.\x1b[0m Deployment pending; setup is not waiting for Actions.\n"
+		link = "\x1b[1;36m%s:\x1b[0m \x1b[4;34m%s\x1b[0m\n"
+	}
+	message += fmt.Sprintf(link, "Actions", publication["actionsURL"])
+	message += fmt.Sprintf(link, "Pages settings", publication["pagesSettingsURL"])
+	if dashboard, ok := publication["dashboardURL"].(string); ok {
+		message += fmt.Sprintf(link, "Dashboard (deployment pending)", dashboard)
+	}
+	return message
+}
+
 func setupPublish(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPrompt, repository, dashboard string, files []string) (result map[string]any, err error) {
 	result = map[string]any{"status": "not-requested"}
 	if prompt == nil || os.Getenv("CI") != "" {
 		return result, nil
+	}
+	if err := nativeSetupNote(cmd, "Preparing change summary...\n"); err != nil {
+		return nil, err
 	}
 	staged, err := setupGit(cmd, "", "diff", "--cached", "--name-only", "-z")
 	if err != nil {
@@ -204,7 +237,7 @@ func setupPublish(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPrompt, r
 	if err != nil {
 		return nil, err
 	}
-	stat, err := setupGit(cmd, index, "diff", "--cached", "--stat")
+	stat, err := setupGit(cmd, index, "diff", "--cached", "--shortstat")
 	if err != nil {
 		return nil, err
 	}
@@ -216,11 +249,7 @@ func setupPublish(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPrompt, r
 	if err := os.WriteFile(review, []byte(diff), 0o600); err != nil {
 		return nil, err
 	}
-	policyDiff, err := setupGit(cmd, index, "diff", "--cached", "--no-ext-diff", "--no-textconv", "--", policyPath)
-	if err != nil {
-		return nil, err
-	}
-	if err := nativeSetupNote(cmd, "CAO changes for %s on %s:\n%s\nPolicy diff:\n%s\nFull diff (available until this prompt finishes): %s\nOnly these reviewed files will be committed. Pushing starts monitoring in Actions; setup will not wait for deployment.\n", repository, target.Branch, stat, policyDiff, review); err != nil {
+	if err := nativeSetupNote(cmd, "CAO changes for %s on %s:\n%s\nFull diff (available until this prompt finishes): %s\nPushing starts monitoring in Actions; setup will not wait for deployment.\n", repository, target.Branch, setupPublishSummary(stat, nativeSetupStyled(cmd)), review); err != nil {
 		return nil, err
 	}
 	approved, err := prompt.Confirm("Commit and push these CAO monitoring changes?", false)

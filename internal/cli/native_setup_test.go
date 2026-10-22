@@ -159,6 +159,11 @@ func TestNativeSetupNonInteractive(t *testing.T) {
 						return "", "HTTP 403", errors.New("denied")
 					}
 					return `{"build_type":"workflow","public":true,"html_url":"https://org.github.io/control"}`, "", nil
+				case strings.HasPrefix(call, "api repos/org/control/actions/"):
+					if failure == "mode" {
+						return `{"value":"app"}`, "", nil
+					}
+					return "", "", nil
 				case strings.HasPrefix(call, "variable set "):
 					if failure == "mode" {
 						return "", "denied", errors.New("denied")
@@ -194,7 +199,7 @@ func TestNativeSetupNonInteractive(t *testing.T) {
 				t.Fatal("Activity metadata was lost")
 			}
 			for _, call := range calls {
-				if strings.Contains(call, "workflow run") || strings.Contains(call, "secret") {
+				if strings.Contains(call, "workflow run") || strings.Contains(call, "secret") || strings.HasPrefix(call, "variable ") {
 					t.Fatalf("bounded setup unexpectedly dispatched work or changed secrets: %s", call)
 				}
 			}
@@ -226,6 +231,9 @@ func TestNativeSetupPublicMonitoring(t *testing.T) {
 					return `{"nameWithOwner":"other/public","visibility":"PUBLIC"}`, "", nil
 				case "api repos/org/control/pages":
 					return `{"build_type":"workflow","public":true}`, "", nil
+				case `api repos/org/control/actions/variables?per_page=30 --paginate --jq .variables[] | select(.name == "GH_AW_GITHUB_AUTH_MODE") | {value}`,
+					`api repos/org/control/actions/organization-variables?per_page=30 --paginate --jq .variables[] | select(.name == "GH_AW_GITHUB_AUTH_MODE") | {value}`:
+					return "", "", nil
 				case "variable set GH_AW_GITHUB_AUTH_MODE --repo org/control --body workflow-token":
 					mutations = append(mutations, call)
 					return "", "", nil
@@ -350,7 +358,12 @@ func TestNativeSetupGuidedAuthenticationByVisibility(t *testing.T) {
 		{name: "public exact", scope: "org/target", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
 		{name: "public wildcard", scope: "org/*", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
 		{name: "public multiple owners", scope: "other/*", controlVisibility: "PUBLIC", targetVisibility: "PUBLIC"},
-		{name: "private control", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "PUBLIC", wantAuth: true},
+		{name: "private control only", scope: "org/control", controlVisibility: "PRIVATE"},
+		{name: "private control public exact", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "PUBLIC"},
+		{name: "private control public wildcard", scope: "org/*", controlVisibility: "PRIVATE", targetVisibility: "PUBLIC"},
+		{name: "private control public multiple owners", scope: "other/*", controlVisibility: "PRIVATE", targetVisibility: "PUBLIC"},
+		{name: "internal control public wildcard", scope: "org/*", controlVisibility: "INTERNAL", targetVisibility: "PUBLIC"},
+		{name: "unknown control", scope: "org/target", controlVisibility: "UNKNOWN", targetVisibility: "PUBLIC", wantAuth: true},
 		{name: "private exact", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "PRIVATE", wantAuth: true},
 		{name: "internal wildcard", scope: "org/*", controlVisibility: "PRIVATE", targetVisibility: "INTERNAL", wantAuth: true},
 		{name: "unknown exact", scope: "org/target", controlVisibility: "PRIVATE", targetVisibility: "UNKNOWN", wantAuth: true},
@@ -396,6 +409,8 @@ func TestNativeSetupGuidedAuthenticationByVisibility(t *testing.T) {
 					return document, "", nil
 				case call == "api repos/org/control/pages":
 					return `{"build_type":"workflow","public":true}`, "", nil
+				case strings.HasPrefix(call, "api repos/org/control/actions/"):
+					return "", "", nil
 				case call == "variable set GH_AW_GITHUB_AUTH_MODE --repo org/control --body workflow-token":
 					mutations++
 					return "", "", nil
@@ -430,7 +445,7 @@ func TestNativeSetupGuidedAuthenticationByVisibility(t *testing.T) {
 				}
 				return
 			}
-			if result["profile"] != "public-only" || mutations != 1 {
+			if result["profile"] != "public-only" || mutations != 0 {
 				t.Fatalf("public setup did not use workflow token: %#v", result)
 			}
 			wantRepos := []string{"org/control"}
@@ -482,7 +497,7 @@ func TestNativeSetupPublicDashboardConsent(t *testing.T) {
 					return "", "", nil
 				}
 			}
-			prompt := &nativeSetupTestPrompt{texts: []string{"org/control", "token"}, confirms: []bool{true, false}}
+			prompt := &nativeSetupTestPrompt{texts: []string{"org/control"}, confirms: []bool{true, false}}
 			result, err := nativeSetupControl(nativeSetupTestCommand(), gh, prompt)
 			if err != nil || result["reason"] != "public-pages-declined" {
 				t.Fatalf("result=%#v err=%v", result, err)

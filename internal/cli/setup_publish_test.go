@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -104,6 +105,24 @@ func setupPublishTestGit(t *testing.T, cmd *cobra.Command, args ...string) strin
 	return strings.TrimSpace(output)
 }
 
+func TestSetupPublicationSummary(t *testing.T) {
+	for _, test := range []struct {
+		stat, want string
+	}{
+		{" 2 files changed, 10 insertions(+), 3 deletions(-)\n", "2 files changed, \x1b[32m10 insertions(+)\x1b[0m, \x1b[31m3 deletions(-)\x1b[0m"},
+		{" 1 file changed, 1 insertion(+)\n", "1 file changed, \x1b[32m1 insertion(+)\x1b[0m"},
+		{" 1 file changed, 1 deletion(-)\n", "1 file changed, \x1b[31m1 deletion(-)\x1b[0m"},
+		{" 1 file changed, 0 insertions(+), 0 deletions(-)\n", "1 file changed, \x1b[32m0 insertions(+)\x1b[0m, \x1b[31m0 deletions(-)\x1b[0m"},
+	} {
+		if got := setupPublishSummary(test.stat, true); got != test.want {
+			t.Fatalf("styled summary = %q, want %q", got, test.want)
+		}
+		if got := setupPublishSummary(test.stat, false); got != strings.TrimSpace(test.stat) {
+			t.Fatalf("plain summary contains styling: %q", got)
+		}
+	}
+}
+
 func TestSetupPublishesAllPreparedComponentsWithoutUnrelatedFiles(t *testing.T) {
 	cmd, gh, remote, _ := setupPublishFixture(t, false)
 	for name, content := range map[string]string{
@@ -116,6 +135,14 @@ func TestSetupPublishesAllPreparedComponentsWithoutUnrelatedFiles(t *testing.T) 
 	prompt := &setupPublishPrompt{approve: true}
 	prompt.review = func() {
 		output := cmd.ErrOrStderr().(*bytes.Buffer).String()
+		if !regexp.MustCompile(`CAO changes for org/control on main:\n\d+ files changed, \d+ insertions?\(\+\)\nFull diff`).MatchString(output) {
+			t.Fatalf("expected a one-line change summary followed by the full-diff path: %s", output)
+		}
+		for _, verbose := range []string{"Policy diff:", "diff --git", " | ", "\x1b["} {
+			if strings.Contains(output, verbose) {
+				t.Fatalf("plain publication output contains verbose diff or styling %q", verbose)
+			}
+		}
 		for _, line := range strings.Split(output, "\n") {
 			if strings.HasPrefix(line, "Full diff (available until this prompt finishes): ") {
 				reviewFile = strings.TrimPrefix(line, "Full diff (available until this prompt finishes): ")
@@ -178,6 +205,9 @@ func TestNativeSetupPublicationOutput(t *testing.T) {
 				t.Fatal(err)
 			}
 			output := cmd.OutOrStdout().(*bytes.Buffer).String()
+			if strings.Contains(output, "\x1b[") {
+				t.Fatal("redirected setup output must not contain terminal styling")
+			}
 			if structured {
 				var result map[string]any
 				if err := json.Unmarshal([]byte(output), &result); err != nil {
@@ -192,6 +222,54 @@ func TestNativeSetupPublicationOutput(t *testing.T) {
 				t.Fatalf("misleading text result: %s", output)
 			}
 		})
+	}
+}
+
+func TestSetupPublicationLinkStyling(t *testing.T) {
+	for _, dashboard := range []bool{false, true} {
+		publication := map[string]any{
+			"actionsURL":       "https://github.com/org/control/actions",
+			"pagesSettingsURL": "https://github.com/org/control/settings/pages",
+		}
+		labels := []string{"Actions", "Pages settings"}
+		if dashboard {
+			publication["dashboardURL"] = "https://org.github.io/control/"
+			labels = append(labels, "Dashboard (deployment pending)")
+		}
+		for _, styled := range []bool{false, true} {
+			output := setupPublishOutput(publication, styled)
+			for _, label := range labels {
+				want := label + ":"
+				if styled {
+					want = "\x1b[1;36m" + want + "\x1b[0m"
+				}
+				if !strings.Contains(output, want) {
+					t.Fatalf("missing label %q in output %q", want, output)
+				}
+			}
+			for _, value := range publication {
+				link := value.(string)
+				if styled {
+					link = "\x1b[4;34m" + link + "\x1b[0m"
+				}
+				if !strings.Contains(output, link) {
+					t.Fatalf("missing link %q in output %q", link, output)
+				}
+			}
+			if !dashboard && strings.Contains(output, "Dashboard") {
+				t.Fatal("output invents a dashboard link")
+			}
+			if styled {
+				if !strings.HasPrefix(output, "\n\x1b[1;32mMonitoring configuration pushed.\x1b[0m") {
+					t.Fatal("styled success must be highlighted and separated from the prompt")
+				}
+			} else if strings.Contains(output, "\x1b[") {
+				t.Fatal("plain output must not contain terminal styling")
+			}
+			if !strings.Contains(output, "Deployment pending; setup is not waiting for Actions.") {
+				t.Fatal("link styling must preserve deployment-pending status")
+			}
+		}
 	}
 }
 

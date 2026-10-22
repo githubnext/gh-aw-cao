@@ -29,6 +29,37 @@ type nativeSetupCredential struct {
 	Permissions map[string]string `json:"permissions,omitempty"`
 }
 
+func nativeSetupWorkflowToken(cmd *cobra.Command, gh ghExecutor, repo string) error {
+	if err := nativeSetupNote(cmd, "Checking Actions token defaults...\n"); err != nil {
+		return err
+	}
+	for _, source := range []string{"variables", "organization-variables"} {
+		out, err := nativeSetupGH(cmd, gh, "api", "repos/"+repo+"/actions/"+source+"?per_page=30",
+			"--paginate", "--jq", `.variables[] | select(.name == "GH_AW_GITHUB_AUTH_MODE") | {value}`)
+		if err != nil {
+			return err
+		}
+		if out == "" {
+			continue
+		}
+		var setting struct {
+			Value *string `json:"value"`
+		}
+		if json.Unmarshal([]byte(out), &setting) != nil || setting.Value == nil {
+			return errors.New("unable to verify the existing Actions authentication mode")
+		}
+		if *setting.Value == "" || *setting.Value == "workflow-token" {
+			return nil
+		}
+		if err := nativeSetupNote(cmd, "Switching to built-in Actions token...\n"); err != nil {
+			return err
+		}
+		_, err = nativeSetupGH(cmd, gh, "variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", repo, "--body", "workflow-token")
+		return err
+	}
+	return nil
+}
+
 func nativeSetupCredentials(pat bool) []nativeSetupCredential {
 	read := map[string]string{
 		"actions": "read", "contents": "read", "issues": "read", "pull_requests": "read",

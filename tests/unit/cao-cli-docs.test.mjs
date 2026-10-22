@@ -80,7 +80,8 @@ test("getting started reaches monitoring before optional campaign execution", ()
   }
   assert.match(monitoring, /public-only[\s\S]*GITHUB_TOKEN/);
   assert.match(monitoring, /Choose \*\*Authentication\*\* only if prompted/);
-  assert.match(monitoring, /Confirmed all-public scope[\s\S]*automatically uses `public-only`/);
+  assert.match(monitoring, /Confirmed public targets[\s\S]*automatically use `public-only`/);
+  assert.match(monitoring, /even when the control repository is private/);
   assert.match(monitoring, /Decline for non-public evidence/);
   assert.match(monitoring, /before retrying; do not publish incomplete setup/);
   assert.doesNotMatch(monitoring, /gh cao validate/);
@@ -111,7 +112,9 @@ test("native and Node setup hand off to outcome and scope rather than pattern se
     const source = readFileSync(filename, "utf8");
     if (filename.endsWith(".go")) {
       assert.ok(source.includes("Monitoring configured locally. No commit or push was performed."));
-      assert.ok(source.includes("Deployment pending; setup is not waiting for Actions."));
+      assert.ok(source.includes("setupPublishOutput("));
+      assert.ok(readFileSync("internal/cli/setup_publish.go", "utf8")
+        .includes("Deployment pending; setup is not waiting for Actions."));
       assert.match(source, /Optional automation: https:\/\/githubnext\.github\.io\/gh-cao\/operation-patterns\/\\n"/);
     } else {
       assert.ok(source.includes("Monitoring is configured; executing operations is optional."));

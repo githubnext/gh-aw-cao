@@ -32,7 +32,6 @@ test("setup review defaults to No and performs no external mutations", terminal,
   const f = fixture(t);
   const result = await walk(f, [
     ["Repositories CAO should read", "\r"],
-    ["How should CAO authenticate?", "\r"],
     ["Apply this setup?", "\r"],
   ]);
   assert.equal(result.code, 0, result.stdout + result.stderr);
@@ -54,7 +53,7 @@ test("setup Ctrl-C cancels cleanly without changing policy or credentials", term
 test("setup plain terminal rejects partial menu numbers and keeps safe defaults", terminal, async (t) => {
   const f = fixture(t);
   const result = await walk(f, [
-    ["Repositories CAO should read", "\r"],
+    ["Repositories CAO should read", "acme/service\r"],
     ["Choose [1]:", "1x\r"],
     ["Enter a number from 1 to 3.", "1\r"],
     ["Apply this setup?", "\r"],
@@ -71,7 +70,7 @@ for (const [name, environment] of [
   test(`setup uses plain non-animated prompts when ${name} is set`, terminal, async (t) => {
     const f = fixture(t);
     const result = await walk(f, [
-      ["Repositories CAO should read", "\r"],
+      ["Repositories CAO should read", "acme/service\r"],
       ["Choose [1]:", "\r"],
       ["Apply this setup?", "\r"],
     ], "xterm-256color", environment);
@@ -93,7 +92,6 @@ for (const [name, settings, answer, expectedCode, expectedDeletion] of [
     const f = fixture(t, setupModule, settings);
     const result = await walk(f, [
       ["Repositories CAO should read", "\r"],
-      ["How should CAO authenticate?", "\r"],
       ["Apply this setup?", "\u001b[D\r"],
       ["Is a public dashboard OK?", answer],
     ]);
@@ -104,7 +102,8 @@ for (const [name, settings, answer, expectedCode, expectedDeletion] of [
     assert.ok(!f.calls().some((args) => args.includes("public=false")));
     if (name === "accepting public visibility") {
       assert.match(result.stdout, /"dashboardPages":"public"/);
-      assert.deepEqual(f.calls().at(-1), ["connect", "github-app"]);
+      assert.match(result.stdout, /"profile":"public-only"/);
+      assert.ok(!f.calls().some(([command]) => command === "variable" || command === "connect"));
     } else {
       assert.match(result.stdout, /"reason":"public-pages-declined"/);
       assert.deepEqual(f.saved(), f.policy);
@@ -119,7 +118,7 @@ for (const [name, settings, answer, expectedCode, expectedDeletion] of [
 test("setup credential failures disclose partial effects and preserve local policy", terminal, async (t) => {
   const f = fixture(t, setupModule, { credentialsFail: true });
   const result = await walk(f, [
-    ["Repositories CAO should read", "\r"],
+    ["Repositories CAO should read", "acme/service\r"],
     ["How should CAO authenticate?", "\r"],
     ["Apply this setup?", "\u001b[D\r"],
   ]);
@@ -138,26 +137,28 @@ test("setup without a terminal applies public repository workflow-token defaults
   assert.match(result.stdout, /"profile":"workflow-token"/);
   assert.match(result.stdout, /"nonInteractive":true/);
   assert.doesNotMatch(result.stdout + result.stderr, /\u001b\[/);
-  assert.ok(f.calls().some((args) => args.join(" ") === "variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token"));
+  assert.ok(!f.calls().some(([command]) => command === "variable" || command === "connect"));
   assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
 });
 
-test("guided public setup skips authentication prompts but still requires review and Pages consent", terminal, async (t) => {
-  const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
-  const result = await walk(f, [
-    ["Repositories CAO should read", "acme/service\r"],
-    ["Apply this setup?", "\u001b[D\r"],
-    ["Is a public dashboard OK?", "\u001b[D\r"],
-  ]);
-  assert.equal(result.code, 0, result.stdout + result.stderr);
-  assert.doesNotMatch(result.stdout, /How should CAO authenticate\?|App client ID/);
-  assert.match(result.stdout, /no App\/PAT/);
-  assert.match(result.stdout, /"profile":"public-only"/);
-  assert.ok(!f.calls().some(([command]) => command === "connect" || command === "secret"));
-  assert.deepEqual(f.saved()["control-plane"].activity, {
-    repositories: ["acme/control", "acme/service"], "public-only": true,
+for (const controlVisibility of ["PUBLIC", "PRIVATE", "INTERNAL"]) {
+  test(`guided ${controlVisibility} control with public targets skips credentials but requires review and Pages consent`, terminal, async (t) => {
+    const f = fixture(t, setupModule, { controlVisibility, targetVisibility: "PUBLIC", publicPages: true });
+    const result = await walk(f, [
+      ["Repositories CAO should read", "acme/service\r"],
+      ["Apply this setup?", "\u001b[D\r"],
+      ["Is a public dashboard OK?", "\u001b[D\r"],
+    ]);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.doesNotMatch(result.stdout, /How should CAO authenticate\?|App client ID/);
+    assert.match(result.stdout, /no App\/PAT/);
+    assert.match(result.stdout, /"profile":"public-only"/);
+    assert.ok(!f.calls().some(([command]) => command === "connect" || command === "secret"));
+    assert.deepEqual(f.saved()["control-plane"].activity, {
+      repositories: ["acme/control", "acme/service"], "public-only": true,
+    });
   });
-});
+}
 
 test("setup in CI applies public repository workflow-token defaults without prompting", terminal, async (t) => {
   const f = fixture(t, setupModule, { controlVisibility: "PUBLIC", publicPages: true });
@@ -167,7 +168,7 @@ test("setup in CI applies public repository workflow-token defaults without prom
   assert.match(result.stdout, /"profile":"workflow-token"/);
   assert.doesNotMatch(result.stdout, /Repositories CAO should read|How should CAO authenticate/);
   assert.doesNotMatch(result.stdout, /\u001b\[/);
-  assert.ok(f.calls().some((args) => args.join(" ") === "variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token"));
+  assert.ok(!f.calls().some(([command]) => command === "variable" || command === "connect"));
   assert.deepEqual(f.saved()["control-plane"].activity.repositories, ["acme/control"]);
 });
 
@@ -221,10 +222,10 @@ for (const stage of ["text", "select", "confirm"]) {
     const result = await setupCaoControlPlane({
       policyPath: f.policyPath,
       execute: (_, args) => ({ status: 0, stdout: args.includes("--jq")
-        ? "acme/control" : '{"nameWithOwner":"acme/control","visibility":"PRIVATE"}' }),
+        ? "acme/control" : JSON.stringify({ nameWithOwner: args[2], visibility: "PRIVATE" }) }),
       prompt: {
         note() {},
-        text: async () => { if (stage === "text") throw new SetupCancelled(); return ""; },
+        text: async () => { if (stage === "text") throw new SetupCancelled(); return "acme/service"; },
         select: async () => { if (stage === "select") throw new SetupCancelled(); return "github-app"; },
         confirm: async () => { throw new SetupCancelled(); },
       },

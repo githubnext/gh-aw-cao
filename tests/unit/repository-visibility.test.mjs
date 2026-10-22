@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateRepositoryVisibility } from "../../activity/repository-visibility.mjs";
+import { main, validateRepositoryVisibility } from "../../activity/repository-visibility.mjs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 function requestFor(repositories) {
   return async (_route, { owner, repo }) => ({
@@ -41,11 +44,60 @@ test("public-only collection verifies every exact repository and rejects unknown
   }
   await assert.rejects(validateRepositoryVisibility({
     controlRepository: "octo/control", allowedRepositories: ["octo/public"], publicOnly: true,
-    request: requestFor(new Map([["octo/control", { ...control, visibility: "private", private: true }]])),
-  }), /verified public visibility/);
+    request: requestFor(new Map([["octo/control", { ...control, full_name: "octo/moved" }]])),
+  }), /verified control repository visibility and unchanged identity/);
   await assert.rejects(validateRepositoryVisibility({
     controlRepository: "octo/control", allowedRepositories: [], publicOnly: true, request: requestFor(new Map([["octo/control", control]])),
   }), /exact nonempty/);
+});
+
+test("public-only monitoring allows only the actual control repository to be non-public", async (t) => {
+  for (const visibility of ["private", "internal"]) {
+    const repositories = new Map([
+      ["octo/control", { full_name: "octo/control", visibility, private: true }],
+      ["octo/public", { full_name: "octo/public", visibility: "public", private: false }],
+    ]);
+    const options = {
+      controlRepository: "octo/control", allowedRepositories: ["octo/control", "octo/public"],
+      publicOnly: true, request: requestFor(repositories),
+      paginate: () => assert.fail("monitoring cannot enumerate an owner"),
+    };
+    await validateRepositoryVisibility(options);
+    repositories.set("octo/public", { full_name: "octo/public", visibility, private: true });
+    await assert.rejects(validateRepositoryVisibility(options), /verified public visibility/);
+    for (const control of [
+      { full_name: "octo/control" },
+      { full_name: "octo/control", visibility: "private", private: false },
+      { full_name: "octo/moved", visibility, private: true },
+    ]) {
+      repositories.set("octo/control", control);
+      await assert.rejects(validateRepositoryVisibility(options), /verified control repository visibility/);
+    }
+  }
+
+  const directory = await mkdtemp(path.join(os.tmpdir(), "cao-monitoring-visibility-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const settings = path.join(directory, "settings.json");
+  await writeFile(settings, JSON.stringify({
+    activity_public_only: true, allowed_repositories: ["octo/target"],
+  }));
+  for (const [name, value] of Object.entries({
+    GITHUB_REPOSITORY: "octo/control", ACTIVITY_VISIBILITY_REPOSITORY: "octo/target",
+  })) {
+    const previous = process.env[name];
+    t.after(() => {
+      if (previous === undefined) delete process.env[name];
+      else process.env[name] = previous;
+    });
+    process.env[name] = value;
+  }
+  await assert.rejects(main({
+    core: { startGroup() {}, endGroup() {} },
+    github: { request: requestFor(new Map([
+      ["octo/control", { full_name: "octo/control", visibility: "private", private: true }],
+      ["octo/target", { full_name: "octo/target", visibility: "private", private: true }],
+    ])) },
+  }, [settings]), /verified public visibility/);
 });
 
 test("public control repositories may access only public repositories", async () => {
