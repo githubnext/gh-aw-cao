@@ -30,6 +30,8 @@ on:
       - .github/workflows/cao.json
       - .github/workflows/cao-activity.yml
       - .github/workflows/cao-dashboard.yml
+      - ".github/value-collectors/**"
+      - ".github/skills/add-operational-value/**"
       - "activity/**"
       - "dashboard/**"
       - "*/dashboard.json"

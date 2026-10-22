@@ -85,6 +85,32 @@ it is not a fresh success or zero. Collection timing is bounded by the existing
 cycle and available credentials, not a guarantee of an observation at every
 wall-clock instant.
 
+### Daily File Diet collector
+
+`.github/value-collectors/daily-file-diet.mjs` reuses the existing read-only
+File Diet acquisition and report instrument for `github/gh-aw` only. This
+source-managed control-repository collector is not installed into catalog
+consumers or registered there automatically. It keeps
+the named retrospective 800-line structural measure unchanged; full
+behavior-preserving acceptance remains unverified. The collector retains
+immutable inventories, applied receipts and all previously accepted snapshot
+cutoffs under its supplied workspace's `latest/proof/` directory. Failed or
+incomplete refreshes do not replace that accepted proof.
+Rich evidence acquisition has a ten-minute per-collector runtime ceiling
+(the hosted wrapper allows ten additional seconds for shutdown), independent
+of the shorter compact-measurement budget.
+
+The control policy explicitly lists the same six repositories previously
+collected from `scope.allowed-repositories`; this pins Activity enrollment
+without adding targets or activating Daily File Diet itself. Only the exact
+File Diet pair is registered for recurring Value acquisition.
+Registration takes effect after the collector and policy are reviewed and
+deployed together. It does not override `campaigns.dashboard.deploy: false`:
+Activity can refresh its snapshot while the deployed Pages dashboard remains
+unchanged. A hosted publication additionally needs its actual server URL and
+administrator OAuth session; a successful acquisition or merged PR alone is not
+proof of dashboard publication.
+
 ## Existing compact repository measurements
 
 CAO uses one shared campaign module for both collection paths:

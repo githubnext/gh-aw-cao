@@ -17,6 +17,16 @@
         "githubnext/gh-cao"
       ]
     },
+    "activity": {
+      "repositories": [
+        "github/gh-aw",
+        "github/gh-aw-firewall",
+        "github/gh-aw-mcpg",
+        "github/gh-aw-actions",
+        "github/gh-aw-threat-detection",
+        "githubnext/gh-cao"
+      ]
+    },
     "defaults": {
       "max-repositories": 6
     },
@@ -299,6 +309,15 @@
             "workflow": "self-care-specs-maintainer"
           }
         }
+      },
+      "activity": {
+        "workflow-values": [
+          {
+            "collector": ".github/value-collectors/daily-file-diet.mjs",
+            "repository": "github/gh-aw",
+            "workflow": "daily-file-diet"
+          }
+        ]
       }
     }
   },

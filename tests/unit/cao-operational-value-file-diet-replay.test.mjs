@@ -7,6 +7,10 @@ import test from "node:test";
 import { gzipSync } from "node:zlib";
 import { fileDietEvents, readFileDietProof } from "../../.github/skills/add-operational-value/examples/daily-file-diet.mjs";
 import { eventPulse } from "../../.github/skills/add-operational-value/scripts/pulse-model.mjs";
+import { preserveFileDietSnapshots } from "../../.github/skills/add-operational-value/examples/acquire-file-diet.mjs";
+import { operationalValueEvidenceJsonl } from "../../.github/skills/add-operational-value/scripts/export-evidence.mjs";
+import { collectValueEvidence, definition } from "../../.github/value-collectors/daily-file-diet.mjs";
+import { runWorkflowValues } from "../../activity/workflow-values.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const digest = value => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -73,6 +77,75 @@ function temporary(t) {
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
 }
+
+test("fresh acquisition retains every accepted snapshot cutoff without changing its immutable revision", () => {
+  const retained = { snapshots: [{ at: "2026-01-01T00:00:00Z", commit: adopted },
+    { at: "2026-05-01T00:00:00Z", commit: parent }] };
+  const refreshed = { snapshots: [{ at: "2026-01-01T00:00:00Z", commit: adopted },
+    { at: "2026-05-02T00:00:00Z", commit: merged }] };
+  preserveFileDietSnapshots(refreshed, retained);
+  assert.deepEqual(refreshed.snapshots, [...retained.snapshots, { at: "2026-05-02T00:00:00Z", commit: merged }]);
+  assert.throws(() => preserveFileDietSnapshots({ snapshots: [
+    { at: "2026-05-01T00:00:00Z", commit: merged },
+  ] }, retained), /snapshot revision changed/);
+});
+
+test("the real reviewed File Diet collector loads in the isolated worker and reuses satisfied cadence", async t => {
+  const directory = temporary(t);
+  const ledger = JSON.parse(readFileSync(path.join(root, "tests/fixtures/operational-value/file-diet-events.json"), "utf8"));
+  const output = path.join(directory, "evidence.jsonl");
+  writeFileSync(output, operationalValueEvidenceJsonl(ledger));
+  const result = await runWorkflowValues({
+    root, policy: path.join(root, ".github/workflows/cao.json"),
+    repositories: [definition.repository], output, workspace: path.join(directory, "proofs"),
+    observedAt: ledger.window.endAt,
+  });
+  assert.deepEqual(result, { collected: 0, skipped: 1, warnings: [] });
+});
+
+test("recurring File Diet collection reuses originals and only promotes validated cumulative proof", async t => {
+  const directory = temporary(t);
+  const input = example();
+  input.proof.adoption = { commit: definition.adoption.commit, at: definition.adoption.adoptedAt,
+    baselineCommit: sha("0") };
+  input.inventories.set(definition.adoption.commit, input.inventories.get(adopted));
+  input.proof.snapshots[0] = { at: definition.adoption.adoptedAt, commit: definition.adoption.commit };
+  let calls = 0;
+  const acquire = ({ endAt, output, previous }) => {
+    assert.equal(previous, calls ? path.join(directory, "latest", "proof") : undefined);
+    if (previous) assert.equal(readFileDietProof(previous).proof.until, input.proof.until);
+    calls++;
+    if (calls > 1) input.proof.snapshots.push({ at: endAt, commit: merged });
+    input.proof.until = endAt;
+    input.proof.observedAt = new Date(Date.parse(endAt) + 1000).toISOString();
+    mkdirSync(path.join(output, "proof"), { recursive: true });
+    preserve(input, path.join(output, "proof"));
+    writeFileSync(path.join(output, "daily-file-diet-pulse-evidence.jsonl"),
+      operationalValueEvidenceJsonl(fileDietEvents(readFileDietProof(path.join(output, "proof")))));
+  };
+  const request = { repository: definition.repository, workflow: definition.slug,
+    observedAt: "2026-05-01T00:00:00.000Z", workspace: { directory } };
+  const first = await collectValueEvidence(request, acquire);
+  const second = await collectValueEvidence({ ...request, observedAt: "2026-05-02T00:00:00.000Z",
+    previous: first.operational_value_evidence }, acquire);
+  assert.equal(second.operational_value_evidence.contractDigest, first.operational_value_evidence.contractDigest);
+  const originals = first.operational_value_evidence.facts.filter(fact => fact["fact-kind"] === "snapshot");
+  assert.ok(originals.every(fact => second.operational_value_evidence.facts.some(next =>
+    JSON.stringify(next) === JSON.stringify(fact))));
+  const accepted = readFileSync(path.join(directory, "latest", "daily-file-diet-pulse-evidence.jsonl"), "utf8");
+  await assert.rejects(collectValueEvidence(request, () => { throw new Error("API budget exhausted"); }),
+    /API budget exhausted/);
+  await assert.rejects(collectValueEvidence({ ...request, observedAt: "2026-05-03T00:00:00.000Z",
+    previous: second.operational_value_evidence }, options => {
+    acquire(options);
+    const filename = path.join(options.output, "daily-file-diet-pulse-evidence.jsonl");
+    const envelope = JSON.parse(readFileSync(filename, "utf8"));
+    envelope.operational_value_evidence.facts.find(fact => fact["fact-kind"] === "coverage")["coverage-status"] = "partial";
+    writeFileSync(filename, JSON.stringify(envelope));
+  }), /Incomplete acquisition/);
+  assert.equal(readFileSync(path.join(directory, "latest", "daily-file-diet-pulse-evidence.jsonl"), "utf8"), accepted);
+  await assert.rejects(collectValueEvidence({ ...request, repository: "org/other" }, acquire));
+});
 
 test("File Diet measures actual merge-parent inventories and replacement files, not output volume", () => {
   const input = example();
