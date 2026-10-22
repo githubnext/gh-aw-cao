@@ -3,6 +3,9 @@ import { effect, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderLiveRegion } from './ui-primitives.js';
 import { publishNotification } from '../notification-service.js';
+import { createDebug, diagnosticErrorName } from '../debug.js';
+
+const debug = createDebug('prompt-session');
 
 /** @param {() => string} getPrompt */
 export function createPromptSessionControl(getPrompt) {
@@ -19,6 +22,7 @@ export function createPromptSessionControl(getPrompt) {
     type: 'button', className: 'table-intent-copy-button',
     onClick: async () => {
       if (scope.signal.aborted || busy.get() || started.get()) return;
+      debug({ event: 'start', status: 'requested' });
       busy.set(true);
       message.set('Starting session...');
       try {
@@ -29,10 +33,12 @@ export function createPromptSessionControl(getPrompt) {
         const result = await response.json();
         if (!response.ok || result.ok !== true) throw new Error(result.error || 'Could not start the Copilot session.');
         if (scope.signal.aborted) return;
+        debug({ event: 'start', status: 'started', httpStatus: response.status });
         started.set(true);
         message.set('Session started in the Copilot app.');
       } catch (cause) {
         if (scope.signal.aborted) return;
+        debug({ event: 'start', status: 'failed', errorName: diagnosticErrorName(cause) });
         const error = cause instanceof Error ? cause.message : 'Could not start the Copilot session.';
         message.set(error);
         publishNotification({ message: error, tone: 'error' });
