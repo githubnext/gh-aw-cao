@@ -12,6 +12,7 @@ import {
   verifyCaoRuntime,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
+import { assertUnknownCommandsRejectBeforeIO } from "../helpers/cao-unknown-commands.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
 const revision = "1".repeat(40);
@@ -38,6 +39,34 @@ function unpack(t) {
   extractCaoArchive(artifact.archive, destination, true);
   return path.join(destination, "package");
 }
+
+test("the installed runtime rejects unknown commands before filesystem or database activity", (t) => {
+  assertUnknownCommandsRejectBeforeIO(unpack(t), t);
+});
+
+test("the installed runtime retains explicit raw-log ingestion and persistent queryable output", (t) => {
+  const root = unpack(t);
+  const database = path.join(root, "snapshot.sqlite");
+  const fixture = path.join(catalog, "dashboard/site/test/fixtures/gh-aw-logs");
+  const run = args => JSON.parse(execFileSync(process.execPath, ["activity/cao.mjs", ...args], {
+    cwd: root,
+    encoding: "utf8",
+    env: { ...process.env, PATH: "", NODE_OPTIONS: "" },
+    timeout: 30_000,
+  }));
+  const output = run([
+    "ingest", "--database", database, "--context", path.join(fixture, "context.json"),
+    "--logs", path.join(fixture, "run-303"), "--retention-days", "all", "--run-retention-days", "all",
+  ]);
+  assert.deepEqual(Object.keys(output).sort(), ["counts", "result"]);
+  assert.equal(output.result.updated, true);
+  assert.equal(output.counts.runs, 1);
+  assert.equal(output.counts.tools, 3);
+  assert.ok(existsSync(database));
+  const runs = run(["query", "--database", database, "--collection", "runs"]);
+  assert.equal(runs[0].id, "github:run:githubnext/gh-cao:303");
+  assert.equal(run(["query", "--database", database, "--collection", "tools"]).length, 3);
+});
 
 function fakeGithub(t, {
   expired = false,

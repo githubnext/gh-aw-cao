@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { commandHandlers } from "../../activity/commands/index.mjs";
 import * as caoApi from "../../activity/cao.mjs";
+import { assertUnknownCommandsRejectBeforeIO } from "../helpers/cao-unknown-commands.mjs";
 
 const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
@@ -13,6 +14,10 @@ const campaignJson = JSON.parse(
   await readFile(campaignJsonUrl, "utf8"),
 );
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
+
+test("unknown commands reject before filesystem, database, or stdin activity", (t) => {
+  assertUnknownCommandsRejectBeforeIO(fileURLToPath(new URL("../../", import.meta.url)), t);
+});
 
 test("preserves CAO public exports from their focused implementation modules", async () => {
   const exportsByModule = {

@@ -21,7 +21,10 @@ test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', as
       '--retention-days', 'all', '--run-retention-days', 'all',
     ]);
     const output = JSON.parse(stdout);
+    assert.deepEqual(Object.keys(output).sort(), ['counts', 'result']);
     assert.equal(output.result.updated, true);
+    assert.equal(output.counts.runs, 1);
+    assert.equal(output.counts.tools, 3);
     const query = async (collection) => JSON.parse((await execFileAsync(process.execPath, [
       cao, 'query', '--database', database, '--collection', collection
     ])).stdout);
@@ -33,7 +36,40 @@ test('Node CLI ingests a gh-aw artifact directory through IndexedDB queries', as
       'firewall.http_access', 'mcp.tool_call', 'tool.execution_start', 'tool.execution_complete',
       'user.message', 'assistant.message'
     ].sort());
+    const repeated = JSON.parse((await execFileAsync(process.execPath, [
+      cao, 'ingest', '--database', database,
+      '--context', path.join(fixture, 'context.json'),
+      '--logs', path.join(fixture, 'run-303'),
+      '--retention-days', 'all', '--run-retention-days', 'all',
+    ])).stdout);
+    assert.deepEqual(repeated.counts, output.counts);
+    assert.deepEqual(await query('runs'), runs);
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('explicit raw-log ingestion preserves default and configured retention policies', async (t) => {
+  const fixture = path.resolve('dashboard/site/test/fixtures/gh-aw-logs');
+  const directory = await mkdtemp(path.join(tmpdir(), 'cao-cli-log-retention-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const [name, now, options, expected] of [
+    ['defaults', '2026-09-20', [], { runs: 1, domains: 0, tools: 0, audits: 0 }],
+    ['all', '2026-10-22', ['--retention-days', 'all', '--run-retention-days', 'all'], { runs: 1, domains: 1, tools: 3, audits: 2 }],
+    ['expired-defaults', '2026-10-22', [], { runs: 0, domains: 0, tools: 0, audits: 0 }],
+    ['all-runs', '2026-10-22', ['--retention-days', '7', '--run-retention-days', 'all'], { runs: 1, domains: 0, tools: 0, audits: 0 }],
+  ]) {
+    const clock = `data:text/javascript,Date.now=()=>Date.parse("${now}T00:00:00Z")`;
+    const { stdout } = await execFileAsync(process.execPath, [
+      '--import', clock, path.resolve('activity/cao.mjs'), 'ingest',
+      '--database', path.join(directory, `${name}.sqlite`),
+      '--context', path.join(fixture, 'context.json'),
+      '--logs', path.join(fixture, 'run-303'), ...options,
+    ]);
+    const output = JSON.parse(stdout);
+    assert.deepEqual(Object.keys(output).sort(), ['counts', 'result']);
+    for (const [collection, count] of Object.entries(expected)) {
+      assert.equal(output.counts[collection], count, `${name}: ${collection}`);
+    }
   }
 });

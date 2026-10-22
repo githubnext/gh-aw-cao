@@ -1,11 +1,9 @@
 import { createReadStream } from 'node:fs';
-import { readFile, readdir, mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, readdir, mkdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createDebug } from '../debug.mjs';
 import { createCachedJsonlPayloadHasher } from '../../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { finalizeNormalizedJsonlIngestion, ingestCachedGhAwJsonl, ingestGhAwLogs, ingestNormalizedJsonl, isAuditCurationCurrent, isCachedGhAwJsonlCurrent } from '../../dashboard/site/src/data/ingest/coordinator.js';
-import { createCanonicalQueries } from '../../dashboard/site/src/data/queries/index.js';
 import { readCollection } from '../../dashboard/site/src/data/storage/indexeddb.js';
 import { installSqliteIndexedDB } from '../../dashboard/site/src/data/storage/sqlite-indexeddb.js';
 import { ENTITY_COLLECTIONS } from '../cli-usage.mjs';
@@ -167,25 +165,4 @@ export async function createDatabase(databasePath) {
   const filename = path.resolve(databasePath);
   await mkdir(path.dirname(filename), { recursive: true });
   return installSqliteIndexedDB(filename);
-}
-
-export async function runLegacyIngestion(contextPath, logDirectory) {
-  const directory = await mkdtemp(path.join(tmpdir(), 'cao-dashboard-data-'));
-  try {
-    const indexedDB = await createDatabase(path.join(directory, 'dashboard.sqlite'));
-    const result = await ingestGhAwLogDirectory(
-      indexedDB,
-      path.resolve(contextPath),
-      path.resolve(logDirectory)
-    );
-    const queries = createCanonicalQueries(indexedDB);
-    const runs = await queries.runs.list();
-    const records = (await Promise.all(
-      ['domains', 'tools', 'skills', 'friction', 'audits', 'issues'].map((collection) =>
-        Promise.all(runs.map((run) => queries[collection].forRun(String(run.id)))))
-    )).flat(2);
-    return { result, runs, records };
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
 }

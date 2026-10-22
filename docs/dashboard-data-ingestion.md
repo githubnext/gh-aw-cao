@@ -317,6 +317,23 @@ cao ingest \
   --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
 ```
 
+The positional form `node activity/cao.mjs CONTEXT_JSON LOG_DIRECTORY` is no
+longer supported. Unknown commands, including two-argument calls, fail with a
+usage error before reading inputs, creating temporary files, or opening SQLite.
+Use `node activity/cao.mjs ingest --context FILE --logs DIRECTORY` instead.
+
+Explicit `ingest` persists its SQLite projection at `--database FILE`, defaulting
+to `.cao/gh-aw-logs.sqlite`, and emits `{result, counts}` as JSON. It does not
+emit the retired `{result, runs, records}` envelope or delete the database after
+returning. Query the prepared database separately for canonical records.
+
+By default, explicit ingestion retains runs for 30 days and run-linked detail
+for seven days. The retired positional form kept all runs and seven-day detail
+in a disposable database. To retain that history policy with explicit ingestion,
+pass `--retention-days 7 --run-retention-days all`; database lifecycle remains
+the caller's responsibility. Use `--retention-days all --run-retention-days all`
+when historical detail must also be retained.
+
 Alternatively, ingest schema-v2 JSONL produced by `gh aw logs`:
 
 ```bash
