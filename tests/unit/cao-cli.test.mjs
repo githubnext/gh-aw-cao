@@ -77,6 +77,13 @@ test("retains registered workflow-agent evidence APIs independently of the opera
   assert.match(help, /without building or installing gh cao/);
 });
 
+test("Node usage inventories exactly the registered runtime commands", async () => {
+  const help = await caoApi.runCli(["--help"]);
+  const usage = help.slice(0, help.indexOf("Query local CAO data"));
+  const advertised = new Set([...usage.matchAll(/^  cao ([\w-]+)(?: |$)/gm)].map((match) => match[1]));
+  assert.deepEqual([...advertised].sort(), [...commandHandlers.keys()].sort());
+});
+
 test("quickstart is not registered or advertised by the Node CLI", async () => {
   assert.equal(commandHandlers.has("quickstart"), false);
   assert.doesNotMatch(await caoApi.runCli(["--help"]), /quickstart/i);

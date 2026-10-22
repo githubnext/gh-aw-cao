@@ -216,18 +216,46 @@ to invoke it as `gh cao`.
 
 | Surface | Commands | Execution |
 | --- | --- | --- |
-| Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
+| Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; `init` is optional local policy-only preparation, not runtime, Pages, or credential setup. |
 | Standalone workflow installation | `add WORKFLOW [--force] [--engine ENGINE]` | gh-aw installs and compiles; CAO registers the standalone workflow in policy. Interactive publication and first run require separate default-No approvals. |
 | Campaign installation | `add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
-| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|hosted-cli\|token` | Native Go, preserving separate read/write and hosted-executor credentials and explicit repository scope. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|hosted-cli\|token` | Native Go; setup prepares missing monitoring runtime and policy, Pages, scope, and authentication, preserving separate read/write and hosted-executor credentials. |
+| Cooperative admission | `admission setup`, `admission status`, `admission disable`, `setup admission` | Native Go; `setup admission` is equivalent to `admission setup`. Configures or inspects non-secret Actions variables, not server deployment or enrollment authority. |
+| Cloud deployment | `deploy azure` | Native Go; read-only preflight and planning, or explicit application of a reviewed development deployment plan. |
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
 | Operator evidence | `evidence release` | Native Go; bounded read-only GitHub references, optional provenance verification and development Azure receipt summaries. No Node runtime or checkout required. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
+| Workflow-agent evidence APIs | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Supported `node activity/cao.mjs <command>` APIs inside agentic workflows, including their installed runtime dependencies; intentional overlap with operator reads, not deprecated duplicates. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
-| Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
+| Control-plane validation | `node activity/cao.mjs validate --json` | Actions-only JavaScript runtime invoked by `cao-validate.yml`; no Go or shell-wrapper command. |
 | Node-only administration | `node activity/cao.mjs repair-database` | Mutating SQLite repair/retention; no equivalent Go command. |
+
+This table groups commands by responsibility, not by interchangeable executables.
+Inspect the executable trees with `gh cao --help`,
+`node activity/cao.mjs --help`, and `cao-dashboard --help`; use native
+subcommand help to inspect each registered child and its flags. `help` is built-in
+discovery, not another operation. `pages` remains dashboard-page discovery in both
+the operator and Node runtimes.
+
+`cao-dashboard` owns server hosting and administration, including
+`serve`, `serve-hosted`, `serve-pages`, `azure-functions`, `ingest`, `collect`,
+`backfill`, `execute-cli`, `hosted-cli queue`, `database`, `admission validate`,
+`audit`, `doctor`, `app-key-check`, `compile-queries`, `benchmark-queries`,
+`otel-smoke`, `simulate-api`, and `simulate-webhooks`. Its read-only `doctor`
+checks server state, data, queries, and collection; it is distinct from the
+operator installation `doctor` and the mutating Node `repair-database`.
+See the [server reference](https://github.com/githubnext/gh-cao/blob/main/server/README.md)
+for deployment and administration contracts.
+
+Other server binaries are separate process boundaries, not `gh cao` subcommands:
+`cao-webhook-gateway` selects isolated receive, dispatch, local, or discover roles;
+`cao-cli-quota` consumes an internal stdin/stdout scheduling protocol; and
+`cao-cli-relay` wraps a hosted workload inside its network-isolated container.
+The npm `cao` bin and `npm run dashboard:data -- <command>` invoke the same
+Node entry point, not additional command registrations. npm dashboard serving
+scripts wrap `cao-dashboard`; they do not move server operations into Node.
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
