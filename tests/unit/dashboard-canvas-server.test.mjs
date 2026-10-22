@@ -189,6 +189,10 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.equal(markdownResponse.status, 200);
     assert.equal(markdownResponse.headers.get("content-type"), "text/plain; charset=utf-8");
     assert.doesNotMatch(await markdownResponse.text(), new RegExp(syntheticToken));
+    const markdownHeadResponse = await fetch(`${preview.url}/guide.md`, { method: "HEAD" });
+    assert.equal(markdownHeadResponse.status, 200);
+    assert.equal(markdownHeadResponse.headers.get("content-type"), "text/plain; charset=utf-8");
+    assert.equal(await markdownHeadResponse.text(), "");
     const imageResponse = await fetch(`${preview.url}/image.png`);
     assert.equal(imageResponse.status, 200);
     assert.equal(imageResponse.headers.get("content-type"), "image/png");
