@@ -52,6 +52,7 @@
     "test:campaign-root": "node --test --test-concurrency=1 --test-name-pattern=\"^root campaign bootstraps\" tests/integration/campaign-lifecycle.test.mjs",
     "test:runtime-producer": "node scripts/validate-cao-runtime.mjs",
     "test:runtime-install": "node --test tests/integration/cao-runtime-installation.test.mjs",
+    "test:integration:installer": "node --test tests/integration/install-script.test.mjs",
     "runtime:pack": "node scripts/build-cao-runtime.mjs",
     "build:azure-assets": "node scripts/build-cao-azure-assets.mjs",
     "test:load": "node --test tests/load/*.test.mjs",

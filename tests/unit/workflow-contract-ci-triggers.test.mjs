@@ -293,7 +293,7 @@ test("main pushes retain browser and integration coverage for representative inp
 
 test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", () => {
   const cases = [
-    ["workflow-contracts.yml", ["unit", "test", "agent-plugin"], [
+    ["workflow-contracts.yml", ["unit", "test", "agent-plugin", "installer"], [
       "full-contracts", "github-issue-query",
       "dependabot-operational-value", "campaign-lifecycle-changes",
     ]],

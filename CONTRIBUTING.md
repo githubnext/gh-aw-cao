@@ -117,6 +117,16 @@ npm run check
 Workflow source changes must pass `npm run compile`. Run
 `npm run compile:locks` only when generated lock files should be updated.
 
+`npm run test:integration:installer` streams the root installer into Bash,
+downloads real public gh-aw and gh-cao releases with unusable tokens, and installs
+the local catalog's runtime in a temporary control checkout. Only control-repository
+sign-in and identity are simulated; public downloads, upstream installation,
+checksums, native extension dispatch, runtime materialization, and policy initialization
+are real. The test isolates HOME, GitHub CLI configuration, and extension storage,
+verifies credentials remain unchanged, and removes its installation afterward.
+It requires network access, Bash, curl, Git, GitHub CLI 2.68+, Node.js 24+, and the
+repository's npm dependencies; CI runs it as a separate public-installer job.
+
 ### Go extension development
 
 The root Go module provides the operator-facing `gh cao` GitHub CLI extension.
