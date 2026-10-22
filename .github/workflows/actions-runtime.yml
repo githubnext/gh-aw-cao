@@ -2,14 +2,14 @@ name: Docker Actions runtime
 
 on:
   pull_request:
-    paths-ignore:
-      - .github/workflows/cid.yml
-      - dashboard/site/**
+    paths:
+      - server/**
+      - "!server/**/*.md"
   push:
     branches: [main]
-    paths-ignore:
-      - .github/workflows/cid.yml
-      - dashboard/site/**
+    paths:
+      - server/**
+      - "!server/**/*.md"
   workflow_dispatch:
 
 permissions:
