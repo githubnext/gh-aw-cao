@@ -54,7 +54,7 @@ describe('entity card templates', () => {
   it('declares marketplace list and detail routes', () => {
     expect(pages.marketplace.experimental).toBe(false);
     expect(pages.marketplace['class-name']).toBe('marketplace-page');
-    expect(dashboard.navigation[0]).toEqual({ pages: ['overview', 'marketplace', 'wizard'] });
+    expect(dashboard.navigation[0]).toEqual({ pages: ['overview', 'marketplace'] });
     expect(dashboard.navigation.find(
       (/** @type {Record<string, any>} */ section) => section.label === 'Maintenance'
     )?.pages).not.toContain('marketplace');
