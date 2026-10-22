@@ -36,12 +36,12 @@ type setupAzureFunctions struct {
 
 func newSetupAzureFunctions(t *testing.T, ctx context.Context) *setupAzureFunctions {
 	t.Helper()
-	endpoint, err := url.Parse(os.Getenv("POSTGRES_URL"))
-	if err != nil || endpoint == nil || endpoint.Scheme != "postgres" && endpoint.Scheme != "postgresql" ||
-		net.ParseIP(endpoint.Hostname()) == nil || !net.ParseIP(endpoint.Hostname()).IsLoopback() {
-		t.Fatal("Azure Functions integration requires POSTGRES_URL with a numeric-loopback PostgreSQL instance")
+	rawEndpoint := os.Getenv("POSTGRES_URL")
+	config, err := setupAzureFunctionsPostgresConfig(rawEndpoint)
+	if err != nil {
+		t.Fatal(err)
 	}
-	admin, err := pgx.Connect(ctx, endpoint.String())
+	admin, err := pgx.ConnectConfig(ctx, config)
 	if err != nil {
 		t.Fatal("connect to local PostgreSQL: ", err)
 	}
@@ -59,6 +59,10 @@ func newSetupAzureFunctions(t *testing.T, ctx context.Context) *setupAzureFuncti
 		}
 		_ = admin.Close(cleanup)
 	})
+	endpoint, err := url.Parse(rawEndpoint)
+	if err != nil {
+		t.Fatal(err)
+	}
 	query := endpoint.Query()
 	query.Set("search_path", schema)
 	endpoint.RawQuery = query.Encode()
@@ -73,6 +77,50 @@ func newSetupAzureFunctions(t *testing.T, ctx context.Context) *setupAzureFuncti
 		}
 	})
 	return f
+}
+
+func setupAzureFunctionsPostgresConfig(raw string) (*pgx.ConnConfig, error) {
+	endpoint, err := url.Parse(raw)
+	if err != nil || endpoint.Scheme != "postgres" && endpoint.Scheme != "postgresql" ||
+		net.ParseIP(endpoint.Hostname()) == nil || !net.ParseIP(endpoint.Hostname()).IsLoopback() {
+		return nil, errors.New("Azure Functions integration requires POSTGRES_URL with a numeric-loopback PostgreSQL instance")
+	}
+	config, err := pgx.ParseConfig(raw)
+	if err != nil {
+		return nil, errors.New("Azure Functions integration requires a valid PostgreSQL connection URL")
+	}
+	hosts := []string{config.Host}
+	for _, fallback := range config.Fallbacks {
+		hosts = append(hosts, fallback.Host)
+	}
+	for _, host := range hosts {
+		if !net.ParseIP(host).IsLoopback() {
+			return nil, errors.New("Azure Functions integration requires every PostgreSQL connection host to be numeric loopback")
+		}
+	}
+	return config, nil
+}
+
+func TestSetupAzureFunctionsPostgresConfig(t *testing.T) {
+	for _, test := range []struct {
+		name, endpoint string
+		allowed        bool
+	}{
+		{"IPv4 loopback", "postgres://test@127.0.0.1/cao", true},
+		{"IPv6 loopback", "postgres://test@[::1]/cao", true},
+		{"remote authority", "postgres://test@192.0.2.1/cao", false},
+		{"hostname", "postgres://test@localhost/cao", false},
+		{"remote query override", "postgres://test@127.0.0.1/cao?host=192.0.2.1", false},
+		{"remote fallback", "postgres://test@127.0.0.1/cao?host=127.0.0.1,192.0.2.1", false},
+		{"socket query override", "postgres://test@127.0.0.1/cao?host=%2Ftmp", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := setupAzureFunctionsPostgresConfig(test.endpoint)
+			if (err == nil) != test.allowed {
+				t.Fatalf("endpoint allowed = %t, want %t", err == nil, test.allowed)
+			}
+		})
+	}
 }
 
 func (f *setupAzureFunctions) build(source string) error {
@@ -108,6 +156,7 @@ func (f *setupAzureFunctions) build(source string) error {
 	}
 	f.env = setupAzureEnvironment(setupAzureToolEnvironment("PATH", "HOME", "TMPDIR"), map[string]string{
 		"OTEL_SDK_DISABLED": "true", "CAO_POSTGRES_URL": f.dsn,
+		"DEBUG":                       "cao:functions:startup",
 		"CAO_POLICY_PATH":             filepath.Join(source, ".github/workflows/cao.azure.json"),
 		"CAO_DATABASE_QUERIES":        filepath.Join(source, "dashboard/site/src/data/queries/database.json"),
 		"CAO_AZURE_DASHBOARD_QUERIES": filepath.Join(source, "dashboard/site/dashboard.json"),
@@ -256,6 +305,9 @@ func (f *setupAzureFunctions) assertShutdown(t *testing.T, ctx context.Context) 
 	}
 	content := setupRead(t, filepath.Join(f.directory, "functions.log"))
 	assertSetupAzureNoSecrets(t, content)
+	if !bytes.Contains(content, []byte("cao:functions:startup listening addr=")) {
+		t.Fatal("Functions startup logging is required to verify shutdown failures")
+	}
 	if bytes.Contains(content, []byte("shutdown failed")) {
 		t.Fatal("Functions shutdown did not drain HTTP and telemetry cleanly")
 	}
