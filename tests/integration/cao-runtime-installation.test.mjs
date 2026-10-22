@@ -111,6 +111,20 @@ test("a producer archive runs and builds the dashboard from a fresh documented i
     const retired = spawnSync(process.execPath, ["activity/cao.mjs", "doctor", database], { cwd: checkout, encoding: "utf8" });
     assert.equal(retired.status, 1);
     assert.match(retired.stderr, /Unknown command: doctor; use repair-database/);
+    const retiredAuth = spawnSync(process.execPath, [
+      "activity/cao.mjs", "setup-auth", "hosted-cli", "--repo", "example/control",
+      "--private-key-out", path.join(checkout, "must-not-exist.pem"),
+    ], { cwd: checkout, encoding: "utf8", env: { ...process.env, PATH: "" } });
+    assert.equal(retiredAuth.status, 1, retiredAuth.stderr);
+    assert.match(retiredAuth.stderr, /Node setup-auth hosted-cli has been retired; use gh cao setup auth hosted-cli/);
+    assert.equal(existsSync(path.join(checkout, "must-not-exist.pem")), false);
+    assert.doesNotMatch(help, /cao setup-auth hosted-cli/);
+    assert.equal(existsSync(path.join(checkout, ".github/workflows/shared/setup-hosted-cli-app.mjs")), false);
+    const appHelpers = await import(pathToFileURL(path.join(checkout, ".github/workflows/shared/github-apps.mjs")));
+    assert.equal(appHelpers.APP_PROFILES.length, 2);
+    assert.equal(typeof appHelpers.repositoryState, "function");
+    assert.equal(typeof appHelpers.repositoryVariableValue, "function");
+    assert.equal(appHelpers.createGitHubApp, undefined);
     assert.equal(existsSync(path.join(checkout, "cao.sh")), false);
     const { parseDocuments } = await import(pathToFileURL(path.join(checkout, "dashboard/site/src/validator-dashboard.js")));
     const errors = [];

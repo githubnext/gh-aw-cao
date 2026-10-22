@@ -61,12 +61,7 @@ func OpenWithMetadata(ctx context.Context, path string, metadata map[string]mode
 	if !info.Mode().IsRegular() {
 		return nil, errors.New("canonical SQLite snapshot must be a regular file")
 	}
-	location := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
-	parameters := url.Values{"mode": {"ro"}, "_pragma": {
-		"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)", "mmap_size(1073741824)",
-	}}
-	location.RawQuery = parameters.Encode()
-	db, err := sql.Open("sqlite", location.String())
+	db, err := sql.Open("sqlite", snapshotDSN(absolute))
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +77,16 @@ func OpenWithMetadata(ctx context.Context, path string, metadata map[string]mode
 		return nil, fmt.Errorf("read canonical SQLite snapshot (download or rebuild it before serving): %w", err)
 	}
 	return store, nil
+}
+
+func snapshotDSN(absolute string) string {
+	// A drive letter must be in the path (file:///C:/...), not the URI authority.
+	location := &url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(absolute), "/")}
+	parameters := url.Values{"mode": {"ro"}, "_pragma": {
+		"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)", "mmap_size(1073741824)",
+	}}
+	location.RawQuery = parameters.Encode()
+	return location.String()
 }
 
 func storeVersion(ctx context.Context, tx *sql.Tx) error {

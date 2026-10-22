@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -215,7 +216,14 @@ type setupFixture struct {
 	authError         bool
 	expectedVariables map[string]string
 	authModeWrites    int
+	handleMu          sync.RWMutex
 	handle            func(http.ResponseWriter, *http.Request) bool
+}
+
+func (f *setupFixture) setHandler(handle func(http.ResponseWriter, *http.Request) bool) {
+	f.handleMu.Lock()
+	defer f.handleMu.Unlock()
+	f.handle = handle
 }
 
 func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string, hosts ...string) *setupFixture {
@@ -239,7 +247,10 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 			http.Error(w, "wrong GitHub host", http.StatusForbidden)
 			return
 		}
-		if f.handle != nil && f.handle(w, r) {
+		f.handleMu.RLock()
+		handle := f.handle
+		f.handleMu.RUnlock()
+		if handle != nil && handle(w, r) {
 			return
 		}
 		if f.authError && (r.URL.Path == "/user" || r.URL.Path == "/graphql") {

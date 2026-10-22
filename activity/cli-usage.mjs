@@ -41,8 +41,6 @@ export const USAGE = `Usage:
   cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
     Reuse approved private Apps with --read-client-id ID --write-client-id ID; keys are prompted securely.
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
-  cao setup-auth hosted-cli --repo OWNER/REPO --private-key-out PATH [--target-repository OWNER/REPO...] [--app-name NAME] [--dry-run] [--no-open]
-    Dedicated least-privilege App for the dashboard server's execute-cli worker; never requests administration or installation permissions.
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
   cao update [--campaign SLUG] [--pre-releases] [GH_AW_UPDATE_OPTIONS...]

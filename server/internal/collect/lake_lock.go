@@ -2,13 +2,10 @@ package collect
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 // lockEvidence serializes shared-shard read/replace and manifest publication
@@ -27,13 +24,13 @@ func (l Lake) lockEvidence(ctx context.Context) (func(), error) {
 			_ = file.Close()
 			return nil, err
 		}
-		err = unix.Flock(int(file.Fd()), unix.LOCK_EX|unix.LOCK_NB)
-		if err == nil {
-			return func() { _ = file.Close() }, nil
-		}
-		if !errors.Is(err, unix.EWOULDBLOCK) && !errors.Is(err, unix.EINTR) {
+		locked, err := tryLockEvidence(file)
+		if err != nil {
 			_ = file.Close()
 			return nil, fmt.Errorf("lock evidence lake: %w", err)
+		}
+		if locked {
+			return func() { _ = file.Close() }, nil
 		}
 		sleep(ctx, 20*time.Millisecond)
 	}

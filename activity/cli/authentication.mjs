@@ -94,12 +94,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
     return { command: 'setup-auth', profile: 'github-app' };
   }
   if (method === 'hosted-cli') {
-    const script = path.join('.github', 'workflows', 'shared', 'setup-hosted-cli-app.mjs');
-    const result = execute(process.execPath, [script, ...arguments_], { stdio: 'inherit' });
-    if (result.error || result.status !== 0) {
-      throw new Error(`Hosted CLI App setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
-    }
-    return { command: 'setup-auth', profile: 'hosted-cli' };
+    throw new UsageError('Node setup-auth hosted-cli has been retired; use gh cao setup auth hosted-cli');
   }
   if (method === 'enterprise-app') {
     const options = parseOptions(arguments_);
@@ -229,5 +224,5 @@ export function setupCaoAuthentication(method, arguments_ = [], {
     }
     return setupResult;
   }
-  throw new UsageError('cao setup-auth requires github-app, enterprise-app, hosted-cli, or token');
+  throw new UsageError('cao setup-auth requires github-app, enterprise-app, or token; hosted-cli moved to gh cao setup auth hosted-cli');
 }

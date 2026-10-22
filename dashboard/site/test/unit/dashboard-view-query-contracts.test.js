@@ -113,7 +113,9 @@ function viewsOf(page) {
     ? /** @type {Record<string, unknown>} */ (configured.definition)
     : configured;
   return [
-    ...(Array.isArray(body.views) ? body.views : []),
+    ...(Array.isArray(body.views) ? body.views.filter(
+      (view) => view && typeof view === 'object' && !Array.isArray(view)
+    ) : []),
     ...(Array.isArray(body.sections) ? body.sections.flatMap((/** @type {unknown} */ section) => viewsOf(section)) : [])
   ];
 }
