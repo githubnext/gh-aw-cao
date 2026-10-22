@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -29,8 +29,10 @@ test("streamed installer installs real public tools with unusable cross-organiza
   const bin = path.join(root, "bin");
   const consumer = path.join(root, "control");
   const log = path.join(root, "control-requests.log");
+  const catalogSource = path.join(root, "catalog with spaces '\"; $()");
   await Promise.all([config, bin, consumer].map((directory) => mkdir(directory, { recursive: true })));
-  const { stdout: executable } = await run("bash", ["-c", "command -v gh"]);
+  await symlink(catalog, catalogSource, "dir");
+  const { stdout: executable } = await run("which", ["gh"]);
   assert.ok(path.isAbsolute(executable.trim()), "GitHub CLI must be installed");
 
   // Only control-repository identity/sign-in are simulated; downloads and both extensions are real.
@@ -87,7 +89,7 @@ exec "$CAO_INSTALLER_GH" "$@"
   await run("git", ["remote", "add", "origin", "https://github.com/installer-test/control.git"], { cwd: consumer, env });
 
   const source = await readFile(path.join(catalog, "install-gh-cao.sh"), "utf8");
-  const { stdout, stderr } = await run("bash", ["-s", "--", catalog], { cwd: consumer, env }, source);
+  const { stdout, stderr } = await run("bash", ["-s", "--", catalogSource], { cwd: consumer, env }, source);
   assert.match(stdout, /CAO installed and verified/);
   assert.match(stdout, /Checksum verification passed/);
   assert.doesNotMatch(stdout + stderr, /Checksum verification (?:skipped|will be skipped)|synthetic-[\w-]*token/);
