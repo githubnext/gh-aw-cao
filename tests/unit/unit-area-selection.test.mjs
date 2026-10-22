@@ -13,6 +13,7 @@ test("every root unit test runs in exactly one topical area", () => {
   assert.ok(partition.tooling.includes("azure-local-harness.test.mjs"));
   assert.ok(partition.tooling.includes("backfill-stress-report.test.mjs"));
   assert.ok(partition.tooling.includes("source-map-compat.test.mjs"));
+  assert.ok(partition.tooling.includes("installer-canary.test.mjs"));
   assert.ok(partition.workflows.includes("build-release.test.mjs"));
   assert.throws(() => partitionUnitTests([...files, "unclassified.test.mjs"]), /exactly one area/);
 });
