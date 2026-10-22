@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import test from "node:test";
 import { parse } from "yaml";
 import {
@@ -15,6 +17,7 @@ import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
 import { assertUnknownCommandsRejectBeforeIO } from "../helpers/cao-unknown-commands.mjs";
 
 const catalog = path.resolve(import.meta.dirname, "../..");
+const executeFile = promisify(execFile);
 const revision = "1".repeat(40);
 const retiredLauncher = `#!/bin/sh
 set -eu
@@ -44,7 +47,7 @@ test("the installed runtime rejects unknown commands before filesystem or databa
   assertUnknownCommandsRejectBeforeIO(unpack(t), t);
 });
 
-test("the installed runtime retains explicit raw-log ingestion and persistent queryable output", (t) => {
+test("the installed runtime retains explicit ingestion and downloadable queryable evidence", async (t) => {
   const root = unpack(t);
   const database = path.join(root, "snapshot.sqlite");
   const fixture = path.join(catalog, "dashboard/site/test/fixtures/gh-aw-logs");
@@ -66,6 +69,55 @@ test("the installed runtime retains explicit raw-log ingestion and persistent qu
   const runs = run(["query", "--database", database, "--collection", "runs"]);
   assert.equal(runs[0].id, "github:run:githubnext/gh-cao:303");
   assert.equal(run(["query", "--database", database, "--collection", "tools"]).length, 3);
+
+  const shard = "gh-aw-logs-shards/empty.jsonl";
+  const payloads = new Map([
+    ["/gh-aw-logs.sqlite", readFileSync(database)],
+    ["/inventory-sources.json", Buffer.from('{"repositories":{"rows":[]}}\n')],
+    [`/${shard}`, Buffer.alloc(0)],
+  ]);
+  const manifest = Buffer.from(JSON.stringify(Object.fromEntries([
+    ["gh-aw-logs.sqlite", payloads.get("/gh-aw-logs.sqlite")],
+    [shard, payloads.get(`/${shard}`)],
+  ].map(([name, content]) => [name, createHash("sha256").update(content).digest("hex")]))));
+  payloads.set("/payload-hashes.json", manifest);
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push(request.url);
+    const payload = payloads.get(request.url);
+    response.writeHead(payload === undefined ? 404 : 200);
+    response.end(payload);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  t.after(() => new Promise((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+    server.closeAllConnections();
+  }));
+  const downloaded = path.join(root, "downloaded");
+  const { stdout, stderr } = await executeFile(process.execPath, [
+    "activity/cao.mjs", "download",
+    "--url", `http://127.0.0.1:${server.address().port}/payload-hashes.json`,
+    "--output", downloaded,
+    "--manifest-sha256", createHash("sha256").update(manifest).digest("hex"),
+  ], {
+    cwd: root,
+    env: { PATH: "", NODE_NO_WARNINGS: "1" },
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+  assert.equal(stderr, "");
+  const receipt = JSON.parse(stdout);
+  assert.equal(receipt.database, path.join(downloaded, "gh-aw-logs.sqlite"));
+  assert.equal(receipt.inventory, path.join(downloaded, "inventory-sources.json"));
+  assert.equal(receipt.manifest, path.join(downloaded, "payload-hashes.json"));
+  assert.deepEqual(requests.sort(), [...payloads.keys()].sort());
+  assert.deepEqual(readFileSync(path.join(downloaded, "gh-aw-logs.sqlite")), payloads.get("/gh-aw-logs.sqlite"));
+  assert.deepEqual(run([
+    "query", "--database", path.join(downloaded, "gh-aw-logs.sqlite"), "--collection", "runs",
+  ]), runs);
 });
 
 function fakeGithub(t, {
