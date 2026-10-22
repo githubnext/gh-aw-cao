@@ -87,6 +87,10 @@ Runtime row locks, budget accounting, sequencing, and audited queue mutations
 remain in their original database transactions. `audit verify` additionally
 appends its verification result, so that command needs the runtime audit grant;
 direct `AuditLog.VerifyAudit` and `audit export` work with the evidence reader.
+`audit lifecycles` also uses this SELECT-only reader, performs bounded
+`ListAudit` calls without appending its result, and requires no operational or
+canonical write grants. See the [missing-terminal runbook](README.md#missing-rebuild-terminal-evidence)
+for row/deadline bounds, incomplete-history alerts and manual reconciliation.
 The exported `OpenAuditStore` uses the existing-state diagnostics opener and
 does not initialize or maintain storage.
 

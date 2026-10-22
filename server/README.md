@@ -2410,6 +2410,67 @@ lifecycle: reconcile canonical revision state and independent logs manually;
 neither status reads nor a later rebuild reconstruct a missing outcome.
 See [administrative rebuild evidence](../specs/server-operational-storage.md#administrative-rebuild-evidence).
 
+#### Missing rebuild terminal evidence
+
+Use the configured PostgreSQL operational namespace with the **SELECT-only
+evidence-reader credential** described in [POSTGRES.md](POSTGRES.md), not the
+runtime or schema-owner credential:
+
+```bash
+cao-dashboard audit lifecycles --grace 1h --max-events 10000 --timeout 2m
+# Local debugging only, against an already provisioned file:
+cao-dashboard audit lifecycles --sqlite .tmp/hosted-cli.sqlite
+```
+
+This is a one-shot read-only check; it does not append a verification event,
+open the JSON audit mirror, repair status/history, replay a rebuild, or enable
+a deployment schedule or service. JSON goes to stdout, including a scan failure
+result when reads fail after opening; command errors go to stderr. It exits
+nonzero for `attention`, `incomplete`, invalid configuration or unavailable
+storage. Store the result, source/deployment/namespace identity and exit status
+in an independent monitoring destination. Open/configuration failures may have
+no JSON result; absence of a result is not a healthy heartbeat.
+
+Route alerts on `missing_terminal > 0`, per-ID issues (including
+`status_write_failed`, duplicate or conflicting events), and `status=incomplete`.
+`pending` means the first observed event is within grace and may still be active;
+it is not a failure or a liveness assertion. The minimum grace is 35 minutes,
+above the current work timeout/lease; the default is one hour. Approve a larger
+grace if deployment clock skew or cleanup latency requires it, and review this
+bound whenever execution deadlines change. Age uses stored timestamps; large
+future timestamps are clock uncertainty, not successful completion.
+
+The command scans at most the configured rows plus one lookahead, paginating
+all audit event types in sequence order. It does not run full chain verification.
+If `event_limit` is reported, increase the budget within the 100,000-row hard
+limit and rerun **from the same starting point**. Do not use `last_sequence` as
+a checkpoint: unresolved admissions would be forgotten. A truncated scan
+reports their classification as `unknown`, not a missing terminal alert.
+`--after SEQUENCE` explicitly selects a suffix and always reports incomplete
+historical coverage. A retained oldest prefix (`retained_prefix`) likewise
+requires independent evidence; an interior `history_gap` blocks missing-terminal
+classification. For a contiguous observed suffix, missing terminals for IDs
+actually observed can still be reported, but IDs wholly outside it are unknown.
+Use the independent full committed-row pipeline for history beyond the bound.
+Verification with approved external anchors and `audit deliver` remain separate
+checks; `history_complete` describes sequence coverage, not authenticity.
+
+On an alert, preserve the JSON, anchored verification/delivery evidence and
+relevant `stored=false` audit telemetry first. Rerun the check to account for a
+late terminal append. Correlate each server-generated `rebuild_id` and sequence
+range with the original receipt, authenticated audit events, trace-correlated
+logs, canonical prior/current revisions, and replaceable status. A newer
+canonical revision or expired lease alone cannot establish that ID's outcome:
+another operation may have published, or work may remain uncertain. Record the
+reconciliation, evidence references, uncertainty and accountable disposition
+in the incident/evidence system. Never synthesize a completion event, rewrite
+history, retry ingestion automatically, or treat a canceled/failed completion
+as a success. Any separately authorized rebuild must receive a fresh ID.
+The operator must separately approve cadence, monitor missing-check heartbeats,
+and exercise alert acknowledgement and outage/retention-gap response.
+
+#### Operational-value publication
+
 `POST /api/v1/value` publishes one prepared operational-value evidence envelope
 (JSON or one JSONL record, at most 8 MiB). It requires PostgreSQL and an already
 observed repository/workflow; it neither enrolls targets nor runs uploaded code.

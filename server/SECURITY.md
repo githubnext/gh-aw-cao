@@ -995,6 +995,13 @@ contract is [`specs/server-hosted-cli.md`](../specs/server-hosted-cli.md).
   `cao_hostedcli.token.pending_revocations`, on
   `cao_audit.event.count{stored="false"}`, on `audit.verify_failed`, and on
   spikes in `admin.denied`.
+- **Missing rebuild evidence**: `cao-dashboard audit lifecycles` uses the
+  SELECT-only evidence reader for a bounded, read-only check of admitted/started
+  rebuild IDs without terminal evidence beyond grace. Alert on missing terminals,
+  per-ID uncertainty, incomplete coverage and missing-check heartbeats. Recent
+  pending IDs may still be active; no result infers an outcome or repairs history.
+  Follow the [operator reconciliation runbook](README.md#missing-rebuild-terminal-evidence);
+  independent verification/delivery and deployment cadence remain operator-owned.
 - **SQLite debug store**: `--hosted-cli-sqlite` and `execute-cli --sqlite`
   replace the hosted-CLI PostgreSQL queue/audit/journal with one local SQLite
   file for debugging. Explicit `database bootstrap --store operational

@@ -200,6 +200,68 @@ revision state and independent telemetry, preserve the resulting incident
 evidence, and monitor `stored=false` audit events and missing terminal events.
 A subsequent rebuild MUST use a new ID and MUST NOT erase retained history.
 
+### Read-only missing-terminal detection
+
+`cao-dashboard audit lifecycles` provides a bounded operator check through
+`OpenAuditReader` and `ListAudit`. It MUST NOT append audit events (including
+its own result), acquire leases, replay work, write status, mutate canonical
+data, perform maintenance, or infer a cross-store transaction. PostgreSQL
+operators MUST use the independent SELECT-only evidence role. `--sqlite`
+uses the existing read-only local debugging adapter, not a production substitute.
+
+The check reads ascending, unfiltered sequence pages of at most 1,000 rows,
+up to `--max-events` (default 10,000; hard maximum 100,000) plus one lookahead
+row. Per-ID summaries and output are bounded by that row budget. A whole-call
+`--timeout` (default two minutes; one second to thirty minutes) bounds reads.
+It MUST NOT invoke unbounded hash-chain verification inside that budget.
+Chain verification, independently enrolled external anchors and complete
+committed-row delivery remain separate requirements; this check does not
+authenticate history or detect a consistent whole-chain rewrite.
+
+The default grace is one hour; `--grace` accepts thirty-five minutes to seven
+days. The minimum exceeds the current twenty-five-minute work timeout and
+thirty-minute lease, allowing terminal cleanup and clock margin. Age uses the
+first observed stored event timestamp, not replaceable status, a caller's
+`started_at`, or the most recent duplicate. Within grace, an unresolved ID is
+`pending` (possibly active, not proven active). Beyond grace and after reaching
+the observed tail without an interior sequence gap, it is `missing_terminal`
+(missing evidence, not proof of execution failure or death). A later terminal
+append can resolve the observation; operators SHOULD reread before disposition.
+Success, failure and cancellation terminal states are all recognized.
+`admin.rebuild.status_failed` MUST NOT substitute for a completion. Duplicate
+admissions, starts or completions, conflicting terminal states/revisions,
+unobserved admission, invalid terminal state/outcome, invalid timestamps,
+clock uncertainty and unexpected event order require explicit diagnostics.
+Conflicting terminals MUST NOT select a winning outcome.
+
+The JSON result reports `status`, observation time, grace, observed sequence
+range, rows scanned, `tail_reached`, `history_complete`, aggregate completed,
+pending and missing-terminal counts, coverage issues and per-ID findings.
+It excludes actors, raw errors, arbitrary attributes, rows and payloads.
+`ok` means no actionable issue among the observed retained rows; it does not
+attest execution, liveness, integrity, independent delivery or compliance.
+`attention` identifies missing evidence or per-ID uncertainty.
+`incomplete` identifies a row cap, read failure, invalid identity, selected
+suffix or history gap. Only `ok` exits zero. Invalid options or inability to
+open the reader fail without claiming a successful observation.
+
+Retention can remove an oldest prefix, and `--after` deliberately omits one.
+Both MUST report incomplete historical coverage even if the retained tail is
+reached. Observed admissions/starts can still have missing terminal evidence
+within a contiguous suffix; identities wholly outside it remain unknown.
+An interior gap or row cap MUST NOT classify unresolved IDs as missing
+terminal: a completion may be in unread history. `last_sequence` is an
+observation boundary, NOT a safe monitoring checkpoint. Operators MUST revisit
+unresolved admissions; blindly continuing from the last sequence can lose them.
+For history beyond the hard bound, use independently retained committed-row
+evidence with an approved correlation pipeline; a selected suffix is not a
+complete-history workaround.
+
+Operators own execution cadence, independent result retention, alert routing,
+missing-check heartbeats and reconciliation. No scheduler or service is enabled
+by this command. The response procedure is documented in
+[`server/README.md`](../server/README.md#missing-rebuild-terminal-evidence).
+
 ## Durable CLI command queue service
 
 `OperationalServices.CLICommands` exposes `CLICommandQueues`, whose
