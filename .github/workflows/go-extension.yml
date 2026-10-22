@@ -10,6 +10,8 @@ on:
       - cmd/**
       - internal/**
       - server/internal/simulator/**
+      - server/azure/**
+      - server/Dockerfile
       - server/go.mod
       - server/go.sum
       - aw.yml
@@ -40,6 +42,8 @@ on:
       - cmd/**
       - internal/**
       - server/internal/simulator/**
+      - server/azure/**
+      - server/Dockerfile
       - server/go.mod
       - server/go.sum
       - aw.yml
@@ -126,7 +130,7 @@ jobs:
           ./gh-cao pages --json > /dev/null
 
   extension-setup-simulator:
-    name: Setup options against local GitHub simulator
+    name: Setup against local GitHub and Azure simulators
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -151,6 +155,18 @@ jobs:
           GH_ENTERPRISE_TOKEN: ""
           GITHUB_ENTERPRISE_TOKEN: ""
         run: npm run test:integration:setup
+      - name: Prepare offline Azure simulation prerequisites
+        run: |
+          go mod download
+          go -C server mod download
+          docker pull mcr.microsoft.com/azure-storage/azurite:3.37.0@sha256:830430c1da1a2d537e08f3e6764dd1f5ae00cf0346bcaf625b968ec3f0971fd5
+      - name: Run Azure setup with official Azurite and local control-plane simulation
+        env:
+          GH_TOKEN: ""
+          GITHUB_TOKEN: ""
+          GH_ENTERPRISE_TOKEN: ""
+          GITHUB_ENTERPRISE_TOKEN: ""
+        run: npm run test:integration:setup-azure
 
   extension-authtests:
     name: Doctor authenticated integration tests

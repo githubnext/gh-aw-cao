@@ -74,6 +74,51 @@ or Azure infrastructure provisioning. The fast bootstrap API regression tests
 also run with the ordinary simulator unit suite; the external-tool integration
 is opt-in outside its dedicated npm command and CI job.
 
+## Local Azure setup integration
+
+Run `npm run test:integration:setup-azure` with Go 1.27.3 or newer on PATH, Git, GitHub CLI, the
+policy-pinned gh-aw prerequisite, and Docker installed. The Go Extension CI
+setup job runs this command alongside the GitHub-only setup suite. It uses the
+same digest-pinned official Azurite image as `scripts/azure-local/azure-local.sh`,
+with a disposable account, loopback-only dynamic port, and automatic cleanup.
+Prerequisites must already be local: run `go mod download`,
+`go -C server mod download`, and pull the exact Azurite image declared in
+`scripts/azure-local/azure-local.sh` before entering the simulation. CI does this
+in a separate prerequisite step. The simulation disables module downloads and
+implicit toolchain/image pulls; missing prerequisites fail instead of accessing a registry.
+Without Docker, set `CAO_SETUP_AZURITE_BINARY` to an installed official
+`azurite-blob` executable; its process and storage are also isolated and removed.
+
+The test builds the current native extension and runs real `gh cao setup`,
+then `gh cao deploy azure --preflight`, `--plan`, and `--apply`. Azure deployment
+is a separate command, not a `setup azure` subcommand. The existing GitHub
+simulator handles setup. A test-only `az` subprocess adapter supplies the
+stateful ARM, ACR, Container Apps jobs, Key Vault reference status, and HTTPS
+ingress behavior that Azurite does not emulate. Azurite receives actual signed
+blob writes and reads for synthetic build manifests and deployment state.
+Unknown commands and destinations fail closed; no Azure CLI installation,
+cloud login, real credentials, GitHub writes, or Azure subscription is used.
+The `az` adapter and an allowlist of local tools are the entire command PATH:
+there is no fallback to a real Azure CLI. Git network protocols are disabled.
+GitHub and Functions HTTPS names terminate at the loopback CONNECT proxy with
+an ephemeral CA; the proxy never forwards to those hosts. Azure command and
+storage clients use exact numeric-loopback transports, rejecting redirects,
+environment proxies, metadata-service addresses, and nonlocal destinations.
+The Azurite container uses a disposable internal-only Docker network and a local
+Unix Docker socket; remote Docker contexts and TCP/SSH daemons are refused.
+Regression probes verify live GitHub, ARM, Entra, and metadata destinations are
+rejected or handled only by local fixtures, and ambient GitHub/Azure/OIDC
+credentials are not inherited.
+
+Assertions cover read-only preflight/planning, plan-drift rejection before
+writes, locked per-target digest bindings, provisioning-before-ingestion,
+provisioning failure without verification or a receipt, delayed Key Vault
+readiness, six ingress/OAuth checks, secret-free persisted receipts, existing
+instance/repeated-apply rejection, and unchanged GitHub policy and consumer files.
+This is command/protocol coverage: image builds, job execution, PostgreSQL,
+managed identities, and hosted OAuth are simulated, not deployed or attested.
+The separate Azure-local harness exercises the real Functions host.
+
 ## Secret-free fleet stress simulation
 
 Run `npm run test:stress:cao` from the repository root. The dedicated
