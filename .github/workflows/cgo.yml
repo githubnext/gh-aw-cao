@@ -34,6 +34,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  windows-local-server:
+    name: Windows local development server
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.3
+          cache: false
+      - name: Build native Windows development server
+        run: go -C server build ./cmd/cao-dashboard
+      - name: Run local SQLite server and query its HTTP API
+        run: >-
+          go -C server test ./cmd/cao-dashboard
+          -run '^(TestServeSQLite.*|TestServePostgresRequiresExplicitSelection|TestDownloadSQLite.*)$'
+          -count=1 -timeout=3m -v
+      - name: Verify local snapshot paths and read-only queries
+        run: go -C server test ./internal/sqlitex -count=1 -timeout=3m -v
+      - name: Verify evidence locking and cancellation
+        run: >-
+          go -C server test ./internal/collect
+          -run '^TestEvidenceLock' -count=1 -timeout=1m -v
+
   server-quality:
     name: Go format, lint, and tests
     runs-on: ubuntu-latest

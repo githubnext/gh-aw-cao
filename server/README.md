@@ -38,6 +38,17 @@ From the repository root, `npm run dev` or `npm run dashboard:local` builds
 the dashboard and starts Go `serve` with its verified SQLite cache. The Node
 server is retired; only an internal loopback canvas authoring bridge remains.
 
+The Go local SQLite server also runs natively on Windows, without PostgreSQL,
+Redis, Docker, or Linux process features. From PowerShell at the repository root,
+build the dashboard with `npm --prefix dashboard/site run build -- dist`, then
+run `go -C server run ./cmd/cao-dashboard serve`. The POSIX environment-assignment
+syntax in the root npm launch commands is not supported by PowerShell's default
+npm shell; use the direct Go command there. Windows CI builds the native command
+and exercises snapshot download, offline startup, HTTP queries, and shutdown with
+local fixtures. Evidence-lake writers retain cross-process exclusion using
+Windows file locks instead of Unix `flock`; locking errors still fail closed.
+Local SQLite URLs preserve drive-letter paths and escaped spaces or `#` in names.
+
 Local serving resolves Marketplace through the same read-only registry resolver
 as hosted serving, even when the cached SQLite snapshot has no packages.
 The npm launch commands select this checkout's `.github/workflows/cao.json`;
