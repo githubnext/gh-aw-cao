@@ -11,6 +11,10 @@ Public and private control repositories are supported. Their contents inherit th
 
 Use a private control repository whenever the target or required evidence is private or internal. Use a public control repository only when all review material may be public.
 
+See [setup combinations and verification](setup-compatibility.md) for the
+visibility/owner matrix, effective operator capabilities, PAT limitations,
+GHE.com data residency, and the distinction between simulator and live evidence.
+
 ## Choose Cross-Repository Authentication
 
 | Your run | Use |
@@ -84,11 +88,21 @@ data, authenticated enrichments, or write APIs.
 
 ### Public-only monitoring quickstart
 
-Install `gh cao` with `gh extension install githubnext/gh-cao`, then run
-`gh cao setup` from an existing control-repository checkout; it prepares missing
-bare runtime and policy itself. Confirmed public remote targets
-skip authentication selection, not review or public Pages consent.
-The control repository may be private or internal: its own job token can read it.
+Install the extension with `gh extension install githubnext/gh-cao`, then run
+`gh cao setup` from the control-repository checkout. Setup prepares missing
+gh-aw and runtime files; keep GitHub CLI signed in for configuration.
+
+:::tip[SAML-token installation failure]
+If extension installation fails because of cross-organization SAML authorization,
+use the [curl fallback](cao-cli.md#control-plane-installer):
+`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+Public tool downloads are anonymous; control-repository and runtime-provenance
+access still use your stored credentials.
+:::
+
+Confirmed public remote targets skip authentication selection, not review or
+public Pages consent. The control repository may be private or internal: its
+own job token can read it.
 Unknown visibility or failed lookups never qualify. For unattended setup:
 
 ```bash
@@ -307,13 +321,25 @@ gh cao setup auth enterprise-app \
 
 The command prompts for each private key. Never put a private key in a command argument. Enterprise ownership alone does not grant repository access; each organization installation is still required.
 
-The CLI reads `control-plane.scope.allowed-repositories` from `.github/workflows/cao.json`, groups the control repository and exact allowed repositories by owner, and verifies a selected-repository installation for each account. The manifest helper creates private organization-owned Apps only, so every selected repository must belong to the control repository organization. For multiple organizations in one enterprise, manually create enterprise-owned private Apps because GitHub App manifests do not support enterprise-owned App creation. Install them separately on each enrolled organization, then run `gh cao setup auth enterprise-app` to store their client IDs and interactively enter their private keys. Installation IDs and tokens are not stored in policy or dispatch inputs. gh-aw selects the correct installation from the target owner and repository at runtime.
+The CLI reads `control-plane.scope.allowed-repositories` from
+`.github/workflows/cao.json` and groups the control repository and exact allowed
+repositories by owner. The `github-app` creation/reuse path verifies each
+selected-repository installation; the legacy `enterprise-app` path above stores
+credentials but does not verify enterprise membership or installation reach.
+Prefer [approved-App reuse](#reuse-approved-apps) for verified connection of
+existing enterprise Apps. The manifest helper creates only organization-owned
+private Apps, limited to their owning organization. Enterprise Apps must be
+created manually and installed separately in every enrolled organization.
+Installation IDs and tokens are not stored in policy or dispatch inputs. gh-aw
+selects the installation from the target owner and repository at runtime.
 
 On a GitHub Enterprise Cloud data-residency hostname, export `GH_HOST` before
 running setup. The helper uses that host for repository API calls and all App
 registration, installation, and settings URLs. On every host, it mints a
 short-lived installation token from the newly created App key and verifies the
-exact selected repositories before completing setup.
+exact selected repositories before completing the `github-app` path. See
+[GHE.com setup boundaries](setup-compatibility.md#enterprise-cloud-data-residency-ghecom)
+for private/internal visibility and live verification requirements.
 
 Enterprise ownership does not grant repository access or widen CAO policy. The App still has no access until each organization approves a selected-repository installation, and shared control still enforces the exact checked-in allowlist. Confirm the read App has no write permission and install the write App only where approved safe outputs may write. Public Apps are unsupported; replace an earlier public App with private organization- or enterprise-owned Apps after reviewing credential rotation.
 

@@ -231,7 +231,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
   assert.match(guide, /## Prerequisites/);
   assert.match(guide, /Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);
-  assert.doesNotMatch(guide, /install\.sh|gh cao setup|gh cao validate|Review and apply/);
+  assert.doesNotMatch(guide, /install-gh-cao\.sh|gh cao setup|gh cao validate|Review and apply/);
   assert.match(guide, /Reuse your setup/);
   assert.deepEqual([...guide.matchAll(/^## Step \d - (.+)$/gm)].map(match => match[1]), [
     "Add and review the sample workflow",
@@ -253,7 +253,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.match(guide, /gh cao add daily-repo-status/);
   assert.match(guide, /No manual registration is needed/);
   assert.match(guide, /control-plane\.workflows/);
-  assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
+  assert.doesNotMatch(guide, /gh cao add \S+\/\S+|gh cao campaigns mode|gh workflow enable/);
   assert.match(guide, /manual-only/);
   const registration = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(guide)[1]);
   assert.deepEqual(registration, {

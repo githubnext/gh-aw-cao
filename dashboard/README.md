@@ -31,14 +31,13 @@ If authoritative control policy resolution fails, the build remains fail-closed 
 ## Install
 
 The root Central Agentic Ops campaign installs Activity, Dashboard, the trusted
-materializer, and the local runtime verification action together. The installer
-resolves the latest campaign release automatically, then materializes the
-canonical runtime files from the exact revision recorded by gh-aw:
+materializer, and the local runtime verification action together. Install the
+extension with GitHub CLI, then let guided setup prepare the runtime from the
+exact revision recorded by gh-aw:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- githubnext/gh-cao
+gh extension install githubnext/gh-cao
+gh cao setup
 ```
 
 Direct `gh aw add` of the component `activity/` or `dashboard/` manifests is not
@@ -50,13 +49,18 @@ configure Pages for GitHub Actions with repository-restricted access for a
 private control repository. The standalone publisher remains manual-only and
 cannot enable Pages for the repository.
 
-To refresh or restore campaign-owned files, rerun the installer. It resolves the
-latest campaign release automatically:
+> [!TIP]
+> **SAML-token installation failure:** If GitHub CLI cannot download the extension
+> because of cross-organization SAML authorization, use
+> `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+> The fallback requires Bash, curl, and Node.js 24+; public tool downloads are
+> anonymous without changing stored credentials.
+
+To refresh the extension and the installed root runtime:
 
 ```bash
-curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
-  bash -s -- githubnext/gh-cao
+gh extension upgrade gh-cao
+gh cao update --campaign root
 ```
 
 Use `gh cao update` to move installed campaigns to a newer reviewed
@@ -117,12 +121,20 @@ the operational adapter, with PostgreSQL the default and Redis or acknowledged
 volatile memory explicit alternatives. OAuth, authorization and HTTPS/proxy
 protections remain required. See [`../server/README.md`](../server/README.md).
 
-Only the Copilot canvas retains a Node authoring bridge. It downloads the
-dashboard artifact using authenticated GitHub CLI, composes and watches JSON
-documents and fragments, and reloads valid edits over a capability-protected
-WebSocket. It binds only to loopback, requires trusted callback adapters for
-authoring or command execution, and cannot be launched as a standalone CLI.
+The Copilot canvas launches the same Go server against the authenticated GitHub
+CLI download's checksum-verified canonical SQLite snapshot. Go owns its public
+loopback origin, static assets, query/diagnostics/memory APIs and revision events.
+It proxies only Copilot integration routes to a private Node adapter, which
+composes and watches JSON documents/fragments, reloads valid edits over a
+capability-protected WebSocket and runs trusted authoring/command callbacks.
 Invalid JSON is reported while the last valid canvas remains available.
+There is no Node data server, logical-source HTTP transport or browser ingestion
+fallback. Published inventory quality is read as metadata only; absent quality
+remains unknown. Snapshot compiler evidence is not mutated by live GitHub reads.
+The plugin includes its Go module and native query sources; install compatible
+Go or select an absolute `CAO_DASHBOARD_EXECUTABLE`. It never builds workspace
+executable code. The owning adapter manages the child's stdin lifetime and
+removes staged files only after stopping it, including failed startup.
 
 ### Canvas CLI actions
 

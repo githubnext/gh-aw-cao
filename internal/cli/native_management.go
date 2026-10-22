@@ -25,7 +25,7 @@ var nativeVersionCollators = sync.Pool{New: func() any {
 
 func nativeRepositoryAdd(cmd *cobra.Command, repository string, gh ghExecutor) error {
 	if len(repository) > 200 || !repositoryPattern.MatchString(repository) {
-		return errors.New("cao add --repository requires an exact OWNER/REPO")
+		return errors.New("repos add requires an exact OWNER/REPO")
 	}
 	policy, err := nativeReadValidatedPolicy()
 	if errors.Is(err, os.ErrNotExist) {

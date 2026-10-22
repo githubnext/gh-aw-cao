@@ -117,6 +117,16 @@ npm run check
 Workflow source changes must pass `npm run compile`. Run
 `npm run compile:locks` only when generated lock files should be updated.
 
+`npm run test:integration:installer` streams the root installer into Bash,
+downloads real public gh-aw and gh-cao releases with unusable tokens, and installs
+the local catalog's runtime in a temporary control checkout. Only control-repository
+sign-in and identity are simulated; public downloads, upstream installation,
+checksums, native extension dispatch, runtime materialization, and policy initialization
+are real. The test isolates HOME, GitHub CLI configuration, and extension storage,
+verifies credentials remain unchanged, and removes its installation afterward.
+It requires network access, Bash, curl, Git, GitHub CLI 2.68+, Node.js 24+, and the
+repository's npm dependencies; CI runs it as a separate public-installer job.
+
 ### Go extension development
 
 The root Go module provides the operator-facing `gh cao` GitHub CLI extension.
@@ -188,11 +198,13 @@ as needed rather than its full CLI command implementation.
 
 Help for every operator command and version work offline without GitHub authentication.
 Guided onboarding runs as `gh cao setup`; independent authentication profiles
-are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
+are grouped under `gh cao setup auth github-app|enterprise-app|hosted-cli|token`, not a
 root-level `setup-auth` command. These native commands preserve the setup and
 setup-auth JSON result contracts and secure credential prompts.
 Actions and Node-only tools invoke `node activity/cao.mjs <command>` directly,
-including SQLite `doctor` and `setup-auth hosted-cli`. There is no shell launcher;
+including SQLite `repair-database`. Hosted-executor App creation belongs to native
+`gh cao setup auth hosted-cli`; its retired Node profile fails before side effects.
+There is no shell launcher;
 retained internal Node implementations serve Actions and parity tests, not operators.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.
@@ -210,7 +222,9 @@ source mappings are embedded directly from their authoritative JSON; do not
 maintain a separate catalog. SQLite evidence access is read-only and does not
 migrate or repair downloaded projections. `TestNativeStandaloneBinary` runs
 the built binary with an empty `PATH` outside the checkout to enforce this boundary.
-`campaigns add` and `update` pass evolving gh-aw options unchanged.
+Campaign installation through `add` and package updates through `update` pass
+evolving gh-aw options unchanged. Standalone workflow installation retains its
+bounded `--force` and `--engine` options.
 Activity/Dashboard pipeline commands are deliberately not registered in Go;
 their Actions, Node command modules and runtime ownership remain unchanged.
 CI invokes the shipped JavaScript validator directly with

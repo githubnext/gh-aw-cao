@@ -7,7 +7,7 @@ LOG_DIR="$STATE_DIR/logs"
 APP_DIR="$STATE_DIR/function-app"
 RUNTIME_ENV="$STATE_DIR/runtime.env"
 RUNTIME_JSON="$STATE_DIR/runtime.json"
-HARNESS_VERSION=3
+HARNESS_VERSION=4
 CORE_TOOLS_VERSION=4.15.1
 CORE_TOOLS_SHA256=9b982efb4047c717c9b1c26beb2269c2ac41b29bf8d21f4df1130c1586cc81cd
 POSTGRES_IMAGE=postgres:16-alpine
@@ -145,7 +145,7 @@ wait_for_process_group() {
 process_group_matches() {
   local process stat_pgid executable expected_handler
   [[ -n "${FUNCTIONS_PGID:-}" ]] || return 1
-  expected_handler="$(readlink -f "$APP_DIR/cao-functions")"
+  expected_handler="$(readlink -f "$APP_DIR/cao-dashboard")"
   for process in /proc/[0-9]*; do
     [[ -r "$process/stat" && -e "$process/exe" ]] || continue
     stat_pgid="$(awk '{print $5}' "$process/stat")"
@@ -250,8 +250,6 @@ prepare_application() {
   printf '<!doctype html><title>CAO local Azure simulation</title>\n' >"$APP_DIR/site/index.html"
   cp "$ROOT/.github/workflows/cao.json" "$APP_DIR/.github/workflows/cao.json"
   cp "$ROOT/.github/workflows/cao.azure.json" "$APP_DIR/.github/workflows/cao.azure.json"
-  run_logged "Azure Functions handler build" functions-build.log \
-    go -C "$ROOT/server" build -o "$APP_DIR/cao-functions" ./cmd/cao-functions
   run_logged "dashboard server build" server-build.log \
     go -C "$ROOT/server" build -o "$APP_DIR/cao-dashboard" ./cmd/cao-dashboard
   cat >"$APP_DIR/host.json" <<'JSON'
@@ -259,7 +257,8 @@ prepare_application() {
   "version": "2.0",
   "customHandler": {
     "description": {
-      "defaultExecutablePath": "cao-functions"
+      "defaultExecutablePath": "cao-dashboard",
+      "arguments": ["azure-functions"]
     },
     "enableForwardingHttpRequest": true
   },

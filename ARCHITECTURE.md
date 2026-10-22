@@ -198,12 +198,23 @@ IndexedDB rather than the hosted HTTP backend. The local Pages preparation
 script runs production Activity normalization/SQLite ingestion and Dashboard
 building from an existing snapshot or explicitly labelled synthetic evidence;
 it does not simulate GitHub collection, Actions permissions or artifact transport.
-There is no standalone Node dashboard CLI, admin server, process replacement,
-or JavaScript Go launcher. `dashboard/canvas-server.mjs` is an internal,
-loopback-only authoring bridge for the Copilot canvas, retaining JSON live
-reload, authoring callbacks, bounded read-only GitHub access, and canvas data
-adapters. Canvas command execution requires paired trusted execution and
-approval callbacks; read-only authoring starts no command queue.
+There is no standalone Node dashboard CLI, admin server or process replacement.
+The Copilot canvas also uses Go `serve`: `dashboard/canvas-go-host.mjs` launches
+the bundled server module or an explicitly selected compatible executable.
+Go owns the capability-protected browser origin, assets, verified canonical
+SQLite queries, diagnostics, read-only repository memory and revision events.
+Canvas startup requires a checksum-verified published SQLite snapshot; there is
+no Node query backend, logical-source HTTP transport or browser ingestion
+fallback. Published inventory quality may accompany the snapshot as metadata
+only; missing quality remains unknown, never inferred complete from row counts.
+`dashboard/canvas-server.mjs` is a private loopback-only integration adapter
+for JSON composition/live reload, authoring callbacks, bounded local-user
+GitHub reads and trusted command callbacks. Go proxies only those integration
+routes on the same public origin. Installed plugins carry the server sources
+and native query module; they never build or import executable workspace code.
+The adapter owns the Go child's stdin lifetime, stops it before removing staged
+assets, and cleans up failed startup. Canvas command execution requires paired
+trusted execution and approval callbacks; read-only authoring starts no command queue.
 Trusted canvas CLI actions use a separate, single-owner
 operational SQLite queue in `.cao/cli-actions.sqlite`, never browser IndexedDB
 or the disposable dashboard projection. Capability-protected local endpoints
@@ -1042,7 +1053,7 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
 owns all extension implementation, argument validation and help. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
-`gh cao campaigns add` delegates package ownership and workflow generation to
+`gh cao add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
 campaign from its installed full `resolvedCommit` SHA or a local catalog's
 Git-tracked files. Archive extraction rejects escaping paths and links; staged
@@ -1054,9 +1065,21 @@ only the exact current control repository. Initialization refuses
 replacement, preview maps to review, and campaign declarations are fully checked
 before workflow enablement/disablement. The extension groups guided setup at
 `gh cao setup` and independent credential profiles under
-`gh cao setup auth github-app|enterprise-app|token`, with no root-level
+`gh cao setup auth github-app|enterprise-app|hosted-cli|token`, with no root-level
 `setup-auth` command. Native authentication preserves the `setup-auth` result
 contract, options, credential prompts, consent, and read/write scope boundaries.
+Dedicated hosted-executor App setup also runs natively in Go, using the shared
+manifest callback and App-authenticated installation helpers. It requests exactly
+actions, contents, pull requests and workflows write plus metadata read, requires
+explicit same-owner repositories and browser approval, rejects all-repository
+installations and verifies every requested target. Its private key is written
+exclusively to a new mode-0600 temporary bootstrap file for import into the executor's
+secret manager, never printed or passed in arguments. Hosted credentials remain
+separate from dashboard login and Actions read/write credentials. Setup never
+changes policy, authentication mode or hosted-feature gates. The retired Node
+profile fails before side effects; unreferenced Node App-creation administration is
+removed while Actions credential profiles and inspection remain in
+`.github/workflows/shared/github-apps.mjs`.
 Repository enrollment (`gh cao repos add OWNER/REPO`),
 updates, onboarding, downloads, computations, and all evidence commands
 run entirely in Go. No production command invokes Node.js, npm, or JavaScript
@@ -1076,8 +1099,8 @@ and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
-`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `doctor`
-and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
+`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`.
+There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
 not as an alternative operator surface.
 Root runtime upgrades remove only
@@ -1209,10 +1232,21 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `cao add` is the
+resources; they do not import the root catalog package. `gh cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
+
+`gh cao add WORKFLOW_OR_CAMPAIGN` is the single installation command. Bare catalog
+workflow names, explicit `.md` sources, GitHub blob URLs and the published
+Daily Repo Status qualified shorthands select standalone installation; campaign
+coordinates and existing local directories select campaign installation with
+unchanged gh-aw options. There is no separate campaign-add subcommand or
+failure-driven fallback between installation kinds.
+Standalone installation delegates installation and compilation to gh-aw, verifies the exact standalone
+identity and CAO admission gate, and registers new workflows in review mode without
+widening existing policy. Repository enrollment is separate: `gh cao repos add
+OWNER/REPO` verifies one exact repository and stages review-safe policy.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh
@@ -1223,11 +1257,18 @@ registry access, but does not create credentials or dispatch workflows.
 
 ### Operator onboarding
 
-The primary path installs the native extension with
-`gh extension install githubnext/gh-cao`, enters an existing GitHub control
-checkout, and runs `gh cao setup` without a prerequisite `init` or installer.
-Repository creation and cloning remain explicit `gh repo create` and
-`gh repo clone` operations, not setup effects. Native
+The primary path uses `gh extension install githubnext/gh-cao`, then runs
+`gh cao setup` from an existing GitHub control checkout. Documentation presents
+the curl installer in a troubleshooting callout for SAML-token installation
+failures, not as the default installation path.
+The fallback installer uses upstream `github/gh-aw`'s `install-gh-aw.sh` for gh-aw and
+downloads the native gh-cao extension. Public tool release discovery and downloads
+are anonymous and ignore curl authentication configuration; only the upstream
+installer's child process loses token variables and the Actions `INPUT_VERSION`
+override. Stored credentials and authenticated control-repository and runtime
+provenance operations remain intact. Repository creation and cloning remain
+explicit `gh repo create` and `gh repo clone` operations or the installer's
+`--create-repo`, not native setup effects. Native
 `internal/cli/native_setup.go` owns guided scope and authentication; runtime
 preparation lives in `internal/cli/setup_runtime.go`. Setup distinguishes absent
 policy from malformed policy, constructs only a missing exact campaign-free
@@ -1264,7 +1305,7 @@ and known dashboard links marked deployment pending, never dispatching, polling
 or waiting for collection/deployment. This native publication step is not part
 of the internal Node parity implementation.
 
-The compatibility `install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+The root `install-gh-cao.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with
@@ -1305,7 +1346,7 @@ Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
 Campaign installation and execution are separate operator actions through
-`gh cao campaigns add` and `gh aw run`. Operators review and commit workflows
+`gh cao add` and `gh aw run`. Operators review and commit workflows
 and bounded review-mode policy together before dispatching work. Campaign
 installation never commits, pushes or dispatches; setup's separately approved
 publication is monitoring-only.

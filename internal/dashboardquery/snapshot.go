@@ -13,7 +13,7 @@ import (
 )
 
 const DatabaseName = "gh-aw-cao-dashboard-data"
-const DatabaseVersion = 43
+const DatabaseVersion = 44
 
 // SnapshotReader accepts a database or an already pinned read transaction.
 type SnapshotReader interface {

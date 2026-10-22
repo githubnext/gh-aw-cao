@@ -8,7 +8,7 @@ description: Run the Central Agentic Ops dashboard server on Azure Functions wit
 
 ## About the Azure deployment
 
-The Azure deployment runs the Go dashboard server from the `server/` directory as a custom Linux container on Azure Functions. Browsers connect only to the Function App, over HTTPS on the same origin. The Function App:
+The Azure deployment runs `cao-dashboard azure-functions` from the `server/` directory as a custom Linux container on Azure Functions. The `azure-functions-runtime` Docker target and `cao-functions` image repository remain unchanged; there is no separate `cao-functions` executable. Bicep sets `appCommandLine: 'azure-functions'` as the arguments to the image's `/app/cao-dashboard` entrypoint. The Functions Core Tools custom-handler configuration uses `defaultExecutablePath: "cao-dashboard"` with `arguments: ["azure-functions"]`. Browsers connect only to the Function App, over HTTPS on the same origin. The Function App:
 
 - Signs users in with GitHub OAuth.
 - Authorizes explicitly allowed GitHub users or members of organizations or teams that you allow.
@@ -712,7 +712,7 @@ collection roles. Update the template parameters rather than changing only one
 role's app settings. PostgreSQL cache pressure never evicts sessions, accepted
 collection work, enrollment, checkpoints, leases, or pending revocations.
 
-The `cao-functions` handler also reads these optional settings.
+The `cao-dashboard azure-functions` handler also reads these optional settings.
 
 | App setting | Default | Description |
 | --- | --- | --- |
@@ -877,7 +877,7 @@ To turn on debug logs, set `DEBUG` to a namespace or pattern:
 - Namespaces: `cao:server`, `cao:query`, `cao:ingest`, `cao:postgresx`, and `cao:cli`.
 - Patterns: for example, `cao:*,-cao:query` for everything except query diagnostics.
 
-The `cao:functions:startup` namespace logs the site directory, query path, and listen address of `cao-functions`.
+The `cao:functions:startup` namespace logs the site directory, query path, and listen address of `cao-dashboard azure-functions`.
 
 Logs go to standard error. They include operation names, counts, timings, and fixed identifiers such as `oauth branch=OPERATION.OUTCOME`. They never include tokens, credentials, query payloads, or source records. To see matching sign-in events in the browser, add `?debug=auth` to the dashboard URL.
 

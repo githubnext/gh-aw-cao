@@ -66,10 +66,10 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminalText, /Daily Repo Status|as standalone/);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
-  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
+  assert.doesNotMatch(terminalText, /(?<![\w-])cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.deepEqual(
     [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
-    ["dispatch-story", "terminal-story", "maintenance-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
+    ["dispatch-story", "evidence-story", "terminal-story", "maintenance-story", "decision-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
   );
   assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
   assert.match(hero, /Less upkeep\. Current workflows\./);
@@ -105,13 +105,44 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 6);
+  assert.equal(paragraphs.length, 8);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
     assert.ok(wordCount(paragraph) <= budget, `supporting paragraph should stay within ${budget} words`);
   }
   assert.doesNotMatch(hero, /<ul class="story-points">/);
+});
+
+test("evidence story identifies fictional records without presenting completed runs as accepted outcomes", () => {
+  const evidence = readFileSync("docs/components/HeroEvidenceStory.astro", "utf8");
+  assert.match(hero, /<HeroEvidenceStory \/>/);
+  assert.match(evidence, /Illustrative investigation/);
+  assert.match(evidence, /Not a product screen/);
+  assert.match(evidence, /Fictional repositories and records/);
+  assert.match(evidence, /A completed run is not an accepted outcome/);
+  assert.match(evidence, /Supporting evidence/);
+  assert.match(evidence, /Human review \+ agent investigation/);
+  assert.equal([...evidence.matchAll(/<article>/g)].length, 2);
+  assert.equal([...evidence.matchAll(/<dt>Run<\/dt>/g)].length, 2);
+  assert.equal([...evidence.matchAll(/<dt>Cost<\/dt>/g)].length, 2);
+  assert.equal([...evidence.matchAll(/<dt>Outcome<\/dt>/g)].length, 2);
+  assert.equal([...evidence.matchAll(/Awaiting review/g)].length, 2);
+});
+
+test("scaling decisions retain explicit human judgment, reviewed policy, and outcome evidence", () => {
+  const decision = readFileSync("docs/components/HeroDecisionLoop.astro", "utf8");
+  assert.match(hero, /<HeroDecisionLoop \/>/);
+  for (const stage of ["Run", "Observe", "Review", "Refine", "Expand", "Pause"]) {
+    assert.ok(decision.includes(`<strong>${stage}</strong>`));
+  }
+  assert.match(decision, /Explicit decision point/);
+  assert.match(decision, /Human judgment\.<br \/>Reviewed policy\./);
+  assert.match(decision, /Accepted outcomes\? Reliable execution\?/);
+  assert.match(decision, /Cost justified by the evidence\?/);
+  assert.match(decision, /Next run follows the reviewed decision/);
+  assert.match(decision, /Decision framework, not automatic optimization/);
+  assert.match(decision, /Successful runs alone do not demonstrate value/);
 });
 
 test("landing campaign example uses the real Dependabot manifest without granting rollout authority", () => {
@@ -137,12 +168,15 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
   assert.doesNotMatch(diagrams, /<script|data-slideshow-snippet/);
 });
 
-test("terminal follows extension onboarding and matches the production CLI", () => {
+test("terminal prefers GitHub CLI installation and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
   const installation = "gh extension install githubnext/gh-cao";
   assert.ok(terminalText.includes(installation));
   assert.ok(readFileSync("README.md", "utf8").includes(installation));
-  assert.doesNotMatch(terminal, /raw\.githubusercontent\.com.*install\.sh|\bgh cao init\b/);
+  assert.doesNotMatch(terminal, /install-gh-cao\.sh|\bgh cao init\b/);
+  const readme = readFileSync("README.md", "utf8");
+  assert.ok(readme.indexOf(installation) < readme.indexOf("curl -fsSL"));
+  assert.match(readme, /> \*\*SAML-token installation failure:\*\*/);
   assert.match(terminal, /existing control repository checkout/);
   assert.match(terminal, /separately offer reviewed publication; declining leaves files local/);
   const setupExcerpt = terminal.match(/data-terminal-output="setup">([^<]+)<\/pre>/)?.[1];
@@ -482,6 +516,5 @@ test("landing terminal uses accessible CSS motion without a JavaScript player", 
   assert.match(terminal, /--terminal-bg: #0d1117/);
   assert.match(terminal, /background: var\(--terminal-bg\)/);
   assert.match(terminal, /class="syntax-command"/);
-  assert.match(terminal, /class="syntax-command">gh<\/span> extension install/);
-  assert.match(terminal, /class="syntax-url"/);
+  assert.match(terminal, /class="syntax-command">gh<\/span> extension install githubnext\/gh-cao/);
 });

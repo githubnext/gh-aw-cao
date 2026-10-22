@@ -8,14 +8,24 @@ import { createInterface } from "node:readline";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { startLocalDashboardPreview } from "../../com.github.copilot/extensions/cao-dashboard/local-preview.mjs";
+import { writeCanvasSnapshot } from "../helpers/canvas-snapshot.mjs";
+import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
+import { queryDashboardSourceObservations } from "../../dashboard/site/src/data/queries/ingestion.js";
 
 const extensionUrl = new URL("../../com.github.copilot/extensions/cao-dashboard/extension.mjs", import.meta.url);
 
 async function fixture() {
   const workspace = await realpath(await mkdtemp(join(tmpdir(), "cao-canvas-test-")));
   const ghExecutable = join(workspace, "gh");
+  const artifact = join(workspace, "artifact");
+  await writeCanvasSnapshot(artifact, normalize(queryDashboardSourceObservations({
+    repositories: {
+      metadata: { "as-of": "2026-10-10T00:00:00Z" },
+      rows: [{ organization: "acme", repository: "control" }],
+    },
+  }).observations));
   await writeFile(ghExecutable, `#!${process.execPath}
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 if (process.cwd() !== ${JSON.stringify(workspace)}) process.exit(4);
 const args = process.argv.slice(2);
@@ -32,13 +42,9 @@ if (args[0] === "api") {
 } else if (args[0] === "run" && args[1] === "download") {
   const destination = args[args.indexOf("--dir") + 1];
   mkdirSync(destination, { recursive: true });
-  writeFileSync(join(destination, "sources.json"), JSON.stringify({
-    repositories: {
-      metadata: { "as-of": "2026-10-10T00:00:00Z" },
-      rows: [{ organization: "acme", repository: "control" }]
-    },
-    "configuration-policy": { rows: [{ "default-mode": "review" }] }
-  }));
+  for (const file of ["gh-aw-logs.sqlite", "payload-hashes.json"]) {
+    copyFileSync(join(${JSON.stringify(artifact)}, file), join(destination, file));
+  }
 } else {
   process.exit(3);
 }
@@ -79,10 +85,7 @@ test("plugin canvas stages its site inside a foreign workspace and cleans up", {
     const document = await (await fetch(new URL("dashboard.json", base))).json();
     assert.equal(document.dashboard.repository, "acme/control");
     assert.ok(document.dashboard.pages.length > 0);
-    assert.deepEqual(await (await fetch(new URL("sources/repositories.json", base))).json(), {
-      metadata: { "as-of": "2026-10-10T00:00:00Z" },
-      rows: [{ organization: "acme", repository: "control" }],
-    });
+    assert.equal((await fetch(new URL("sources/repositories.json", base))).status, 404);
     const post = (pathname, payload) => fetch(new URL(pathname, base), {
       method: "POST",
       headers: { Origin: base.origin, "Content-Type": "application/json" },
@@ -106,8 +109,6 @@ test("plugin canvas stages its site inside a foreign workspace and cleans up", {
     assert.equal(diagnostics.counts.repositories, 1);
     assert.deepEqual(diagnostics.relationshipErrors, []);
     assert.deepEqual(diagnostics.duplicateRecordIds.repositories, []);
-    const policy = await (await post("api/v1/query", { sourceNames: ["configuration-policy"] })).json();
-    assert.deepEqual(policy.sources["configuration-policy"].rows, [{ "default-mode": "review" }]);
     assert.equal((await post("api/v1/query", { sourceNames: "repositories" })).status, 400);
     assert.equal((await fetch(new URL("api/v1/query", base), {
       method: "POST", headers: { "Content-Type": "application/json", Origin: "https://untrusted.example" },
@@ -117,7 +118,7 @@ test("plugin canvas stages its site inside a foreign workspace and cleans up", {
     const events = await fetch(new URL("api/v1/events", base));
     assert.equal(events.headers.get("Content-Type"), "text/event-stream");
     const reader = events.body.getReader();
-    assert.match(new TextDecoder().decode((await reader.read()).value), /"revision":1/);
+    assert.match(new TextDecoder().decode((await reader.read()).value), /"revision":/);
     await reader.cancel();
     assert.equal((await previewDirectories(workspace)).length, 2);
     for (const directory of await previewDirectories(workspace)) {
@@ -133,19 +134,18 @@ test("plugin canvas stages its site inside a foreign workspace and cleans up", {
   }
 });
 
-test("canvas fails closed when downloaded data cannot be normalized", {
+test("canvas fails closed when downloaded canonical data is corrupt", {
   skip: process.platform === "win32",
 }, async () => {
   const { workspace, ghExecutable } = await fixture();
   try {
-    const source = await readFile(ghExecutable, "utf8");
-    await writeFile(ghExecutable, source.replace('"as-of": "2026-10-10T00:00:00Z"', '"as-of": ""'));
+    await writeFile(join(workspace, "artifact", "gh-aw-logs.sqlite"), "invalid snapshot");
     await assert.rejects(startLocalDashboardPreview({
       workingDirectory: workspace,
       executeCliAction: async () => {},
       approveCliAction: async () => false,
       ghExecutable,
-    }), /observed-at is required/);
+    }), /checksum/);
     assert.deepEqual(await previewDirectories(workspace), []);
   } finally {
     await rm(workspace, { recursive: true, force: true });

@@ -29,6 +29,7 @@ type Store struct {
 	db          *sql.DB
 	dataVersion int64
 	state       dashboardstore.State
+	metadata    map[string]model.Metadata
 }
 
 type reader struct {
@@ -40,6 +41,12 @@ var _ dashboardstore.Store = (*Store)(nil)
 var _ dashboardstore.Reader = (*reader)(nil)
 
 func Open(ctx context.Context, path string) (*Store, error) {
+	return OpenWithMetadata(ctx, path, nil)
+}
+
+// OpenWithMetadata retains explicitly supplied published inventory quality.
+// Snapshots without independent quality evidence keep unknown quality.
+func OpenWithMetadata(ctx context.Context, path string, metadata map[string]model.Metadata) (*Store, error) {
 	if strings.TrimSpace(path) == "" || strings.ContainsRune(path, 0) {
 		return nil, errors.New("SQLite requires an existing canonical snapshot file")
 	}
@@ -54,19 +61,14 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if !info.Mode().IsRegular() {
 		return nil, errors.New("canonical SQLite snapshot must be a regular file")
 	}
-	location := &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
-	parameters := url.Values{"mode": {"ro"}, "_pragma": {
-		"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)", "mmap_size(1073741824)",
-	}}
-	location.RawQuery = parameters.Encode()
-	db, err := sql.Open("sqlite", location.String())
+	db, err := sql.Open("sqlite", snapshotDSN(absolute))
 	if err != nil {
 		return nil, err
 	}
 	// State's data_version cache belongs to this one SQLite connection.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	store := &Store{db: db}
+	store := &Store{db: db, metadata: metadata}
 	if err := store.WithReadTransaction(ctx, func(ctx context.Context, r dashboardstore.Reader) error {
 		_, err := r.State(ctx)
 		return err
@@ -75,6 +77,16 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("read canonical SQLite snapshot (download or rebuild it before serving): %w", err)
 	}
 	return store, nil
+}
+
+func snapshotDSN(absolute string) string {
+	// A drive letter must be in the path (file:///C:/...), not the URI authority.
+	location := &url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(absolute), "/")}
+	parameters := url.Values{"mode": {"ro"}, "_pragma": {
+		"busy_timeout(5000)", "query_only(1)", "trusted_schema(0)", "mmap_size(1073741824)",
+	}}
+	location.RawQuery = parameters.Encode()
+	return location.String()
 }
 
 func storeVersion(ctx context.Context, tx *sql.Tx) error {

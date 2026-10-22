@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { writeCanvasArtifact } from './canvas-fixture.js';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
@@ -8,7 +8,7 @@ for (const width of [1440, 390]) {
   test(`Governance is hidden in canvas development at ${width}px`, async ({ page }, testInfo) => {
     const preview = await startCanvasServer({
       workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
-      repository: 'acme/control', port: 0, dataBackend: 'indexeddb',
+      repository: 'acme/control', port: 0,
       cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       output: () => {}, requestOutput: () => {}, traceOutput: () => {},
@@ -16,7 +16,10 @@ for (const width of [1440, 390]) {
       executeCliAction: async () => { throw new Error('Hidden Governance must not execute commands.'); },
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), '{}');
+        await writeCanvasArtifact(destination, { sources: {
+          repositories: { metadata: { 'as-of': new Date().toISOString() },
+            rows: [{ organization: 'acme', repository: 'control' }] }
+        } });
       }
     });
     try {

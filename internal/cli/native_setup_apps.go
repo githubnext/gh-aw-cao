@@ -140,6 +140,13 @@ func nativeSetupAppManifest(name, homepage, redirect, description string, permis
 	}
 }
 
+func nativeSetupAppDescription(repo string, profile nativeSetupCredential) string {
+	if profile.Role == "hosted-cli" {
+		return "Central Agentic Ops hosted CLI executor for " + repo + ". Single-use repository tokens only."
+	}
+	return "Central Agentic Ops " + profile.Label + " App for " + repo
+}
+
 func nativeSetupAppName(repo, role string) string {
 	name := "cao-" + strings.ReplaceAll(strings.ToLower(repo), "/", "-")
 	name = regexp.MustCompile(`[^a-z0-9-]`).ReplaceAllString(name, "-")
@@ -189,7 +196,7 @@ func nativeSetupCreateApp(cmd *cobra.Command, gh ghExecutor, owner, name, homepa
 	}
 	state := hex.EncodeToString(stateBytes)
 	localURL := "http://" + listener.Addr().String()
-	manifest := nativeSetupAppManifest(name, homepage, localURL+"/callback", "Central Agentic Ops "+profile.Label+" App for "+strings.TrimPrefix(homepage, serverURL+"/"), profile.Permissions)
+	manifest := nativeSetupAppManifest(name, homepage, localURL+"/callback", nativeSetupAppDescription(strings.TrimPrefix(homepage, serverURL+"/"), profile), profile.Permissions)
 	data, _ := json.Marshal(manifest)
 	registrationURL := serverURL + "/organizations/" + owner + "/settings/apps/new?state=" + state
 	// This browser-only form is the GitHub App manifest protocol, not a CLI
@@ -331,6 +338,9 @@ func nativeSetupAuthenticateApp(ctx context.Context, api nativeSetupAppAPI, app 
 		}
 	}
 	for permission, level := range payload.Permissions {
+		if profile.Role == "hosted-cli" && profile.Permissions[permission] != level {
+			return app, fmt.Errorf("%s App has an unsupported permission: %s: %s", profile.Label, permission, level)
+		}
 		if level != "read" && profile.Permissions[permission] != level {
 			return app, fmt.Errorf("%s App has an unsupported permission: %s: %s", profile.Label, permission, level)
 		}
@@ -375,12 +385,25 @@ func (api nativeSetupAppAPI) covers(ctx context.Context, app nativeSetupApp, tar
 	if installation.Selection != "selected" {
 		return nil, errNativeSetupInstallationScope
 	}
+	selected, err := api.installationRepositories(ctx, app, installation.ID.String())
+	if err != nil {
+		return nil, err
+	}
+	for _, name := range target.Repositories {
+		if !selected[strings.ToLower(target.Owner+"/"+name)] {
+			return nil, nil
+		}
+	}
+	return installation, nil
+}
+
+func (api nativeSetupAppAPI) installationRepositories(ctx context.Context, app nativeSetupApp, installationID string) (map[string]bool, error) {
 	jwt, err := nativeSetupAppJWT(app, time.Now())
 	if err != nil {
 		return nil, err
 	}
 	var access struct{ Token string }
-	if _, err := api.request(ctx, "POST", "/app/installations/"+installation.ID.String()+"/access_tokens", jwt, map[string]any{"permissions": map[string]string{"metadata": "read"}}, &access); err != nil {
+	if _, err := api.request(ctx, "POST", "/app/installations/"+installationID+"/access_tokens", jwt, map[string]any{"permissions": map[string]string{"metadata": "read"}}, &access); err != nil {
 		return nil, err
 	}
 	if access.Token == "" {
@@ -409,12 +432,7 @@ func (api nativeSetupAppAPI) covers(ctx context.Context, app nativeSetupApp, tar
 			return nil, nativeErrorf("App selected repository verification exceeded its bound")
 		}
 	}
-	for _, name := range target.Repositories {
-		if !selected[strings.ToLower(target.Owner+"/"+name)] {
-			return nil, nil
-		}
-	}
-	return installation, nil
+	return selected, nil
 }
 
 func nativeSetupPause(ctx context.Context, duration time.Duration) error {

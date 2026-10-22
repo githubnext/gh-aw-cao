@@ -179,11 +179,6 @@ export function createDashboardExtension({
               description:
                 "Optional GitHub repository in OWNER/REPOSITORY format. Defaults to the current repository.",
             },
-            dataBackend: {
-              type: "string",
-              enum: ["sqlite", "indexeddb"],
-              description: "Local data backend. Defaults to server-side SQLite.",
-            },
           },
           additionalProperties: false,
         },
@@ -205,8 +200,6 @@ export function createDashboardExtension({
                   && typeof input.repository === "string" ? input.repository : undefined,
                 generateQuery: generateDashboardQuery,
                 enhanceQueryIntent: enhanceQueryEditorIntent,
-                dataBackend: input && typeof input === "object" && !Array.isArray(input)
-                  && (input.dataBackend === "sqlite" || input.dataBackend === "indexeddb") ? input.dataBackend : undefined,
                 startSession: executeSessionTool ? async (prompt) => {
                   if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
                   const result = await executeSessionTool({

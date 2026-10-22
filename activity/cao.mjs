@@ -7,7 +7,6 @@ import { runCli } from './cli/run.mjs';
 export { setupCaoControlPlane } from './setup.mjs';
 export { formatSetupAuthenticationSummary } from './authentication.mjs';
 export { initializeCaoPolicy } from './cli/policy.mjs';
-export { addCaoRepository } from './cli/repositories.mjs';
 export { ensureGhAwMinimumVersion, upgradeGhAw } from './cli/gh-aw.mjs';
 export { fineGrainedTokenSetups, setupCaoAuthentication } from './cli/authentication.mjs';
 export { addCaoCampaign, updateCaoCampaigns, setCaoCampaignMode, setCaoCampaignWorkflowsEnabled } from './cli/campaigns.mjs';
@@ -54,7 +53,7 @@ async function main() {
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);
-    if (typeof output === 'object' && output?.command === 'doctor' && !output.healthy) process.exitCode = 2;
+    if (typeof output === 'object' && output?.command === 'repair-database' && !output.healthy) process.exitCode = 2;
   } catch (error) {
     if (!controller.signal.aborted || error !== controller.signal.reason) throw error;
     process.exitCode = terminationSignal === 'SIGINT' ? 130 : 143;

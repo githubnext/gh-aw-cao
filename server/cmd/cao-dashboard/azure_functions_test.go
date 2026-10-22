@@ -6,9 +6,30 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestAzureFunctionsCommand(t *testing.T) {
+	t.Setenv("FUNCTIONS_CUSTOMHANDLER_PORT", "")
+	if err := run([]string{"azure-functions"}); err == nil ||
+		!strings.Contains(err.Error(), "FUNCTIONS_CUSTOMHANDLER_PORT is required") {
+		t.Fatalf("Azure Functions must require the platform port: %v", err)
+	}
+	if err := run([]string{"azure-functions", "unexpected"}); err == nil ||
+		!strings.Contains(err.Error(), "unknown command") {
+		t.Fatalf("Azure Functions must reject positional arguments: %v", err)
+	}
+	if err := run([]string{"azure-functions", "--listen", "0.0.0.0:8080"}); err == nil ||
+		!strings.Contains(err.Error(), "unknown flag") {
+		t.Fatalf("Azure Functions must not accept ordinary serving flags: %v", err)
+	}
+	if err := run([]string{"functions"}); err == nil ||
+		!strings.Contains(err.Error(), "unknown command") {
+		t.Fatalf("the subcommand must be named azure-functions, not functions: %v", err)
+	}
+}
 
 func TestResolveFunctionsConfig_RequiresPort(t *testing.T) {
 	env := map[string]string{}

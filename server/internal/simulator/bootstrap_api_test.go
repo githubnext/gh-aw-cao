@@ -24,6 +24,7 @@ type BootstrapAPI struct {
 	Git          http.Handler
 	Requests     []string
 	Unhandled    []string
+	ServerURL    string
 }
 
 type BootstrapRepository struct {
@@ -31,6 +32,9 @@ type BootstrapRepository struct {
 	Owner                 string
 	Name                  string
 	Private               bool
+	Internal              bool
+	ServerURL             string
+	Secrets               []string
 	Pages                 map[string]any
 	Variables             map[string]string
 	OrganizationVariables map[string]string
@@ -193,6 +197,14 @@ func (a *BootstrapAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if len(parts) == 5 && parts[3] == "actions" && parts[4] == "secrets" && r.Method == http.MethodGet {
+			secrets := make([]map[string]string, 0, len(repo.Secrets))
+			for _, name := range repo.Secrets {
+				secrets = append(secrets, map[string]string{"name": name})
+			}
+			write(http.StatusOK, map[string]any{"total_count": len(secrets), "secrets": secrets})
+			return
+		}
 		if len(parts) >= 5 && parts[3] == "actions" && (parts[4] == "variables" ||
 			parts[4] == "organization-variables" && len(parts) == 5 && r.Method == http.MethodGet) {
 			if len(parts) == 5 && r.Method == http.MethodGet {
@@ -263,10 +275,17 @@ func (a *BootstrapAPI) create(owner, name string, private bool) (*BootstrapRepos
 	}
 	repo := &BootstrapRepository{
 		ID: int64(len(a.Repositories) + 1), Owner: owner, Name: name,
-		Private: private, Variables: map[string]string{},
+		Private: private, Variables: map[string]string{}, ServerURL: a.ServerURL,
 	}
 	a.Repositories[key] = repo
 	return repo, nil
+}
+
+func (r *BootstrapRepository) serverURL() string {
+	if r.ServerURL != "" {
+		return r.ServerURL
+	}
+	return "https://github.com"
 }
 
 func (r *BootstrapRepository) rest() map[string]any {
@@ -274,13 +293,16 @@ func (r *BootstrapRepository) rest() map[string]any {
 	if r.Private {
 		visibility = "private"
 	}
+	if r.Internal {
+		visibility = "internal"
+	}
 	return map[string]any{
 		"id": r.ID, "node_id": fmt.Sprintf("R_%d", r.ID),
 		"name": r.Name, "full_name": r.Owner + "/" + r.Name, "private": r.Private,
 		"visibility": visibility, "default_branch": "main",
 		"owner":     map[string]any{"login": r.Owner, "id": 1, "type": "Organization"},
-		"html_url":  "https://github.com/" + r.Owner + "/" + r.Name,
-		"clone_url": "https://github.com/" + r.Owner + "/" + r.Name + ".git",
+		"html_url":  r.serverURL() + "/" + r.Owner + "/" + r.Name,
+		"clone_url": r.serverURL() + "/" + r.Owner + "/" + r.Name + ".git",
 	}
 }
 
@@ -289,11 +311,14 @@ func (r *BootstrapRepository) graphql() map[string]any {
 	if r.Private {
 		visibility = "PRIVATE"
 	}
+	if r.Internal {
+		visibility = "INTERNAL"
+	}
 	return map[string]any{
 		"id": fmt.Sprintf("R_%d", r.ID), "databaseId": r.ID, "name": r.Name,
 		"nameWithOwner": r.Owner + "/" + r.Name, "visibility": visibility, "isPrivate": r.Private,
 		"owner":            map[string]string{"login": r.Owner, "id": "O_" + r.Owner},
-		"url":              "https://github.com/" + r.Owner + "/" + r.Name,
+		"url":              r.serverURL() + "/" + r.Owner + "/" + r.Name,
 		"sshUrl":           "git@github.com:" + r.Owner + "/" + r.Name + ".git",
 		"defaultBranchRef": map[string]string{"name": "main"},
 		"viewerPermission": "ADMIN", "hasIssuesEnabled": true, "hasWikiEnabled": true,

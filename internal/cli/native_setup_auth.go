@@ -86,6 +86,9 @@ func nativeSetupSortedPermissions(permissions map[string]string) []string {
 }
 
 func nativeSetupAuth(cmd *cobra.Command, gh ghExecutor) error {
+	if cmd.Name() == "hosted-cli" {
+		return nativeSetupHostedCLI(cmd, gh)
+	}
 	for _, name := range []string{"repo", "policy", "read-client-id", "write-client-id", "read-app-name", "write-app-name", "expires-in"} {
 		if cmd.Flags().Lookup(name) != nil && cmd.Flags().Changed(name) && strings.TrimSpace(nativeSetupFlag(cmd, name)) == "" {
 			return fmt.Errorf("--%s requires a value", name)

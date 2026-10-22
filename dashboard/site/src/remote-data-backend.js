@@ -337,6 +337,8 @@ export function subscribeRemoteRevision(onRevision, onError) {
 
 function startRemoteRevisionStream() {
   const controller = new AbortController();
+  let streamRevision = observedRevision;
+  let streamHealthRevision = observedHealthRevision;
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let retry;
   let stopped = false;
@@ -371,8 +373,10 @@ function startRemoteRevisionStream() {
         const healthRevision = Number.isSafeInteger(payload.healthRevision)
           ? payload.healthRevision
           : observedHealthRevision;
-        const changed = payload.revision !== observedRevision
-          || (healthRevision !== null && healthRevision !== observedHealthRevision);
+        const changed = payload.revision !== streamRevision
+          || (healthRevision !== null && healthRevision !== streamHealthRevision);
+        streamRevision = payload.revision;
+        streamHealthRevision = healthRevision;
         if (payload.revision !== observedRevision) observedEvaluatedAt = undefined;
         observedRevision = payload.revision;
         if (healthRevision !== null) observedHealthRevision = healthRevision;

@@ -3,7 +3,8 @@ import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:
 import path from 'node:path';
 import test from 'node:test';
 import { assertValueHistory, confinedCollector, runWorkflowValues, workflowValueRegistrations } from '../../activity/workflow-values.mjs';
-import { parsePolicy } from '../../.github/workflows/shared/policy.mjs';
+import { controlSettings, parsePolicy } from '../../.github/workflows/shared/policy.mjs';
+import { activityCollectionPlan } from '../../activity/authentication.mjs';
 import { adaptCachedGhAwJsonl } from '../../dashboard/site/src/data/adapters/gh-aw-logs.js';
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 
@@ -70,6 +71,23 @@ test('reviewed opt-ins intersect both effective Activity enrollment and explicit
   assert.throws(() => parsePolicy(JSON.stringify(duplicate)), /duplicate/);
 });
 
+test('dogfood File Diet registration pins existing effective Activity scope without adding targets', async () => {
+  const document = parsePolicy(await readFile(new URL('../../.github/workflows/cao.json', import.meta.url), 'utf8'));
+  const control = document['control-plane'];
+  assert.deepEqual(control.activity.repositories, control.scope['allowed-repositories']);
+  const before = structuredClone(document);
+  delete before['control-plane'].activity;
+  const auth = { authMode: 'pat', controlRepository: 'githubnext/gh-cao',
+    patRepositoryMap: JSON.stringify(Object.fromEntries(control.activity.repositories.map(repository =>
+      [repository, `GH_AW_GITHUB_READ_PAT_${repository.split('/')[0].toUpperCase()}`]))) };
+  assert.deepEqual(activityCollectionPlan(controlSettings(document, auth.controlRepository), auth),
+    activityCollectionPlan(controlSettings(before, auth.controlRepository), auth));
+  assert.deepEqual(workflowValueRegistrations(document, ['github/gh-aw']), [{
+    repository: 'github/gh-aw', workflow: 'daily-file-diet', collector: '.github/value-collectors/daily-file-diet.mjs',
+  }]);
+  assert.equal(control.campaigns.dashboard.deploy, false);
+});
+
 test('recurring producer emits original typed facts, retains proof, skips satisfied cadence and preserves disabled history', async (t) => {
   const options = await fixture(t);
   assert.equal((await runWorkflowValues(options)).collected, 1);
@@ -120,6 +138,28 @@ test('local collector path rejects symlinks and immutable accepted facts cannot 
   incoming.observedAt = '2026-10-21T12:00:00.000Z';
   incoming.facts[0]['metric-formula'] = 'redefined';
   assert.throws(() => assertValueHistory(old, incoming), /Immutable/);
+});
+
+test('fresh capture can finish after its requested cutoff but cannot claim future observation or coverage', async (t) => {
+  const capture = packet(new Date(Date.now() - 1000).toISOString());
+  const options = await fixture(t, `return ${JSON.stringify(capture)};`);
+  const result = await runWorkflowValues(options);
+  assert.equal(result.collected, 1);
+  assert.deepEqual(result.warnings, []);
+  for (const change of [
+    value => { value.operational_value_evidence.observedAt = new Date(Date.now() + 3600000).toISOString(); },
+    value => {
+      value.operational_value_evidence.windowEnd = '2026-10-21T00:00:00.000Z';
+      value.operational_value_evidence.facts[1]['end-at'] = '2026-10-21T00:00:00.000Z';
+    },
+  ]) {
+    const invalid = structuredClone(capture);
+    change(invalid);
+    const rejected = await fixture(t, `return ${JSON.stringify(invalid)};`);
+    const result = await runWorkflowValues(rejected);
+    assert.equal(result.collected, 0);
+    assert.equal(result.warnings.length, 1);
+  }
 });
 
 test('a due capture reuses workflow proofs, preserves original facts, and advances only to the acquired cutoff', async (t) => {

@@ -41,9 +41,9 @@ This explicitly accepts a public dashboard, snapshots only currently public
 repositories, and uses Actions GITHUB_TOKEN. No campaign or agent execution is
 enabled. Logs/artifacts may be unavailable; evidence is marked partial.`
 	auth := &cobra.Command{
-		Use: "auth", Short: "Configure read and write authentication", Args: cobra.NoArgs,
+		Use: "auth", Short: "Configure Actions and hosted-executor authentication", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("setup auth requires github-app, enterprise-app, or token")
+			return fmt.Errorf("setup auth requires github-app, enterprise-app, hosted-cli, or token")
 		},
 	}
 	authenticate := func(cmd *cobra.Command, args []string) error {
@@ -70,7 +70,30 @@ enabled. Logs/artifacts may be unavailable; evidence is marked partial.`
 		boolFlag("replace-existing", "Replace existing token secrets"),
 	), authenticate)
 	token.MarkFlagsMutuallyExclusive("keep-existing", "replace-existing")
-	auth.AddCommand(app, enterprise, token)
+	hosted := operatorCommand("hosted-cli", "Create the dedicated hosted-executor GitHub App", cobra.NoArgs, []operatorFlag{
+		textFlag("repo", "Control repository OWNER/REPO"),
+		{name: "target-repository", description: "Additional exact OWNER/REPO under the control owner (repeatable)", repeat: true},
+		textFlag("app-name", "Globally unique App name"),
+		textFlag("private-key-out", "Temporary bootstrap file (mode 0600, never overwritten)"),
+		boolFlag("dry-run", "Print the manifest and targets without changing GitHub"),
+		boolFlag("no-open", "Print browser URLs instead of opening them"),
+	}, authenticate)
+	hosted.Long = `Create a dedicated private GitHub App for cao-dashboard execute-cli, natively in Go.
+
+Requests only actions, contents, pull_requests and workflows write plus metadata
+read. Never requests administration, repository_creation, installation_repositories
+or organization permissions. GitHub's browser flow provides creation and installation
+approval; choose Only select repositories. Additional targets must be explicit
+OWNER/REPO values under the control repository owner, not policy-derived scope.
+Repository administrators can add repositories to an approved installation unless
+organization policy requires owner approval; denied additions continue in the browser.
+
+--private-key-out is required except for --dry-run. The key is never printed or
+passed in command arguments. Import this temporary bootstrap file into the
+execute-cli deployment's secret manager, then securely remove it. Keep this App
+separate from dashboard login and Actions read/write Apps. This command does not
+change CAO policy, Actions secrets, authentication mode, or hosted-feature gates.`
+	auth.AddCommand(app, enterprise, hosted, token)
 	setup.AddCommand(auth)
 	admission := admissionCommands(gh)
 	for _, command := range admission.Commands() {

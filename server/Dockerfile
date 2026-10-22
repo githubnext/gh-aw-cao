@@ -51,12 +51,7 @@ RUN CGO_ENABLED=0 go build \
     -trimpath \
     -ldflags="-s -w -X main.version=${VERSION}" \
     -o /out/cao-webhook-gateway \
-    ./cmd/cao-webhook-gateway \
-    && CGO_ENABLED=0 go build \
-    -trimpath \
-    -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
-    -o /out/cao-functions \
-    ./cmd/cao-functions
+    ./cmd/cao-webhook-gateway
 
 FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8 AS dashboard-runtime
 
@@ -109,7 +104,7 @@ RUN apk upgrade --no-cache \
     && mkdir -p /app/site /app/.github/workflows \
     && chown -R cao:cao /app
 
-COPY --from=server-build --chown=cao:cao /out/cao-functions /app/cao-functions
+COPY --from=server-build --chown=cao:cao /out/cao-dashboard /app/cao-dashboard
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/dist/ /app/site/
 COPY --from=dashboard-build --chown=cao:cao /workspace/dashboard/site/src/data/queries/database.json /app/queries/database.json
 COPY --from=dashboard-build --chown=cao:cao /workspace/.github/workflows/cao.json /app/.github/workflows/cao.json
@@ -121,7 +116,8 @@ ENV FUNCTIONS_CUSTOMHANDLER_HOST=0.0.0.0 \
 WORKDIR /app
 USER 65532:65532
 EXPOSE 8080
-ENTRYPOINT ["/app/cao-functions"]
+ENTRYPOINT ["/app/cao-dashboard"]
+CMD ["azure-functions"]
 
 FROM dashboard-runtime AS azure-ingest-runtime
 

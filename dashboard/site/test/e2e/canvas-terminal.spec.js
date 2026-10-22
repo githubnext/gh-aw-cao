@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { writeCanvasArtifact } from './canvas-fixture.js';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
@@ -36,7 +36,7 @@ for (const width of [1440, 390]) {
       },
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeCanvasArtifact(destination, { sources: {
           repositories: {
             metadata: { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' },
             rows: [{ organization: 'acme', repository: 'control', 'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
@@ -46,7 +46,7 @@ for (const width of [1440, 390]) {
             rows: [{ organization: 'acme', repository: 'control', workflow: 'demo.md', 'workflow-name': 'Demo',
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.91.5' }]
           }
-        }));
+        } });
       }
     });
     try {

@@ -16,6 +16,22 @@ const provisionSql = await readFile(new URL('../../server/azure/provision.sql', 
 const dockerfile = await readFile(new URL('../../server/Dockerfile', import.meta.url), 'utf8');
 const deploymentDocs = await readFile(new URL('../../docs/deployment-azure.md', import.meta.url), 'utf8');
 
+test('Azure uses the consolidated dashboard subcommand without changing image contracts', () => {
+  const runtime = dockerfile.split(' AS azure-functions-runtime\n')[1]?.split('\nFROM ')[0];
+  assert.ok(runtime, 'the supported Functions image target must remain available');
+  assert.match(runtime, /COPY --from=server-build --chown=cao:cao \/out\/cao-dashboard \/app\/cao-dashboard/);
+  assert.match(runtime, /^ENTRYPOINT \["\/app\/cao-dashboard"\]$/m);
+  assert.match(runtime, /^CMD \["azure-functions"\]$/m);
+  const app = resources.find((resource) => resource.type === 'Microsoft.Web/sites');
+  assert.equal(app.properties.siteConfig.appCommandLine, 'azure-functions');
+  assert.match(bicep, /appCommandLine: 'azure-functions'/);
+  assert.match(runtime, /FUNCTIONS_CUSTOMHANDLER_HOST=0\.0\.0\.0/);
+  assert.match(runtime, /FUNCTIONS_CUSTOMHANDLER_PORT=8080/);
+  assert.doesNotMatch(dockerfile, /\/out\/cao-functions|\/app\/cao-functions|\.\/cmd\/cao-functions/);
+  assert.equal(generated.parameters.functionImageRepository.defaultValue, 'cao-functions');
+  assert.match(bicep, /param functionImageRepository string = 'cao-functions'/);
+});
+
 test('Derived Container Apps names are bounded before Azure creates any resources', () => {
   assert.equal(generated.parameters.functionAppName.minLength, 2);
   assert.equal(generated.parameters.functionAppName.maxLength, 19);

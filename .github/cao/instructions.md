@@ -67,7 +67,7 @@ Agentic workflows execute the installed JavaScript runtime under `activity/`
 and `dashboard/`, using `node activity/cao.mjs <command>` or the relevant
 JavaScript module directly. Do not build, install, or invoke the native `gh cao`
 extension as an agent runtime dependency. The native extension and root
-`install.sh` are operator tools; their dedicated build, release, and installation
+`install-gh-cao.sh` are operator tools; their dedicated build, release, and installation
 tests do not change the agent runtime boundary.
 
 For Activity-backed analysis, follow

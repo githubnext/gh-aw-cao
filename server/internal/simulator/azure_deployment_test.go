@@ -68,6 +68,11 @@ func (a *azureSetupAPI) apply(r *http.Request, command string, args []string) (a
 			return nil, fmt.Errorf("open build context: %w", err)
 		}
 		defer func() { _ = source.Close() }()
+		if target == "azure-functions-runtime" && a.functions != nil {
+			if err := a.functions.build(directory); err != nil {
+				return nil, err
+			}
+		}
 		for _, name := range []string{"server/Dockerfile", ".github/workflows/cao.json", ".github/workflows/cao.azure.json"} {
 			if _, err := os.Stat(filepath.Join(directory, name)); err != nil {
 				return nil, fmt.Errorf("build context is missing a required product or policy input")
@@ -152,6 +157,11 @@ func (a *azureSetupAPI) apply(r *http.Request, command string, args []string) (a
 		if a.failProvision && job == setupAzureApp+"-db-provision" {
 			status = "Failed"
 		}
+		if a.functions != nil {
+			if err := a.functions.runJob(job); err != nil {
+				return nil, err
+			}
+		}
 		a.executions[job] = status
 		return map[string]any{"name": job + "-execution", "properties": map[string]string{"status": status}}, nil
 	case "containerapp job replica list":
@@ -161,6 +171,11 @@ func (a *azureSetupAPI) apply(r *http.Request, command string, args []string) (a
 	case "functionapp restart":
 		if a.executions[setupAzureApp+"-ingest"] != "Succeeded" {
 			return nil, fmt.Errorf("Function App cannot restart before ingestion succeeds")
+		}
+		if a.functions != nil {
+			if err := a.functions.start(r.Context()); err != nil {
+				return nil, err
+			}
 		}
 		a.restarted = true
 		return map[string]any{}, nil
@@ -245,12 +260,20 @@ func (a *azureSetupAPI) serveIngress(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "simulated deployment is not ready", http.StatusServiceUnavailable)
 		return
 	}
-	if r.Method != http.MethodGet || !slices.Contains([]string{setupAzureHost, setupAzureSCM}, r.Host) {
+	if !slices.Contains([]string{setupAzureHost, setupAzureSCM}, r.Host) {
 		http.Error(w, "unexpected Azure ingress request", http.StatusForbidden)
 		return
 	}
 	if r.Host == setupAzureSCM {
 		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	if a.functions != nil {
+		a.functions.handler.ServeHTTP(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "unexpected Azure ingress method", http.StatusForbidden)
 		return
 	}
 	switch r.URL.Path {

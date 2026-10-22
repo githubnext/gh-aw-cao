@@ -746,24 +746,17 @@ test("cao setup-auth delegates private GitHub App setup to the native extension"
   }
 });
 
-test("cao setup-auth delegates hosted CLI App setup options", () => {
-  const calls = [];
-  const result = setupCaoAuthentication("hosted-cli", ["--repo", "acme/control", "--dry-run"], {
-    execute(command, arguments_, options) {
-      calls.push([command, arguments_, options]);
-      return { status: 0 };
-    },
-  });
-  assert.deepEqual(calls, [[
-    process.execPath,
-    [path.join(".github", "workflows", "shared", "setup-hosted-cli-app.mjs"), "--repo", "acme/control", "--dry-run"],
-    { stdio: "inherit" },
-  ]]);
-  assert.deepEqual(result, { command: "setup-auth", profile: "hosted-cli" });
-  assert.throws(
-    () => setupCaoAuthentication("hosted-cli", [], { execute: () => ({ status: 1 }) }),
-    /Hosted CLI App setup failed/,
-  );
+test("Node setup-auth rejects retired hosted-cli before parsing or side effects", () => {
+  for (const arguments_ of [[], ["--repo", "acme/control", "--dry-run"], ["--bogus"]]) {
+    assert.throws(
+      () => setupCaoAuthentication("hosted-cli", arguments_, {
+        execute() { assert.fail("retired profile must not execute any command"); },
+        launchBrowser() { assert.fail("retired profile must not open a browser"); },
+        writeInstruction() { assert.fail("retired profile must not start setup"); },
+      }),
+      /Node setup-auth hosted-cli has been retired; use gh cao setup auth hosted-cli/,
+    );
+  }
 });
 
 test("cao setup-auth configures separate read and write fine-grained tokens through stdin", () => {
@@ -1189,7 +1182,7 @@ test("cao setup-auth previews enterprise App credential configuration without Gi
 test("cao setup-auth rejects the workflow token as a setup profile", () => {
   assert.throws(
     () => setupCaoAuthentication("workflow-token"),
-    /requires github-app, enterprise-app, hosted-cli, or token/,
+    /requires github-app, enterprise-app, or token/,
   );
 });
 
@@ -1653,7 +1646,7 @@ test("cao add rejects the root package before modifying gh-aw records", async ()
         return versionResult;
       },
     }),
-    /cao add cannot install the CAO root package; use install\.sh/,
+    /cao add cannot install the CAO root package; use install-gh-cao\.sh/,
   );
   assert.deepEqual(calls, []);
 });

@@ -224,6 +224,9 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			"source-id": name, "completeness": "unknown", "freshness": "unknown",
 			"as-of": state.EvaluatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),
 		}
+		for key, value := range r.store.metadata[name] {
+			metadata[key] = value
+		}
 		if collection == "operationalValueEvidence" {
 			clocks, err := dashboardquery.OperationalValueEvidenceMetadata(rows)
 			if err != nil {
@@ -245,7 +248,9 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 		if len(result) == 0 {
 			availability = "empty"
 		}
-		metadata["availability"] = availability
+		if metadata["availability"] != "unavailable" {
+			metadata["availability"] = availability
+		}
 		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
 	}
 	return model.Source{}, fmt.Errorf("local query source %q is not registered", name)

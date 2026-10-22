@@ -154,7 +154,7 @@ export function parsePackageManifest(source, coordinates) {
     readme: readme || (workflow ? body : ""),
     "readme-path": readmePath,
     source: sourceCoordinate,
-    "add-command": `${workflow ? "gh aw" : "gh cao campaigns"} add ${sourceCoordinate}`,
+    "add-command": `${workflow ? "gh aw" : "gh cao"} add ${sourceCoordinate}`,
     stars: coordinates.repositoryCounts?.stars ?? null,
     forks: coordinates.repositoryCounts?.forks ?? null,
   };

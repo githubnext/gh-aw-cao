@@ -98,6 +98,28 @@ func TestServeIndexRejectsEscapingSymlink(t *testing.T) {
 	}
 }
 
+func TestStaticMarkdownHasStableMediaType(t *testing.T) {
+	site := t.TempDir()
+	content := "# Dashboard guide\n"
+	if err := os.WriteFile(filepath.Join(site, "guide.md"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{config: Config{SiteDirectory: site}}
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		response := httptest.NewRecorder()
+		app.static(response, httptest.NewRequestWithContext(t.Context(), method, "/guide.md", nil))
+		if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "text/markdown; charset=utf-8" {
+			t.Fatalf("%s markdown: status %d, content type %q", method, response.Code, response.Header().Get("Content-Type"))
+		}
+		if method == http.MethodGet && response.Body.String() != content {
+			t.Fatal("markdown content changed")
+		}
+		if method == http.MethodHead && response.Body.Len() != 0 {
+			t.Fatal("HEAD markdown returned a body")
+		}
+	}
+}
+
 func TestServeIndexEscapesAccessTokenInJavaScriptContext(t *testing.T) {
 	site := t.TempDir()
 	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<head></head>"), 0o600); err != nil {

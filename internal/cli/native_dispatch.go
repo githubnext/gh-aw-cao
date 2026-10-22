@@ -16,8 +16,6 @@ func nativeOperator(gh ghExecutor) runtimeExecutor {
 			return nativeSetup(cmd, gh)
 		case "setup-auth":
 			return nativeSetupAuth(cmd, gh)
-		case "add":
-			return nativeRepositoryAdd(cmd, args[2], gh)
 		case "download":
 			return nativeDownload(cmd, gh)
 		case "upgrade-gh-aw":

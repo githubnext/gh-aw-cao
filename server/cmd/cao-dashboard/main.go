@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -353,6 +354,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(
 		newAdmissionCommand(),
 		newAppKeyCheckCommand(),
+		newAzureFunctionsCommand(),
 		newServeCommand(),
 		newServePagesCommand(),
 		newServeHostedCommand(),
@@ -710,6 +712,7 @@ func newServeCommand() *cobra.Command {
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "postgres-url")
+	canvasConfigPath := cmd.Flags().String("canvas-config", "", "private local Copilot adapter configuration; stdin owns the host lifetime")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "redis-url")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "source")
 	cmd.MarkFlagsMutuallyExclusive("download-sqlite", "postgres-url")
@@ -742,6 +745,13 @@ func newServeCommand() *cobra.Command {
 		}
 		localSQLite := !cmd.Flags().Changed("postgres-url") &&
 			!cmd.Flags().Changed("redis-url") && !cmd.Flags().Changed("source")
+		canvas, err := readCanvasConfig(*canvasConfigPath)
+		if err != nil {
+			return err
+		}
+		if canvas != nil && !localSQLite {
+			return errors.New("canvas integration requires local SQLite serving")
+		}
 		snapshotPath := strings.TrimSpace(*sqlitePath)
 		if localSQLite {
 			if snapshotPath == "" {
@@ -771,6 +781,12 @@ func newServeCommand() *cobra.Command {
 		commandLog.Printf("serve flags parsed tls=%t source_ingestion=%t", *cert != "", *source != "")
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
+		if canvas != nil {
+			go func() {
+				_, _ = io.Copy(io.Discard, cmd.InOrStdin())
+				stop()
+			}()
+		}
 		closeTelemetry, err := setupTelemetry(ctx, version, telemetry.Setup)
 		if err != nil {
 			return err
@@ -783,7 +799,7 @@ func newServeCommand() *cobra.Command {
 			}
 			actionsEnv := resolveActionsEnvironment(os.Getenv)
 			commandLog.Printf("serve resolved actions environment %s", actionsEnv.present())
-			return server.Config{
+			config := server.Config{
 				Listen:               *listen,
 				SiteDirectory:        *siteDirectory,
 				CertFile:             *cert,
@@ -802,7 +818,16 @@ func newServeCommand() *cobra.Command {
 				ActionsRepository:    actionsEnv.Repository,
 				GitHubAPIURL:         actionsEnv.APIURL,
 				Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
-			}, nil
+				Canvas:               canvas,
+			}
+			if canvas != nil {
+				config.OnListen = func(address string) error {
+					return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]string{
+						"url": "http://" + address + canvas.Prefix,
+					})
+				}
+			}
+			return config, nil
 		}
 		if localSQLite {
 			config, err := configure()

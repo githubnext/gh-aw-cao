@@ -11,7 +11,7 @@ const (
 	MaxJoinRows              = 200_000
 	MaxOutputRows            = 100_000
 	MaxJoins                 = 4
-	MaxDependencyDepth       = 16
+	MaxDependencyDepth       = 32
 	MaxPlanQueries           = 256
 	MaxDependencyJoins       = 16
 	MaxWorkingRows           = 500_000

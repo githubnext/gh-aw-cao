@@ -1,8 +1,7 @@
 import { authoritativeDashboard, buildPresenterModuleUrl, expect, registerSmokeRoutes, test } from './helpers/smoke-fixtures.js';
 import { getPrimerStyles } from '../../src/styles.js';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeCanvasArtifact } from './canvas-fixture.js';
 
 const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
 
@@ -115,22 +114,23 @@ test.describe('populated dashboard wizard', () => {
           return { ok: true, exitCode: 0 };
         },
         downloadData: async (/** @type {string} */ destination) => {
-          await mkdir(destination, { recursive: true });
           const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
-          await writeFile(join(destination, 'sources.json'), JSON.stringify({
+          await writeCanvasArtifact(destination, { sources: {
             repositories: { metadata, rows: [{ organization: 'acme', repository: 'control' }] },
             workflows: { metadata, rows: [{ organization: 'acme', repository: 'control', workflow: 'demo.md', 'workflow-name': 'Demo' }] }
-          }));
+          } });
         }
       });
       try {
         await page.addInitScript(() => {
+          IDBFactory.prototype.open = () => { throw new Error('Go canvas must not open browser IndexedDB.'); };
           Object.defineProperty(navigator, 'clipboard', {
             value: { writeText: async (/** @type {string} */ text) => { Reflect.set(window, 'copiedWizardPrompt', text); } }
           });
         });
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${server.url}/#page-wizard`);
+        await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
         await expect(page.locator('.prompt-wizard')).toBeVisible();
         await expect(page.locator('.first-load-overlay')).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Custom automation', exact: true })).toBeVisible();

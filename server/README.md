@@ -38,6 +38,17 @@ From the repository root, `npm run dev` or `npm run dashboard:local` builds
 the dashboard and starts Go `serve` with its verified SQLite cache. The Node
 server is retired; only an internal loopback canvas authoring bridge remains.
 
+The Go local SQLite server also runs natively on Windows, without PostgreSQL,
+Redis, Docker, or Linux process features. From PowerShell at the repository root,
+build the dashboard with `npm --prefix dashboard/site run build -- dist`, then
+run `go -C server run ./cmd/cao-dashboard serve`. The POSIX environment-assignment
+syntax in the root npm launch commands is not supported by PowerShell's default
+npm shell; use the direct Go command there. Windows CI builds the native command
+and exercises snapshot download, offline startup, HTTP queries, and shutdown with
+local fixtures. Evidence-lake writers retain cross-process exclusion using
+Windows file locks instead of Unix `flock`; locking errors still fail closed.
+Local SQLite URLs preserve drive-letter paths and escaped spaces or `#` in names.
+
 Local serving resolves Marketplace through the same read-only registry resolver
 as hosted serving, even when the cached SQLite snapshot has no packages.
 The npm launch commands select this checkout's `.github/workflows/cao.json`;
@@ -81,7 +92,7 @@ The `cao-bootstrap.yml` workflow runs this test daily, on relevant pull
 requests, and manually, retaining the test log for 14 days.
 
 The test builds the current CAO CLI as a local release fixture, then runs the
-unmodified `install.sh --create-repo` and `install.sh --setup`, real `gh`
+unmodified `install-gh-cao.sh --create-repo` and `install-gh-cao.sh --setup`, real `gh`
 commands, and HTTPS Git push/clone against the simulator's test-only
 `BootstrapAPI` fixture. These bootstrap endpoints and their GraphQL selection
 reader are not compiled into production binaries. The fixture's
@@ -113,6 +124,32 @@ or Azure infrastructure provisioning. The fast bootstrap API regression tests
 also run with the ordinary simulator unit suite; the external-tool integration
 is opt-in outside its dedicated npm command and CI job.
 
+## Local GitHub setup topology integration
+
+`npm run test:integration:setup` builds the current native extension and runs
+real `gh cao setup`/GitHub CLI processes against the same strict loopback
+`BootstrapAPI`. Interactive cases reuse `tests/helpers/terminal.mjs` (Linux
+`script` or macOS `python3`); Node.js is a test-driver dependency, not a native
+setup dependency. The existing Go Extension CI setup job runs this suite.
+
+The topology matrix covers public/private GitHub.com controls and
+private/internal GHE.com controls, public/private/internal/mixed targets where
+available on that host, and same/cross/mixed resource owners. Public controls
+reject non-public evidence. PAT cases retain simulated existing secret names
+and check exact owner-scoped read maps and control-only writes. App previews
+cover both hosts, separate permissions, reuse plans, and cross-owner rejection
+for newly created organization Apps. Capability failures exercise denied Pages,
+secret lookup and variable writes, declined public Pages, and unchanged consumer
+files/index. The recorded public monitoring flow and a private GHE.com PAT flow
+also publish reviewed files through real HTTPS Git to local bare repositories.
+GHE.com requests must remain on its selected web/API hosts.
+
+This is command/protocol end-to-end evidence, not live GitHub role, credential,
+Actions execution, or deployed Pages validation. Public repositories do not
+exist on GHE.com; no public GHE.com scenario is claimed. The simulator does not
+issue or validate real PATs, approve Apps, or prove restricted Pages entitlement.
+See [setup combinations and live gaps](../docs/setup-compatibility.md).
+
 ## Local Azure setup integration
 
 Run `npm run test:integration:setup-azure` with Go 1.27.3 or newer on PATH, Git, GitHub CLI, the
@@ -127,6 +164,14 @@ in a separate prerequisite step. The simulation disables module downloads and
 implicit toolchain/image pulls; missing prerequisites fail instead of accessing a registry.
 Without Docker, set `CAO_SETUP_AZURITE_BINARY` to an installed official
 `azurite-blob` executable; its process and storage are also isolated and removed.
+Set `POSTGRES_URL` to a disposable numeric-loopback PostgreSQL instance. The
+successful deployment builds `cao-dashboard` from the exact simulated ACR
+context, runs real database provisioning and empty-evidence ingestion in an
+isolated schema, and starts `cao-dashboard azure-functions` when the Azure
+simulator restarts the Function App. The deployment's HTTPS health, readiness,
+signed-out API and OAuth checks pass through simulated Azure ingress to that
+real process, followed by a verified graceful SIGTERM shutdown. GitHub setup
+still uses the GitHub simulator; no live GitHub or Azure credentials are used.
 
 The test builds the current native extension and runs real `gh cao setup`,
 then `gh cao deploy azure --preflight`, `--plan`, and `--apply`. Azure deployment
@@ -246,6 +291,18 @@ remain open until cancellation or server drain.
 
 ## Local SQLite snapshot serving
 
+The Copilot canvas uses this same local Go host. Its internal `--canvas-config`
+file selects a random capability path, a private numeric-loopback integration
+adapter and downloaded read-only memory/inventory-quality evidence. Go owns all
+browser assets and canonical APIs; only JSON reload, authoring, approved command
+and local-user GitHub routes are forwarded to the adapter. This mode cannot
+enable hosted OAuth, PostgreSQL collection or hosted App authority. Missing
+inventory quality stays unknown. Inventory rows never replace SQLite query data.
+The owner receives a machine-readable readiness URL and keeps stdin open for
+the lifetime of the child; EOF shuts the host down. This is an internal extension
+contract, not a second dashboard CLI. Canvas startup requires a verified
+published SQLite artifact and never falls back to Node queries or browser ingestion.
+
 Build the dashboard once, then run the local server without PostgreSQL, Redis,
 `gh`, or a separate download command:
 
@@ -330,6 +387,9 @@ only storage reads and query execution differ. The local snapshot profile admits
 500,000 input/intermediate rows and 50 million operations per query plan, with
 1 GiB per working source and 2 GiB / 2 million rows of simultaneously retained
 results. Completed dependency inputs are released after their final consumer.
+Shared server dependency traversal is capped at 32 queries deep, accommodating
+the shipped routing-attribution plans without changing join, row, byte or
+operation budgets.
 The planner traces live fields across consumers, prunes unused row-local
 computations, and projects only required properties inside SQLite. Requested
 raw sources and unknown result shapes keep full documents; original-record byte
@@ -337,12 +397,13 @@ limits, JSON types, missing fields, and canonical UTF-16 key order are preserved
 Read-only SQLite memory mapping is capped at 1 GiB to reduce page-read overhead.
 These are bounded accounting limits, not an RSS guarantee; large snapshots can
 require several GiB of developer-machine memory. Hosted PostgreSQL and CLI
-defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
+row/memory defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
 ordinary continuation pagination remains available. Local query admission has
 a 300-unit/minute token bucket so expensive snapshot plans do not exhaust the
 hosted 30-unit burst during ordinary page navigation; per-plan cost accounting,
 other request limits, and explicit embedding overrides remain enforced. Snapshot
-quality is reported as unknown rather than verified complete or current.
+quality without explicit published inventory metadata is reported as unknown
+rather than inferred complete or current.
 In-place SQLite commits update revisions and active subscriptions without a
 server restart. Restart after replacing the snapshot file itself.
 
@@ -1939,7 +2000,7 @@ enable them, run the web server with both `--experimental` and
 PostgreSQL operational store and OAuth. Then run a separate executor:
 
 ```bash
-node activity/cao.mjs setup-auth hosted-cli --repo OWNER/CONTROL \
+gh cao setup auth hosted-cli --repo OWNER/CONTROL \
   --target-repository OWNER/TARGET --private-key-out ./hosted-cli.pem
 cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
@@ -2044,7 +2105,11 @@ or promise exactly-once effects. Idempotent updates may overlap within the
 configured concurrency limit; workflow dispatch does not inherit that
 idempotency assumption.
 
-`setup-auth hosted-cli` writes the downloaded key to a temporary local
+`gh cao setup auth hosted-cli` runs natively in Go without Node.js or an installed
+control checkout. It preserves explicit same-owner targets, GitHub browser approval,
+and selected-repository installation verification. It does not activate hosted
+execution or change rollout policy. `--dry-run` previews the manifest offline;
+`--no-open` prints browser URLs. The command writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
 manager used by the `execute-cli` deployment, then securely remove the local
 copy. At runtime, expose the secret only to the executor, preferably as a
@@ -3621,8 +3686,11 @@ The local capability profile is not suitable for remote or multi-user
 deployment. The capability authorizes its holder to read the full active
 dashboard data; it provides no user identity or per-source authorization.
 
-The Azure Functions profile is the experimental remote profile. It is enabled
-by calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
+The Azure Functions profile is the experimental remote profile. Run
+`cao-dashboard azure-functions` to start its custom HTTP handler using
+`FUNCTIONS_CUSTOMHANDLER_PORT` and the existing Azure environment settings.
+It calls `NewAzureFunctionsHandlerFromEnv` in the shared server package;
+`serve` does not enable this profile. Azure
 mode fails closed unless all of the following are configured:
 
 - a readable `cao.json` with the `azure-functions` target and a Redis provider;

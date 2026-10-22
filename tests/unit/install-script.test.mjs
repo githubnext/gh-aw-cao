@@ -15,7 +15,7 @@ import { runTerminal } from "../helpers/terminal.mjs";
 
 const executeFile = promisify(execFile);
 const catalog = path.resolve(".");
-const installScript = path.join(catalog, "install.sh");
+const installScript = path.join(catalog, "install-gh-cao.sh");
 const installerSource = await readFile(installScript, "utf8");
 const manifest = parse(await readFile(path.join(catalog, "aw.yml"), "utf8"));
 const supportedGh = "v2.68.0";
@@ -36,6 +36,7 @@ const manualUpgrade = (version) => new RegExp(`Run \`${curlCommand} \\S+/install
 
 test("installer help and implementation no longer expose Quickstart", async () => {
   const { stdout } = await executeFile("bash", [installScript, "--help"]);
+  assert.match(stdout, /^Usage: install-gh-cao\.sh /);
   assert.match(stdout, /--setup/);
   assert.match(stdout, /--create-repo/);
   assert.doesNotMatch(stdout, /quickstart|--target/i);
@@ -147,20 +148,13 @@ if [[ "$*" == "auth status" ]]; then
   [[ -z "\${FAKE_AUTH_FAILURE:-}" ]] || { echo "not signed in" >&2; exit 1; }
   exit 0
 fi
-if [[ "$*" == "api --hostname github.com --paginate repos/githubnext/gh-cao/releases?per_page=100 --jq .[] | [.draft, .prerelease, .tag_name] | @tsv" ]]; then
-  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 1; }
-  printf '%b\\n' "\${FAKE_CAO_RELEASE_LIST:-false\\\\tfalse\\\\t\${FAKE_LATEST_CAO_RELEASE:-v1.2.3}}"
-  exit 0
+if [[ "$*" == *repos/githubnext/gh-cao/releases* || "$*" == "extension install "* ]]; then
+  echo "Resource protected by organization SAML enforcement" >&2
+  exit 1
 fi
-if [[ "\${1:-} \${2:-}" == "api --hostname" && "\${4:-}" == repos/githubnext/gh-cao/releases/tags/* ]]; then
-  echo "$4" >> "$FAKE_CAO_RELEASE_REQUESTS"
-  [[ -z "\${FAKE_CAO_ASSET_LOOKUP_FAILURE:-}" ]] || { echo "release asset lookup failed" >&2; exit 1; }
-  if [[ -n "\${FAKE_CAO_RELEASE_ASSETS+set}" ]]; then
-    printf '%b\\n' "$FAKE_CAO_RELEASE_ASSETS"
-  else
-    printf '%s\\n' gh-cao-darwin-amd64 gh-cao-darwin-arm64 gh-cao-linux-amd64 gh-cao-linux-arm64 gh-cao-windows-amd64.exe gh-cao-windows-arm64.exe checksums.txt
-  fi
-  exit 0
+if [[ -n "\${FAKE_REQUIRE_CONTROL_AUTH:-}" && "\${GH_TOKEN:-}" != synthetic-control-token ]]; then
+  echo "control repository authentication was lost" >&2
+  exit 1
 fi
 if [[ "\${1:-} \${2:-}" == "api graphql" ]]; then
   [[ "$*" == *"viewerCanCreateRepositories"* ]] || exit 2
@@ -280,6 +274,10 @@ exit 2
 // Serves gh-aw's install script, which records the requested version as installed.
 const fakeCurl = `#!/usr/bin/env bash
 set -euo pipefail
+if [[ -n "\${FAKE_CURLRC_AUTH:-}" && "\${1:-}" != --disable ]]; then
+  echo "curlrc authentication triggered SAML enforcement" >&2
+  exit 22
+fi
 url=""
 output=""
 while [[ $# -gt 0 ]]; do
@@ -289,6 +287,41 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
+[[ -z "\${FAKE_PUBLIC_REQUESTS:-}" ]] || printf '%s\\n' "$url" >> "$FAKE_PUBLIC_REQUESTS"
+if [[ "$url" == https://api.github.com/repos/githubnext/gh-cao/releases\\?* ]]; then
+  [[ -z "\${FAKE_LATEST_CAO_RELEASE_FAILURE:-}" ]] || { echo "release lookup failed" >&2; exit 22; }
+  node --input-type=module -e '
+    const page = Number(new URL(process.argv[1]).searchParams.get("page"));
+    if (process.env.FAKE_CAO_RELEASE_RESPONSE) {
+      console.log(process.env.FAKE_CAO_RELEASE_RESPONSE);
+    } else if (process.env.FAKE_CAO_RELEASE_PAGES) {
+      console.log(JSON.stringify(JSON.parse(process.env.FAKE_CAO_RELEASE_PAGES)[page - 1] ?? []));
+    } else {
+      const list = process.env.FAKE_CAO_RELEASE_LIST ?? "false\\tfalse\\t" + (process.env.FAKE_LATEST_CAO_RELEASE ?? "v1.2.3");
+      console.log(JSON.stringify(list.split("\\n").filter(Boolean).map((line) => {
+        const [draft, prerelease, tag_name] = line.split("\\t");
+        return { draft: draft === "true", prerelease: prerelease === "true", tag_name };
+      })));
+    }
+  ' "$url"
+  exit 0
+fi
+if [[ "$url" == https://api.github.com/repos/githubnext/gh-cao/releases/tags/* ]]; then
+  echo "\${url#https://api.github.com/}" >> "$FAKE_CAO_RELEASE_REQUESTS"
+  [[ -z "\${FAKE_CAO_ASSET_LOOKUP_FAILURE:-}" ]] || { echo "release asset lookup failed" >&2; exit 22; }
+  node --input-type=module -e '
+    const names = process.env.FAKE_CAO_RELEASE_ASSETS ?? "gh-cao-darwin-amd64\\ngh-cao-darwin-arm64\\ngh-cao-linux-amd64\\ngh-cao-linux-arm64\\ngh-cao-windows-amd64.exe\\ngh-cao-windows-arm64.exe\\nchecksums.txt";
+    console.log(process.env.FAKE_CAO_RELEASE_METADATA ?? JSON.stringify({
+      draft: false, assets: names.split("\\n").filter(Boolean).map((name) => ({ name, state: "uploaded", size: 100 })),
+    }));
+  '
+  exit 0
+fi
+if [[ "$url" == https://github.com/github/gh-aw/releases/download/* ]]; then
+  printf 'upstream-public-download\\n' >> "$FAKE_COMMAND_LOG"
+  printf 'verified upstream fixture' > "$output"
+  exit 0
+fi
 if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; then
   echo "$url" >> "$FAKE_CAO_DOWNLOADS"
   [[ -z "\${FAKE_CAO_BINARY_FAILURE:-}" ]] || { echo "binary download failed" >&2; exit 22; }
@@ -330,6 +363,13 @@ if [[ -n "\${FAKE_INSTALL_FAILURE:-}" ]]; then
 fi
 [[ -z "\${FAKE_INSTALL_NOOP:-}" ]] || exit 0
 cat <<'EOF'
+if [[ -n "\${GH_TOKEN:-}\${GITHUB_TOKEN:-}\${GH_ENTERPRISE_TOKEN:-}\${GITHUB_ENTERPRISE_TOKEN:-}\${INPUT_VERSION:-}" ]]; then
+  echo "upstream installer inherited operator authentication or Actions version override" >&2
+  exit 1
+fi
+if [[ -n "\${FAKE_PUBLIC_REQUESTS:-}" ]]; then
+  curl --fail --location "https://github.com/github/gh-aw/releases/download/$1/linux-amd64" -o "$FAKE_GH_AW_INSTALLED.download"
+fi
 printf '%s\\n' "$1" > "$FAKE_GH_AW_INSTALLED"
 EOF
 `;
@@ -600,11 +640,73 @@ for (const [state, initialVersion, expectedVersion, expectedLog] of [
   [`gh-aw ${supportedGhAw}`, supportedGhAw, supportedGhAw, "add\n"],
   [`gh-aw ${newerGhAw}`, newerGhAw, newerGhAw, "add\n"],
 ]) {
-  test(`streamed install.sh with ${state} materializes the runtime and initializes policy`, async (t) => {
+  test(`streamed install-gh-cao.sh with ${state} materializes the runtime and initializes policy`, async (t) => {
     const { consumer, repository, env, log } = await createConsumer(t, initialVersion);
     await streamInstaller(consumer, env);
     assert.equal(await log(), expectedLog);
     await assertCompleteInstall(consumer, env, expectedVersion, repository);
+  });
+}
+
+test("public tool installation bypasses SAML-restricted tokens without changing control repository credentials", async (t) => {
+  const { root, consumer, env, log } = await createConsumer(t);
+  const config = path.join(root, "gh-config");
+  const home = path.join(root, "home");
+  await mkdir(config);
+  await mkdir(home);
+  const hosts = "github.com:\n    oauth_token: synthetic-stored-token\n";
+  const curlrc = 'header = "Authorization: Bearer synthetic-curlrc-token"\n';
+  await writeFile(path.join(config, "hosts.yml"), hosts);
+  await writeFile(path.join(home, ".curlrc"), curlrc);
+  const requests = path.join(root, "public-requests.log");
+  const installEnv = {
+    ...env,
+    HOME: home,
+    GH_CONFIG_DIR: config,
+    GH_TOKEN: "synthetic-control-token",
+    GITHUB_TOKEN: "synthetic-actions-token",
+    GH_ENTERPRISE_TOKEN: "synthetic-enterprise-token",
+    GITHUB_ENTERPRISE_TOKEN: "synthetic-enterprise-actions-token",
+    INPUT_VERSION: "v0.0.1",
+    FAKE_REQUIRE_CONTROL_AUTH: "1",
+    FAKE_CURLRC_AUTH: "1",
+    FAKE_PUBLIC_REQUESTS: requests,
+  };
+  const result = await streamInstaller(consumer, installEnv);
+  await assertCompleteInstall(consumer, installEnv, supportedGhAw, "alpha-org/control");
+  assert.equal(await readFile(path.join(config, "hosts.yml"), "utf8"), hosts);
+  assert.equal(await readFile(path.join(home, ".curlrc"), "utf8"), curlrc);
+  assert.equal(await log(), "curl\nupstream-public-download\nadd\n");
+  const urls = (await readFile(requests, "utf8")).trim().split("\n");
+  assert.ok(urls.includes("https://api.github.com/repos/githubnext/gh-cao/releases?per_page=100&page=1"));
+  assert.ok(urls.includes("https://api.github.com/repos/githubnext/gh-cao/releases/tags/v1.2.3"));
+  assert.ok(urls.includes("https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh"));
+  assert.ok(urls.includes(`https://github.com/github/gh-aw/releases/download/${supportedGhAw}/linux-amd64`));
+  assert.ok(urls.some((url) => /githubnext\/gh-cao\/releases\/download\/v1\.2\.3\/gh-cao-/.test(url)));
+  assert.doesNotMatch(result.stdout + result.stderr, /synthetic-.*token/);
+});
+
+test("anonymous release discovery paginates past a full page of drafts and unsupported tags", async (t) => {
+  const { consumer, env } = await createConsumer(t, supportedGhAw);
+  await streamInstaller(consumer, {
+    ...env,
+    FAKE_CAO_RELEASE_PAGES: JSON.stringify([
+      Array.from({ length: 100 }, (_, index) => ({ draft: index !== 0, tag_name: index === 0 ? "nightly" : `v9.0.${index}` })),
+      [{ draft: false, prerelease: true, tag_name: "v1.2.5" }],
+    ]),
+  });
+  assert.equal(await readFile(env.FAKE_CAO_RELEASE_REQUESTS, "utf8"), "repos/githubnext/gh-cao/releases/tags/v1.2.5\n");
+});
+
+for (const response of ['{"message":"API rate limit exceeded"}', "not JSON"]) {
+  test(`anonymous release discovery fails closed on ${response.startsWith("{") ? "an API error object" : "invalid JSON"}`, async (t) => {
+    const { consumer, env, log } = await createConsumer(t);
+    const result = await runStreamed(consumer, { ...env, FAKE_CAO_RELEASE_RESPONSE: response });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /Public release discovery is anonymous/);
+    assert.equal(await log(), "");
+    assert.equal(await exists(env.XDG_DATA_HOME), false);
+    await assertNothingInstalled(consumer);
   });
 }
 
@@ -632,7 +734,7 @@ test("documented staging preserves the complete curated runtime in a fresh check
   assert.equal(status, "", "using the installed CLI must not modify the checkout");
 });
 
-test("install.sh reports useful progress and does not silence curl", async (t) => {
+test("install-gh-cao.sh reports useful progress and does not silence curl", async (t) => {
   const { consumer, env } = await createConsumer(t);
   const result = await streamInstaller(consumer, env);
   assert.equal(result.code, 0, result.stderr);
@@ -649,14 +751,14 @@ test("install.sh reports useful progress and does not silence curl", async (t) =
   assert.doesNotMatch(installerSource, /--silent|curl -s/);
 });
 
-test("streamed install.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
+test("streamed install-gh-cao.sh scopes policy to gh's current repository, not the ambient GITHUB_REPOSITORY", async (t) => {
   const { consumer, repository, env, log } = await createConsumer(t, supportedGhAw, { repository: "beta-org/ops.tools" });
   await streamInstaller(consumer, { ...env, GITHUB_REPOSITORY: "catalog-org/ambient" });
   assert.equal(await log(), "add\n");
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
 
-test(`streamed install.sh with gh-aw ${olderGhAw} and no terminal fails with upgrade guidance`, async (t) => {
+test(`streamed install-gh-cao.sh with gh-aw ${olderGhAw} and no terminal fails with upgrade guidance`, async (t) => {
   const { consumer, env, log, installedGhAw } = await createConsumer(t, olderGhAw);
   const result = await runStreamed(consumer, env);
   assert.notEqual(result.code, 0);
@@ -667,7 +769,7 @@ test(`streamed install.sh with gh-aw ${olderGhAw} and no terminal fails with upg
   await assertNothingInstalled(consumer);
 });
 
-test(`streamed install.sh requires the local aw.yml min-version ${manifestGhAw} before adding`, async (t) => {
+test(`streamed install-gh-cao.sh requires the local aw.yml min-version ${manifestGhAw} before adding`, async (t) => {
   const { consumer, env, log, installedGhAw } = await createConsumer(t, supportedGhAw);
   await writeFile(path.join(consumer, "aw.yml"), `min-version: ${manifestGhAw}\n`);
   const result = await runStreamed(consumer, env);
@@ -678,7 +780,7 @@ test(`streamed install.sh requires the local aw.yml min-version ${manifestGhAw} 
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh exits nonzero when a fresh gh-aw install does not provide the required version", async (t) => {
+test("install-gh-cao.sh exits nonzero when a fresh gh-aw install does not provide the required version", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const result = await runStreamed(consumer, { ...env, FAKE_INSTALL_NOOP: "1" });
   assert.notEqual(result.code, 0);
@@ -687,7 +789,7 @@ test("install.sh exits nonzero when a fresh gh-aw install does not provide the r
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh does not retry when the campaign manifest rejects the installed gh-aw", async (t) => {
+test("install-gh-cao.sh does not retry when the campaign manifest rejects the installed gh-aw", async (t) => {
   const { consumer, env, log, installedGhAw } = await createConsumer(t, supportedGhAw);
   const result = await runStreamed(consumer, { ...env, FAKE_MANIFEST_MIN_VERSION: manifestGhAw });
   assert.notEqual(result.code, 0);
@@ -738,7 +840,7 @@ const terminalCases = [
 ];
 
 for (const { name, initialVersion, answer, environment = {}, manifest, expectedLog, expectedVersion, failure } of terminalCases) {
-  test(`install.sh on a terminal: ${name}`, { skip: process.platform === "win32" }, async (t) => {
+  test(`install-gh-cao.sh on a terminal: ${name}`, { skip: process.platform === "win32" }, async (t) => {
     const { consumer, repository, env, log, installedGhAw } = await createConsumer(t, initialVersion);
     if (manifest) await writeFile(path.join(consumer, "aw.yml"), `min-version: ${manifest}\n`);
     const terminalEnv = { ...env, ...environment };
@@ -763,7 +865,7 @@ for (const { name, initialVersion, answer, environment = {}, manifest, expectedL
   });
 }
 
-test("install.sh reruns restore missing policy without replacing consumer policy or requiring a launcher", async (t) => {
+test("install-gh-cao.sh reruns restore missing policy without replacing consumer policy or requiring a launcher", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await runFile(consumer, env);
   assert.equal(await log(), "add\n");
@@ -806,7 +908,7 @@ for (const [failure, environment, expectedLog] of [
   ["the immutable archive download fails", { FAKE_CAO_ARCHIVE_STATUS: "503" }, "add\n"],
   ["runtime provenance verification fails", { FAKE_CAO_ATTESTATION_FAILURE: "1" }, "add\n"],
 ]) {
-  test(`install.sh exits nonzero without policy when ${failure}`, async (t) => {
+  test(`install-gh-cao.sh exits nonzero without policy when ${failure}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);
     const result = await runStreamed(consumer, { ...env, ...environment });
     assert.notEqual(result.code, 0);
@@ -821,7 +923,7 @@ for (const [description, repository] of [
   ["returns a malformed repository", "not a repository"],
   ["returns multiple repositories", "alpha-org/control\nbeta-org/ops.tools"],
 ]) {
-  test(`install.sh exits nonzero without policy when the repository lookup ${description}`, async (t) => {
+  test(`install-gh-cao.sh exits nonzero without policy when the repository lookup ${description}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);
     const { FAKE_CONTROL_REPOSITORY: _, ...withoutLookup } = env;
     const lookupEnv = repository === undefined ? withoutLookup : { ...env, FAKE_CONTROL_REPOSITORY: repository };
@@ -833,7 +935,7 @@ for (const [description, repository] of [
   });
 }
 
-test("install.sh creates only an explicitly requested private repository and installs inside its clone", async (t) => {
+test("install-gh-cao.sh creates only an explicitly requested private repository and installs inside its clone", async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const result = await streamInstaller(consumer, env, ["--create-repo", repository]);
   assert.equal(await log(), "create-private\nadd\n");
@@ -844,7 +946,7 @@ test("install.sh creates only an explicitly requested private repository and ins
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh interactively selects an eligible owner and repository name", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh interactively selects an eligible owner and repository name", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -864,7 +966,7 @@ test("install.sh interactively selects an eligible owner and repository name", {
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh requires typing both owner and repository name without defaults", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh requires typing both owner and repository name without defaults", { skip: process.platform === "win32" }, async (t) => {
   const repository = "alpha-org/control";
   const { consumer, env, log } = await createConsumer(t, supportedGhAw, { repository });
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
@@ -882,7 +984,7 @@ test("install.sh requires typing both owner and repository name without defaults
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh rejects an ineligible typed owner before accepting an eligible owner", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh rejects an ineligible typed owner before accepting an eligible owner", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -904,7 +1006,7 @@ test("install.sh rejects an ineligible typed owner before accepting an eligible 
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh reports explicit-name availability failures before creating files", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh reports explicit-name availability failures before creating files", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -925,7 +1027,7 @@ test("install.sh reports explicit-name availability failures before creating fil
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh offers to create a private GitHub repository for a checkout without remotes", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh offers to create a private GitHub repository for a checkout without remotes", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
@@ -949,7 +1051,7 @@ test("install.sh offers to create a private GitHub repository for a checkout wit
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
 
-test("install.sh defaults missing-remote repository creation to no", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh defaults missing-remote repository creation to no", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
@@ -969,7 +1071,7 @@ for (const [environment, message] of [
   [{ FAKE_EXISTING_REPOSITORIES: "alpha-org/control" }, /Repository alpha-org\/control already exists/],
   [{ FAKE_REPOSITORY_CHECK_FAILURE: "alpha-org/control" }, /Unable to check whether alpha-org\/control is available/],
 ]) {
-  test(`install.sh validates the typed remote name before in-place creation: ${message}`, { skip: process.platform === "win32" }, async (t) => {
+  test(`install-gh-cao.sh validates the typed remote name before in-place creation: ${message}`, { skip: process.platform === "win32" }, async (t) => {
     const { consumer, env, log } = await createConsumer(t);
     await executeFile("git", ["remote", "remove", "origin"], { cwd: consumer });
     const result = await runTerminal("bash", [installScript], {
@@ -989,7 +1091,7 @@ for (const [environment, message] of [
   });
 }
 
-test("install.sh offers to create and clone from outside a Git checkout", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh offers to create and clone from outside a Git checkout", { skip: process.platform === "win32" }, async (t) => {
   const { root, env, repository, log } = await createConsumer(t, supportedGhAw);
   const start = path.join(root, "start");
   await mkdir(start);
@@ -1006,7 +1108,7 @@ test("install.sh offers to create and clone from outside a Git checkout", { skip
   await assertCompleteInstall(path.join(start, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh requires typed owner and name in accessible mode", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh requires typed owner and name in accessible mode", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo`], {
@@ -1027,7 +1129,7 @@ test("install.sh requires typed owner and name in accessible mode", { skip: proc
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh checks sign-in before upgrading gh-aw, creating repositories, or writing files", async (t) => {
+test("install-gh-cao.sh checks sign-in before upgrading gh-aw, creating repositories, or writing files", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, ["--create-repo", "alpha-org/control"]);
   assert.notEqual(result.code, 0);
@@ -1037,7 +1139,7 @@ test("install.sh checks sign-in before upgrading gh-aw, creating repositories, o
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh uses one restrained spinner for a slow sign-in check", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh uses one restrained spinner for a slow sign-in check", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo alpha-org/control`], {
@@ -1062,7 +1164,7 @@ test("install.sh uses one restrained spinner for a slow sign-in check", { skip: 
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh disables spinner animation in CI", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh disables spinner animation in CI", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo alpha-org/control`], {
@@ -1100,7 +1202,7 @@ test("interactive bare installation stops cleanly with an explicit setup next st
   await assertCompleteInstall(consumer, env, supportedGhAw, repository);
 });
 
-test(`install.sh rejects GitHub CLI older than ${supportedGh} before sign-in or writes`, async (t) => {
+test(`install-gh-cao.sh rejects GitHub CLI older than ${supportedGh} before sign-in or writes`, async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const result = await runStreamed(consumer, {
     ...env,
@@ -1116,7 +1218,7 @@ test(`install.sh rejects GitHub CLI older than ${supportedGh} before sign-in or 
   await assertNothingInstalled(consumer);
 });
 
-test("install.sh rejects an unparseable GitHub CLI version before sign-in or writes", async (t) => {
+test("install-gh-cao.sh rejects an unparseable GitHub CLI version before sign-in or writes", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const result = await runStreamed(consumer, {
     ...env,
@@ -1155,7 +1257,7 @@ test("streamed new-repository installation enters bundled setup without consumin
   await assertCompleteInstall(path.join(consumer, "control"), env, supportedGhAw, repository);
 });
 
-test("install.sh refuses non-root checkout directories before installing or upgrading anything", async (t) => {
+test("install-gh-cao.sh refuses non-root checkout directories before installing or upgrading anything", async (t) => {
   const { consumer, env, log } = await createConsumer(t);
   const nested = path.join(consumer, "nested");
   await mkdir(nested);
@@ -1166,7 +1268,7 @@ test("install.sh refuses non-root checkout directories before installing or upgr
   await assertNothingInstalled(nested);
 });
 
-test("install.sh refuses to create a repository when its clone directory already exists", async (t) => {
+test("install-gh-cao.sh refuses to create a repository when its clone directory already exists", async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   await mkdir(path.join(consumer, "control"));
   const result = await runStreamed(consumer, env, ["--create-repo", "alpha-org/control"]);
@@ -1175,7 +1277,7 @@ test("install.sh refuses to create a repository when its clone directory already
   assert.equal(await log(), "");
 });
 
-test("install.sh refuses an explicit clone path occupied by a dangling symlink", {
+test("install-gh-cao.sh refuses an explicit clone path occupied by a dangling symlink", {
   skip: process.platform === "win32",
 }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
@@ -1193,7 +1295,7 @@ for (const [name, environment, arguments_] of [
   ["guided installation without a terminal", { FAKE_CONTROL_VISIBILITY: "PUBLIC" }, ["--setup"]],
   ["guided installation in CI", { CI: "1", FAKE_CONTROL_VISIBILITY: "PUBLIC" }, ["--setup"]],
 ]) {
-  test(`headless install.sh completes safe ${name}`, async (t) => {
+  test(`headless install-gh-cao.sh completes safe ${name}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t, supportedGhAw);
     const creating = arguments_.includes("--create-repo");
     const repository = creating ? "alpha-org/new-control" : env.FAKE_CONTROL_REPOSITORY;
@@ -1421,10 +1523,12 @@ for (const [name, override, message] of [
 
 async function runExtensionInstaller(consumer, env, prefix = "gh-cao-") {
   const extensionInstaller = installerSource.match(/^install_cao_extension\(\) \([\s\S]*?^\)/m)?.[0];
+  const publicCurl = installerSource.match(/^public_curl\(\) \{[\s\S]*?^\}/m)?.[0];
   assert.ok(extensionInstaller, "the production extension installer is available");
+  assert.ok(publicCurl, "the production anonymous download helper is available");
   return executeFile("bash", [
     "-c",
-    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${extensionInstaller}\ninstall_cao_extension v1.2.3 "$1"`,
+    `set -euo pipefail\ninfo() { :; }\nsuccess() { :; }\n${publicCurl}\n${extensionInstaller}\ninstall_cao_extension v1.2.3 "$1"`,
     "extension-installer",
     prefix,
   ], { cwd: consumer, env, timeout });
@@ -1540,7 +1644,7 @@ for (const [name, environment, message] of [
   });
 }
 
-test("install.sh never changes an explicitly requested repository name on collision", async (t) => {
+test("install-gh-cao.sh never changes an explicitly requested repository name on collision", async (t) => {
   const { root, env, log } = await createConsumer(t, supportedGhAw);
   const outsideCheckout = path.join(root, "outside-checkout");
   await mkdir(outsideCheckout);
@@ -1557,7 +1661,7 @@ test("install.sh never changes an explicitly requested repository name on collis
   await assertNothingInstalled(outsideCheckout);
 });
 
-test("install.sh in CI applies public defaults without prompting on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh in CI applies public defaults without prompting on an available controlling terminal", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, supportedGhAw);
   const result = await runTerminal("bash", [installScript, "--setup"], {
     cwd: consumer,
@@ -1570,7 +1674,7 @@ test("install.sh in CI applies public defaults without prompting on an available
   assert.equal(await log(), "add\n");
 });
 
-test("install.sh in CI fails an old gh-aw without reading the controlling terminal", { skip: process.platform === "win32" }, async (t) => {
+test("install-gh-cao.sh in CI fails an old gh-aw without reading the controlling terminal", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, log } = await createConsumer(t, olderGhAw);
   const result = await runTerminal("bash", [installScript], {
     cwd: consumer, env: { ...env, CI: "1" }, timeout, input: "",
@@ -1588,7 +1692,7 @@ for (const arguments_ of [
   ["--create-repo", "owner/../escape"],
   ["--unknown"],
 ]) {
-  test(`install.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
+  test(`install-gh-cao.sh rejects unusable onboarding arguments before mutations: ${arguments_.join(" ")}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t);
     const result = await runStreamed(consumer, env, arguments_);
     assert.notEqual(result.code, 0);
@@ -1606,7 +1710,7 @@ for (const arguments_ of [
   ["--create-repo", "alpha-org/control", "--quickstart"],
   ["--create-repo", "alpha-org/control", "--target", "alpha-org/project"],
 ]) {
-  test(`install.sh rejects removed flags before sign-in or mutations: ${arguments_.join(" ")}`, async (t) => {
+  test(`install-gh-cao.sh rejects removed flags before sign-in or mutations: ${arguments_.join(" ")}`, async (t) => {
     const { consumer, env, log } = await createConsumer(t);
     const result = await runStreamed(consumer, { ...env, FAKE_AUTH_FAILURE: "1" }, arguments_);
     const removedFlag = arguments_.find((argument) => argument === "--quickstart" || argument === "--target");
@@ -1622,7 +1726,7 @@ for (const arguments_ of [
   });
 }
 
-test("streamed install.sh defaults Activity authentication to the control repository workflow token", async (t) => {
+test("streamed install-gh-cao.sh defaults Activity authentication to the control repository workflow token", async (t) => {
   const { root, consumer, repository, env, log } = await createConsumer(t, supportedGhAw);
   await streamInstaller(consumer, env);
   assert.equal(await log(), "add\n");

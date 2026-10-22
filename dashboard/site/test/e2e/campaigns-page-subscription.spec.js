@@ -6,8 +6,8 @@ test('page-bound Campaigns loads its second page through the production continua
   const dashboard = authoritativeDashboard.dashboard;
   const campaigns = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'campaigns');
   const model = { ...authoritativeDashboard, dashboard: { ...dashboard, pages: [campaigns] } };
+  const metadata = { 'as-of': new Date().toISOString(), completeness: 'complete', freshness: 'fresh' };
   await page.route('http://dashboard.test/paged-campaign-sources.json', route => {
-    const metadata = { 'as-of': new Date().toISOString(), completeness: 'complete', freshness: 'fresh' };
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
       campaigns: { metadata, rows: Array.from({ length: 31 }, (_, index) => ({
         campaign: `campaign-${String(index).padStart(2, '0')}`,
@@ -21,6 +21,8 @@ test('page-bound Campaigns loads its second page through the production continua
   const result = await page.evaluate(async documentModel => {
     const { startDashboardData } = await import(`${location.origin}/src/data/startup.js`);
     const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+    const { dashboardDataStatus } = await import(`${location.origin}/src/dashboard-data-status.js`);
+    const { effect } = await import(`${location.origin}/src/reactive.js`);
     const { dashboardPageSourceNames, dashboardPagePaginatedSourceBindings } = await import(`${location.origin}/src/presenter.js`);
     /** @type {import('../../src/presenter.js').PageSourceLoader | undefined} */
     let loader;
@@ -38,6 +40,13 @@ test('page-bound Campaigns loads its second page through the production continua
     };
     const stop = await startDashboardData(startupOptions);
     try {
+      await new Promise((resolve, reject) => {
+        effect(() => {
+          const phase = dashboardDataStatus.get().phase;
+          if (phase === 'ready') resolve(undefined);
+          else if (phase === 'stale') reject(new Error('Campaign fixture refresh failed.'));
+        }, { signal: controller.signal });
+      });
       if (!loader) throw new Error('Production page loader was not registered.');
       const sources = await loader('campaigns', {
         signal: controller.signal, onUpdate: () => {}, queryContext: { viewMode: 'table' }

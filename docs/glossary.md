@@ -112,7 +112,7 @@ The explicit `generic` HTTP target with `listener: external` that lets a separat
 
 ## gh cao
 
-The operator-facing `gh cao` extension, downloaded and checksum/version-verified by `install.sh` into GitHub CLI's extension data directory. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot doctor, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
+The operator-facing `gh cao` extension, installed with `gh extension install githubnext/gh-cao`. The curl installer is a fallback for SAML-token installation failures. It is built from the independent Go module under `cmd/gh-cao/` and `internal/cli/` and published as versioned `gh-cao-OS-ARCH` binaries with SHA-256 checksums. All extension commands, including policy initialization and modes, workflow enablement, campaign installation, onboarding and authentication, lifecycle, read-only analysis, and diagnostics, run natively in Go without Node.js, npm, or the installed CAO runtime. Actions pipeline commands, SQLite snapshot `repair-database`, and hosted-CLI App setup invoke `node activity/cao.mjs <command>` explicitly; no shell launcher is installed. See [GitHub CLI extension](cao-cli.md#github-cli-extension).
 
 ## GitHub quota service
 
@@ -136,7 +136,7 @@ The dashboard page for gh-aw compiler defaults at organization, enterprise, or r
 
 ## Marketplace
 
-The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `gh cao campaigns add` command; it never installs a package or contacts a registry from the browser. Package rows carry declaratively sorted and filtered verification, maintenance, popularity, installation, and adoption signals, each reported as a known value with its provenance source or `unknown`; these signals describe discovery only and never grant or infer control-plane authority. See [Browse Campaign Packages](marketplace.md).
+The read-only dashboard catalog of campaign packages resolved from an operator-ordered list of registries declared in `control-plane.marketplace.registries`. It shows normalized package metadata, provenance, and an immutable source coordinate, and only ever offers a copy-only `gh cao add` command; it never installs a package or contacts a registry from the browser. Package rows carry declaratively sorted and filtered verification, maintenance, popularity, installation, and adoption signals, each reported as a known value with its provenance source or `unknown`; these signals describe discovery only and never grant or infer control-plane authority. See [Browse Campaign Packages](marketplace.md).
 
 ## Operator
 

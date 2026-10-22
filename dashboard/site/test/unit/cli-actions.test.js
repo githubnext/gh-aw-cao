@@ -651,13 +651,17 @@ describe('CLI actions', () => {
     });
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
+    const action = dashboardDocument.dashboard['cli-actions'].find(
+      candidate => candidate.id === 'add-marketplace-package'
+    );
+    if (!action) throw new Error('Missing Marketplace package action.');
     setDeclaredCliActions([{
-      id: 'add-marketplace-package',
-      label: 'Copy add command',
-      icon: 'copy',
-      command: 'gh cao add {{package-source}}',
+      id: action.id,
+      label: action.label,
+      icon: action.icon,
+      command: action.command,
       placement: 'row',
-      'copy-only': true
+      'copy-only': action['copy-only']
     }], { canExecute: true });
     const rendered = renderRowCliAction('add-marketplace-package', {
       'package-source': 'octo/packages/demo@abc123'

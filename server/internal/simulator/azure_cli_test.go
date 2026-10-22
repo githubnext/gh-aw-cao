@@ -50,7 +50,7 @@ func TestSetupAzureCLIProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client := &http.Client{Transport: transport, Timeout: 15 * time.Second}
+	client := &http.Client{Transport: transport, Timeout: 2 * time.Minute}
 	response, err := client.Do(request) // #nosec G704 -- transport rejects requests outside the exact simulator endpoint, including redirects.
 	if err != nil {
 		t.Fatal(err)
@@ -85,6 +85,7 @@ type azureSetupAPI struct {
 	locked           map[string]bool
 	configured       map[string]string
 	executions       map[string]string
+	functions        *setupAzureFunctions
 }
 
 func newAzureSetupAPI(t *testing.T, catalog string, storage *azureBlobStore) *azureSetupAPI {

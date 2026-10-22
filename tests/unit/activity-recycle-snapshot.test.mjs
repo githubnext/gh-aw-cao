@@ -90,8 +90,9 @@ async function rebuild(directory) {
   runCao(hashing);
   const database = path.join(directory, 'gh-aw-logs.sqlite');
   runCao(['ingest-jsonl', '--database', database, ...phases, '--retention-days', '7', '--run-retention-days', '30']);
-  const doctor = runCao(['doctor', '--database', database, '--ttl-days', '7', '--run-ttl-days', '30']);
-  assert.ok(doctor);
+  const repair = runCao(['repair-database', '--database', database, '--ttl-days', '7', '--run-ttl-days', '30']);
+  assert.equal(repair.command, 'repair-database');
+  assert.equal(repair.healthy, true);
   const hashes = runCao([...hashing, '--database', database, '--output', path.join(directory, 'payload-hashes.json')]);
   assert.equal(hashes['gh-aw-logs.sqlite'], await hashFileContents(database));
   for (const [name, hash] of Object.entries(hashes)) assert.equal(await hashFileContents(path.join(directory, name)), hash);

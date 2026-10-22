@@ -12,7 +12,7 @@ on:
       - aw.yml
       - activity/**
       - dashboard/aw.yml
-      - install.sh
+      - install-gh-cao.sh
       - cmd/gh-cao/**
       - internal/cli/**
       - internal/ghcli/**

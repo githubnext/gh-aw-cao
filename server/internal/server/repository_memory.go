@@ -17,6 +17,13 @@ import (
 var repositoryMemoryLog = logger.New("cao:server:repository-memory")
 var errRepositoryMemoryIntegrityFailure = errors.New("repository-memory file failed integrity validation")
 
+func (a *App) repositoryMemoryDirectory() string {
+	if a.config.Canvas != nil {
+		return a.config.Canvas.MemoryDirectory
+	}
+	return a.config.SourceDirectory
+}
+
 func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *http.Request) {
 	campaignID := request.PathValue("campaign")
 	if !repositorymemory.ValidCampaign(campaignID) {
@@ -24,7 +31,7 @@ func (a *App) repositoryMemoryCampaign(response http.ResponseWriter, request *ht
 		return
 	}
 	var campaign repositorymemory.Campaign
-	campaign, err := repositoryMemorySnapshot(request.Context(), a.config.SourceDirectory, campaignID)
+	campaign, err := repositoryMemorySnapshot(request.Context(), a.repositoryMemoryDirectory(), campaignID)
 	if err != nil && a.memory != nil &&
 		errors.Is(err, errCanonicalEntityNotFound) {
 		resolved, resolveErr := a.memory.Campaign(request.Context(), campaignID)
@@ -59,7 +66,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 	}
 	var content []byte
 	err := func(ctx context.Context) error {
-		campaign, err := repositoryMemorySnapshot(ctx, a.config.SourceDirectory, campaignID)
+		campaign, err := repositoryMemorySnapshot(ctx, a.repositoryMemoryDirectory(), campaignID)
 		if err != nil {
 			return err
 		}
@@ -73,7 +80,7 @@ func (a *App) repositoryMemoryContent(response http.ResponseWriter, request *htt
 		if selected == nil {
 			return repositorymemory.ErrNotFound
 		}
-		snapshot, err := repositorymemory.Load(a.config.SourceDirectory)
+		snapshot, err := repositorymemory.Load(a.repositoryMemoryDirectory())
 		if err != nil {
 			return err
 		}

@@ -154,9 +154,9 @@ cao ingest-jsonl \
   --input _activity/gh-aw-history.jsonl \
   --retention-days all
 
-cao doctor \
+node activity/cao.mjs repair-database \
   --database _activity/gh-aw-history.sqlite \
-  --ttl-days all
+  --ttl-days all --run-ttl-days all
 ```
 
 "Full" means all run summaries discoverable in the selected range plus every artifact still available from GitHub. Expired artifacts remain visible as unenriched runs rather than being silently counted as complete.
@@ -358,14 +358,14 @@ cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --unti
 
 `-R`, `-w`, `-s`, and `-L` alias `--repo`, `--workflow`, `--status`, and `--limit`. The default limit is 30. Date-only `--until` values include the entire date. Issue and pull request results come from canonical Issue records created by `safe_output.result` observations.
 
-Diagnose and repair the local database:
+Repair the local database and apply retention (not a read-only check):
 
 ```bash
-cao doctor \
+node activity/cao.mjs repair-database \
   --database /tmp/cao-dashboard.sqlite
 ```
 
-The doctor reports SQLite integrity, foreign-key and schema health, table and transaction counts, malformed records, and relationship errors. It applies the default seven-day run-linked detail and 30-day Run and Operational Value windows (or explicit `--ttl-days` and `--run-ttl-days` overrides), removes malformed and orphaned derived records, repairs metadata, and runs SQLite maintenance. Before changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next to the database.
+The repair report includes SQLite integrity, foreign-key and schema health, table and transaction counts, malformed records, and relationship errors. The command applies the default seven-day run-linked detail and 30-day Run windows (or explicit `--ttl-days` and `--run-ttl-days` overrides), keeps at least a year of Operational Values, removes malformed and orphaned derived records, repairs metadata, and runs SQLite maintenance. Retention may prune records even without corruption. Before changing data, it creates a timestamped `.doctor-backup-*.sqlite` backup next to the database. Use `--ttl-days all --run-ttl-days all` to disable age-based pruning. The retired Node `doctor` command is rejected; native Go doctor commands are unchanged.
 
 To let an agent read the same snapshot through dashboard pages and named
 queries, instead of through collections, see

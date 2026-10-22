@@ -130,7 +130,11 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "package.json",
       "package-lock.json",
       "aw.yml",
+      "server/cmd/cao-dashboard/azure_functions.go",
+      "server/internal/server/azure.go",
+      "server/internal/server/server.go",
       "server/internal/simulator/setup_integration_test.go",
+      "server/internal/simulator/setup_hosted_cli_integration_test.go",
       "server/internal/simulator/setup_azure_integration_test.go",
       "server/internal/simulator/bootstrap_integration_test.go",
       "server/azure/main.bicep",
@@ -142,7 +146,6 @@ test("Go extension quality checks cover root-module sources and lint configurati
     ]) {
       assert.ok(runsForFile("go-extension.yml", event, file), `${event}: ${file}`);
     }
-    assert.equal(runsForFile("go-extension.yml", event, "server/internal/server/server.go"), false);
   }
 
   const { jobs, defaults } = parse(workflow("go-extension.yml"));
@@ -245,13 +248,23 @@ test("Go extension setup simulator runs independently without live credentials",
   assert.equal(job.if, undefined);
   assert.equal(job.needs, undefined);
   assert.equal(run["continue-on-error"], undefined);
-  assert.deepEqual(azure.env, run.env);
+  assert.deepEqual(azure.env, {
+    ...run.env,
+    POSTGRES_URL: "postgres://postgres@127.0.0.1:5432/cao?sslmode=disable",
+  });
+  assert.match(job.services.postgres.image, /^postgres:16-alpine@sha256:[a-f0-9]{64}$/);
+  assert.deepEqual(job.services.postgres.env, {
+    POSTGRES_DB: "cao",
+    POSTGRES_HOST_AUTH_METHOD: "trust",
+  });
+  assert.deepEqual(job.services.postgres.ports, ["5432:5432"]);
+  assert.match(job.services.postgres.options, /pg_isready -U postgres -d cao/);
   assert.equal(azure.if, undefined);
   assert.equal(azure["continue-on-error"], undefined);
   assert.doesNotMatch(JSON.stringify(job), /secrets\.|github\.token|id-token/);
   const { scripts } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.match(scripts["test:integration:setup"], /CAO_SETUP_INTEGRATION=1 go -C server test -race/);
-  assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAOSetupIntegration\|TestSetup\)'/);
+  assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAO\(Setup\|HostedCLISetup\)Integration\|TestSetup\)'/);
   assert.match(scripts["test:integration:setup-azure"], /CAO_SETUP_AZURE_INTEGRATION=1 GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOVCS='\*:off' go -C server test -race/);
   assert.match(scripts["test:integration:setup-azure"], /-run '\^\(TestCAOSetupAzureIntegration\|TestSetupAzure\|TestLocalTransport\)'/);
 });
@@ -359,7 +372,7 @@ test("main pushes retain browser and integration coverage for representative inp
 
 test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", () => {
   const cases = [
-    ["workflow-contracts.yml", ["unit", "test", "agent-plugin"], [
+    ["workflow-contracts.yml", ["unit", "test", "agent-plugin", "installer"], [
       "full-contracts", "github-issue-query",
       "dependabot-operational-value", "campaign-lifecycle-changes",
     ]],

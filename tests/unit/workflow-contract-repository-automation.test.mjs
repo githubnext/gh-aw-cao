@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { parse } from "yaml";
 import { generatedJobs, root, workflow } from "./workflow-contract.helpers.mjs";
 
 // Repository maintenance automation and release workflow contracts.
@@ -158,6 +159,9 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   assert.match(campaignLifecycle, /max-parallel: 1/);
   assert.match(campaignLifecycle, /if: steps\.campaign-api\.outputs\.ready == 'true'/);
   assert.match(campaignLifecycle, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.deepEqual(parse(source).jobs["campaign-lifecycle"].permissions, {
+    contents: "read", actions: "read", attestations: "read",
+  });
   assert.match(
     campaignLifecycle,
     /export CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE="\$\{GITHUB_REPOSITORY\}@\$\{GITHUB_SHA\}"/,

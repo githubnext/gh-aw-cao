@@ -157,6 +157,16 @@ export function verifyPreservedDeliveries(previous, current) {
   }
 }
 
+export function preserveFileDietSnapshots(proof, previous) {
+  const snapshots = new Map(previous.snapshots.map(snapshot => [snapshot.at, snapshot]));
+  for (const snapshot of proof.snapshots) {
+    const retained = snapshots.get(snapshot.at);
+    if (retained) assert.deepEqual(snapshot, retained, "Preserved snapshot revision changed");
+    snapshots.set(snapshot.at, snapshot);
+  }
+  proof.snapshots = [...snapshots.values()].sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
 export function appliedReceipt(content, issue) {
   const rows = content.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
   const matching = rows.flatMap((item, index) => item.type === "create_issue" && item.number === issue.number
@@ -199,11 +209,11 @@ export function collectReceipts(proof, prior, request, directory) {
   }
 }
 
-export function refreshFileDiet({ endAt, previous, output }) {
+export function refreshFileDiet({ endAt, previous, output, scratch }) {
   assert.ok(isInstant(endAt) && Date.parse(endAt) <= Date.now(), "A non-future UTC endpoint is required");
   assert.ok(!existsSync(output), "Refusing to replace an existing evidence/report directory");
   const root = path.resolve(import.meta.dirname, "../../../..");
-  const work = mkdtempSync(path.join(root, ".file-diet-acquire-"));
+  const work = mkdtempSync(path.join(scratch ?? root, ".file-diet-acquire-"));
   const staged = path.join(work, "result");
   try {
     const prior = previous ? readFileDietProof(previous) : null;
@@ -212,6 +222,7 @@ export function refreshFileDiet({ endAt, previous, output }) {
     const proof = acquireFileDietHistory(request, endAt);
     if (prior) {
       assert.deepEqual(proof.adoption, prior.proof.adoption, "Frozen adoption identity changed");
+      preserveFileDietSnapshots(proof, prior.proof);
       proof.previousProof = { digest: digest(prior.proof), observedAt: prior.proof.observedAt, until: prior.proof.until };
     }
     collectReceipts(proof, prior, request, work);

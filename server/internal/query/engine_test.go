@@ -1,9 +1,36 @@
 package query
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 )
+
+func TestBuiltInRoutingDependenciesFitServerBudget(t *testing.T) {
+	definitions := make([]Definition, 0, 1024)
+	for _, path := range []string{
+		"../../../dashboard/site/src/data/queries/database.json",
+		"../../../dashboard/site/src/agent/queries.generated.json",
+	} {
+		content, err := os.ReadFile(path) // #nosec G304 -- fixed checked-in query contract paths.
+		if err != nil {
+			t.Fatal(err)
+		}
+		var queries []Definition
+		if err := json.Unmarshal(content, &queries); err != nil {
+			t.Fatal(err)
+		}
+		definitions = append(definitions, queries...)
+	}
+	order, depth, _, err := dependencyPlan(definitions, []string{"routing-attributed-accounting"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(order) == 0 || depth == 0 || depth > MaxDependencyDepth {
+		t.Fatalf("built-in routing accounting plan was not exercised: depth=%d queries=%d", depth, len(order))
+	}
+}
 
 func TestDependencyPlanOrdersAndMeasuresDepth(t *testing.T) {
 	definitions := []Definition{

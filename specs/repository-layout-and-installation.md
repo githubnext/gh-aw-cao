@@ -243,7 +243,7 @@ mismatches and MUST NOT rewrite an existing policy or any authority fields.
 The installer MUST invoke `gh cao init` and `gh cao setup`.
 No shell launcher is installed. Actions and Node-only
 tools MUST invoke `node activity/cao.mjs <command>` or another explicit Node
-entry point directly, including SQLite `doctor` and `setup-auth hosted-cli`.
+entry point directly, including SQLite `repair-database`.
 User-facing commands MUST live in the Go extension except the Node-only
 administration tools above. Actions execution
 support MUST live in the JavaScript runtime under `activity/` and `dashboard/`.
@@ -270,6 +270,20 @@ non-root campaign before reading its declaration. `cao add` MUST reject the
 root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging
 declarations.
+
+Documentation MUST recommend `gh extension install githubnext/gh-cao` first,
+followed by native `gh cao setup`. It MUST present the root `install-gh-cao.sh`
+as a curl fallback in a callout for SAML-token installation failures, not as
+the default extension installation path. The fallback MUST invoke the upstream
+`github/gh-aw` `install-gh-aw.sh` with the
+required version and checksum verification enabled. Public tool release discovery
+and downloads MUST be anonymous, independent of the operator's GitHub token and
+curl authentication configuration. The upstream installer MUST NOT inherit token
+variables or the Actions `INPUT_VERSION` override that selects authenticated
+extension installation. Anonymous rate limits and download/verification failures
+MUST fail closed, not retry with operator credentials. This isolation MUST NOT
+clear stored credentials or remove authentication from control-repository
+creation, setup, or the separate runtime artifact/provenance acquisition path.
 
 The installer MUST check tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installation or upgrade. Creating a control repository MUST
@@ -334,7 +348,7 @@ commit, or push. The explicit public-monitoring shortcut below and a previously
 saved public-only scope MAY select a wider exact public collection scope.
 
 Operational campaigns MUST remain separate from installation and setup.
-Operators install campaigns with `gh cao campaigns add`, review and commit
+Operators install campaigns with `gh cao add`, review and commit
 workflows and policy together, then explicitly dispatch authorized work through
 `gh aw run`. Installation and setup MUST NOT commit, push, or dispatch campaigns.
 Validation MUST report a manually paused orchestrator with active workers as a
