@@ -39,7 +39,7 @@ function button(root, label) {
 }
 /** @param {HTMLElement} root @param {string} label @param {string} value */
 function input(root, label, value) {
-  const field = [...root.querySelectorAll('label')].find((node) => node.textContent === `${label} (required)`);
+  const field = [...root.querySelectorAll('label')].find((node) => [label, `${label} (required)`, `${label} (optional)`].includes(node.textContent ?? ''));
   const control = /** @type {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} */ (root.querySelector(`#${field?.htmlFor}`));
   if (!control) throw new Error(`Missing input: ${label}`);
   control.value = value;
@@ -88,6 +88,9 @@ describe('declarative wizard contract', () => {
     expect(wizard.steps[0].fields[0]).toMatchObject({ id: 'pattern', control: 'cards', required: true, 'advance-on-select': true });
     expect(wizard.steps[0].fields[0]).not.toHaveProperty('default');
     expect(wizard.steps.flatMap((step) => step.fields.map((field) => field.id))).not.toContain('name');
+    for (const id of contract['optional-fields']) {
+      expect(wizard.steps.flatMap((step) => step.fields).find((field) => field.id === id)?.required).toBe(false);
+    }
     expect(wizard.provenance).toMatchObject({ repository: contract.upstream, revision: contract.revision });
     expect(wizard.provenance?.license).toContain('Copyright (c) 2026 GitHub Next');
     expect(wizard.steps[0].fields.find((field) => field.id === 'pattern')?.options).toHaveLength(contract['pattern-count'] + 1);
@@ -139,12 +142,23 @@ describe('declarative wizard contract', () => {
 
   it('rejects missing, forged, duplicate and oversized answers instead of generating a partial prompt', () => {
     const changes = /** @type {import('../../src/prompt-wizard.js').WizardValues[]} */ ([
-      { purpose: '' }, { pattern: '' }, { pattern: 'not-a-pattern' }, { outputs: ['not-an-output'] },
+      { pattern: '' }, { pattern: 'not-a-pattern' }, { outputs: ['not-an-output'] },
       { outputs: ['add-comment', 'add-comment'] }, { artifact: 'campaign', targets: '' },
       { artifact: 'campaign', targets: 'acme/*' },
       { purpose: 'x'.repeat(6001) }, { triggers: 'issues' }
     ]);
     for (const changed of changes) expect(() => buildWizardPrompt(wizard, { ...completeValues(), ...changed })).toThrow();
+  });
+
+  it.each(['workflow', 'campaign'])('uses the selected scenario for %s when optional task and acceptance fields are blank', (artifact) => {
+    const values = { ...completeValues(), artifact, pattern: 'issue-triage', purpose: '', success: '', targets: 'acme/one' };
+    const prompt = buildWizardPrompt(wizard, values);
+    expect(prompt).toContain('Classify and label new issues');
+    expect(prompt).toContain('infer them from the selected scenario');
+    expect(prompt).toContain('do not require the user to fill them in');
+    const design = wizardDesign(wizard, values);
+    expect(design.purpose.value).toBe('');
+    expect(design.success.value).toBe('');
   });
 
   it('fails closed on malformed and unknown declarative configuration', () => {
