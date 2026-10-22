@@ -198,11 +198,13 @@ as needed rather than its full CLI command implementation.
 
 Help for every operator command and version work offline without GitHub authentication.
 Guided onboarding runs as `gh cao setup`; independent authentication profiles
-are grouped under `gh cao setup auth github-app|enterprise-app|token`, not a
+are grouped under `gh cao setup auth github-app|enterprise-app|hosted-cli|token`, not a
 root-level `setup-auth` command. These native commands preserve the setup and
 setup-auth JSON result contracts and secure credential prompts.
 Actions and Node-only tools invoke `node activity/cao.mjs <command>` directly,
-including SQLite `repair-database` and `setup-auth hosted-cli`. There is no shell launcher;
+including SQLite `repair-database`. Hosted-executor App creation belongs to native
+`gh cao setup auth hosted-cli`; its retired Node profile fails before side effects.
+There is no shell launcher;
 retained internal Node implementations serve Actions and parity tests, not operators.
 `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure
 and compiler pin without loading Node.js. Authentication may contact GitHub.

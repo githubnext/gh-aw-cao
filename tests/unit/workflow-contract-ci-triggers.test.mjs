@@ -134,6 +134,7 @@ test("Go extension quality checks cover root-module sources and lint configurati
       "server/internal/server/azure.go",
       "server/internal/server/server.go",
       "server/internal/simulator/setup_integration_test.go",
+      "server/internal/simulator/setup_hosted_cli_integration_test.go",
       "server/internal/simulator/setup_azure_integration_test.go",
       "server/internal/simulator/bootstrap_integration_test.go",
       "server/azure/main.bicep",
@@ -263,7 +264,7 @@ test("Go extension setup simulator runs independently without live credentials",
   assert.doesNotMatch(JSON.stringify(job), /secrets\.|github\.token|id-token/);
   const { scripts } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.match(scripts["test:integration:setup"], /CAO_SETUP_INTEGRATION=1 go -C server test -race/);
-  assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAOSetupIntegration\|TestSetup\)'/);
+  assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAO\(Setup\|HostedCLISetup\)Integration\|TestSetup\)'/);
   assert.match(scripts["test:integration:setup-azure"], /CAO_SETUP_AZURE_INTEGRATION=1 GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOVCS='\*:off' go -C server test -race/);
   assert.match(scripts["test:integration:setup-azure"], /-run '\^\(TestCAOSetupAzureIntegration\|TestSetupAzure\|TestLocalTransport\)'/);
 });

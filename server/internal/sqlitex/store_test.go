@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,6 +19,28 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/query"
 	"github.com/githubnext/gh-cao/server/internal/testutil"
 )
+
+func TestSnapshotDSNUsesLocalFilePaths(t *testing.T) {
+	for _, test := range []struct {
+		path string
+		want string
+	}{
+		{"/tmp/snapshot #1.sqlite", "/tmp/snapshot #1.sqlite"},
+		{"C:/Users/developer/Local Data/snapshot #1.sqlite", "/C:/Users/developer/Local Data/snapshot #1.sqlite"},
+		{"//localhost/share/snapshot.sqlite", "//localhost/share/snapshot.sqlite"},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			location, err := url.Parse(snapshotDSN(test.path))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if location.Scheme != "file" || location.Host != "" || location.Path != test.want ||
+				location.Fragment != "" || location.Query().Get("mode") != "ro" {
+				t.Fatalf("invalid local read-only snapshot URI: %s", location)
+			}
+		})
+	}
+}
 
 func TestSnapshotSQLProjectionPreservesJSONAndFullRecordBudgets(t *testing.T) {
 	path := testutil.SQLiteSnapshot(t, map[string][]model.Row{"repositories": {{

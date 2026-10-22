@@ -1651,6 +1651,20 @@
       "navigation-label": "Cost",
       "icon": "credit-card",
       "description": "Identify the strongest concentration of observed AI Credit usage for investigation.",
+      "sections": [
+        {
+          "id": "cost-estimates",
+          "title": "Cost estimates",
+          "description": "All costs shown are estimates. Review your billing dashboard for precise numbers.",
+          "layout": "full",
+          "views": [
+            "cost-by-repository",
+            "cost-by-workflow",
+            "cost-per-workflow-run",
+            "engines-models-aic-insights"
+          ]
+        }
+      ],
       "views": [
         {
           "id": "cost-by-repository",

@@ -196,7 +196,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
 
 test("Node-only command documentation uses explicit runtime entry points without a shell launcher", () => {
   for (const command of [
-    "setup-auth hosted-cli", "repair-database", "operational-value", "cluster-problems",
+    "repair-database", "operational-value", "cluster-problems",
     "dashboard-complexity", "prune-dashboard", "validate --json",
   ]) {
     assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
@@ -207,6 +207,14 @@ test("Node-only command documentation uses explicit runtime entry points without
   assert.match(demo, /gh cao<\/span> setup/);
   assert.match(demo, /data-terminal-output="setup">Monitoring configured locally\. No commit or push was performed\.[\s\S]*Next: gh cao doctor/);
   assert.doesNotMatch(demo, /(?<![\w-])cao\.sh|<\/span> validate/);
+});
+
+test("hosted-executor App setup belongs only to the native operator CLI", () => {
+  assert.match(docs, /gh cao setup auth hosted-cli --repo OWNER\/CONTROL/);
+  assert.match(docs, /mode-`0600` temporary bootstrap file/);
+  assert.match(docs, /Setup does not change policy, Actions secrets, authentication mode/);
+  assert.doesNotMatch(help, /cao setup-auth hosted-cli/);
+  assert.doesNotMatch(docs, /node activity\/cao\.mjs setup-auth hosted-cli/);
 });
 
 test("active documentation and architecture do not advertise the retired Quickstart capability", () => {
