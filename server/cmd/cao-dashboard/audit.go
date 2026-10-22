@@ -24,14 +24,14 @@ import (
 
 var auditCommandLog = debuglogger.New("cao:dashboard:audit")
 
-// newAuditCommand verifies and exports the tamper-evident audit table for
-// compliance evidence and SIEM backfill.
+// newAuditCommand inspects and exports the tamper-evident audit table for
+// operational evidence and SIEM backfill.
 func newAuditCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "audit",
-		Short: "verify or export the tamper-evident operational audit table",
+		Short: "inspect, verify, or export the tamper-evident operational audit table",
 	}
-	cmd.AddCommand(newAuditVerifyCommand(), newAuditExportCommand(), newAuditDeliverCommand())
+	cmd.AddCommand(newAuditVerifyCommand(), newAuditExportCommand(), newAuditDeliverCommand(), newAuditLifecyclesCommand())
 	return cmd
 }
 

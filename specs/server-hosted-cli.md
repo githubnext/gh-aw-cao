@@ -317,6 +317,15 @@ deployment, migration, or rollout by itself.
    and wait for queued and running commands to finish before restarting the
    executor for rotation.
 
+The optional offline `cao-dashboard app-key-check` diagnostic validates local
+RSA key material, an expected public-key fingerprint, and a distinct replacement
+fingerprint. It does not establish GitHub registration, remote revocation,
+installation-token invalidation, or the key loaded by a running executor.
+The [custody and rollover runbook](../server/SECURITY.md#app-key-custody-and-rollover-preflight)
+defines its output, limitations, required operational evidence, and the current
+managed-signing integration blocker. Existing PEM signing remains the supported
+runtime path; managed secret storage MUST NOT be represented as managed signing.
+
 ## 6. Execution
 
 1. In production, all web and executor replicas MUST use the same durable
@@ -890,8 +899,10 @@ priority order:
 1. Evaluate a gVisor or microVM boundary against the deployment's threat model;
    it is not a universal SOC 2 requirement. Production Docker egress restriction
    is required by section 6b.
-2. Keep the App private key in a KMS or HSM that signs the App JWT, and
-   rotate it on a schedule; GitHub allows two active keys during rotation.
+2. Evaluate KMS or HSM App JWT signing against the deployment's threat model,
+   rather than treating it as a universal SOC 2 mandate. It is not currently a
+   supported runtime integration; see the
+   [custody and rollover runbook](../server/SECURITY.md#app-key-custody-and-rollover-preflight).
 3. Use separate database roles: the web and executor roles get `INSERT` and
    `SELECT` on the audit table only, and only a maintenance role can run
    retention.

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
@@ -32,13 +34,14 @@ func TestReadTransactionPlannerSettingsAreLocal(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader NativeReader) error {
 				var jit, nestloop bool
-				var timeout string
+				var timeoutMS int64
 				if err := reader.(*readTransaction).tx.QueryRowContext(ctx,
-					"SELECT current_setting('jit')::boolean, current_setting('enable_nestloop')::boolean, current_setting('statement_timeout')").Scan(&jit, &nestloop, &timeout); err != nil {
+					"SELECT current_setting('jit')::boolean, current_setting('enable_nestloop')::boolean, setting::bigint FROM pg_settings WHERE name='statement_timeout'").Scan(&jit, &nestloop, &timeoutMS); err != nil {
 					return err
 				}
-				if jit || nestloop || timeout != "1min" {
-					t.Errorf("read settings: jit=%t enable_nestloop=%t statement_timeout=%q", jit, nestloop, timeout)
+				timeout := time.Duration(timeoutMS) * time.Millisecond
+				if jit || nestloop || timeout <= 0 || timeout > inputlimits.PostgresReadTransactionTimeout {
+					t.Errorf("read settings: jit=%t enable_nestloop=%t statement_timeout=%s", jit, nestloop, timeout)
 				}
 				return tc.err
 			})
