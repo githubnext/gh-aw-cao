@@ -1023,8 +1023,9 @@ Recommended next steps, in priority order:
 1. Evaluate a stronger gVisor or microVM boundary against the deployment's
    threat model; it is not a universal SOC 2 mandate. Production Docker egress
    restriction is now required, with live boundary evidence collected during rollout.
-2. Keep the App private key in a KMS or HSM that signs the App JWT, and rotate
-   it on a schedule.
+2. Evaluate managed App JWT signing in a KMS or HSM against the deployment's
+   threat model. It is not a universal SOC 2 mandate or a supported runtime
+   option today; see [App key custody and rollover preflight](#app-key-custody-and-rollover-preflight).
 3. Deploy the [PostgreSQL privilege boundary](POSTGRES.md): owner-only bootstrap
    and canonical partition maintenance, runtime audit `INSERT`/`SELECT`, a
    separate retention-function executor, and SELECT-only evidence access.
@@ -1036,6 +1037,89 @@ Recommended next steps, in priority order:
 5. Propagate the admission trace context into the queued command.
 6. Expose executor liveness and readiness that reflect store, App, and
    revocation health.
+
+### App key custody and rollover preflight
+
+The supported signing path loads an unencrypted RSA PEM at process startup.
+Managed **secret storage** is not managed **signing**: the Azure templates use
+Key Vault secret references and managed identity to deliver PEM material into
+the collector process. They do not invoke Key Vault keys or keep the signing
+key outside process memory. Hosted CLI execution uses its dedicated App key;
+the web admission process must not receive it. Gateway production receive
+processes likewise must not receive App private keys; only dispatch loads the
+receiving-App and dispatch-App keys. Preserve these boundaries during rotation.
+
+`cao-dashboard app-key-check` is an explicit, offline preflight for an
+operator-selected PEM file. It does not read credential environment defaults,
+initialize telemetry or storage, mint tokens, contact GitHub or a vault, change
+keys, or modify runtime behavior. Run it only in an authorized credential
+handling environment, not on a web admission or gateway receive replica:
+
+```sh
+cao-dashboard app-key-check --key-file /run/secrets/replacement-app.pem
+cao-dashboard app-key-check --key-file /run/secrets/replacement-app.pem \
+  --expected-public-key-sha256 "$REVIEWED_REPLACEMENT_FINGERPRINT" \
+  --previous-public-key-sha256 "$RECORDED_PREVIOUS_FINGERPRINT"
+```
+
+The JSON result contains public metadata only: `algorithm` (`RS256`), `bits`,
+`publicKeySHA256`, whether each optional fingerprint check was requested and
+passed (`expectedKeyChecked`, `rotationKeyChecked`), and
+`scope: "offline-key-material-only"`. A fingerprint is exactly 64 lowercase hex
+characters: SHA-256 of the DER SubjectPublicKeyInfo public key, not the PEM,
+private key, PKCS#1 public-key encoding, or a vault version identifier.
+PKCS#1 and PKCS#8 encodings of the same private key produce the same fingerprint;
+re-encoding is not rotation. Obtain the expected fingerprint from an independently
+reviewed public-key record, not from the candidate file being checked. Never put
+private-key bytes in arguments, output, tickets or logs.
+
+The diagnostic accepts one unencrypted RSA PKCS#1 or PKCS#8 block in a regular
+file of at most 64 KiB, checks RSA consistency and a diagnostic key-size range
+of 2048-8192 bits, and rejects malformed/unsupported material, mismatched pins,
+and unchanged rollover keys with a nonzero exit and no success report. This is
+an opt-in diagnostic policy, not a new runtime acceptance policy. It does not
+establish the App ID, GitHub registration, granted permissions, provider
+availability, revocation, absence of other private copies, or which key a
+running replica has loaded. File reads are bounded in size, not a guarantee
+against an unavailable filesystem; use a trusted local secret mount.
+
+For a planned rollover, preserve the existing hosted CLI drain/restart
+requirement in [the credential contract](../specs/server-hosted-cli.md#5-token-broker).
+Before retiring the old key, retain reviewed App identity, secret version,
+old/new **public** fingerprints, approvals, replica inventory and restart
+records, and authorized fresh token-mint evidence for every signing role.
+Changing the mounted file alone does not reload a running process. Verify the
+replacement's least-privilege token grant and cleanup without running an
+unapproved command. After the operator revokes the old key in GitHub, retain
+evidence that a fresh mint signed with it is denied and the replacement still
+works. Do not run such probes as part of this offline command, and do not retain
+or restore retired private material solely to obtain evidence.
+
+Key retirement is not installation-token revocation. Drain and revoke already
+minted/prefetched tokens through the existing broker and durable cleanup
+journal; do not infer token invalidation from changing or revoking an App key.
+Emergency response may require immediate revocation and interruption rather
+than a planned overlap; the incident owner must choose and record that action.
+Synthetic rotation/refusal tests support design only, not deployed or
+historical operating effectiveness.
+
+**Managed-signing design blocker:** the current `githubapp` client and gateway
+scoped transports construct `ghinstallation` App authentication from PEM.
+There is no deployed provider-signing adapter, exact key/version/public-key
+binding, or managed signing identity/permission contract. Key Vault **secret**
+access grants do not imply key `sign` permission. A future adapter requires an
+explicit provider/deployment decision, confirmation that a GitHub-registered
+private key can be imported under the chosen provider's constraints (creating
+an arbitrary KMS key does not register it with GitHub), exact version and RS256
+(RSA PKCS#1 v1.5 with SHA-256) validation, verified signature/public-key identity,
+bounded context-aware calls, role-isolated authorization, and failure without
+local-key fallback. The existing `ghinstallation.WithSigner` extension takes a
+JWT `Sign(claims)` interface without request context; it is a possible future
+integration seam, not a provider adapter or request-cancellation guarantee.
+A `crypto.Signer` seam alone likewise would not deliver these guarantees.
+Keep cloud SDKs outside the vendor-neutral core.
+No KMS support, permissions, rollout, or production validation is introduced by
+this diagnostic.
 
 ### SOC 2 evidence boundary
 

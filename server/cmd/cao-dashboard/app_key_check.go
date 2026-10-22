@@ -1,0 +1,72 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+
+	"github.com/spf13/cobra"
+
+	"github.com/githubnext/gh-cao/server/internal/githubapp"
+)
+
+func newAppKeyCheckCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "app-key-check",
+		Short: "validate a local GitHub App key and rollover fingerprints offline; never contacts GitHub",
+		Args:  cobra.NoArgs,
+	}
+	path := cmd.Flags().String("key-file", "", "explicit private-key PEM file; never read from environment defaults")
+	expected := cmd.Flags().String("expected-public-key-sha256", "", "expected lowercase SHA-256 hex of DER SubjectPublicKeyInfo")
+	previous := cmd.Flags().String("previous-public-key-sha256", "", "previous public-key fingerprint; fail if the replacement is unchanged")
+	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
+		if err := cmd.Context().Err(); err != nil {
+			return err
+		}
+		if *path == "" {
+			return errors.New("app key check requires --key-file")
+		}
+		for _, name := range []string{"expected-public-key-sha256", "previous-public-key-sha256"} {
+			if cmd.Flags().Changed(name) && cmd.Flags().Lookup(name).Value.String() == "" {
+				return errors.New("app key fingerprint checks must not be empty when explicitly requested")
+			}
+		}
+		content, err := readAppKeyCheckFile(*path)
+		if err != nil {
+			return err
+		}
+		defer clear(content)
+		result, err := githubapp.CheckPrivateKey(content, *expected, *previous)
+		if err != nil {
+			return err
+		}
+		if err := cmd.Context().Err(); err != nil {
+			return err
+		}
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
+	}
+	return cmd
+}
+
+func readAppKeyCheckFile(path string) ([]byte, error) {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > githubapp.MaxPrivateKeyBytes {
+		return nil, errors.New("app key check requires a readable regular file of at most 64 KiB")
+	}
+	file, err := os.Open(path) // #nosec G304 G703 -- explicit operator-selected offline credential file, never request input.
+	if err != nil {
+		return nil, errors.New("app key check file is unavailable")
+	}
+	defer func() { _ = file.Close() }()
+	info, err = file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return nil, errors.New("app key check file must remain a regular file")
+	}
+	content, err := io.ReadAll(io.LimitReader(file, githubapp.MaxPrivateKeyBytes+1))
+	if err != nil || len(content) == 0 || len(content) > githubapp.MaxPrivateKeyBytes {
+		clear(content)
+		return nil, errors.New("app key check file is unreadable, empty, or exceeds 64 KiB")
+	}
+	return content, nil
+}

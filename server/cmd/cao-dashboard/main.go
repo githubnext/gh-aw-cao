@@ -352,6 +352,7 @@ func newRootCommand() *cobra.Command {
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(
 		newAdmissionCommand(),
+		newAppKeyCheckCommand(),
 		newServeCommand(),
 		newServeHostedCommand(),
 		newIngestCommand(),
