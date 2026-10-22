@@ -81,7 +81,21 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 			t.Logf("simulator requests: %v; unsupported: %v", api.Requests, api.Unhandled)
 		}
 	})
-	proxy, ca := bootstrapProxy(t, api)
+	proxy, ca := bootstrapProxy(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host == "raw.githubusercontent.com" {
+			if r.Method != http.MethodGet || r.URL.Path != "/github/gh-aw/main/install-gh-aw.sh" {
+				t.Errorf("unexpected upstream installer request: %s %s", r.Method, r.URL.Path)
+				http.NotFound(w, r)
+				return
+			}
+			api.mu.Lock()
+			api.Requests = append(api.Requests, r.Method+" "+r.URL.Path)
+			api.mu.Unlock()
+			_, _ = w.Write([]byte(bootstrapAWInstaller))
+			return
+		}
+		api.ServeHTTP(w, r)
+	}), "raw.githubusercontent.com")
 	environment := bootstrapEnvironment(t, root, proxy, ca)
 	bootstrapInstallAW(t, environment)
 	remote := filepath.Join(root, "remotes", "platform", "control.git")
@@ -152,6 +166,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	if err != nil || string(clonedPolicy) != string(configured) {
 		t.Fatalf("fresh clone did not receive the deployed policy: %v", err)
 	}
+	testBootstrapInstallerCompatibility(t, ctx, catalog, consumer, environment, api)
 	api.mu.Lock()
 	api.Assets["checksums.txt"] = []byte(strings.Repeat("0", 64) + "  gh-cao-" + runtime.GOOS + "-" + runtime.GOARCH + "\n")
 	api.mu.Unlock()

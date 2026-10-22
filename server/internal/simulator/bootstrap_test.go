@@ -4,10 +4,55 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestBootstrapEnvironmentExcludesAmbientAuthenticationAndExtensions(t *testing.T) {
+	for _, name := range []string{
+		"HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "GH_CONFIG_DIR",
+		"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+		"GH_HOST", "GH_REPO", "GH_PATH", "GH_DEBUG", "GH_EXTENSION",
+		"INPUT_VERSION", "NODE_OPTIONS", "BASH_ENV", "ENV",
+		"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG_COUNT", "GIT_SSH_COMMAND",
+		"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+		"http_proxy", "https_proxy", "all_proxy", "no_proxy",
+	} {
+		t.Setenv(name, "ambient-value-must-not-leak")
+	}
+	root := t.TempDir()
+	environment := bootstrapEnvironment(t, root, "http://127.0.0.1:1", "fixture-ca.pem")
+	values := map[string]string{}
+	for _, entry := range environment {
+		name, value, ok := strings.Cut(entry, "=")
+		if !ok {
+			t.Fatalf("invalid environment entry: %q", entry)
+		}
+		if _, exists := values[name]; exists {
+			t.Fatalf("duplicate environment setting: %s", name)
+		}
+		if value == "ambient-value-must-not-leak" {
+			t.Errorf("inherited ambient setting: %s", name)
+		}
+		values[name] = value
+	}
+	for name, want := range map[string]string{
+		"HOME": filepath.Join(root, "home"), "XDG_CONFIG_HOME": filepath.Join(root, "config"),
+		"XDG_DATA_HOME": filepath.Join(root, "data"), "GH_CONFIG_DIR": filepath.Join(root, "config/gh"),
+		"GH_TOKEN": "simulator-token-with-no-external-authority", "GH_HOST": "github.com",
+		"GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
+		"HTTP_PROXY": "http://127.0.0.1:1", "HTTPS_PROXY": "http://127.0.0.1:1",
+		"ALL_PROXY": "http://127.0.0.1:1", "NO_PROXY": "",
+		"http_proxy": "http://127.0.0.1:1", "https_proxy": "http://127.0.0.1:1",
+		"all_proxy": "http://127.0.0.1:1", "no_proxy": "",
+	} {
+		if got, exists := values[name]; !exists || got != want {
+			t.Errorf("%s = %q (present=%v), want %q", name, got, exists, want)
+		}
+	}
+}
 
 func TestBootstrapEnvironmentDisablesTelemetry(t *testing.T) {
 	t.Setenv("DO_NOT_TRACK", "0")
