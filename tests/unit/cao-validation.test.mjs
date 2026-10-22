@@ -20,10 +20,10 @@ import {
 const version = "v0.89.22";
 const metadata = `# gh-aw-metadata: {"compiler_version":"${version}"}\n`;
 
-async function fixture({ lock = metadata, policyCampaign = true, declaration = true } = {}) {
+async function fixture({ lock = metadata, policyCampaign = true, declaration = true, source = true } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-validation-test-"));
   await mkdir(path.join(root, ".github", "workflows"), { recursive: true });
-  await writeFile(path.join(root, ".github", "workflows", "sample.md"), "---\nname: Sample\non: workflow_dispatch\n---\n");
+  if (source) await writeFile(path.join(root, ".github", "workflows", "sample.md"), "---\nname: Sample\non: workflow_dispatch\n---\n");
   if (lock !== null) await writeFile(path.join(root, ".github", "workflows", "sample.lock.yml"), lock);
   if (declaration) {
     await mkdir(path.join(root, "sample"), { recursive: true });
@@ -76,6 +76,53 @@ test("strict compiler accepts a clean generated workflow set", async () => {
         "commit", "--quiet", "--no-gpg-sign", "-m", "CAO validation snapshot",
       ],
     ]);
+    assert.deepEqual(calls.find(({ command }) => command === "gh").args, [
+      "aw", "compile", "--strict", "--validate", "--show-all", "--no-check-update",
+      "--schedule-seed", "githubnext/gh-cao", "--dir", ".github/workflows",
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("detects orphaned generated workflows with and without workflow sources", async (t) => {
+  for (const source of [false, true]) {
+    await t.test(`workflow sources present: ${source}`, async () => {
+      const root = await fixture({ declaration: false, policyCampaign: false, source, lock: null });
+      try {
+        await writeFile(path.join(root, ".github", "workflows", "orphan.lock.yml"), metadata);
+        const calls = [];
+        const findings = await compileAndCompare(root, compiler({
+          calls,
+          output(args, options) {
+            writeFileSync(path.join(options.cwd, ".github", "workflows", "sample.lock.yml"), metadata);
+          },
+        }), version);
+        const orphan = findings.find(({ id }) => id === "orphaned-generated-workflow");
+        assert.equal(orphan?.severity, "error");
+        assert.deepEqual(orphan.files, [".github/workflows/orphan.lock.yml"]);
+        assert.equal(calls.some(({ command }) => command === "gh"), source);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("still compiles existing Markdown sources without a frontmatter opener", async () => {
+  const root = await fixture({ declaration: false, policyCampaign: false, lock: null });
+  try {
+    await writeFile(path.join(root, ".github", "workflows", "sample.md"), "# Missing frontmatter\n");
+    const calls = [];
+    const findings = await compileAndCompare(root, (command, args, options) => {
+      if (command === "gh") {
+        calls.push({ command, args });
+        return { status: 1, stdout: "", stderr: "no workflow markdown files found (workflow files must start with a frontmatter opener on the first line)" };
+      }
+      return compiler({ calls })(command, args, options);
+    }, version);
+    assert.equal(calls.some(({ command }) => command === "gh"), true);
+    assert.equal(findings[0].id, "invalid-frontmatter");
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -471,6 +518,62 @@ function cleanExecutor() {
     throw new Error(`Unexpected command: ${command} ${args.join(" ")}`);
   };
 }
+
+test("monitoring-only repositories skip compilation but retain all other checks", async (t) => {
+  const root = await fixture({ declaration: false, policyCampaign: false, source: false, lock: null });
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workflowRoot = path.join(root, ".github", "workflows");
+  for (const name of ["cao-activity", "cao-dashboard", "cao-validate"]) {
+    await writeFile(path.join(workflowRoot, `${name}.yml`), "on: workflow_dispatch\njobs: {}\n");
+  }
+  await mkdir(path.join(workflowRoot, "shared"));
+  await writeFile(path.join(workflowRoot, "shared", "control.md"), "# Shared import, not a workflow\n");
+  const calls = [];
+  const clean = await validateRepository({
+    root,
+    execute(command, args, options) {
+      calls.push({ command, args });
+      if (command === "gh" && args[1] === "compile") {
+        return { status: 1, stdout: "", stderr: "no workflow markdown files found (frontmatter required)" };
+      }
+      return cleanExecutor()(command, args, options);
+    },
+  });
+  assert.equal(clean.exitCode, 0);
+  assert.deepEqual(clean.summary, { errors: 0, warnings: 0, notes: 0 });
+  assert.equal(calls.some(({ command, args }) => command === "gh" && args[1] === "compile"), false);
+  for (const prefix of ["aw version", "aw doctor", "workflow list"]) {
+    assert.ok(calls.some(({ command, args }) => command === "gh" && args.join(" ").startsWith(prefix)), prefix);
+  }
+
+  for (const [prefix, result, id, severity] of [
+    ["aw version", { status: 0, stdout: "v0.1.0" }, "wrong-gh-aw-compiler-version", "error"],
+    ["aw version", { status: 1, stderr: "not installed" }, "gh-aw-unavailable", "error"],
+    ["aw doctor", { status: 1, stderr: "setup unavailable" }, "doctor-check-failed", "warning"],
+    ["workflow list", { status: 1, stderr: "offline" }, "github-enablement-state-unavailable", "warning"],
+  ]) {
+    const report = await validateRepository({
+      root,
+      execute(command, args, options) {
+        if (command === "gh" && args.join(" ").startsWith(prefix)) return result;
+        return cleanExecutor()(command, args, options);
+      },
+      strictWarnings: true,
+    });
+    assert.equal(report.exitCode, 1, id);
+    assert.ok(report.findings.some((entry) => entry.id === id && entry.severity === severity), id);
+  }
+
+  await writeFile(path.join(workflowRoot, "cao-activity.yml"), "on:\n  pull_request_target:\n");
+  const unsafe = await validateRepository({ root, execute: cleanExecutor() });
+  assert.equal(unsafe.exitCode, 1);
+  assert.ok(unsafe.findings.some(({ id }) => id === "unsafe-pull-request-target"));
+
+  await writeFile(path.join(workflowRoot, "cao.json"), '{"version":2}');
+  const invalid = await validateRepository({ root, execute: cleanExecutor() });
+  assert.equal(invalid.exitCode, 1);
+  assert.ok(invalid.findings.some(({ id }) => id === "invalid-cao-policy"));
+});
 
 test("clean repositories and warnings-only repositories exit successfully", async () => {
   const root = await fixture();

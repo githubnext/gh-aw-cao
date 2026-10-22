@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -80,6 +81,8 @@ func setupBootstrapGH(t *testing.T, failure string, calls *[]string) ghExecutor 
 				return "", "HTTP 403", errors.New("denied")
 			}
 			return `{"build_type":"workflow","public":true}`, "", nil
+		case strings.HasPrefix(call, "api repos/org/control/actions/"):
+			return "", "", nil
 		case call == "variable set GH_AW_GITHUB_AUTH_MODE --repo org/control --body workflow-token":
 			return "", "", nil
 		default:
@@ -201,6 +204,70 @@ func TestSetupInstallsOnlyMissingGHAW(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(calls, "\n"), "extension install github/gh-aw --pin v0.92.6") {
 		t.Fatal("missing gh-aw was not installed at the catalog minimum")
+	}
+}
+
+func TestSetupProgressPrecedesSlowOperations(t *testing.T) {
+	t.Setenv("CI", "")
+	nativeSetupTestDirectory(t)
+	cmd := nativeSetupTestCommand()
+	var calls []string
+	run := setupBootstrapGH(t, "missing gh-aw", &calls)
+	progress := map[string]string{
+		"release view ":                  "Fetching CAO release...",
+		"aw version":                     "Checking gh-aw...",
+		"extension install":              "Installing gh-aw v0.92.6...",
+		"aw add ":                        "Preparing CAO workflows...",
+		"release download ":              "Downloading and verifying CAO runtime...",
+		"attestation verify":             "Downloading and verifying CAO runtime...",
+		"api repos/org/control/pages":    "Configuring GitHub Pages...",
+		"api repos/org/control/actions/": "Checking Actions token defaults...",
+	}
+	seen := map[string]bool{}
+	gh := func(ctx context.Context, args ...string) (string, string, error) {
+		call := strings.Join(args, " ")
+		for prefix, message := range progress {
+			if strings.HasPrefix(call, prefix) {
+				if !strings.Contains(cmd.ErrOrStderr().(*bytes.Buffer).String(), message+"\n") {
+					t.Fatalf("slow operation %q started without progress %q", call, message)
+				}
+				seen[message] = true
+			}
+		}
+		return run(ctx, args...)
+	}
+	prompt := &nativeSetupTestPrompt{texts: []string{"org/control"}, confirms: []bool{true, true}}
+	if _, err := nativeSetupControl(cmd, gh, prompt); err != nil {
+		t.Fatal(err)
+	}
+	for _, message := range progress {
+		if !seen[message] {
+			t.Fatalf("progress step was not exercised: %q", message)
+		}
+	}
+	output := cmd.ErrOrStderr().(*bytes.Buffer).String()
+	position := -1
+	for _, message := range []string{
+		"Checking CAO runtime...",
+		"Fetching CAO release...",
+		"Checking gh-aw...",
+		"Installing gh-aw v0.92.6...",
+		"Preparing CAO workflows...",
+		"Downloading and verifying CAO runtime...",
+		"Adding CAO runtime files...",
+		"Configuring GitHub Pages...",
+		"Checking Actions token defaults...",
+		"Saving CAO policy...",
+		"Preparing change summary...",
+	} {
+		next := strings.Index(output, message+"\n")
+		if next <= position {
+			t.Fatalf("progress missing or out of order: %q\n%s", message, output)
+		}
+		position = next
+	}
+	if cmd.OutOrStdout().(*bytes.Buffer).Len() != 0 {
+		t.Fatal("setup progress must not contaminate stdout")
 	}
 }
 

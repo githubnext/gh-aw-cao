@@ -56,6 +56,21 @@ func TestCAOSetupIntegration(t *testing.T) {
 	}{
 		{name: "default public and idempotent", want: []string{"platform/control"}, profile: "workflow-token", repeat: true, pagesWrite: "POST"},
 		{name: "plain setup and JSON retry", want: []string{"platform/control"}, profile: "workflow-token", plain: true, pagesWrite: "POST"},
+		{name: "existing App mode switches once", change: func(t *testing.T, f *setupFixture) {
+			f.api.Repositories["platform/control"].Variables["GH_AW_GITHUB_AUTH_MODE"] = "app"
+			f.expectedVariables["GH_AW_GITHUB_AUTH_MODE"] = "workflow-token"
+			f.authModeWrites = 2 // gh variable set attempts creation before updating an existing variable.
+		}, want: []string{"platform/control"}, profile: "workflow-token", repeat: true, pagesWrite: "POST"},
+		{name: "inherited PAT mode receives repository override", change: func(t *testing.T, f *setupFixture) {
+			f.api.Repositories["platform/control"].OrganizationVariables = map[string]string{"GH_AW_GITHUB_AUTH_MODE": "pat"}
+			f.expectedVariables["GH_AW_GITHUB_AUTH_MODE"] = "workflow-token"
+			f.authModeWrites = 1
+		}, want: []string{"platform/control"}, profile: "workflow-token", repeat: true, pagesWrite: "POST"},
+		{name: "repository default masks inherited App mode", change: func(t *testing.T, f *setupFixture) {
+			f.api.Repositories["platform/control"].Variables["GH_AW_GITHUB_AUTH_MODE"] = ""
+			f.api.Repositories["platform/control"].OrganizationVariables = map[string]string{"GH_AW_GITHUB_AUTH_MODE": "app"}
+			f.expectedVariables["GH_AW_GITHUB_AUTH_MODE"] = ""
+		}, want: []string{"platform/control"}, profile: "workflow-token", pagesWrite: "POST"},
 		{name: "repeated exact scope deduplicates across owners", args: []string{"--repository", "platform/alpha", "--repository", "platform/alpha", "--repository", "other/app"},
 			want: []string{"platform/control", "platform/alpha", "other/app"}, profile: "public-only", repeat: true, pagesWrite: "POST"},
 		{name: "wildcard snapshots only public repositories", args: []string{"--repository", "platform/*", "--repository", "platform/alpha"},
@@ -187,18 +202,20 @@ func TestCAOSetupIntegration(t *testing.T) {
 }
 
 type setupFixture struct {
-	root, checkout string
-	env            []string
-	api            *BootstrapAPI
-	policy         map[string]any
-	pagesError     int
-	authError      bool
+	root, checkout    string
+	env               []string
+	api               *BootstrapAPI
+	policy            map[string]any
+	pagesError        int
+	authError         bool
+	expectedVariables map[string]string
+	authModeWrites    int
 }
 
 func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string) *setupFixture {
 	t.Helper()
 	directory := t.TempDir()
-	f := &setupFixture{root: directory, checkout: filepath.Join(directory, "checkout"), api: NewBootstrapAPI("v0.0.1", nil)}
+	f := &setupFixture{root: directory, checkout: filepath.Join(directory, "checkout"), api: NewBootstrapAPI("v0.0.1", nil), expectedVariables: map[string]string{}}
 	for _, name := range []string{"platform/control", "platform/zeta", "platform/alpha", "platform/secret", "other/app"} {
 		owner, repo, _ := strings.Cut(name, "/")
 		if _, err := f.api.create(owner, repo, repo == "secret"); err != nil {
@@ -357,7 +374,7 @@ func (f *setupFixture) assertSuccess(t *testing.T, result map[string]any, reposi
 	for name, repo := range f.api.Repositories {
 		if name == "platform/control" {
 			if repo.Private || repo.Pages == nil || repo.Pages["build_type"] != "workflow" || repo.Pages["public"] != true ||
-				!reflect.DeepEqual(repo.Variables, map[string]string{"GH_AW_GITHUB_AUTH_MODE": "workflow-token"}) {
+				!reflect.DeepEqual(repo.Variables, f.expectedVariables) {
 				t.Fatalf("unexpected control repository changes: %+v", repo)
 			}
 		} else if repo.Pages != nil || len(repo.Variables) != 0 || repo.Private != (name == "platform/secret") {
@@ -374,10 +391,13 @@ func (f *setupFixture) assertRequests(t *testing.T, ctx context.Context, pagesWr
 		t.Fatalf("unsupported API routes: %v", f.api.Unhandled)
 	}
 	pageWrites := 0
+	modeWrites := 0
 	for _, request := range f.api.Requests {
 		switch request {
 		case "GET /", "GET /user", "POST /graphql",
 			"GET /repos/platform/control/pages",
+			"GET /repos/platform/control/actions/variables",
+			"GET /repos/platform/control/actions/organization-variables",
 			"GET /repos/platform/control/actions/variables/GH_AW_GITHUB_AUTH_MODE":
 		case "POST /repos/platform/control/pages", "PUT /repos/platform/control/pages":
 			pageWrites++
@@ -385,6 +405,7 @@ func (f *setupFixture) assertRequests(t *testing.T, ctx context.Context, pagesWr
 				t.Errorf("unexpected Pages mutation: %s", request)
 			}
 		case "POST /repos/platform/control/actions/variables", "PATCH /repos/platform/control/actions/variables/GH_AW_GITHUB_AUTH_MODE":
+			modeWrites++
 			if failed {
 				t.Errorf("failed setup wrote credentials: %s", request)
 			}
@@ -398,6 +419,9 @@ func (f *setupFixture) assertRequests(t *testing.T, ctx context.Context, pagesWr
 	}
 	if pageWrites != wantWrites {
 		t.Errorf("Pages writes = %d, want %d", pageWrites, wantWrites)
+	}
+	if modeWrites != f.authModeWrites {
+		t.Errorf("authentication mode writes = %d, want %d", modeWrites, f.authModeWrites)
 	}
 	if got := string(setupRead(t, filepath.Join(f.checkout, "consumer.txt"))); got != "unrelated consumer-owned file\n" {
 		t.Fatal("setup modified unrelated consumer file")

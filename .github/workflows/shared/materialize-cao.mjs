@@ -549,6 +549,7 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
       'activity/recycle-snapshot.mjs',
       'activity/collect-logs.sh',
       'activity/collect-workflow-logs.mjs',
+      'activity/session-evidence.mjs',
       'activity/marketplace.mjs',
       'activity/problem-clustering.mjs',
       'activity/repository-memory.mjs',

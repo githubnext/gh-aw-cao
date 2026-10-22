@@ -11,6 +11,7 @@ import (
 func TestLocalTransportRejectsLiveAndAmbiguousEndpoints(t *testing.T) {
 	for _, endpoint := range []string{
 		"", "https://api.github.com", "http://api.github.com:80", "http://localhost:8080",
+		"https://management.azure.com", "http://management.azure.com:80", "https://login.microsoftonline.com",
 		"http://169.254.169.254:80", "http://127.0.0.1", "http://user:secret@127.0.0.1:8080",
 		"http://127.0.0.1:8080/?token=secret", "http://127.0.0.1:8080/#fragment",
 	} {

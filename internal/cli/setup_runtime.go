@@ -59,11 +59,14 @@ func setupCheckoutRoot(ctx context.Context) error {
 }
 
 func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error) {
+	if err := nativeSetupNote(cmd, "Checking CAO runtime...\n"); err != nil {
+		return nil, err
+	}
 	complete, err := setupRuntimeComplete()
 	if err != nil || complete {
 		return nil, err
 	}
-	if err := nativeSetupNote(cmd, "Preparing missing CAO monitoring runtime; existing files will not be overwritten.\n"); err != nil {
+	if err := nativeSetupNote(cmd, "Fetching CAO release...\n"); err != nil {
 		return nil, err
 	}
 	tag, err := nativeSetupGH(cmd, gh, "release", "view", "--repo", "github.com/"+catalogRepository, "--json", "tagName", "--jq", ".tagName")
@@ -89,6 +92,9 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error)
 		return nil, errors.New("CAO release manifest has no valid minimum gh-aw version")
 	}
 	required := match[1]
+	if err := nativeSetupNote(cmd, "Checking gh-aw...\n"); err != nil {
+		return nil, err
+	}
 	current, versionErr := nativeVersion(cmd.Context(), gh)
 	if versionErr != nil {
 		extensions, err := nativeSetupGH(cmd, gh, "extension", "list")
@@ -97,6 +103,9 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error)
 		}
 		if strings.Contains(extensions, "gh-aw") {
 			return nil, versionErr
+		}
+		if err := nativeSetupNote(cmd, "Installing gh-aw %s...\n", required); err != nil {
+			return nil, err
 		}
 		if _, err := nativeSetupGH(cmd, gh, "extension", "install", "github/gh-aw", "--pin", required); err != nil {
 			return nil, err
@@ -123,6 +132,9 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error)
 		return nil, fmt.Errorf("initialize isolated CAO installation: %s: %w", output, err)
 	}
 	// gh-aw owns package records and project settings, but operates only in staging.
+	if err := nativeSetupNote(cmd, "Preparing CAO workflows...\n"); err != nil {
+		return nil, err
+	}
 	if _, stderr, err := gh(ghcli.WithDirectory(cmd.Context(), packages), "aw", "add", catalogRepository+"@"+tag, "--no-security-scanner", "--no-gitattributes"); err != nil {
 		return nil, commandError("unable to prepare CAO root package", stderr, err)
 	}
@@ -138,6 +150,9 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error)
 	}
 	if record == nil || !strings.EqualFold(record.revision, revision) {
 		return nil, errors.New("CAO root package record does not match the selected release revision")
+	}
+	if err := nativeSetupNote(cmd, "Downloading and verifying CAO runtime...\n"); err != nil {
+		return nil, err
 	}
 	runtimeRoot, err := nativeStageRuntime(cmd.Context(), gh, *record, staging)
 	if err != nil {
@@ -155,6 +170,9 @@ func setupRuntime(cmd *cobra.Command, gh ghExecutor) (files []string, err error)
 		}
 	}
 	// Preflight every destination before creating any local runtime files.
+	if err := nativeSetupNote(cmd, "Adding CAO runtime files...\n"); err != nil {
+		return nil, err
+	}
 	for _, apply := range []bool{false, true} {
 		for _, resource := range []string{
 			"activity", "dashboard", ".github/actions", ".github/workflows",

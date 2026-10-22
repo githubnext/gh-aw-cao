@@ -19,10 +19,11 @@ Use a private control repository whenever the target or required evidence is pri
 | Targets across organizations in one enterprise | Enterprise-owned private GitHub Apps |
 | Apps are unavailable and the required APIs are PAT-compatible | One fine-grained PAT pair per resource owner |
 
-For an all-public monitoring scope, including the control repository, interactive
+For monitoring the control repository and public remote targets, interactive
 setup automatically selects **Public-only monitoring (no App or PAT)** without
-asking for authentication configuration. Private/internal evidence or authenticated operations
-still require an App or PAT profile. Public monitoring uses the built-in Actions
+asking for authentication configuration, even if the control repository is private
+or internal. Private/internal remote targets or authenticated operations
+still require an App or PAT profile. Monitoring uses the built-in Actions
 `GITHUB_TOKEN`; it does not grant cross-repository execution or writes.
 
 :::tip[Prefer GitHub Apps]
@@ -86,8 +87,10 @@ data, authenticated enrichments, or write APIs.
 Install gh-aw, `gh cao`, and the baseline runtime with the
 [root installer](cao-cli.md#control-plane-installer), then run
 `gh cao setup` from the control-repository checkout. Public tool downloads are
-anonymous; keep GitHub CLI signed in for control-repository configuration. Confirmed all-public
-scope skips authentication selection, not review or public Pages consent.
+anonymous; keep GitHub CLI signed in for control-repository configuration.
+Confirmed public remote targets skip authentication selection, not review or
+public Pages consent. The control repository may be private or internal: its
+own job token can read it.
 Unknown visibility or failed lookups never qualify. For unattended setup:
 
 ```bash
@@ -97,7 +100,8 @@ gh cao setup --repository 'my-monalisa-org/*'
 The `--repository` quickstart selects public-only monitoring, accepts a public
 Pages dashboard and skips credential and confirmation prompts. No separate
 authentication-mode flag is needed. The existing GitHub CLI sign-in still needs permission
-to configure **the control repository's** Pages and Actions variable. No
+to configure **the control repository's** Pages and, only when switching an
+existing authentication mode, its Actions variable. No
 user-supplied automation PAT or App is created or stored. Wildcards select only
 currently public repositories and save their exact names, not a pattern; future
 repositories are not enrolled. Exact private/internal inputs fail. Setup changes
@@ -107,8 +111,8 @@ Review, commit and push the installed files and policy to publish the setup.
 Interactive setup can offer publication after separate default-No review;
 this unattended public-only shortcut never commits or pushes.
 A private control repository cannot use this shortcut, even with public-only
-targets: the control repository is always included. Use interactive setup and
-explicit authentication instead.
+targets: the control repository is always included. Use interactive setup instead;
+public remote targets do not require extra credentials there.
 
 The policy records the independently bounded Activity scope:
 
@@ -128,10 +132,19 @@ The policy records the independently bounded Activity scope:
 }
 ```
 
-Activity requires workflow-token mode (setup selects it), verifies public
-visibility and unchanged repository identity before discovery and again before
-log collection, and blocks publication if visibility cannot be verified or
-changes to private/internal. There is no App/PAT fallback or owner-wide discovery
+Activity uses workflow-token authentication, including the default when no mode
+is configured. Setup does not create authentication variables or store credentials
+when the built-in token is already selected or is the default. It checks the
+repository setting first, then organization variables shared with that repository.
+Only an existing conflicting mode requires a repository-level `workflow-token`
+override; existing credentials are not deleted.
+
+Activity verifies repository
+identity and visibility before discovery and again before log collection, and
+requires every remote target to remain public. Only the actual control repository
+may be private/internal, using its own job token. Publication is blocked if identity
+or visibility cannot be verified or a remote target changes to private/internal.
+There is no App/PAT fallback or owner-wide discovery
 at collection time. GitHub's REST API exposes
 [public workflow metadata](https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository);
 the existing gh-aw collector attempts available logs and artifacts with the

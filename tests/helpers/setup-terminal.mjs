@@ -12,6 +12,7 @@ export function setupTerminalFixture(t, module = setupModule, {
   deletionFails = false,
   credentialsFail = false,
   controlVisibility = "PRIVATE",
+  targetVisibility = controlVisibility,
   workflowTokenFails = false,
 } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), "cao-setup-terminal-"));
@@ -39,7 +40,11 @@ try {
         return { status: 0, stdout: "acme/control" };
       }
       if (args[0] === "repo" && args[1] === "view") {
-        return { status: 0, stdout: JSON.stringify({ nameWithOwner: args[2], visibility: ${JSON.stringify(controlVisibility)} }) };
+        return { status: 0, stdout: JSON.stringify({ nameWithOwner: args[2], visibility: args[2] === "acme/control"
+          ? ${JSON.stringify(controlVisibility)} : ${JSON.stringify(targetVisibility)} }) };
+      }
+      if (args[0] === "api" && args[1].startsWith("repos/acme/control/actions/")) {
+        return { status: 0, stdout: ${workflowTokenFails} ? '{"value":"app"}' : '' };
       }
       if (args[0] === "api" && args.at(-1) === "repos/acme/control/pages") {
         if (args.includes("POST")) site = configuredSite;

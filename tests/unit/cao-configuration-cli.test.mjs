@@ -100,6 +100,12 @@ function setupExecutor(repositories, repositoryLists = {}, organizations = []) {
     if (arguments_[0] === "api" && arguments_[1] === "repos/acme/control/pages") {
       return { status: 0, stdout: JSON.stringify({ build_type: "workflow", public: false }), stderr: "" };
     }
+    if (arguments_[0] === "api" && [
+      "repos/acme/control/actions/variables?per_page=30",
+      "repos/acme/control/actions/organization-variables?per_page=30",
+    ].includes(arguments_[1])) {
+      return { status: 0, stdout: "", stderr: "" };
+    }
     assert.fail(`unexpected command: gh ${arguments_.join(" ")}`);
   };
 }
@@ -178,7 +184,9 @@ function publicPagesSetup({ existing, confirm }) {
     "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
   });
   const execute = (command, arguments_) => {
-    if (arguments_[0] !== "api") return inspect(command, arguments_);
+    if (arguments_[0] !== "api" || arguments_.at(-1) !== "repos/acme/control/pages") {
+      return inspect(command, arguments_);
+    }
     calls.push(arguments_);
     const method = arguments_[1] === "-X" ? arguments_[2] : "GET";
     if (method === "GET") {
@@ -225,7 +233,9 @@ for (const [description, existing, confirm] of [
       const deleted = calls.some((arguments_) => arguments_.includes("DELETE"));
       if (confirm === true) {
         assert.equal(result.dashboardPages, "public");
-        assert.equal(authenticated, true);
+        assert.equal(result.profile, "public-only");
+        assert.equal(authenticated, false);
+        assert.equal(prompt.selections.length, 0);
         assert.equal(deleted, false);
       } else {
         assert.deepEqual(result, { command: "setup", cancelled: true, reason: "public-pages-declined" });
@@ -317,7 +327,7 @@ test("cao init supports a repository without installed package records", async (
   }
 });
 
-test("cao setup offers owner-scoped PATs for a multi-owner repository scope", async () => {
+test("cao setup offers owner-scoped PATs for a multi-owner private repository scope", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "cao-setup-public-"));
   const policyPath = path.join(root, "cao.json");
   await writeFile(policyPath, JSON.stringify({
@@ -341,7 +351,7 @@ test("cao setup offers owner-scoped PATs for a multi-owner repository scope", as
       prompt,
       execute: setupExecutor({
         "acme/control": { nameWithOwner: "acme/control", visibility: "PRIVATE" },
-        "acme/service": { nameWithOwner: "acme/service", visibility: "PUBLIC" },
+        "acme/service": { nameWithOwner: "acme/service", visibility: "PRIVATE" },
         "octo/library": { nameWithOwner: "octo/library", visibility: "PUBLIC" },
       }),
       setupAuthentication(profile, arguments_) {

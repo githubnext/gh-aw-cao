@@ -296,7 +296,11 @@ func nativeSetupGetPrompt(cmd *cobra.Command) nativeSetupPrompt {
 }
 
 func nativeSetupStyled(cmd *cobra.Command) bool {
-	output, ok := cmd.ErrOrStderr().(*os.File)
+	return nativeSetupColorEnabled(cmd.ErrOrStderr())
+}
+
+func nativeSetupColorEnabled(writer io.Writer) bool {
+	output, ok := writer.(*os.File)
 	return ok && term.IsTerminal(int(output.Fd())) &&
 		os.Getenv("NO_COLOR") == "" && os.Getenv("ACCESSIBLE") == "" && os.Getenv("CI") == "" &&
 		ghterm.FromEnv().IsColorEnabled()
@@ -325,12 +329,7 @@ func nativeSetup(cmd *cobra.Command, gh ghExecutor) error {
 	}
 	publication := nativeSetupMap(result["publication"])
 	if publication["status"] == "published" {
-		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Monitoring configuration pushed. Deployment pending; setup is not waiting for Actions.\nActions: %s\nPages settings: %s\n", publication["actionsURL"], publication["pagesSettingsURL"]); err != nil {
-			return err
-		}
-		if dashboard, ok := publication["dashboardURL"].(string); ok {
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Dashboard (deployment pending): %s\n", dashboard)
-		}
+		_, err = io.WriteString(cmd.OutOrStdout(), setupPublishOutput(publication, nativeSetupColorEnabled(cmd.OutOrStdout())))
 		return err
 	}
 	_, err = fmt.Fprint(cmd.OutOrStdout(), "Monitoring configured locally. No commit or push was performed.\nNext: gh cao doctor, then review, commit and push the installed files.\nOptional automation: https://githubnext.github.io/gh-cao/operation-patterns/\n")
@@ -492,13 +491,15 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if len(owners) != 1 {
 			appProfile = "enterprise-app"
 		}
-		allPublic := true
+		publicTargets := controlRepo.Visibility == "public" || controlRepo.Visibility == "private" || controlRepo.Visibility == "internal"
 		for _, candidate := range inspected {
-			allPublic = allPublic && candidate.Visibility == "public"
+			if !strings.EqualFold(candidate.Repository, repo) && candidate.Visibility != "public" {
+				publicTargets = false
+			}
 		}
-		if allPublic {
+		if publicTargets {
 			profile = "public-only"
-			if err := nativeSetupNote(cmd, "Public-only monitoring: Actions token; no App/PAT. Restricted evidence is partial.\n"); err != nil {
+			if err := nativeSetupNote(cmd, "Monitoring the control repository and public targets: built-in Actions token; no App/PAT. Restricted evidence is partial.\n"); err != nil {
 				return nil, err
 			}
 		} else {
@@ -526,7 +527,7 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		if profile == "public-only" {
 			writeScope = "none (monitoring only)"
 		}
-		if err := nativeSetupNote(cmd, "Read: %s\nWrite: %s\nAuth: %s\nPrepares missing monitoring runtime, Pages, credentials and local policy. Commit/push requires separate approval afterward.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
+		if err := nativeSetupNote(cmd, "Read: %s\nWrite: %s\nAuth: %s\nSetting up CAO runtime and policy, Pages, and credentials if needed.\n", strings.Join(repositories, ", "), writeScope, profile); err != nil {
 			return nil, err
 		}
 		apply, e := prompt.Confirm("Apply this setup?", false)
@@ -555,6 +556,9 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		}
 	}
 	stage = "dashboard Pages"
+	if err := nativeSetupNote(cmd, "Configuring GitHub Pages...\n"); err != nil {
+		return nil, err
+	}
 	pages, err := nativeSetupConfigurePages(cmd, gh, repo)
 	if err != nil {
 		return nil, err
@@ -588,10 +592,13 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 	stage = "credentials"
 	authentication := map[string]any{"mode": "workflow-token", "repository": repo}
 	if prompt == nil || profile == "public-only" {
-		if _, err = nativeSetupGH(cmd, gh, "variable", "set", "GH_AW_GITHUB_AUTH_MODE", "--repo", repo, "--body", "workflow-token"); err != nil {
+		if err = nativeSetupWorkflowToken(cmd, gh, repo); err != nil {
 			return nil, err
 		}
 	} else {
+		if err := nativeSetupNote(cmd, "Configuring credentials...\n"); err != nil {
+			return nil, err
+		}
 		// Pass the intended policy in memory: no secret or expanded policy needs
 		// to be written to a global temporary directory.
 		originalScope := control["scope"]
@@ -607,6 +614,9 @@ func nativeSetupControl(cmd *cobra.Command, gh ghExecutor, prompt nativeSetupPro
 		}
 	}
 	stage = "policy"
+	if err := nativeSetupNote(cmd, "Saving CAO policy...\n"); err != nil {
+		return nil, err
+	}
 	control["scope"] = map[string]any{"allowed-owners": owners, "allowed-repositories": repositories}
 	if prompt == nil || profile == "public-only" {
 		activity := nativeSetupMap(control["activity"])

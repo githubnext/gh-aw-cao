@@ -361,16 +361,25 @@ the field, existing fail-closed authentication behavior remains unchanged.
 `control-plane.activity.public-only: true` MUST require an explicit exact
 Activity scope and workflow-token authentication. It MUST NOT change campaign,
 worker, operation, safe-output or live authority. Collection MUST verify the
-control repository and selected repositories are public with unchanged identity
-before discovery and recheck each target before collecting logs. Missing or
-non-public visibility MUST block publication, including after a visibility
-change. Restricted public evidence MUST remain explicitly partial, not complete
+control repository's identity and known visibility and verify all selected remote
+repositories are public with unchanged identity before discovery and recheck each
+target before collecting logs. Only the actual control repository identified by
+the job's `GITHUB_REPOSITORY` MAY be private or internal, using its repository-local
+token. Missing visibility, changed identity, or non-public remote targets MUST
+block publication, including after a visibility change.
+Restricted public evidence MUST remain explicitly partial, not complete
 or zero; public-only collection MUST NOT invoke new operational-value collectors
 or authenticated issue-status enrichment.
 
-Guided setup SHOULD recommend public-only monitoring for an all-public scope.
+Guided setup SHOULD select public-only monitoring for the control repository and
+public remote targets, regardless of the control repository's visibility.
+When workflow-token authentication is already selected or is the default, setup
+MUST NOT write an authentication variable or credentials. It MUST check repository
+variables before inherited organization variables shared with that repository.
+An existing conflicting effective mode MUST receive a repository-level
+`workflow-token` override; unreadable or malformed settings MUST fail closed.
 `gh cao setup --repository OWNER/REPO|OWNER/*` MAY configure
-that profile without prompts; this shortcut accepts public Pages
+that profile without prompts in a public control repository; this shortcut accepts public Pages
 publication. Wildcards MUST resolve only currently public repositories to saved
 exact names, and exact non-public selections MUST fail before mutation. Setup
 MUST remain bare, with no campaign or agent execution, and MUST write policy

@@ -6,7 +6,7 @@ import test from 'node:test';
 import { setupCaoControlPlane } from '../../activity/setup.mjs';
 import { runSetup } from '../../activity/commands/setup.mjs';
 
-async function fixture(t, { visibility = 'PUBLIC', modeFailure = false } = {}) {
+async function fixture(t, { visibility = 'PUBLIC', modeFailure = false, mode = modeFailure ? 'app' : undefined, organizationMode } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cao-public-setup-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const policyPath = path.join(root, '.github/workflows/cao.json');
@@ -43,6 +43,10 @@ async function fixture(t, { visibility = 'PUBLIC', modeFailure = false } = {}) {
         if (command === 'api repos/acme/control/pages') return {
           status: 0, stdout: '{"build_type":"workflow","public":true}',
         };
+        if (args[0] === 'api' && args[1].startsWith('repos/acme/control/actions/')) {
+          const value = args[1].includes('/organization-variables') ? organizationMode : mode;
+          return { status: 0, stdout: value === undefined ? '' : JSON.stringify({ value }) };
+        }
         if (command === 'variable set GH_AW_GITHUB_AUTH_MODE --repo acme/control --body workflow-token') {
           return { status: modeFailure ? 1 : 0, stderr: modeFailure ? 'mode denied' : '' };
         }
@@ -64,62 +68,126 @@ test('public quickstart snapshots public repositories without App/PAT prompts an
   assert.deepEqual(saved['control-plane'].campaigns, {});
   assert.deepEqual(saved['control-plane'].workflows, {});
   assert.deepEqual(saved['control-plane'].operations, {});
-  assert.ok(f.calls.every((args) => !args.includes('secret') && !args.includes('workflow')));
+  assert.ok(f.calls.every((args) => !args.includes('secret') && !args.includes('workflow') && args[0] !== 'variable'));
   const repeated = await setupCaoControlPlane({ ...f.options, repositories: [] });
   assert.deepEqual(repeated.repositories, result.repositories);
 });
 
-test('guided all-public setup skips authentication selection for exact and wildcard scopes', async (t) => {
-  for (const scope of ['acme/control', 'octo/public', 'octo/*', 'acme/control,octo/*']) {
-    const f = await fixture(t);
-    const execute = f.options.execute;
-    const result = await setupCaoControlPlane({
-      ...f.options, publicOnly: false,
-      execute(binary, args) {
-        if (args[1] === 'list') return {
-          status: 0, stdout: '[{"nameWithOwner":"octo/public","visibility":"PUBLIC"}]',
-        };
-        return execute(binary, args);
-      },
-      prompt: {
-        note() {},
-        text: async () => scope,
-        select: async () => assert.fail('all-public scope must not prompt for authentication'),
-        confirm: async () => true,
-      },
-    });
-    assert.equal(result.profile, 'public-only');
-    assert.equal(result.authentication.mode, 'workflow-token');
-    assert.deepEqual(result.repositories, scope === 'acme/control'
-      ? ['acme/control'] : ['acme/control', 'octo/public']);
-    assert.deepEqual((await f.saved())['control-plane'].activity, {
-      repositories: result.repositories, 'public-only': true,
-    });
+test('built-in token setup leaves defaults untouched and overrides only conflicting effective modes', async (t) => {
+  for (const guided of [false, true]) {
+    for (const testCase of [
+      { name: 'fresh', writes: 0 },
+      { name: 'explicit default', mode: '', organizationMode: 'app', writes: 0 },
+      { name: 'already workflow-token', mode: 'workflow-token', writes: 0 },
+      { name: 'inherited workflow-token', organizationMode: 'workflow-token', writes: 0 },
+      { name: 'repository App', mode: 'app', writes: 1 },
+      { name: 'repository PAT', mode: 'pat', writes: 1 },
+      { name: 'inherited App', organizationMode: 'app', writes: 1 },
+      { name: 'inherited PAT', organizationMode: 'pat', writes: 1 },
+    ]) {
+      await t.test(`${guided ? 'guided' : 'unattended'} ${testCase.name}`, async (t) => {
+        const f = await fixture(t, testCase);
+        const result = await setupCaoControlPlane({
+          ...f.options, ...(guided ? {
+            publicOnly: false,
+            prompt: {
+              note() {}, text: async () => 'acme/control',
+              select: async () => assert.fail('built-in token needs no credential choice'),
+              confirm: async () => true,
+            },
+          } : {}),
+        });
+        assert.equal(result.authentication.mode, 'workflow-token');
+        assert.equal(f.calls.filter(([command]) => command === 'variable').length, testCase.writes);
+        assert.ok(f.calls.every(([command]) => command !== 'secret'));
+        if (testCase.mode !== undefined) {
+          assert.ok(!f.calls.some((args) => args[1]?.includes('/organization-variables')));
+        }
+      });
+    }
   }
 });
 
-test('selecting an App for a now-private scope clears the collection-only profile', async (t) => {
+test('unverifiable authentication defaults fail closed without saving policy or writing credentials', async (t) => {
+  for (const response of ['{', 'null', '{"value":null}', '{"value":"app"}\n{"value":"pat"}', 'denied']) {
+    const f = await fixture(t);
+    const execute = f.options.execute;
+    await assert.rejects(setupCaoControlPlane({
+      ...f.options,
+      execute(binary, args) {
+        if (args[0] === 'api' && args[1].startsWith('repos/acme/control/actions/')) {
+          return response === 'denied'
+            ? { status: 1, stderr: 'denied' } : { status: 0, stdout: response };
+        }
+        return execute(binary, args);
+      },
+    }), /authentication mode/);
+    assert.deepEqual(await f.saved(), f.policy);
+    assert.ok(!f.calls.some(([command]) => command === 'variable' || command === 'secret'));
+  }
+});
+
+test('guided setup uses the built-in token for any control visibility and public exact or wildcard targets', async (t) => {
+  for (const visibility of ['PUBLIC', 'PRIVATE', 'INTERNAL']) {
+    for (const scope of ['acme/control', 'octo/public', 'octo/*', 'acme/control,octo/*']) {
+      await t.test(`${visibility}: ${scope}`, async (t) => {
+        const f = await fixture(t, { visibility });
+        const execute = f.options.execute;
+        const result = await setupCaoControlPlane({
+          ...f.options, publicOnly: false,
+          execute(binary, args) {
+            if (args[1] === 'view' && args[2] === 'octo/public') return {
+              status: 0, stdout: '{"nameWithOwner":"octo/public","visibility":"PUBLIC"}',
+            };
+            if (args[1] === 'list') return {
+              status: 0, stdout: '[{"nameWithOwner":"octo/public","visibility":"PUBLIC"}]',
+            };
+            return execute(binary, args);
+          },
+          prompt: {
+            note() {},
+            text: async () => scope,
+            select: async () => assert.fail('public targets must not prompt for authentication'),
+            confirm: async () => true,
+          },
+        });
+        assert.equal(result.profile, 'public-only');
+        assert.equal(result.authentication.mode, 'workflow-token');
+        assert.deepEqual(result.repositories, scope === 'acme/control'
+          ? ['acme/control'] : ['acme/control', 'octo/public']);
+        assert.deepEqual((await f.saved())['control-plane'].activity, {
+          repositories: result.repositories, 'public-only': true,
+        });
+      });
+    }
+  }
+});
+
+test('selecting credentials for a now-private remote target clears the collection-only profile', async (t) => {
   const f = await fixture(t);
   await setupCaoControlPlane(f.options);
   const result = await setupCaoControlPlane({
     ...f.options, publicOnly: false,
     execute(binary, args) {
-      if (args[1] === 'view' && !args.includes('--jq')) return {
+      if (args[1] === 'view' && args[2] === 'octo/private') return {
+        status: 0, stdout: '{"nameWithOwner":"octo/private","visibility":"PRIVATE"}',
+      };
+      if (args[1] === 'view' && args[2] === 'acme/control') return {
         status: 0, stdout: '{"nameWithOwner":"acme/control","visibility":"PRIVATE"}',
       };
       return f.options.execute(binary, args);
     },
     prompt: {
       note() {},
-      text: async () => 'acme/control',
-      select: async () => 'github-app',
+      text: async () => 'octo/private',
+      select: async () => 'token',
       confirm: async () => true,
     },
     setupAuthentication: async (profile) => ({ profile }),
   });
-  assert.equal(result.profile, 'github-app');
+  assert.equal(result.profile, 'token');
   assert.deepEqual((await f.saved())['control-plane'].activity, {
-    repositories: ['acme/control'],
+    repositories: ['acme/control', 'octo/private'],
   });
 });
 
@@ -154,7 +222,7 @@ test('guided setup keeps authentication for nonpublic scopes and fails closed on
         assert.equal(selections, 0);
       } else {
         assert.equal((await setupCaoControlPlane(options)).cancelled, true);
-        assert.equal(selections, 1);
+        assert.equal(selections, visibility === 'PUBLIC' ? 0 : 1);
       }
       assert.deepEqual(await f.saved(), f.policy);
       assert.ok(f.calls.every((args) => args[0] === 'auth' || args[0] === 'repo'));
