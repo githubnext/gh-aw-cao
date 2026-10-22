@@ -2,6 +2,8 @@ package marketplace
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -9,6 +11,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
+)
+
+const (
+	maxGitHubJSONBytes     = inputlimits.DefaultMarketplaceJSONBytes
+	maxGitHubTreeJSONBytes = inputlimits.DefaultMarketplaceTreeJSONBytes
 )
 
 type jsonResponseDoer struct {
@@ -81,6 +90,127 @@ func TestGitHubJSONByteLimit(t *testing.T) {
 			}
 			if payload["sha"] != "ok" {
 				t.Fatal("unexpected payload at byte boundary")
+			}
+		})
+	}
+}
+
+func TestGitHubJSONAllowsMaximumManifestBlob(t *testing.T) {
+	manifest := "name: Demo\n#" + strings.Repeat("x", maxManifestBytes-len("name: Demo\n#"))
+	encoded, err := json.Marshal(map[string]any{
+		"encoding": "base64",
+		"content":  base64.StdEncoding.EncodeToString([]byte(manifest)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := &trackedJSONBody{Reader: strings.NewReader(string(encoded))}
+	payload, err := githubJSON(t.Context(), Options{HTTPClient: jsonResponseDoer{body: body}},
+		http.MethodGet, "https://api.github.com/test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeManifestBlob(payload)
+	if err != nil || decoded != manifest {
+		t.Fatalf("maximum manifest blob was not preserved: %v", err)
+	}
+	if _, err := ParsePackageManifest(decoded, Coordinates{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type treeResponseDoer struct {
+	HTTPDoer
+	body *trackedJSONBody
+}
+
+func (d treeResponseDoer) Do(request *http.Request) (*http.Response, error) {
+	if strings.Contains(request.URL.Path, "/git/trees/") {
+		return jsonResponseDoer{body: d.body, contentLength: -1}.Do(request)
+	}
+	return d.HTTPDoer.Do(request)
+}
+
+func TestGitHubTreeJSONByteLimit(t *testing.T) {
+	const valid = `{"tree":[]}`
+	for _, test := range []struct {
+		name     string
+		size     int
+		override string
+		want     string
+	}{
+		{name: "above ordinary response limit", size: maxGitHubJSONBytes + 1},
+		{name: "below tree limit", size: maxGitHubTreeJSONBytes - 1},
+		{name: "exact tree limit", size: maxGitHubTreeJSONBytes},
+		{name: "one byte over tree limit", size: maxGitHubTreeJSONBytes + 1, want: "exceeds size limit"},
+		{name: "overridden exact tree limit", size: 64, override: "64"},
+		{name: "overridden tree limit exceeded", size: 65, override: "64", want: "exceeds size limit"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			server := newFakeGitHubServer(t, fakeGitHubConfig{})
+			body := &trackedJSONBody{Reader: strings.NewReader(
+				valid + strings.Repeat(" ", test.size-len(valid)),
+			)}
+			opts := Options{HTTPClient: treeResponseDoer{HTTPDoer: server.server.Client(), body: body}}
+			limit := maxGitHubTreeJSONBytes
+			if test.override != "" {
+				opts.Env = fakeEnv{string(inputlimits.MarketplaceTreeJSON): test.override}.lookup
+				limit = 64
+			}
+			packages, err := ResolveRegistry(t.Context(), Registry{
+				ID: "test", Repository: "example/packages", Ref: "main", APIURL: server.baseURL(),
+			}, 0, opts)
+			if !body.closed || body.read != min(test.size, limit+1) {
+				t.Fatalf("closed=%t, read=%d, want closed bounded tree response", body.closed, body.read)
+			}
+			if test.want != "" {
+				if err == nil || !strings.Contains(err.Error(), test.want) || packages != nil {
+					t.Fatalf("error = %v, want substring %q and no packages", err, test.want)
+				}
+			} else if err != nil || len(packages) != 0 {
+				t.Fatalf("unexpected tree result: packages=%d, err=%v", len(packages), err)
+			}
+		})
+	}
+}
+
+func TestGitHubJSONLimitEnvironment(t *testing.T) {
+	const valid = `{"sha":"ok"}`
+	for _, setting := range []inputlimits.ByteLimit{inputlimits.MarketplaceJSON, inputlimits.MarketplaceTreeJSON} {
+		t.Run(string(setting), func(t *testing.T) {
+			for _, test := range []struct {
+				name string
+				env  string
+				size int
+				want string
+			}{
+				{name: "exact override", env: "64", size: 64},
+				{name: "override exceeded", env: "64", size: 65, want: "exceeds size limit"},
+				{name: "invalid override", env: "invalid", size: len(valid), want: string(setting)},
+				{name: "empty override", size: len(valid), want: string(setting)},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					body := &trackedJSONBody{Reader: strings.NewReader(valid + strings.Repeat(" ", test.size-len(valid)))}
+					opts := Options{
+						HTTPClient: jsonResponseDoer{body: body},
+						Env:        fakeEnv{string(setting): test.env}.lookup,
+					}
+					payload, err := githubJSONWithLimit(t.Context(), opts, http.MethodGet, "https://api.github.com/test", "", setting)
+					if test.want == "" {
+						if err != nil || payload["sha"] != "ok" {
+							t.Fatalf("payload=%#v, err=%v", payload, err)
+						}
+					} else if err == nil || !strings.Contains(err.Error(), test.want) || payload != nil {
+						t.Fatalf("error = %v, want substring %q and no payload", err, test.want)
+					}
+					if test.want == string(setting) {
+						if body.read != 0 || body.closed {
+							t.Fatal("invalid configuration issued an HTTP request")
+						}
+					} else if !body.closed || body.read != min(test.size, 65) {
+						t.Fatalf("closed=%t, read=%d, want closed bounded response", body.closed, body.read)
+					}
+				})
 			}
 		})
 	}

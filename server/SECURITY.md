@@ -57,16 +57,36 @@ before opening it read-only and does not relax the local security boundary.
 
 ## Repository metadata input limits
 
-Local repository-memory manifests are limited to 8 MiB before JSON decoding,
+Local repository-memory manifests default to a 2 MiB limit before JSON decoding,
 independently of the existing 400-files-per-campaign, 1 MiB-per-file and 64 MiB
 aggregate content limits. The metadata budget leaves room for many campaigns
 without treating file-content limits as a bound on manifest size.
 
-The Go marketplace resolver limits each generic GitHub JSON response (commit,
-recursive tree, blob and installation-token exchange) to 16 MiB before decoding.
-This allows large tree metadata and base64-wrapped 256 KiB manifests/READMEs
-without permitting unbounded responses. Public repository signals retain their
-separate 64 KiB limit.
+The Go marketplace resolver defaults ordinary GitHub JSON responses (commit,
+blob and installation-token exchange) to a 512 KiB limit before decoding.
+This allows base64 wrapping and metadata around 256 KiB manifests/READMEs
+without granting individual packages a multi-megabyte response budget.
+Recursive repository-tree discovery defaults to a separate 8 MiB ceiling
+because it lists paths across the entire repository, not just one package.
+Artwork fields are references, not image downloads through this JSON reader.
+Public repository signals retain their separate 64 KiB limit.
+
+These three metadata-read budgets are centralized in
+`internal/inputlimits/limits.go` and can be overridden independently:
+
+| Environment variable | Default | Input |
+| --- | --- | --- |
+| `CAO_REPOSITORY_MEMORY_MANIFEST_MAX_BYTES` | 2097152 (2 MiB) | Local repository-memory manifest |
+| `CAO_MARKETPLACE_JSON_MAX_BYTES` | 524288 (512 KiB) | Ordinary marketplace GitHub JSON |
+| `CAO_MARKETPLACE_TREE_JSON_MAX_BYTES` | 8388608 (8 MiB) | Recursive marketplace GitHub tree |
+
+Overrides are positive decimal byte counts below the platform integer maximum,
+leaving room for the overflow-detection byte. Unset variables use the defaults;
+empty, zero, negative, malformed or overflowing values fail explicitly before
+the relevant file is opened or HTTP request is issued. Overrides are resolved
+when the input is read, not cached at package initialization. Raising a budget
+is an operator-controlled capacity tradeoff, not evidence of workload safety.
+Existing file-content, package-content and repository-signal limits are unchanged.
 
 Both readers consume at most their limit plus one byte and reject oversized
 input, including a valid JSON prefix followed by excess whitespace. The
