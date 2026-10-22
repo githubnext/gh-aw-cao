@@ -13,16 +13,22 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/server"
 )
 
 var startupLog = logger.New("cao:functions:startup")
 
-func main() {
-	if err := run(); err != nil {
-		log.Printf("error: %v", err)
-		os.Exit(1)
+func newAzureFunctionsCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "azure-functions",
+		Short: "Run the Azure Functions custom HTTP handler using platform environment settings",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runAzureFunctions(cmd.Context())
+		},
 	}
 }
 
@@ -54,17 +60,17 @@ func resolveFunctionsConfig(getenv func(string) string) (functionsConfig, error)
 	}, nil
 }
 
-func run() error {
+func runAzureFunctions(parent context.Context) error {
 	config, err := resolveFunctionsConfig(os.Getenv)
 	if err != nil {
 		return err
 	}
 	startupLog.Printf("resolved config site_directory=%q queries_path=%q", config.siteDirectory, config.queriesPath)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	defer func() {
-		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		flushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		if err := server.ShutdownAzureFunctionsTelemetry(flushCtx); err != nil {
 			startupLog.Printf("telemetry shutdown failed")

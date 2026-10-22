@@ -353,6 +353,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(
 		newAdmissionCommand(),
 		newAppKeyCheckCommand(),
+		newAzureFunctionsCommand(),
 		newServeCommand(),
 		newServePagesCommand(),
 		newServeHostedCommand(),

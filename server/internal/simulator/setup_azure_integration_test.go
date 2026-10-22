@@ -85,6 +85,9 @@ func TestCAOSetupAzureIntegration(t *testing.T) {
 			configuredPolicy, githubState := setupRead(t, f.policyPath()), f.state(t)
 			setupWrite(t, filepath.Join(f.checkout, ".github/workflows/cao.azure.json"),
 				[]byte(`{"extends":"cao.json","control-plane":{"web":{"host":{"target":{"module":"azure-functions"},"operational-store":{"backend":"postgres"}}}}}`))
+			if scenario == "successful deployment" {
+				api.functions = newSetupAzureFunctions(t, ctx)
+			}
 			config := filepath.Join(f.checkout, ".github/cao/deploy-azure.json")
 			setupWrite(t, config, setupAzureConfig(t))
 			tree := setupCheckoutState(t, f.checkout)
@@ -129,6 +132,7 @@ func TestCAOSetupAzureIntegration(t *testing.T) {
 			runSetupAzure(t, ctx, f, failure, apply...)
 			if failure == "" {
 				assertSetupAzureReceipt(t, ctx, api, receiptPath, plan)
+				api.functions.assertShutdown(t, ctx)
 				before := setupRead(t, receiptPath)
 				runSetupAzure(t, ctx, f, "already exists", apply...)
 				if !bytes.Equal(before, setupRead(t, receiptPath)) {

@@ -117,6 +117,14 @@ in a separate prerequisite step. The simulation disables module downloads and
 implicit toolchain/image pulls; missing prerequisites fail instead of accessing a registry.
 Without Docker, set `CAO_SETUP_AZURITE_BINARY` to an installed official
 `azurite-blob` executable; its process and storage are also isolated and removed.
+Set `POSTGRES_URL` to a disposable numeric-loopback PostgreSQL instance. The
+successful deployment builds `cao-dashboard` from the exact simulated ACR
+context, runs real database provisioning and empty-evidence ingestion in an
+isolated schema, and starts `cao-dashboard azure-functions` when the Azure
+simulator restarts the Function App. The deployment's HTTPS health, readiness,
+signed-out API and OAuth checks pass through simulated Azure ingress to that
+real process, followed by a verified graceful SIGTERM shutdown. GitHub setup
+still uses the GitHub simulator; no live GitHub or Azure credentials are used.
 
 The test builds the current native extension and runs real `gh cao setup`,
 then `gh cao deploy azure --preflight`, `--plan`, and `--apply`. Azure deployment
@@ -3611,8 +3619,11 @@ The local capability profile is not suitable for remote or multi-user
 deployment. The capability authorizes its holder to read the full active
 dashboard data; it provides no user identity or per-source authorization.
 
-The Azure Functions profile is the experimental remote profile. It is enabled
-by calling `NewAzureFunctionsHandlerFromEnv`; `serve` does not enable it. Azure
+The Azure Functions profile is the experimental remote profile. Run
+`cao-dashboard azure-functions` to start its custom HTTP handler using
+`FUNCTIONS_CUSTOMHANDLER_PORT` and the existing Azure environment settings.
+It calls `NewAzureFunctionsHandlerFromEnv` in the shared server package;
+`serve` does not enable this profile. Azure
 mode fails closed unless all of the following are configured:
 
 - a readable `cao.json` with the `azure-functions` target and a Redis provider;

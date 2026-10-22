@@ -8,7 +8,6 @@ import { promisify } from "node:util";
 
 const execute = promisify(execFile);
 const failures = [
-  ["functions-build", "Azure Functions handler build", "functions-build.log"],
   ["server-build", "dashboard server build", "server-build.log"],
   ["canonical-database-bootstrap", "canonical database bootstrap", "database-bootstrap.log"],
   ["operational-database-bootstrap", "operational database bootstrap", "operational-database-bootstrap.log"],
@@ -68,7 +67,6 @@ stage=""
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     -o) output="$2"; shift ;;
-    ./cmd/cao-functions) stage=functions-build ;;
     ./cmd/cao-dashboard) stage=server-build ;;
   esac
   shift
@@ -84,6 +82,7 @@ chmod +x "$output"
       const binary = join(directory, "fake-dashboard");
       await executable(binary, `
 echo "dashboard $*" >> "$HARNESS_TRACE"
+cp "$(dirname "$0")/host.json" "$HARNESS_HOST"
 case "$1" in
   database)
     test -n "$CAO_DATABASE_ADMIN_URL"
@@ -116,6 +115,7 @@ fi
           HARNESS_FAILURE: stage,
           HARNESS_MESSAGE: message,
           HARNESS_BINARY: binary,
+          HARNESS_HOST: join(directory, "host.json"),
         },
         timeout: 10_000,
       }).then(
@@ -131,6 +131,16 @@ fi
       assert.equal(await readFile(logPath, "utf8"), `captured stdout\n${message}\n`);
       const commands = await readFile(trace, "utf8");
       assert.doesNotMatch(commands, /docker .*redis/);
+      assert.equal((commands.match(/go .* build /g) || []).length, 1, "the shared dashboard executable is built once");
+      if (stage !== "server-build") {
+        const host = JSON.parse(await readFile(join(directory, "host.json"), "utf8"));
+        assert.deepEqual(host.customHandler.description, {
+          defaultExecutablePath: "cao-dashboard",
+          arguments: ["azure-functions"],
+        });
+        assert.equal(host.customHandler.enableForwardingHttpRequest, true);
+        assert.equal(host.extensions.http.routePrefix, "");
+      }
       if (stage === "canonical-database-bootstrap" || stage === "operational-database-bootstrap") {
         assert.match(commands, /dashboard database bootstrap --store canonical --namespace azure-local-[a-f0-9]{12}/);
       }

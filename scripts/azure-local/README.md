@@ -63,7 +63,7 @@ checks.
 
 Before changing this harness:
 
-- inspect `server/internal/server/azure.go` and the `cao-functions` custom
+- inspect `server/internal/server/azure.go` and the `cao-dashboard azure-functions` custom
   handler entrypoint;
 - inspect hosted environment validation and retain production PostgreSQL TLS
   and HTTPS requirements;

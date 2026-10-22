@@ -36,7 +36,7 @@ test("Azure Functions routes requests through shared CAO logic and PostgreSQL", 
 });
 
 test("missing local configuration fails predictably", () => {
-  const result = spawnSync(`${runtime.applicationDirectory}/cao-functions`, [], {
+  const result = spawnSync(`${runtime.applicationDirectory}/cao-dashboard`, ["azure-functions"], {
     encoding: "utf8",
     env: {
       FUNCTIONS_CUSTOMHANDLER_PORT: "1",
