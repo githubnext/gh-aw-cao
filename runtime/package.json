@@ -46,6 +46,7 @@
     "activity/recycle-snapshot.mjs",
     "activity/run-activity.mjs",
     "activity/run-health-snapshot.mjs",
+    "activity/session-evidence.mjs",
     "activity/setup.mjs",
     "activity/setup-prompt.mjs",
     "activity/sqlite-retention.mjs",

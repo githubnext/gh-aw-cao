@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -8,6 +9,7 @@ import test from "node:test";
 import { parse } from "yaml";
 import {
   downloadCaoRuntimeArtifact, extractCaoArchive, materializeCao, planCaoMaterialization, validateCaoRuntimeArtifact,
+  verifyCaoRuntime,
 } from "../../.github/workflows/shared/materialize-cao.mjs";
 import { buildCaoRuntime } from "../../scripts/build-cao-runtime.mjs";
 import { setupTerminalFixture, walkSetupTerminal } from "../helpers/setup-terminal.mjs";
@@ -149,6 +151,50 @@ test("the prebuilt archive loads the Governance CLI transport with dependency-fr
   });
   assert.equal(result.ok, true);
   assert.equal(result.stdout, yaml);
+});
+
+test("the prebuilt archive runs Activity session enrichment without consumer npm dependencies", (t) => {
+  const root = unpack(t);
+  const logs = path.join(root, "_activity/logs");
+  const shards = path.join(root, "_activity/shards");
+  const prefix = path.join(shards, "logs-");
+  mkdirSync(logs, { recursive: true });
+  mkdirSync(shards, { recursive: true });
+  const enrich = () => JSON.parse(execFileSync(process.execPath, [
+    "activity/session-evidence.mjs", logs, prefix, "example/control",
+  ], { cwd: root, encoding: "utf8", timeout: 30_000 }));
+
+  // Collection calls this entrypoint even when discovery finds no workflows.
+  assert.deepEqual(enrich(), { enriched: 0, missingSessions: 0 });
+  const usage = path.join(logs, "run-303", "usage");
+  mkdirSync(usage, { recursive: true });
+  writeFileSync(path.join(usage, "aw_info.json"), JSON.stringify({
+    run_id: 303, run_attempt: 1, repository: "example/control",
+  }));
+  writeFileSync(path.join(usage, "aw_session.jsonl"), [
+    { type: "session.format", data: { version: 1 } },
+    { type: "tool.execution_complete", timestamp: "2026-10-15T10:00:00Z",
+      data: { toolName: "bash", success: true, output: "PRIVATE_OUTPUT" } },
+  ].map((event) => JSON.stringify(event)).join("\n") + "\n");
+  const shard = `${prefix}1.jsonl`;
+  writeFileSync(shard, JSON.stringify({
+    schema_version: 5, kind: "run",
+    run: { run_id: 303, run_attempt: 1, repository: "example/control" },
+  }) + "\n");
+  assert.deepEqual(enrich(), { enriched: 1, missingSessions: 0 });
+  const content = readFileSync(shard, "utf8");
+  const evidence = JSON.parse(content).run.cao_unified_session;
+  assert.equal(evidence.path, "usage/aw_session.jsonl");
+  assert.ok(evidence.events.some((event) => event.type === "tool.execution_complete"));
+  assert.doesNotMatch(content, /PRIVATE_OUTPUT/);
+  assert.deepEqual(enrich(), { enriched: 0, missingSessions: 0 });
+});
+
+test("Activity runtime verification rejects a missing packaged session entrypoint", (t) => {
+  const root = unpack(t);
+  verifyCaoRuntime("activity", root);
+  rmSync(path.join(root, "activity/session-evidence.mjs"));
+  assert.throws(() => verifyCaoRuntime("activity", root), /activity\/session-evidence\.mjs/);
 });
 
 test("producer archives are reproducible across temporary build directories", () => {
