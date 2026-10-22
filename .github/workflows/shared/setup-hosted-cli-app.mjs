@@ -19,7 +19,7 @@ import {
   splitRepo,
   validateAppName,
   verifyTarget,
-} from "./setup-github-apps.mjs";
+} from "./github-apps.mjs";
 
 // The hosted CLI executor mints one repository-scoped installation token per
 // command with exactly these permissions, so the App must never hold more.

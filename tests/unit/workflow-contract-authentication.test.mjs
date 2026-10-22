@@ -18,6 +18,7 @@ import {
 
 test("deterministic workflows pin third-party actions by commit SHA", () => {
   for (const relativePath of [
+    join(".github", "workflows", "actions-runtime.yml"),
     join(".github", "workflows", "workflow-contracts.yml"),
     join(".github", "workflows", "copilot-setup-steps.yml"),
     join(".github", "workflows", "enterprise-canary.yml"),

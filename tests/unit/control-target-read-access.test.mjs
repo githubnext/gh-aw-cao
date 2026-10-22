@@ -3,7 +3,7 @@ import { readdirSync } from "node:fs";
 import test from "node:test";
 import { parse } from "yaml";
 import { FINE_GRAINED_PAT_PROFILES } from "../../activity/authentication.mjs";
-import { APP_PROFILES } from "../../.github/workflows/shared/setup-github-apps.mjs";
+import { APP_PROFILES } from "../../.github/workflows/shared/github-apps.mjs";
 import { workflow, workflowsDirectory } from "./workflow-contract.helpers.mjs";
 
 // Control-plane contract: every worker reads its dispatched target's metadata

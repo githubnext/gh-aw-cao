@@ -60,6 +60,9 @@ The test checks that private non-interactive setup fails without changing
 policy, repeated public monitoring setup is idempotent, and no campaign or
 agent operation is enabled. Home, Git configuration, CLI extensions, and
 credentials are isolated; only a synthetic token is used in the test.
+The shared bootstrap/setup environment explicitly disables CLI telemetry with
+`DO_NOT_TRACK=1` and `GH_TELEMETRY=0`; the proxy still rejects every destination
+outside its allowlist.
 The workflow and every job grant only `contents: read`. The integration step
 explicitly clears real GitHub token environment variables; the read-only
 workflow token is used only to download the gh-aw prerequisite, never for
@@ -1359,6 +1362,78 @@ YAML or prove that a real GitHub Actions run started.
 The separately pinned upstream client conformance tests remain available via
 `GH_AW_ADMISSION_PROTOCOL_PATH` and `GH_AW_CONCLUSION_RUNTIME_DIR`.
 
+### Docker samples runtime
+
+Run the small, test-only workflow executor and its signed-webhook integration:
+
+```bash
+npm ci
+docker pull node:24-bookworm
+npm run test:integration:actions-runtime
+```
+
+Prerequisites are Node.js 24+, Go at the version in `server/go.mod`, the pinned
+`gh aw` compiler, Git, curl, tar, and a local Docker daemon supporting bind mounts.
+The first run downloads the immutable `github/gh-aw-actions` setup revision
+declared by the compiled lock and a checksum-verified jq binary for the image's
+architecture. Downloads are cached under `.tmp/actions-runtime/`. No GitHub
+credentials, inference subscription, PostgreSQL, or Redis are required.
+
+`tests/helpers/actions-runtime/` is intentionally **not an alternative to act
+or a general Actions framework**. It accepts only gh-aw locks compiled with
+`--use-samples --dry-run`, with threat detection disabled. The fixtures opt into
+`features.samples` and declare `safe-outputs.threat-detection: false`. Compilation
+uses a fresh credential-free Git configuration and a strict `gh run list`
+fixture returning no historical runs, so the compiler's mandatory dry-run model
+check does not contact GitHub. A preliminary compilation establishes the
+reviewed shared-control secret-reference baseline; only the subsequent dry-run
+locks are committed into the synthetic revision and executed.
+
+The executor implements sequential dependency-ordered jobs, the small expression
+subset those locks use, Bash steps, conditions and failure propagation,
+`GITHUB_OUTPUT`/`GITHUB_ENV`/`GITHUB_PATH`, pinned setup and github-script actions,
+fixture checkout, and local artifact upload/download (literal names and brace
+lists only). Each job gets a fresh workspace, home and runner directory.
+The **real upstream setup, activation, sample replay, stdio safe-output MCP
+server, ingestion, staged safe-output handlers and conclusion scripts execute**.
+CAO uses the real shared control import, exact-revision policy reads, admission,
+precompute, and its jq handoff checks. Unknown actions, expression features,
+GitHub API requests, matrix/service/container/reusable jobs and live/inference
+locks fail explicitly rather than being treated as successful.
+
+Seven sample-only infrastructure adapters are reported in `report.simulated`:
+Copilot installation, AWF installation, image download, network MCP gateway
+start/stop, MCP CLI mounting, and online compiler-version checks. These are not
+coverage of inference, firewall isolation, network MCP transport, hosted
+OIDC, or live GitHub writes. Samples use the real stdio MCP server instead.
+The runner's loopback-only GitHub API supplies bounded fixture reads and
+rejects every mutation. Docker has no network, Docker socket, host credentials,
+privileges, or writable host checkout; only the explicit results directory is
+writable, with bounded memory, CPUs, PIDs and temporary storage. This runs
+trusted test fixtures, not arbitrary untrusted workflows.
+The container uses the invoking host user's UID and GID so the results bind
+mount remains writable on Linux without restoring capabilities or broadening
+directory permissions. The report records that identity, and integration
+assertions verify it.
+
+The integration first uses production discovery, signed ingress, SQLite queue
+and authenticated GitHub HTTP dispatch against `NewGatewayAPI`. It rejects a
+bad signature and proves replay deduplication across queue reopen, then feeds
+the exact accepted compiler batch envelope to both compiled AWI and CAO fixtures.
+The webhook declaration comes from the existing versioned compiler-manifest
+conformance fixture: this does not claim that the pinned compiler generated
+native webhook declarations. Assertions require every workflow job to run,
+exact sample output, `dry_run` and staged evidence, zero GitHub mutations, and
+CAO policy denial preventing agent execution.
+
+The standalone `actions-runtime.yml` workflow runs this on pull requests
+and main pushes only for changes under `server/`, excluding Markdown files.
+Manual dispatch remains available, with `contents: read` only.
+Containers are removed even after timeout.
+Successful fixture directories are deleted; failures retain per-step logs,
+summaries, artifacts and `report.json` under `.tmp/actions-runtime/e2e-*/`.
+CI uploads failure diagnostics, not screenshots or generated locks.
+
 ## Ingestion reliability simulator
 
 The `simulate-api` and `simulate-webhooks` commands exercise the actual
@@ -2325,6 +2400,74 @@ revalidates caller authority, source metadata, checksums, and OCI labels before
 attesting both build provenance and the SBOM for the exact OCI digest.
 Those package guarantees apply to consumers of the published image, not to
 locally source-built images.
+
+#### Owner-selected release evidence collection
+
+Use the native Go extension to collect a bounded, machine-readable record without
+publishing, promoting, deploying, or changing workflow authority:
+
+```sh
+gh cao evidence release \
+  --repo githubnext/gh-cao \
+  --revision FULL_40_CHARACTER_SOURCE_SHA \
+  --image ghcr.io/githubnext/gh-cao/cao-server@sha256:EXACT_64_CHARACTER_DIGEST \
+  --package-run PACKAGE_RUN_ID \
+  --output /secure/evidence/release-evidence.json
+```
+
+The `gh cao evidence` group hosts operator evidence collection. No Node.js,
+repository-local scripts or checkout are required. Use a release containing this
+command; merging source does not update an already installed extension.
+
+Use the existing package workflow run ID and immutable published image digest,
+not a tag. Optional `--promotion-run RUN_ID` collects references from the existing
+prerelease-to-latest workflow; its workflow SHA is **not** the product source
+SHA. Optional `--azure-receipt /secure/evidence/deploy-azure-receipt.json` consumes
+the existing `cao deploy azure` receipt, requiring its source revision to match
+the selected revision. It preserves development-only assurance, dirty-worktree
+state, context/plan hashes, per-target digests and reported verification outcomes.
+Private registry references are hashed; cloud resource identifiers, raw responses,
+actor names, comments, job/step names, secrets and credential-bearing URLs are
+not copied. No Azure API or deployment is invoked.
+
+With `--verify-provenance`, the collector invokes the installed GitHub CLI's
+`gh attestation verify` for the exact OCI digest, repository, reusable publisher,
+source-digest constraint and SLSA v1 predicate. It additionally requires the
+verified statement's image subject and package run-attempt invocation to match.
+Registry authentication and read access must already be configured; no credentials
+are accepted as collector arguments. A failed/unavailable verifier or mismatched
+receipt leaves provenance and image/source binding unknown. Manual builds whose
+certificate source identity differs from the selected product revision can fail
+this constraint; the collector does not relax verification to accept them.
+The normalized receipt includes the verification command and raw receipt hash,
+but does not retain raw attestation bundles or assert builder isolation.
+
+The collector currently targets GitHub.com and GHCR. Schema version 1
+(`kind: cao.release.evidence`) records the collector binary hash, extension/Go/GitHub CLI
+versions and collection time, and always reports `incomplete`.
+Run/job/check references are attempt-scoped; artifacts and approval history are
+run-scoped with **unknown** attempt binding. Approval records do not establish
+independent human approval or effective environment policy. Unavailable/invalid
+optional API evidence is explicitly unknown; invalid selected run identities or
+deployment receipts fail collection. API reads stop after five 100-record pages,
+marking bounded inventories incomplete; responses are limited to 2 MiB with a
+60-second command timeout, local receipts to 1 MiB, and step lists to 100.
+The complete operation has a 30-minute deadline and honors cancellation.
+The new output uses mode `0600` where supported and never overwrites an existing
+file. Operators must restrict destination-directory ACLs, especially on Windows
+where POSIX mode bits do not enforce private access.
+
+This is collection-time evidence, not a governance decision, production acceptance,
+proof of running image measurements, independent retention, or Type 2 operating
+effectiveness. Azure configured-reference read-back is not a measured running
+image digest, and its development images do not inherit official-package scans,
+SBOM or provenance. Owners must retain the original candidate metadata/checksums,
+SBOM, signed bundles and verification receipts through their approved evidence
+channel, along with this JSON and exact collector/tool versions. Existing Actions
+artifact references/expiry metadata are not independent delivery receipts; export
+before expiry, verify destination retention and access, supply actual deployment
+measurements and approval/check evidence, and agree the examination period and
+governance requirements with the auditor. Nothing is uploaded automatically.
 
 The Dockerfile includes the base `cao.json` policy. Configure a reviewed
 `control-plane.web.host` before building, or mount a reviewed policy and set

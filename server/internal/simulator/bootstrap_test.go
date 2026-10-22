@@ -9,6 +9,26 @@ import (
 	"testing"
 )
 
+func TestBootstrapEnvironmentDisablesTelemetry(t *testing.T) {
+	t.Setenv("DO_NOT_TRACK", "0")
+	t.Setenv("GH_TELEMETRY", "enabled")
+	environment := bootstrapEnvironment(t, t.TempDir(), "http://127.0.0.1:1", "simulator-ca.pem")
+	for name, want := range map[string]string{"DO_NOT_TRACK": "1", "GH_TELEMETRY": "0"} {
+		count := 0
+		for _, item := range environment {
+			if value, ok := strings.CutPrefix(item, name+"="); ok {
+				count++
+				if value != want {
+					t.Errorf("%s = %q, want %q", name, value, want)
+				}
+			}
+		}
+		if count != 1 {
+			t.Errorf("expected exactly one %s opt-out, found %d", name, count)
+		}
+	}
+}
+
 func bootstrapRequest(t *testing.T, api *BootstrapAPI, method, path, body string, status int) map[string]any {
 	t.Helper()
 	request := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))

@@ -15,6 +15,7 @@ const mainOnlyWorkflows = [
 ];
 const fastWorkflows = [
   "action-lint.yml",
+  "actions-runtime.yml",
   "cao-validate.yml",
   "cgo.yml",
   "cid.yml",
@@ -240,6 +241,54 @@ test("Go extension setup simulator runs independently without live credentials",
   assert.match(scripts["test:integration:setup"], /-run '\^\(TestCAOSetupIntegration\|TestSetup\)'/);
 });
 
+test("Docker samples runtime has an independent read-only workflow", () => {
+  const runtime = parse(workflow("actions-runtime.yml"));
+  const contracts = parse(workflow("workflow-contracts.yml"));
+  assert.deepEqual(runtime.on.pull_request.paths, ["server/**", "!server/**/*.md"]);
+  assert.deepEqual(runtime.on.push.paths, runtime.on.pull_request.paths);
+  assert.deepEqual(runtime.on.push.branches, ["main"]);
+  assert.ok(Object.hasOwn(runtime.on, "workflow_dispatch"));
+  assert.deepEqual(runtime.permissions, { contents: "read" });
+  assert.deepEqual(Object.keys(runtime.jobs), ["actions-runtime"]);
+  assert.equal(contracts.jobs["actions-runtime"], undefined);
+  assert.notEqual(runtime.concurrency.group, contracts.concurrency.group);
+  assert.equal(runtime.concurrency["cancel-in-progress"], contracts.concurrency["cancel-in-progress"]);
+  const job = runtime.jobs["actions-runtime"];
+  assert.equal(job.needs, undefined);
+  assert.equal(job.if, undefined);
+  assert.equal(job["timeout-minutes"], 10);
+  assert.ok(job.steps.some(step => step.run === "npm run test:integration:actions-runtime"));
+  const diagnostics = job.steps.find(step => step.name === "Retain failed simulator diagnostics");
+  assert.equal(diagnostics.if, "failure()");
+  assert.equal(diagnostics.with["retention-days"], 7);
+});
+
+test("Docker samples runtime runs automatically only for server code changes", () => {
+  for (const event of ["pull_request", "push"]) {
+    for (const file of [
+      "server/internal/webhookgateway/worker.go",
+      "server/internal/operational/postgres/webhook_schema.sql",
+      "server/go.mod",
+      "server/go.sum",
+    ]) {
+      assert.ok(runsForFile("actions-runtime.yml", event, file), `${event}: ${file}`);
+    }
+    for (const file of [
+      "server/README.md",
+      "server/internal/webhookgateway/README.md",
+      "docs/glossary.md",
+      "dashboard/site/src/dashboard-app.js",
+      "tests/helpers/actions-runtime/runner.mjs",
+      ".github/workflows/actions-runtime.yml",
+      ".github/workflows/shared/control.md",
+      "cmd/gh-cao/main.go",
+      "go.mod",
+    ]) {
+      assert.equal(runsForFile("actions-runtime.yml", event, file), false, `${event}: ${file}`);
+    }
+  }
+});
+
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {
   const cases = [
     ["dashboard/site/src/dashboard-app.js", ["cid.yml"]],
@@ -250,13 +299,14 @@ test("pull request triggers route frontend, control, server, and test changes se
     ["public/favicon.svg", ["cid.yml", "workflow-contracts.yml"]],
     ["activity/dashboard-complexity.mjs", ["workflow-contracts.yml"]],
     ["tests/e2e/dashboard-ingestion-scale.spec.mjs", ["workflow-contracts.yml"]],
-    ["server/internal/query/query.go", ["cgo.yml", "workflow-contracts.yml"]],
-    ["server/spec/main.tsp", ["cgo.yml", "workflow-contracts.yml"]],
+    ["server/internal/query/query.go", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
+    ["server/spec/main.tsp", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
     ["server/README.md", ["workflow-contracts.yml"]],
     [".github/workflows/shared/control.md", ["cao-validate.yml", "workflow-contracts.yml"]],
     [".github/workflows/cid.yml", ["action-lint.yml", "cid.yml"]],
     [".github/workflows/shared/ci.yml", ["action-lint.yml", "cao-validate.yml", "workflow-contracts.yml"]],
     [".github/workflows/actions.yml", ["action-lint.yml", "workflow-contracts.yml"]],
+    [".github/workflows/actions-runtime.yml", ["action-lint.yml", "workflow-contracts.yml"]],
     [".github/workflows/cao-evolution.lock.yml", ["cao-validate.yml", "workflow-contracts.yml"]],
   ];
   for (const [file, expected] of cases) {

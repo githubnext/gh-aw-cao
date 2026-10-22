@@ -26,6 +26,43 @@ node activity/cao.mjs --help
 Command failures exit nonzero and report the error without printing the command
 reference. Request command-specific help with `gh cao COMMAND --help`.
 
+## Operator evidence
+
+`gh cao evidence` groups read-only operator evidence collection. The initial
+`release` subcommand reuses existing package/promotion workflow runs and optional
+Azure deployment receipts; it does not build, publish, promote, deploy, change
+authority, or configure evidence retention. It runs entirely in Go with no Node.js
+or repository checkout required:
+
+```bash
+gh cao evidence release \
+  --repo githubnext/gh-cao \
+  --revision FULL_40_CHARACTER_SOURCE_SHA \
+  --image ghcr.io/githubnext/gh-cao/cao-server@sha256:EXACT_64_CHARACTER_DIGEST \
+  --package-run PACKAGE_RUN_ID \
+  --output /secure/evidence/release-evidence.json
+```
+
+Optionally add `--promotion-run RUN_ID`, `--azure-receipt PATH`, or
+`--verify-provenance`. The last option invokes `gh attestation verify` with exact
+source/image/reusable-publisher constraints and requires the package run attempt
+to match. Existing GitHub/registry read authentication is required; do not put
+credentials in arguments. The new output uses mode `0600` where supported and
+is never overwritten; operators must restrict destination-directory ACLs,
+especially on Windows where POSIX mode bits do not enforce private access.
+GitHub.com/GHCR are currently supported. Errors exit nonzero; optional unavailable
+evidence stays unknown in the JSON.
+
+The report always remains `incomplete`: approval references do not establish
+independent approval, configured Azure image read-back is not measured running
+image identity, and local source-built Azure images remain development-only.
+Owners must retain original artifacts, signed bundles and verification receipts
+through their approved evidence channel and supply independent retention,
+governance and examination-period evidence. See the
+[release evidence boundaries](https://github.com/githubnext/gh-cao/blob/main/server/README.md#owner-selected-release-evidence-collection).
+This command requires an extension release containing it; merging source alone
+does not update an installed binary.
+
 ## GitHub CLI extension
 
 From an existing control-repository checkout's root, install gh-aw, the `gh cao`
@@ -161,6 +198,7 @@ to invoke it as `gh cao`.
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
+| Operator evidence | `evidence release` | Native Go; bounded read-only GitHub references, optional provenance verification and development Azure receipt summaries. No Node runtime or checkout required. |
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |

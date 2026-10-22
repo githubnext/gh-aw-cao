@@ -434,7 +434,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.equal(policy.authorized, true);
   assert.equal(policy.campaign, "dependabot");
   assert.doesNotMatch(rootManifest, /\.github\/aw\/cao\//);
-  for (const path of ["control.mjs", "policy.mjs", "authority.mjs", "operations.mjs", "setup-github-apps.mjs"]) {
+  for (const path of ["control.mjs", "policy.mjs", "authority.mjs", "operations.mjs", "github-apps.mjs"]) {
     assert.deepEqual(
       controlPlaneManifest.resources.find(({ destination }) =>
         destination === `.github/workflows/shared/${path}`),
@@ -444,7 +444,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
       },
     );
   }
-  for (const path of ["cao.schema.json", "setup-github-apps.mjs", "control.mjs", "policy.mjs"]) {
+  for (const path of ["cao.schema.json", "github-apps.mjs", "control.mjs", "policy.mjs"]) {
     assert.ok(existsSync(join(root, ".github", "workflows", "shared", path)));
   }
   assert.match(control, /runtime="\$GITHUB_WORKSPACE\/\.cao\/\.github\/workflows\/shared\/control\.mjs"/);
@@ -475,8 +475,9 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(updateSection, /predate the campaign-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add|--create-pull-request/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
-  assert.match(authentication, /node \.github\/workflows\/shared\/setup-github-apps\.mjs --repo acme\/central-agentic-ops/);
-  assert.doesNotMatch(authentication, /CAO_REF=|contents\/\.github\/workflows\/shared\/setup-github-apps\.mjs/);
+  assert.match(authentication, /gh cao setup auth github-app \\\n\s+--repo acme\/central-agentic-ops/);
+  assert.match(authentication, /gh cao setup auth github-app --help/);
+  assert.doesNotMatch(authentication, /cao-setup|setup-github-apps\.mjs|CAO_REF=/);
   assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
 });
 
@@ -537,8 +538,8 @@ test("root campaign composes its operational campaigns through manifests", () =>
       destination: ".github/workflows/shared/operations.mjs",
     },
     {
-      source: ".github/workflows/shared/setup-github-apps.mjs",
-      destination: ".github/workflows/shared/setup-github-apps.mjs",
+      source: ".github/workflows/shared/github-apps.mjs",
+      destination: ".github/workflows/shared/github-apps.mjs",
     },
     {
       source: ".github/workflows/shared/materialize-cao.mjs",

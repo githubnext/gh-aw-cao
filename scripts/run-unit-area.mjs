@@ -11,12 +11,12 @@ export const unitTestAreas = {
   dashboard: [/^dashboard-/, /^cli-action-/, /^server-azure-/],
   workflows: [
     /^workflow-contract-/, /^control-/, /^campaign-/, /^contoso-/,
-    /^setup-github-apps\./, /^setup-hosted-cli-app\./, /^gh-aw-version-/, /^release-workflow\./, /^build-release\./,
+    /^github-apps\./, /^setup-hosted-cli-app\./, /^gh-aw-version-/, /^release-workflow\./, /^build-release\./,
     /^add-operational-value-skill\./, /^token-intervention-lifecycle\./,
   ],
   tooling: [
     /^cao-/, /^ops-publish/, /^optimization-/, /^dependabot-/, /^azure-local-/,
-    /^eslint-rules-/, /^actions-context\./, /^agent-plugin\./,
+    /^eslint-rules-/, /^actions-context\./, /^actions-runtime\./, /^agent-plugin\./,
     /^install-script\./, /^setup-terminal\./, /^repository-/, /^no-hardcoded-github-actions-url\./,
     /^token-optimization-data-contract\./, /^unit-area-selection\./,
     /^backfill-stress-report\./, /^source-map-compat\./,

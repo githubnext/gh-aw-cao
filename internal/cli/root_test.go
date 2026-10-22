@@ -18,6 +18,8 @@ func TestCommands(t *testing.T) {
 		{"version flag", []string{"--version"}, "gh cao version test\n"},
 		{"version command", []string{"version"}, "gh cao version test\n"},
 		{"doctor help", []string{"doctor", "--help"}, "gh cao doctor"},
+		{"evidence help", []string{"evidence", "--help"}, "gh cao evidence"},
+		{"release evidence help", []string{"evidence", "release", "--help"}, "gh cao evidence release"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -49,6 +51,9 @@ func TestInvalidCommands(t *testing.T) {
 		{"version", "extra"},
 		{"doctor", "extra"},
 		{"doctor", "--unknown"},
+		{"evidence", "release"},
+		{"evidence", "release", "extra"},
+		{"evidence", "release", "--unknown"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			root := newRootCommand("test", func(context.Context) (string, error) {

@@ -479,3 +479,261 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: remediation remains in progress. No deployed identity,
   collector/alert, legacy migration, key/debt reconciliation, provider/period
   control or main/control-branch activation closed.
+
+## 2026-10-22 - SOC2-LOG-022 - Current-source readiness reassessment
+
+- Type: user-requested read-only reassessment and prioritized remaining work.
+- Source baseline: `53458a46d983356cdc2b8c5f27903026ca707a82`;
+  compared with original investigation
+  `e3daa5d7ad4fa537e6432359076b44f4a90be171` and runtime
+  `ef7d9fb65ea952826f9d81a94bd5890d3cfd5634`.
+- Specification: RFC-035, record schema version 1.
+- Current implementation includes all ten original technical corrections
+  and DATA-08's maintained fixture. The register's new leading section
+  records narrowly scoped design-supported claims and supersedes older
+  unintegrated-proposal descriptions only for current-source presence.
+  Original observations, approvals and lifecycle history are preserved.
+- Evidence: five bounded Go invocations exited 0: component 3,149 pass /
+  250 skip, HTTP 332 pass / 19 skip, mocked deployment 44 pass / zero skip,
+  data support 447 pass / 56 skip, shared query 1,125 pass / zero skip
+  test/subtest events. Counts are not unique controls or a compliance score.
+  Raw JSONL evidence is in the assessment session artifact directory
+  referenced from the current register.
+- Coverage: component inventory, CC1-CC9 evidence obligations, separate
+  optional profiles and A1/PI1/C1/P1-P8 applicability accounted for.
+  Prioritized scope/governance, rollout/principal/key, independent audit,
+  restore, executor, retention, release and period-evidence work.
+- Authorization: assessment/report maintenance only. No runtime, rollout,
+  retention, credential, permission or deployment change; no issue, PR,
+  remediation session, provider probe or service startup.
+- Decisions/lifecycle: existing remediate/in-progress records retained;
+  evidence-only and applicability decisions remain pending. No risk
+  acceptance, exclusion, finding closure or operating-effectiveness claim.
+- Limitations: real PostgreSQL/Redis, intended executor platforms, external
+  audit receiver/upstream runtimes, production configuration, scanning and
+  organizational/period evidence remain unverified. No new demonstrated
+  runtime design gap established; readiness remains undetermined.
+
+## 2026-10-22 - SOC2-LOG-023 - Follow-up hardening and metadata proposal
+
+- Type: operator-directed bounded hardening and received component report.
+- Authorization: operator directed "start separate sessions to apply
+  improvements". Five independent sessions own metadata byte bounds,
+  PostgreSQL budgets, missing-terminal audit detection, release evidence
+  collection and key custody/rotation. No merge or production authority.
+- Specification: RFC-035, record schema version 1.
+- Received DATA-10 metadata report at commit
+  `7f22e61b5f81b8891b2be01023b486d25cc73cf2`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`.
+  Coordinator verified [#19422](https://github.com/githubnext/gh-cao/pull/19422)
+  open/draft/head/base. Target files were reported unchanged from assessment
+  `53458a46d983356cdc2b8c5f27903026ca707a82` before the patch.
+- Proposal: predecode manifest 8 MiB and generic marketplace JSON 16 MiB
+  bounds, complete-document validation and explicit failure semantics.
+  Narrow claims are design-supported at the proposal SHA, not integrated
+  on the assessment branch or demonstrated deployed.
+- Session-reported verification: 215 focused race test/subtest passes,
+  zero skips/failures; selected consumers six passes/six PostgreSQL skips;
+  scoped lint/vet/build, whitespace and 73-workflow compilation passed.
+  Coordinator did not rerun runtime validation.
+- Decision/lifecycle: DATA-10 authorized slices remediate/in-progress;
+  broader evidence-needed status and outstanding closure requests retained.
+  Other four final reports remain pending.
+- Limitations: intentional larger-input rejection needs workload review;
+  decoded heap, concurrency/physical DB/temp budgets, file I/O deadlines,
+  deployment and historical operation remain unverified. No finding closed,
+  risk accepted, exclusion approved or compliance assertion made.
+
+## 2026-10-22 - SOC2-LOG-024 - Release evidence collector proposal received
+
+- Type: received bounded hardening report; RFC-035 record schema version 1.
+- Source: proposal `fde438115bfc8bfec9ea2a5db81d6704baa72659`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`, descendant of assessed
+  `53458a46d983356cdc2b8c5f27903026ca707a82`.
+  Coordinator verified [#19423](https://github.com/githubnext/gh-cao/pull/19423)
+  open/draft/head/base identity.
+- Related requests: REL-OP-01 / OPS-08. Owner-invoked read-only collection of
+  bounded run/artifact/approval references, optional exact-identity
+  attestation checks and sanitized existing Azure development receipts.
+  Versioned reports explicitly retain incomplete evidence boundaries.
+- Session-reported validation: 73 synthetic tests passed without skips;
+  lint, CAO typecheck, whitespace and 73-workflow compilation passed.
+  No real registry/API/deployment verification; coordinator did not rerun tests.
+- Decision/lifecycle: collector implementation authorized by the follow-up
+  directive, remediate/in-progress; broader evidence-needed records remain
+  open. Three other final implementation reports remain pending.
+- Limits: no independent original-evidence archive, actual running-image
+  measurement, approval independence, enforced governance, scan-exception
+  disposition or period proof. No runtime/control closure, deployment,
+  permissions, retention, risk acceptance or compliance assertion.
+
+## 2026-10-22 - SOC2-LOG-025 - Offline App key preflight proposal received
+
+- Type: bounded hardening report; RFC-035 record schema version 1.
+- Proposal source: `eb1d079ad24c62402692b9bfea2263c831e96b15`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`. Coordinator verified
+  [#19424](https://github.com/githubnext/gh-cao/pull/19424) open/draft/head/base.
+- Related requests: EXEC-05 / OPS-07 and IAM-006 key lifecycle evidence.
+  Authorized fallback implements bounded offline RSA key consistency,
+  public-fingerprint pinning and changed-key preflight. Runtime signing
+  and deployed custody are unchanged.
+- Managed signing remains unimplemented: provider/import/version/RS256,
+  identity/grant/deployment and context-bounded no-fallback integration
+  need explicit design decisions; a dependency signer seam is insufficient.
+- Session-reported validation: 1,317 race test/subtest passes, 12 platform/
+  database/deployed-data skips; scoped lint zero issues, fmt/vet/focused race
+  and 73-workflow compilation passed. No real GitHub/KMS/production test;
+  coordinator did not rerun runtime tests.
+- Disposition: narrow preflight design-supported at proposal SHA; source
+  remediation slice in-progress, not merged/deployed. Broader custody,
+  retirement/token-cleanup and period evidence remains needed/open;
+  managed-signing decisions pending. Two other final reports remain pending.
+- No risk acceptance, exclusion, finding closure, provider/key/permission
+  action or operating-effectiveness/compliance assertion.
+
+## 2026-10-22 - SOC2-LOG-026 - PostgreSQL read-budget proposal received
+
+- Type: bounded DATA-10 hardening report; RFC-035 record schema version 1.
+- Proposal `95d5da40f14c75b8c12d0436419e9e2980b0afd7`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`; coordinator verified
+  [#19425](https://github.com/githubnext/gh-cao/pull/19425) open/draft/head/base.
+- Narrow source support: whole canonical-read deadline begins before pool
+  wait; transaction-local timeouts preserve stricter operator ceilings.
+  No new memory/disk/worker policy or deployed settings.
+- Session-reported owned-local PostgreSQL 18.6 evidence: full store suite
+  passed in 587.663s; focused race suites passed without skips. Measured
+  statement/pool/caller cancellation, production statistics lock rejection,
+  synthetic physical sort spill and inherited temp-file-limit rejection.
+  Query/sqlbuilder/command tests, vet/build, full server lint and seeded
+  73-workflow compilation passed. Cluster stopped and removed.
+- Coordinator did not rerun provider tests. Deployed-data benchmark absent;
+  local measurements do not establish PostgreSQL 16/managed-provider/fleet
+  capacity, total physical cost or historical operation.
+- Decision/lifecycle: source slice remediate/in-progress, not merged/deployed;
+  broader DATA-10 evidence-needed/open. One final audit-detection report
+  remains pending. No control closure, risk acceptance or deployment action.
+
+## 2026-10-22 - SOC2-LOG-027 - Audit detector and revised metadata proposal
+
+- Type: final follow-up report and user-directed proposal revision;
+  RFC-035 record schema version 1.
+- Audit detector source: `8346491ecaa735bc902b327d41f601124a066bad`,
+  base `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`;
+  [#19426](https://github.com/githubnext/gh-cao/pull/19426) open/draft/head/base
+  verified. Bounded read-only lifecycle scanning preserves capped/suffix/gap/
+  duplicate uncertainty and does not repair history or replay outcomes.
+- Session-reported detector race events: 34 pass; CLI 276 pass/three
+  PostgreSQL skips; focused independent PostgreSQL history also skipped.
+  Audit/SQLite, vet, full-server lint and 73-workflow compile passed.
+  OPS-01/OPS-05 operating/independent-custody evidence remains unresolved.
+- Metadata revision: verified draft
+  [#19422](https://github.com/githubnext/gh-cao/pull/19422) head
+  `51a569977074f87c7191c80621817424f060e2bf`. User-directed smaller,
+  centralized configurable budgets supersede SOC2-LOG-023's initial
+  8 MiB/16 MiB values: manifest 2 MiB, ordinary JSON 512 KiB, recursive
+  repository tree 8 MiB. Independent positive-byte environment overrides
+  fail explicitly when invalid before relevant I/O; effective deployment
+  limits remain unknown.
+- Revised metadata session reports 283 race events passing without skips,
+  scoped lint/vet/build and final 73-workflow compile passed. Prior six
+  PostgreSQL consumer skips were not rerun; original history preserved.
+- Coordinator verified proposal identities and consolidated material evidence,
+  not runtime test execution. All five follow-up draft proposals delivered;
+  combined release validation/integration/deployment not asserted.
+- Decisions/limitations: source slices remediate/in-progress, broader requests
+  evidence-needed/open; operator closure/risk/exclusion decisions pending.
+  No production change, permission widening, independent operating evidence
+  or compliance conclusion.
+
+## 2026-10-22 - SOC2-LOG-028 - Offline key preflight parser correction
+
+- Type: follow-up proposal correction; RFC-035 record schema version 1.
+- Verified [#19424](https://github.com/githubnext/gh-cao/pull/19424) remains
+  open/draft against main at
+  `451e6e94e00d6b089e321c1d1c57e711c1fc986e`, superseding
+  `eb1d079ad24c62402692b9bfea2263c831e96b15` for current-source citations.
+  SOC2-LOG-025 remains the original observation.
+- Published diff adds single-BEGIN-marker validation to the offline parser,
+  rejecting malformed/unterminated leading same-type PEM blocks that
+  `pem.Decode` could skip before accepting a later valid key. Parser and
+  command no-success-output regressions accompany the fix.
+- Session reports reproduced failures before remediation and passing full
+  changed-package race suites, vet, pinned formatter and targeted lint
+  (zero issues). Coordinator verified proposal identity and inspected the
+  diff; runtime tests were not independently rerun.
+- EXEC-05/OPS-07 and related IAM-006 remain evidence-needed/open; no new
+  runtime-signing vulnerability or closure is inferred. Runtime signing,
+  managed-provider decisions, custody evidence and operating effectiveness
+  (not-assessed) are unchanged. No merge, deployment or key lifecycle action.
+
+## 2026-10-22 - SOC2-LOG-029 - PostgreSQL constant and native collector revision
+
+- Type: follow-up source revision and pending user-directed implementation
+  correction; RFC-035 record schema version 1.
+- Verified draft [#19425](https://github.com/githubnext/gh-cao/pull/19425)
+  head `c623141efe611da61117875b2a004319c2b7787d`. Session reports merging
+  main `bf11b39b0`; follow-up diff centralizes the unchanged 60-second
+  PostgreSQL timeout in inputlimits without a resource-policy change.
+- Session reports post-merge inputlimits/postgresx/query tests, scoped lint
+  and build passing; database-backed tests skipped. SOC2-LOG-026 physical
+  observations remain bound to `95d5da40f14c75b8c12d0436419e9e2980b0afd7`.
+  Coordinator inspected the published delta, not a combined database rerun.
+- User-directed release collector correction requires native Go
+  `gh cao evidence release`, replacing the repository-local JavaScript tool.
+  Verified [#19423](https://github.com/githubnext/gh-cao/pull/19423) remains
+  open/draft at observed head `4b5caa6483cb861df2988b70d7036fdbb7b7ddd6`;
+  final native source/validation handoff pending. Original JavaScript
+  citations/results remain historical, not evidence for its replacement.
+- DATA-10, REL-OP-01 and OPS-08 remain evidence-needed/open; source slices
+  remediate/in-progress. Authority, retention, operator decisions and
+  operating effectiveness (not-assessed) are unchanged. No deployment or
+  compliance conclusion.
+
+## 2026-10-22 - SOC2-LOG-030 - Native release evidence collector handoff
+
+- Type: final user-directed native implementation revision;
+  RFC-035 record schema version 1.
+- Verified [#19423](https://github.com/githubnext/gh-cao/pull/19423) open/draft
+  at `ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b`. Native Go
+  `gh cao evidence release` replaces the JavaScript collector and tests,
+  reuses existing Azure receipt types and shared bounded gh execution, and
+  adds no Node/dashboard-server dependency. This supersedes SOC2-LOG-029's
+  pending native handoff; original JavaScript evidence remains historical.
+- Current source citations, exact race command, log and exclusions are in
+  the maintained register. Session reports 1,322 passing race test/subtest
+  events and one published-runtime integration skip; root lint/typecheck,
+  Go lint, compile (73), docs build and standalone build/help passed.
+  Coordinator verified identity/change surfaces, not runtime execution.
+- REL-OP-01/OPS-08 remain evidence-needed/open. Native collection is narrowly
+  design-supported; incomplete reports do not establish independent approval,
+  original-bundle retention, running-image identity or operating effectiveness.
+  Operator destination ACL enforcement remains required; 0600 is
+  platform-dependent. Actual registry/API verification, deployment,
+  retention/rollback/governance and period evidence remain unverified.
+  No merge, production/authority change or finding closure.
+
+## 2026-10-22 - SOC2-LOG-031 - Native collector usefulness review
+
+- Type: user-requested component usefulness review;
+  RFC-035 record schema version 1.
+- Same source `ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b`; coordinator
+  verified [#19423](https://github.com/githubnext/gh-cao/pull/19423)
+  open/ready and not merged. Earlier draft observations remain historical.
+- Review concludes useful bounded evidence index/exact-identity checkpoint,
+  not a self-contained independently retained CC8 audit packet.
+- Added OPS-USE-01 through OPS-USE-04 to the maintained register: replayable
+  signed-evidence retention; candidate/promotion/source/assets/approval
+  binding; allowlisted semantic gate/policy/result references; sanitized
+  actionable reasons and an opt-in required-evidence profile. All are
+  evidence-needed/open with pending operator decisions, not confirmed bugs.
+  Source citations, counter-evidence, owners, tradeoffs and closure evidence
+  are recorded there.
+- Session reports focused native collector/helper/command/inventory tests
+  and whitespace checks passing; security/fix-first reviews found no
+  high-confidence vulnerability or implementation defect requiring a fix.
+  Coordinator read the report and verified source identity, not those tests
+  or an independent security review.
+- No real registry/attestation/Azure/archive/period observation or runtime,
+  policy, deployment change. REL-OP-01/OPS-08 remain unresolved;
+  operating effectiveness not-assessed; no new implementation authorization
+  or finding closure.

@@ -3,6 +3,8 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { executeDashboardQueries } from '../../src/data/queries/declarative.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import { validateDashboardDocument } from '../../src/validator.js';
+import { dashboardPageLazySourceNames, dashboardPagePaginatedSourceBindings } from '../../src/presenter.js';
+import contract from '../fixtures/marketplace-view-contract.json' with { type: 'json' };
 
 const dashboard = authoritativeDashboard.dashboard;
 const page = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace');
@@ -12,14 +14,7 @@ const metadata = {
   'as-of': '2026-09-30T00:00:00Z', 'retrieved-at': '2026-09-30T00:00:00Z',
   completeness: 'complete', freshness: 'fresh', availability: 'available'
 };
-const packages = [
-  { id: 'one', 'registry-id': 'primary', 'registry-name': 'Primary', publisher: 'Alpha',
-    'package-name': 'Audit Helper', 'package-description': 'Audit quality checks', stars: 2 },
-  { id: 'two', 'registry-id': 'other', 'registry-name': 'Other', publisher: 'Beta',
-    'package-name': 'Audit Runner', 'package-description': 'Audit security', stars: null },
-  { id: 'three', 'registry-id': 'primary', 'registry-name': 'Primary', publisher: 'Alpha',
-    'package-name': 'Workflow Manager', 'package-description': 'Manage deployments', stars: 11 }
-];
+const packages = contract.rows;
 const sources = { 'marketplace-packages': { source: 'marketplace-packages', rows: packages, metadata } };
 
 function resolve() {
@@ -62,16 +57,46 @@ describe('marketplace discovery', () => {
     ]));
   });
 
-  it('binds the declarative card list directly to marketplace packages without facets or ranking', () => {
+  it('binds the declarative card list to an alphabetic package query without facets or ranking', () => {
     expect(page.views).toHaveLength(1);
     expect(page.views[0]).toMatchObject({
-      mark: 'list', data: { source: 'marketplace-packages', 'query-context': false },
-      list: { style: 'entity-cards', card: 'marketplace-package-summary' }
+      id: contract.view,
+      mark: 'list', data: { source: contract.source, 'query-context': false },
+      'lazy-list': contract['lazy-list'],
+      list: { style: 'entity-cards', card: contract.card }
     });
-    expect(dashboard.queries.some((/** @type {{name: string}} */ query) => query.name.startsWith('marketplace-')
-      && query.name !== 'marketplace-package-detail')).toBe(false);
+    expect(dashboard.queries.find((/** @type {{name: string}} */ query) => query.name === 'marketplace-directory')).toMatchObject({
+      from: 'marketplace-packages',
+      'order-by': contract['order-by']
+    });
     const { rows } = resolve();
-    expect(rows('marketplace-packages')?.map((row) => row.id)).toEqual(['one', 'two', 'three']);
-    expect(rows('marketplace-packages')?.[1].stars).toBeNull();
+    expect(rows('marketplace-directory')?.map((row) => row.id)).toEqual(['one', 'two', 'three']);
+    expect(rows('marketplace-directory')?.[1].stars).toBeNull();
+    const template = dashboard['card-templates'].find((/** @type {{ id: string }} */ template) => template.id === contract.card);
+    expect([template.title, template.subtitle, ...template.labels, ...template.details].map(field => field.field))
+      .toEqual(contract['summary-fields']);
+  });
+
+  it('requests canonical continuation pages for the declared lazy card list', () => {
+    expect(dashboardPageLazySourceNames(authoritativeDashboard, 'marketplace')).toEqual(['marketplace-directory']);
+    expect(Object.values(dashboardPagePaginatedSourceBindings(authoritativeDashboard, 'marketplace')))
+      .toEqual([{ sourceName: 'marketplace-directory', viewId: 'marketplace-packages' }]);
+    expect(resolve().compiled.aliases).toHaveLength(1);
+  });
+
+  it('enforces a declared lazy-list row limit in the query rather than per rendered batch', () => {
+    const limited = structuredClone(page);
+    limited.views[0].data.limit = 7;
+    const compiled = compileDashboardViewPayloadQueries(limited, 'marketplace', { queries: dashboard.queries });
+    expect(compiled.queries.find(query => query.name === compiled.aliases[0])?.limit).toBe(7);
+  });
+
+  it('rejects lazy loading on list presentations without entity cards', () => {
+    const document = structuredClone(authoritativeDashboard);
+    const list = document.dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === 'marketplace').views[0];
+    list.list.style = 'cards';
+    expect(validateDashboardDocument(JSON.stringify(document)).errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: expect.stringMatching(/\.lazy-list$/) })
+    ]));
   });
 });

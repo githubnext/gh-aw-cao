@@ -3,13 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "cao": "activity/cao.mjs",
-    "cao-setup": ".github/workflows/shared/setup-github-apps.mjs"
+    "cao": "activity/cao.mjs"
   },
   "scripts": {
     "postinstall": "node dashboard/site/scripts/prepare-terminal.mjs",
     "install:gh-aw": "GH_AW_VERSION=$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
-    "setup:github-apps": "node .github/workflows/shared/setup-github-apps.mjs",
     "dashboard:local": "node dashboard/local-server.mjs",
     "dashboard:server:build": "npm run dashboard:server:spec:check && npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json",
     "dashboard:server:redis-up": "docker-compose -f server/docker-compose.yml up -d redis",
@@ -24,6 +22,7 @@
     "dashboard:server:test": "go -C server test -p 1 ./...",
     "test:integration:dashboard-backfill": "bash scripts/test-dashboard-backfill.sh",
     "test:integration:actions-simulator": "go -C server test -race ./internal/simulator ./internal/admission ./internal/webhookgateway ./cmd/cao-webhook-gateway -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' -count=1 -timeout=2m -v",
+    "test:integration:actions-runtime": "node --test tests/integration/actions-runtime.test.mjs",
     "test:integration:bootstrap": "CAO_BOOTSTRAP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAOBootstrapIntegration|TestBootstrap)' -count=1 -timeout=10m -v",
     "test:integration:setup": "CAO_SETUP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAOSetupIntegration|TestSetup)' -count=1 -timeout=10m -v",
     "test:integration:actions-simulator-postgres": "CAO_ACTIONS_SIMULATOR_POSTGRES=1 go -C server test -race ./internal/admission ./internal/webhookgateway -run '^(TestLocalActionsPostgresIntegration|TestGitHubSimulator(Gateway|Discovery)Postgres)$' -count=1 -timeout=2m -v",

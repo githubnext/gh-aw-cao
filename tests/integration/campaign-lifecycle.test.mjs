@@ -27,7 +27,7 @@ const controlRuntimeFiles = [
   ".github/workflows/shared/policy.mjs",
   ".github/workflows/shared/authority.mjs",
   ".github/workflows/shared/operations.mjs",
-  ".github/workflows/shared/setup-github-apps.mjs",
+  ".github/workflows/shared/github-apps.mjs",
 ];
 const controlPlaneSkillFiles = [
   ".github/skills/agentic-workflows/SKILL.md",

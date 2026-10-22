@@ -220,13 +220,15 @@ func bootstrapEnvironment(t *testing.T, root, proxy, ca string) []string {
 		}
 	}
 	// Do not inherit user tokens, git configuration, credential helpers,
-	// extension installations, proxies, or Actions credentials.
+	// extension installations, proxies, or Actions credentials. Disable CLI
+	// telemetry before it can start background requests outside the allowlist.
 	return []string{
 		"PATH=" + os.Getenv("PATH"), "HOME=" + home, "XDG_CONFIG_HOME=" + config, "XDG_DATA_HOME=" + data,
 		"GH_CONFIG_DIR=" + filepath.Join(config, "gh"), "GH_HOST=github.com",
 		"GH_TOKEN=simulator-token-with-no-external-authority", "GH_PROMPT_DISABLED=1",
 		"GH_NO_UPDATE_NOTIFIER=1", "GH_NO_EXTENSION_UPDATE_NOTIFIER=1",
 		"GH_AW_DISABLE_UPDATE_CHECK=1",
+		"DO_NOT_TRACK=1", "GH_TELEMETRY=0",
 		"HTTPS_PROXY=" + proxy, "HTTP_PROXY=" + proxy, "ALL_PROXY=" + proxy, "NO_PROXY=",
 		"https_proxy=" + proxy, "http_proxy=" + proxy, "all_proxy=" + proxy, "no_proxy=",
 		"SSL_CERT_FILE=" + ca, "CURL_CA_BUNDLE=" + ca, "GIT_SSL_CAINFO=" + ca,

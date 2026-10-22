@@ -212,6 +212,10 @@ See the [GitHub App improvements announcement](https://github.blog/changelog/202
 
 Use this path when the control repository and every target belong to one organization.
 
+Install the `gh cao` extension with `gh extension install githubnext/gh-cao`.
+GitHub App setup runs natively in the extension; it does not require Node.js or
+a checked-out setup script.
+
 Before setup, add every private target and alternate review repository to the exact allowlist in `.github/workflows/cao.json`:
 
 ```json
@@ -267,10 +271,10 @@ gh secret set GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY \
   < write-app-private-key.pem
 ```
 
-The installed helper can also run directly:
+To inspect all GitHub App setup options:
 
 ```bash
-node .github/workflows/shared/setup-github-apps.mjs --repo acme/central-agentic-ops
+gh cao setup auth github-app --help
 ```
 
 ### Multiple organizations in one enterprise

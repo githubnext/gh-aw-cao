@@ -703,7 +703,7 @@ for (const [description, repositoryResult] of [
   });
 }
 
-test("cao setup-auth delegates private GitHub App setup options", () => {
+test("cao setup-auth delegates private GitHub App setup to the native extension", () => {
   const calls = [];
   const result = setupCaoAuthentication("github-app", [
     "--repo", "acme/control",
@@ -716,15 +716,24 @@ test("cao setup-auth delegates private GitHub App setup options", () => {
   });
 
   assert.deepEqual(calls, [[
-    process.execPath,
+    "gh",
     [
-      path.join(".github", "workflows", "shared", "setup-github-apps.mjs"),
+      "cao", "setup", "auth", "github-app",
       "--repo", "acme/control",
       "--dry-run",
     ],
     { stdio: "inherit" },
   ]]);
   assert.deepEqual(result, { command: "setup-auth", profile: "github-app" });
+  for (const failure of [
+    { status: 1, stderr: "setup stopped" },
+    { status: null, error: new Error("spawn gh ENOENT") },
+  ]) {
+    assert.throws(
+      () => setupCaoAuthentication("github-app", [], { execute: () => failure }),
+      /GitHub App setup failed: (?:setup stopped|spawn gh ENOENT)/,
+    );
+  }
 });
 
 test("cao setup-auth delegates hosted CLI App setup options", () => {

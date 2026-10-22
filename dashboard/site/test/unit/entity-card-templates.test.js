@@ -33,9 +33,12 @@ describe('entity card templates', () => {
       'icon-field': 'package-icon',
       title: { field: 'package-name' },
       subtitle: { field: 'package-description' },
+      'detail-labels': 'visible',
       details: [
-        { field: 'publisher', title: 'By' },
-        { field: 'forks', title: 'Public forks' }
+        { field: 'publisher', title: 'By' }
+      ],
+      labels: [
+        { field: 'registry-name', title: 'Registry', display: 'label' }
       ]
     });
     expect(templates['marketplace-package-summary'].actions).toBeUndefined();
@@ -56,10 +59,12 @@ describe('entity card templates', () => {
     )?.pages).toContain('marketplace');
     expect(pages.marketplace.views).toHaveLength(1);
     expect(pages.marketplace.views[0]).toMatchObject({
-      data: { source: 'marketplace-packages' },
+      data: { source: 'marketplace-directory' },
+      'lazy-list': true,
       list: {
         style: 'entity-cards',
         appearance: 'marketplace',
+        layout: 'grid',
         icon: 'archive',
         card: 'marketplace-package-summary',
         drill: { page: 'marketplace-package', query: 'marketplace-package-detail' }
