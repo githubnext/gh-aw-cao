@@ -21,6 +21,51 @@ The automated suite checks source `.md` contracts, ops-value interfaces, smoke-w
 | Runtime stress | `.github/workflows/enterprise-stress.yml` | Manual protected Actions dispatch | Repository-local two, three, or five same-scope review runs verify cancellation and no target mutation. |
 | Ops Publish | `tests/unit/ops-publish*.test.mjs` | `node --test tests/unit/ops-publish*.test.mjs` | Reviewer, provenance, routing, authority, least-privilege, API failure, retry, pagination, and publication contracts. |
 
+## Offline Azure Installation Journey
+
+Run the private hosted installation journey independently:
+
+```bash
+POSTGRES_URL=postgres://postgres@127.0.0.1:5432/cao?sslmode=disable \
+  npm run test:integration:azure-install-journey
+```
+
+`TestCAOAzureInstallJourneyIntegration` in
+`server/internal/simulator/azure_journey_test.go` follows the private-farm branch
+documented in [bradygaster/gh-aw-cao#26](https://github.com/bradygaster/gh-aw-cao/issues/26).
+It is separate from `npm run test:integration:setup-azure`, which retains the
+empty-initialization, plan-drift, and provisioning-failure scenarios.
+
+| Journey milestone | Executable coverage |
+| --- | --- |
+| Install in a private control checkout | Real installer, synthetic release/checksums, real `gh cao` and `gh aw`, runtime materialization; no Pages requests |
+| Review authority and App handoffs | Exact private control/target policy, separate read/write App previews, repository-variable writes/read-back, secret names only, local Git publication and policy read-back |
+| Approve and deploy | Real preflight/plan/apply, verified synthetic snapshot, simulated Azure CLI, Azurite-backed build/deployment state, locked digest references, exact provisioning then ingestion executions |
+| Sign in and establish farm connectivity | Real Functions process and PostgreSQL, cookie-jar HTTP client, simulated GitHub authorization/code exchange/membership, allowed login, denied outsider and credential revocation, non-admin denial, hosted backend bootstrap and exact private repositories/runs through the query API |
+| Verify continuing refresh and handoff | A second synthetic snapshot ingested by the real command, hosted refresh and advancing revision/new runs, secret-free receipt, unchanged authority/consumer files, fresh-deployment-only guard and graceful shutdown |
+
+Prepare the pinned gh-aw version and cached Go modules before running; the
+scenario disables Go module/toolchain downloads. PostgreSQL must use numeric
+loopback, including connection-string overrides. Azurite uses the preloaded
+pinned image on a local Docker Unix socket with an internal-only network, or an
+installed official `azurite-blob` executable selected by
+`CAO_SETUP_AZURITE_BINARY`. No Azure CLI installation, cloud login, subscription,
+GitHub token, App PEM, or OAuth registration is needed. Subprocesses use isolated
+homes, inert test credentials and an allowlisted loopback HTTPS proxy; the test
+does not inherit cloud credentials.
+
+**Simulation boundaries:** operator approvals, App installation/key custody,
+repository creation and collection of the supplied snapshot are fixture inputs.
+The test does not create or validate real App keys, execute Actions collection,
+render the full dashboard JavaScript in a browser, build container images, or
+prove Azure capacity/RBAC/network isolation. The refresh branch is controlled
+snapshot ingestion, not optional collector enrollment. Synthetic OAuth proves
+the application flow only, not a real user's GitHub login. The reference issue
+explicitly leaves fresh-farm deployment and real sign-in unverified; the earlier
+synthetic-OAuth experiment is not evidence that those milestones succeeded.
+Production approval, maintenance scheduling, restore drills and retirement of
+an older farm remain separate operator decisions.
+
 ## Campaign Lifecycle Integration
 
 The integration suite creates disposable consumer repositories under the system temporary directory and removes them after each test.
