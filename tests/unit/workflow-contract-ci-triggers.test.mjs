@@ -335,7 +335,8 @@ test("pull request triggers route frontend, control, server, and test changes se
 test("main pushes retain browser and integration coverage for representative inputs", () => {
   const cases = [
     ["actions.yml", "tests/e2e/dashboard-mobile-live.spec.mjs"],
-    ["actions.yml", "dashboard/local-server.mjs"],
+    ["actions.yml", "server/cmd/cao-dashboard/serve_pages.go"],
+    ["actions.yml", "tests/helpers/dashboard-pages-preview.mjs"],
     ["actions.yml", "tests/e2e/dashboard-tree-analysis.mjs"],
     ["actions.yml", "self-care/dashboard-fragments/overview.json"],
     ["azure-local-integration.yml", "scripts/azure-local/azure-local.sh"],

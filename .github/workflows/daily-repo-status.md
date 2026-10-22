@@ -1,9 +1,9 @@
 ---
-name: "Repo Status"
+name: "Daily Repo Status"
 description: "Summarizes one repository's previous complete UTC day in one bounded status issue."
 intent: Give maintainers an evidence-backed view of repository progress and the most useful next action, without duplicate reports or unsupported health claims.
-tracker-id: repo-status
-run-name: "Repo Status · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
+tracker-id: daily-repo-status
+run-name: "Daily Repo Status · ${{ inputs.target_repo }} · ${{ inputs.safe_output_mode || 'review' }}"
 
 max-ai-credits: 300
 max-daily-ai-credits: -1
@@ -49,7 +49,7 @@ imports:
   - uses: shared/control.md
     with:
       role: standalone
-      workflow: repo-status
+      workflow: daily-repo-status
       read_repository: ${{ inputs.target_repo }}
       read_actions: read
       read_contents: read
@@ -64,6 +64,7 @@ permissions:
   copilot-requests: write
 
 engine: copilot
+model: gpt-5.3-codex
 strict: true
 
 concurrency:
@@ -111,14 +112,14 @@ steps:
         const fs = require('node:fs');
         const precompute = JSON.parse(fs.readFileSync('/tmp/gh-aw/agent/control-precompute.json', 'utf8'));
         if (precompute.authorized !== true || precompute.control_role !== 'standalone'
-          || precompute.workflow !== 'repo-status') {
-          throw new Error('Missing standalone Repo Status admission');
+          || precompute.workflow !== 'daily-repo-status') {
+          throw new Error('Missing standalone Daily Repo Status admission');
         }
         const targets = precompute.candidate_repositories;
         if (!Array.isArray(targets) || targets.length > 1
           || !Number.isSafeInteger(precompute.effective_max_repos)
           || precompute.effective_max_repos < targets.length) {
-          throw new Error('Repo Status requires at most one admitted target per run');
+          throw new Error('Daily Repo Status requires at most one admitted target per run');
         }
         const target = targets[0];
         if (target && (typeof target.full_name !== 'string'
@@ -129,7 +130,7 @@ steps:
           || process.env.REVIEW_OUTPUT_REPO.toLowerCase() !== process.env.OUTPUT_REPOSITORY.toLowerCase())) {
           throw new Error('Requested report target, mode or destination differs from admitted routing');
         }
-        const directory = '/tmp/gh-aw/agent/repo-status';
+        const directory = '/tmp/gh-aw/agent/daily-repo-status';
         fs.mkdirSync(directory, { recursive: true });
         fs.writeFileSync(`${directory}/target.json`, JSON.stringify({ target: target || null }));
         core.setOutput('eligible', Boolean(target));
@@ -147,7 +148,7 @@ steps:
         if (!Number.isFinite(started.getTime())) throw new Error('Missing workflow creation time');
         const end = new Date(Date.UTC(started.getUTCFullYear(), started.getUTCMonth(), started.getUTCDate()));
         const start = new Date(end.getTime() - 86400000);
-        const directory = '/tmp/gh-aw/agent/repo-status';
+        const directory = '/tmp/gh-aw/agent/daily-repo-status';
         fs.mkdirSync(directory, { recursive: true });
         fs.writeFileSync(`${directory}/window.json`, JSON.stringify({
           date: start.toISOString().slice(0, 10),
@@ -166,7 +167,7 @@ steps:
         const fs = require('node:fs');
         const [owner, repo] = process.env.OUTPUT_REPOSITORY.split('/');
         if (!owner || !repo) throw new Error('Missing admitted report destination');
-        const directory = '/tmp/gh-aw/agent/repo-status';
+        const directory = '/tmp/gh-aw/agent/daily-repo-status';
         const window = JSON.parse(fs.readFileSync(`${directory}/window.json`, 'utf8'));
         const reports = [];
         for (const state of ['open', 'closed']) {
@@ -190,13 +191,13 @@ steps:
         }));
 ---
 
-# Repo Status
+# Daily Repo Status
 
-Adapt the Repo Status workflow from `githubnext/agentics` to one explicitly
+Adapt the Daily Repo Status workflow from `githubnext/agentics` to one explicitly
 selected, CAO-admitted repository per run, without a campaign or dispatcher.
 Read `/tmp/gh-aw/agent/control-precompute.json`,
-`/tmp/gh-aw/agent/repo-status/target.json` and
-`/tmp/gh-aw/agent/repo-status/window.json` first. If the admitted target is null,
+`/tmp/gh-aw/agent/daily-repo-status/target.json` and
+`/tmp/gh-aw/agent/daily-repo-status/window.json` first. If the admitted target is null,
 call `noop`; otherwise analyze only that target, which the deterministic guard
 has bound to `TARGET_REPO` and the compiled read credential and output route.
 Never discover repositories, dispatch work, widen mode or execute target code.
@@ -210,7 +211,7 @@ is the previous complete UTC day, inclusive `start`, exclusive `end`, fixed from
 this workflow run's original creation time so reruns do not shift it.
 Group by repository and activity type, not author productivity.
 
-Read `/tmp/gh-aw/agent/repo-status/reports.json` before writing. This deterministic
+Read `/tmp/gh-aw/agent/daily-repo-status/reports.json` before writing. This deterministic
 lookup reads open Repo Status issues in `SAFE_OUTPUT_REPO` and recently
 updated closed reports using a separate control-repository read in review mode;
 the agent's target-read credential is not widened to read the review repository.
@@ -320,4 +321,4 @@ SOFTWARE.
 
 </details>
 
-{{#runtime-import? .github/cao/repo-status.md}}
+{{#runtime-import? .github/cao/daily-repo-status.md}}

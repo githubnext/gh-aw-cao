@@ -2,14 +2,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
-const { startDashboardServer } = await import(new URL("../../../local-server.mjs", import.meta.url).href);
+const { startCanvasServer } = await import(new URL("../../../canvas-server.mjs", import.meta.url).href);
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   test(`canvas queries SQLite without opening browser IndexedDB at ${viewport.width}px`, async ({ page }, testInfo) => {
-    const preview = await startDashboardServer({
+    const preview = await startCanvasServer({
       workingDirectory: fileURLToPath(new URL("../../../../", import.meta.url)),
       repository: "acme/control",
-      canvas: true,
       port: 0,
       cliQueuePath: testInfo.outputPath(".cao", "cli-actions.sqlite"),
       approveCliAction: async () => false,

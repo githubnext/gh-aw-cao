@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
 
 const document = await readFile(new URL("../../dashboard/site/test/fixtures/query-editor.json", import.meta.url), "utf8");
 const intent = { intent: "Find failing workflows", subject: "Workflow failures", acceptance: "Show native conclusions." };
@@ -15,7 +15,7 @@ async function preview(t, options = {}) {
   await mkdir(join(root, "site"));
   await writeFile(join(root, "site", "index.html"), "<!doctype html><body>CAO preview</body>");
   await writeFile(join(root, "site", "dashboard.json"), dashboardDocument);
-  const server = await startDashboardServer({
+  const server = await startCanvasServer({
     siteRoot: join(root, "site"), catalogRoot: null, workingDirectory: root, port: 0,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => ({}), approveCliAction: async () => true,
@@ -33,14 +33,14 @@ const requestOptions = (server, payload = intent, origin = new URL(server.url).o
   method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify(payload),
 });
 
-test("query editor is injected only into SDK-enabled canvases, not query-flag-spoofed ordinary previews", async (t) => {
-  const normal = await preview(t, { generateQuery: async () => ({ document }) });
+test("query editor is injected only when the canvas host supplies a query generator", async (t) => {
+  const normal = await preview(t);
   assert.equal((await fetch(`${normal.url}/__query_designer`, requestOptions(normal))).status, 404);
   assert.equal((await fetch(`${normal.url}/?local-preview=canvas`)).status, 200);
   const normalDashboard = await (await fetch(`${normal.url}/dashboard.json`)).json();
   assert.ok(!normalDashboard.dashboard.pages.some(({ id }) => id === "query-editor"));
 
-  const canvas = await preview(t, { canvas: true, generateQuery: async () => ({ document }) });
+  const canvas = await preview(t, { generateQuery: async () => ({ document }) });
   const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
   const page = dashboard.dashboard.pages.find(({ id }) => id === "query-editor");
   assert.ok(page);
@@ -56,7 +56,7 @@ test("query editor joins the existing Experimental section without duplicating n
   const base = JSON.parse(document);
   base.dashboard.navigation = [{ label: "Experimental", experimental: true, pages: ["query-preview"] }];
   const canvas = await preview(t, {
-    canvas: true, generateQuery: async () => ({ document }), dashboardDocument: JSON.stringify(base),
+    generateQuery: async () => ({ document }), dashboardDocument: JSON.stringify(base),
   });
   const dashboard = await (await fetch(`${canvas.url}/dashboard.json`)).json();
   assert.deepEqual(dashboard.dashboard.navigation, [
@@ -68,7 +68,6 @@ test("query generation enforces capability paths, Origin, method, bounded intent
   let submitted;
   let finish;
   const server = await preview(t, {
-    canvas: true,
     generateQuery: async (input) => {
       submitted = input;
       return new Promise((resolve) => { finish = resolve; });
@@ -98,7 +97,6 @@ test("disconnect cancels generation and failures do not expose SDK prompt conten
   const cancellation = new Promise((resolve) => { cancelled = resolve; });
   let calls = 0;
   const server = await preview(t, {
-    canvas: true,
     generateQuery: async (_intent, { signal }) => {
       if (++calls > 1) throw new Error("private model prompt content");
       started();
@@ -121,12 +119,12 @@ test("disconnect cancels generation and failures do not expose SDK prompt conten
   assert.doesNotMatch(await response.text(), /private model prompt content/);
 });
 
-test("all-field improvement accepts partial intent but cannot request tools or run outside canvas", async (t) => {
+test("all-field improvement accepts partial intent but requires an authoring adapter and cannot request tools", async (t) => {
   const request = { intent: "Find failing workflows" };
   const improved = { ...intent, objective: "Prioritize investigation" };
   let submitted;
   const server = await preview(t, {
-    canvas: true, generateQuery: async () => ({ document }),
+    generateQuery: async () => ({ document }),
     enhanceQueryIntent: async (input) => { submitted = input; return improved; },
   });
   const endpoint = `${server.url}/__query_designer/enhance`;
@@ -134,7 +132,7 @@ test("all-field improvement accepts partial intent but cannot request tools or r
   assert.equal((await fetch(endpoint, requestOptions(server, request, "https://untrusted.test"))).status, 403);
   assert.deepEqual(await (await fetch(endpoint, requestOptions(server, request))).json(), improved);
   assert.deepEqual(submitted, request);
-  const normal = await preview(t, { enhanceQueryIntent: async () => improved });
+  const normal = await preview(t);
   assert.equal((await fetch(`${normal.url}/__query_designer/enhance`, requestOptions(normal, request))).status, 404);
 });
 
@@ -143,7 +141,6 @@ test("field improvement can condense overlong input but rejects over-budget call
   const improved = { ...intent, objective: "Prioritize investigation." };
   let valid = true;
   const server = await preview(t, {
-    canvas: true,
     enhanceQueryIntent: async () => valid ? improved : { ...improved, acceptance: "x".repeat(512) },
   });
   const endpoint = `${server.url}/__query_designer/enhance`;
@@ -157,7 +154,7 @@ test("field improvement can condense overlong input but rejects over-budget call
 });
 
 test("custom view saves require a valid canvas document and populate isolated local navigation", async (t) => {
-    const server = await preview(t, { canvas: true, generateQuery: async () => ({ document }) });
+    const server = await preview(t, { generateQuery: async () => ({ document }) });
     const endpoint = `${server.url}/__custom_views`;
     assert.equal((await fetch(endpoint)).status, 405);
     assert.equal((await fetch(endpoint, requestOptions(server, { document }, "https://untrusted.test"))).status, 403);
@@ -175,7 +172,7 @@ test("custom view saves require a valid canvas document and populate isolated lo
     assert.equal((await (await fetch(endpoint, requestOptions(server, { document }))).json()).id, saved.id);
     await server.close();
     const restarted = await preview(t, {
-      canvas: true, generateQuery: async () => ({ document }),
+      generateQuery: async () => ({ document }),
       workingDirectory: server.root, siteRoot: join(server.root, "site"),
     });
     const restored = await (await fetch(`${restarted.url}/dashboard.json`)).json();
@@ -187,6 +184,6 @@ test("custom view saves require a valid canvas document and populate isolated lo
     const failed = await fetch(`${restarted.url}/__custom_views`, requestOptions(restarted, { document }));
     assert.equal(failed.status, 503);
     assert.doesNotMatch(await failed.text(), new RegExp(server.root));
-    const normal = await preview(t, { generateQuery: async () => ({ document }) });
+    const normal = await preview(t);
     assert.equal((await fetch(`${normal.url}/__custom_views`, requestOptions(normal, { document }))).status, 404);
 });

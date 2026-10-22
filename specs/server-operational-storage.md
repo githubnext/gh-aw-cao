@@ -355,16 +355,18 @@ protected state. Active limiter buckets MUST NOT be evicted to reset limits.
 Session admission MUST preserve capacity for its atomic revocation transition.
 Exhausted capacity MUST fail explicitly rather than silently discard work.
 
-## Local launcher modes
+## Unified Go serving modes
 
-`dashboard/local-server.mjs` has three explicit modes:
+The Go `cao-dashboard` executable is the serving runtime. There is no Node
+local-dashboard CLI or JavaScript Go launcher.
 
 | Invocation | Runtime | Operational authority |
 | --- | --- | --- |
-| No `--operational-store` | Existing Node.js static/browser preview | No operational adapter, OAuth session store, collection worker, or server-owned canonical database |
-| `--operational-store redis` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting Redis |
-| `--operational-store memory` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
-| `--operational-store postgres` | Process-owned Go `serve-hosted` | Resolved reviewed host policy selecting the durable PostgreSQL operational adapter |
+| `serve` | Go local SQLite snapshot and same-origin HTTP query API | Loopback bearer profile; no hosted collection or OAuth |
+| `serve-pages` | Go static serving of an explicitly prepared Pages artifact | No API or operational services; browser IndexedDB |
+| `serve-hosted --operational-store redis` | Go hosted service | Resolved reviewed host policy selecting Redis |
+| `serve-hosted --operational-store memory` | Go hosted service | Resolved reviewed host policy selecting memory with every volatile-memory guard above |
+| `serve-hosted --operational-store postgres` | Go hosted service | Resolved reviewed host policy selecting the durable PostgreSQL operational adapter |
 
 The selector MUST NOT rewrite, synthesize, or override rollout policy. The
 requested backend MUST match the backend resolved by the production Go policy
@@ -374,32 +376,31 @@ closed. Legacy `host.redis` remains an explicit Redis selection;
 neither Redis nor memory may become an
 automatic fallback. PostgreSQL is the default for selector-free reviewed hosts.
 
-`--policy PATH` selects an existing reviewed policy/profile and takes precedence
-over `CAO_POLICY_PATH`, then `CAO_MARKETPLACE_POLICY_PATH`; the default is the
-catalog's `.github/workflows/cao.json`. Relative paths MUST resolve against the
-invoking working directory, not the Go module's directory. The selected path is
-passed as `CAO_POLICY_PATH` to the child without mutating the parent's
-environment. The Go loader remains the sole authority for profile composition
-and configuration validation.
+Hosted policy is selected through `CAO_POLICY_PATH` or the supported
+`CAO_MARKETPLACE_POLICY_PATH` configuration. The Go loader remains the sole
+authority for profile composition and configuration validation. npm commands
+invoke `go -C server`; their relative server paths resolve from that module,
+not from the repository root.
 
-All Go modes require PostgreSQL for canonical entities and query execution,
+Hosted mode requires PostgreSQL for canonical entities and query execution,
 the built dashboard, and the ordinary hosted OAuth and HTTPS/proxy protections.
-The launcher MUST NOT substitute the legacy local bearer-capability profile
-for hosted authentication. `--site`, `--host`, `--port`, and paired
+Serving MUST NOT substitute the local bearer-capability profile
+for hosted authentication. `--site`, `--listen`, and paired
 `--cert`/`--key` MAY configure the built site and listener without relaxing those
 protections. A direct TLS listener MUST use its actual TLS transport without
 requiring forwarded headers unless trusted proxy CIDRs are explicitly
 configured. A loopback listener without direct TLS retains the existing
 trusted-proxy profile; an HTTPS-looking header from an untrusted peer MUST NOT
-authorize access. Browser-preview-only canvas, artifact-download, replacement, and
-trace flags MUST be rejected in Go mode; Go-only flags MUST be rejected in
-browser mode.
+authorize access. Explicit `serve-pages` MUST serve prepared static bytes
+without injecting hosted bootstrap, authentication, or API routes. It MUST
+accept only loopback listeners and confine file access to its selected site;
+directory listings and escaping symlinks MUST be rejected. It MUST NOT become
+a fallback for a failed hosted or SQLite service.
 
-The launcher builds into a temporary directory and launches the binary
-directly, rather than leaving a detached `go run` child. Interrupt and
-termination signals MUST reach the owned child. The launcher MUST await child
-closure before removing its temporary executable, propagate unexpected build
-or service failures, and remove its signal handlers on every exit path.
+`dashboard/canvas-server.mjs` remains an internal, loopback-only authoring
+bridge. It has no standalone CLI, admin mode or process-replacement facility.
+Its command queue requires paired trusted execution and approval callbacks;
+read-only canvas authoring MUST NOT initialize a command queue.
 The Go application MUST cancel and join owned workers before store close.
 
 ## Restart and manual recovery

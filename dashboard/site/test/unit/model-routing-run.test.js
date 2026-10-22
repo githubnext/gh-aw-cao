@@ -95,7 +95,7 @@ describe('run-scoped model routing', () => {
       event('subagent.request', { requestId: 'engine-a', agentName: 'wrong-owner', model: 'gpt-5', usage }),
       event('firewall.token_usage', { requestId: 'proxy-a', model: 'gpt-5', usage, aic: 999 })
     ]);
-    const canonical = await queryDatabaseSources(indexedDB, {}, ['audits']);
+    const canonical = await queryDatabaseSources(indexedDB, {}, ['audits', 'routing-aggregates']);
     for (const run of [1, 2, 3, 999]) {
       for (const view of page.views) {
         const expectedName = 'late-scoped-expected';

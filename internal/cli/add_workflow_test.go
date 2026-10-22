@@ -11,28 +11,31 @@ import (
 	"testing"
 )
 
-const standaloneFixture = "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nimports:\n  - uses: shared/control.md\n    with:\n      role: standalone\n      workflow: repo-status\n---\nReport.\n"
+const standaloneFixture = "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nimports:\n  - uses: shared/control.md\n    with:\n      role: standalone\n      workflow: daily-repo-status\n---\nReport.\n"
 const standalonePolicy = `{"version":1,"gh-aw-version":"v0.92.6","control-plane":{"scope":{"allowed-owners":["acme"],"allowed-repositories":["acme/control","acme/target"]},"defaults":{"mode":"live","max-repositories":100,"rollout-percent":20},"campaigns":{"other":{"enabled":false,"mode":"review"}}}}`
 
 func installWorkflowFixture(t *testing.T, source string) {
 	t.Helper()
-	writeTestFile(t, ".github/workflows/repo-status.md", source)
-	writeTestFile(t, ".github/workflows/repo-status.lock.yml", "name: Repo Status\n")
+	writeTestFile(t, ".github/workflows/daily-repo-status.md", source)
+	writeTestFile(t, ".github/workflows/daily-repo-status.lock.yml", "name: Daily Repo Status\n")
 }
 
 func TestStandaloneWorkflowSpecs(t *testing.T) {
-	for _, tt := range []struct{ input, spec string }{
-		{"repo-status", "githubnext/gh-cao/.github/workflows/repo-status.md"},
-		{"repo-status@feature/report", "githubnext/gh-cao/.github/workflows/repo-status.md@feature/report"},
-		{"githubnext/gh-cao/repo-status@v1.2.3", "githubnext/gh-cao/.github/workflows/repo-status.md@v1.2.3"},
-		{"githubnext/gh-cao/.github/workflows/repo-status.md@main", "githubnext/gh-cao/.github/workflows/repo-status.md@main"},
-		{"https://github.com/githubnext/gh-cao/blob/main/.github/workflows/repo-status.md", "https://github.com/githubnext/gh-cao/blob/main/.github/workflows/repo-status.md"},
-		{"./reports/repo-status.md", "./reports/repo-status.md"},
-		{"acme/workflows/reports/repo-status.md@release", "acme/workflows/reports/repo-status.md@release"},
+	for _, tt := range []struct{ input, spec, name string }{
+		{"daily-repo-status", "githubnext/gh-cao/.github/workflows/daily-repo-status.md", "daily-repo-status"},
+		{"daily-repo-status@feature/report", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@feature/report", "daily-repo-status"},
+		{"githubnext/gh-cao/daily-repo-status@v1.2.3", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@v1.2.3", "daily-repo-status"},
+		{"repo-status", "githubnext/gh-cao/.github/workflows/daily-repo-status.md", "daily-repo-status"},
+		{"repo-status@v1.2.3", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@v1.2.3", "daily-repo-status"},
+		{"githubnext/gh-cao/repo-status@v1.2.3", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@v1.2.3", "daily-repo-status"},
+		{"githubnext/gh-cao/.github/workflows/daily-repo-status.md@main", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@main", "daily-repo-status"},
+		{"https://github.com/githubnext/gh-cao/blob/main/.github/workflows/daily-repo-status.md", "https://github.com/githubnext/gh-cao/blob/main/.github/workflows/daily-repo-status.md", "daily-repo-status"},
+		{"./reports/repo-status.md", "./reports/repo-status.md", "repo-status"},
+		{"acme/workflows/reports/repo-status.md@release", "acme/workflows/reports/repo-status.md@release", "repo-status"},
 	} {
 		t.Run(tt.input, func(t *testing.T) {
 			spec, name, err := standaloneWorkflowSpec(tt.input)
-			if err != nil || spec != tt.spec || name != "repo-status" {
+			if err != nil || spec != tt.spec || name != tt.name {
 				t.Fatalf("spec=%q name=%q error=%v", spec, name, err)
 			}
 		})
@@ -49,13 +52,13 @@ func TestAddStandaloneRegistersReviewPolicy(t *testing.T) {
 		return "", "", nil
 	}
 	root, stdout, _ := testCommand(t, gh, nil)
-	root.SetArgs([]string{"add", "repo-status@main", "--force", "--engine", "copilot"})
+	root.SetArgs([]string{"add", "daily-repo-status@main", "--force", "--engine", "copilot"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
 	wantCalls := [][]string{
-		{"aw", "add", "githubnext/gh-cao/.github/workflows/repo-status.md@main", "--dir", ".github/workflows", "--force", "--engine", "copilot"},
-		{"aw", "compile", ".github/workflows/repo-status.md", "--strict", "--schedule-seed", catalogRepository, "--no-check-update"},
+		{"aw", "add", "githubnext/gh-cao/.github/workflows/daily-repo-status.md@main", "--dir", ".github/workflows", "--force", "--engine", "copilot"},
+		{"aw", "compile", ".github/workflows/daily-repo-status.md", "--strict", "--schedule-seed", catalogRepository, "--no-check-update"},
 	}
 	if !reflect.DeepEqual(calls, wantCalls) {
 		t.Fatalf("gh calls=%q, want %q", calls, wantCalls)
@@ -69,14 +72,14 @@ func TestAddStandaloneRegistersReviewPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry := map[string]any{"mode": "review", "max-mode": "review", "max-repositories": 1}
-	before["control-plane"].(map[string]any)["workflows"] = map[string]any{"repo-status": entry}
+	before["control-plane"].(map[string]any)["workflows"] = map[string]any{"daily-repo-status": entry}
 	want, _ := json.Marshal(before)
 	got, _ := json.Marshal(policy)
 	if string(got) != string(want) {
 		t.Fatalf("policy=%s, want %s", got, want)
 	}
 	var result map[string]any
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result["workflow"] != "repo-status" || result["policy"] != policyPath {
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result["workflow"] != "daily-repo-status" || result["policy"] != policyPath {
 		t.Fatalf("result=%s error=%v", stdout, err)
 	}
 }
@@ -85,14 +88,14 @@ func TestAddStandalonePreservesExistingRegistrationOnRepeat(t *testing.T) {
 	for _, entry := range []string{`{}`, `{"enabled":false,"mode":"live","max-mode":"live","max-repositories":3,"rollout-percent":5,"monthly-ai-credit-budget":20,"targets":{"acme/target":{"mode":"review"}}}`} {
 		t.Run(entry, func(t *testing.T) {
 			t.Chdir(t.TempDir())
-			original := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":`+entry+`},"campaigns":`, 1)
+			original := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":`+entry+`},"campaigns":`, 1)
 			writeTestFile(t, policyPath, original)
 			for range 2 {
 				root, _, _ := testCommand(t, func(context.Context, ...string) (string, string, error) {
 					installWorkflowFixture(t, standaloneFixture)
 					return "", "", nil
 				}, nil)
-				root.SetArgs([]string{"add", "repo-status", "--force"})
+				root.SetArgs([]string{"add", "daily-repo-status", "--force"})
 				if err := root.Execute(); err != nil {
 					t.Fatal(err)
 				}
@@ -131,7 +134,7 @@ func TestAddStandaloneCreatesPolicyOnlyAfterInstall(t *testing.T) {
 					return "", "", nil
 				}
 			}, nil)
-			root.SetArgs([]string{"add", "repo-status"})
+			root.SetArgs([]string{"add", "daily-repo-status"})
 			err := root.Execute()
 			if fail {
 				if err == nil || !strings.Contains(err.Error(), "404") || stdout.Len() != 0 {
@@ -167,7 +170,7 @@ func TestAddStandaloneFailurePreservesPolicy(t *testing.T) {
 		{"not CAO", "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nname: Other\n---\n", "not a standalone"},
 		{"missing gate", strings.Replace(standaloneFixture, "if: needs.pre_activation.outputs.cao_authorized == 'true'\n", "", 1), "pre-activation gate"},
 		{"campaign", strings.Replace(standaloneFixture, "standalone", "worker", 1), "role: standalone"},
-		{"identity", strings.Replace(standaloneFixture, "workflow: repo-status", "workflow: other", 1), "workflow: repo-status"},
+		{"identity", strings.Replace(standaloneFixture, "workflow: daily-repo-status", "workflow: other", 1), "workflow: daily-repo-status"},
 		{"invalid YAML", "---\nimports: [\n---\n", "failed to parse frontmatter"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -184,13 +187,13 @@ func TestAddStandaloneFailurePreservesPolicy(t *testing.T) {
 					installWorkflowFixture(t, tt.source)
 				}
 				if tt.name == "missing lock" {
-					if err := os.Remove(".github/workflows/repo-status.lock.yml"); err != nil {
+					if err := os.Remove(".github/workflows/daily-repo-status.lock.yml"); err != nil {
 						t.Fatal(err)
 					}
 				}
 				return "", "", nil
 			}, nil)
-			root.SetArgs([]string{"add", "repo-status"})
+			root.SetArgs([]string{"add", "daily-repo-status"})
 			err := root.Execute()
 			if err == nil || !strings.Contains(err.Error(), tt.want) || stdout.Len() != 0 {
 				t.Fatalf("error=%v want=%s stdout=%s", err, tt.want, stdout)
@@ -206,13 +209,13 @@ func TestAddStandaloneFailurePreservesPolicy(t *testing.T) {
 func TestAddStandaloneRejectsInvalidPolicyBeforeInstall(t *testing.T) {
 	for _, policy := range []string{
 		`{"version":2}`, `{"version":1,"version":1}`, `{"version":1,"control-plane":{"workflows":[]}}`,
-		strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":null},"campaigns":`, 1),
+		strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":null},"campaigns":`, 1),
 	} {
 		t.Run(policy, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			writeTestFile(t, policyPath, policy)
 			root, _, _ := testCommand(t, nil, nil)
-			root.SetArgs([]string{"add", "repo-status"})
+			root.SetArgs([]string{"add", "daily-repo-status"})
 			if err := root.Execute(); err == nil {
 				t.Fatal("invalid policy accepted")
 			}
@@ -222,12 +225,11 @@ func TestAddStandaloneRejectsInvalidPolicyBeforeInstall(t *testing.T) {
 
 func TestAddStandaloneRejectsPackagesAndUnsafeOptions(t *testing.T) {
 	for _, args := range [][]string{
-		{"add"}, {"add", "repo-status", "other"}, {"add", "githubnext/gh-cao"},
+		{"add"}, {"add", "daily-repo-status", "other"}, {"add", "githubnext/gh-cao"},
 		{"add", "githubnext/gh-cao/dependabot/aw.yml"}, {"add", "./package"},
-		{"add", "./*.md"}, {"add", "repo-status@"}, {"add", "daily-repo-status"},
-		{"add", "githubnext/gh-cao/daily-repo-status"},
-		{"add", "repo-status", "--name", "other"}, {"add", "repo-status", "--dir", "elsewhere"},
-		{"add", "repo-status", "--pr"}, {"add", "repo-status", "--create-pull-request"},
+		{"add", "./*.md"}, {"add", "daily-repo-status@"},
+		{"add", "daily-repo-status", "--name", "other"}, {"add", "daily-repo-status", "--dir", "elsewhere"},
+		{"add", "daily-repo-status", "--pr"}, {"add", "daily-repo-status", "--create-pull-request"},
 		{"add", "https://user:password@example.test/repo-status.md"},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -251,7 +253,7 @@ func TestAddStandaloneRejectsEscapingDestination(t *testing.T) {
 		t.Fatal(err)
 	}
 	root, _, _ := testCommand(t, nil, nil)
-	root.SetArgs([]string{"add", "repo-status"})
+	root.SetArgs([]string{"add", "daily-repo-status"})
 	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "escapes") {
 		t.Fatalf("error=%v", err)
 	}

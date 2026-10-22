@@ -290,7 +290,9 @@ export function selectAffectedPageIds({ dashboard, changedFiles, baseRef }) {
       || path === "package-lock.json"
       || path === "dashboard/site/package.json"
       || path === "dashboard/site/package-lock.json"
-      || path === "dashboard/local-server.mjs"
+      || path === "scripts/simulate-dashboard-pages.mjs"
+      || path === "tests/helpers/dashboard-pages-preview.mjs"
+      || path.startsWith("server/cmd/cao-dashboard/")
       || path === "dashboard/report/compose-dashboard-documents.mjs"
       || path === "dashboard/report/bundle-dashboards.mjs"
       || path === "dashboard/site/index.html"

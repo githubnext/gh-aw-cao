@@ -132,7 +132,7 @@ The control repository's exclusive right to admit a `live` worker for a campaign
 
 ## Maintenance Governance
 
-The dashboard page for editing gh-aw compiler defaults at organization, enterprise, or repository scope. It is visible only in local server `--admin` mode or to an authorized hosted administrator with a current, assured session, and applies changes through the approved CLI-action queue. It does not change CAO rollout policy or control-plane authority.
+The dashboard page for gh-aw compiler defaults at organization, enterprise, or repository scope. It is visible only to an authorized hosted administrator with a current, assured session. Editing stays disabled because hosted repository installation tokens cannot administer organization or enterprise variables; use `gh aw env` with suitable administrative credentials outside the dashboard. It does not change CAO rollout policy or control-plane authority.
 
 ## Marketplace
 

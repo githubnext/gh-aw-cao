@@ -15,7 +15,10 @@ test.beforeEach(async ({ context, page }) => {
     }
     const filePath = join(siteRoot, pathname);
     if (existsSync(filePath)) {
-      await route.fulfill({ contentType: 'application/javascript', body: readFileSync(filePath) });
+      await route.fulfill({
+        contentType: pathname.endsWith('.json') ? 'application/json' : 'application/javascript',
+        body: readFileSync(filePath)
+      });
       return;
     }
     await route.fulfill({ status: 404, body: 'Not found' });

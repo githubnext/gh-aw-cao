@@ -292,6 +292,7 @@ func TestSnapshotRuntimeSourcesUseServerRegistry(t *testing.T) {
 		for _, name := range []string{
 			"collection-health", "github-quota-usage", "simulation-days",
 			"cli-commands", "cli-command-summary", "cli-command-statuses",
+			"$marketplacePackages",
 		} {
 			t.Run(name, func(t *testing.T) {
 				calls := 0
@@ -319,6 +320,39 @@ func TestSnapshotRuntimeSourcesUseServerRegistry(t *testing.T) {
 		})
 		if err == nil || calls != 0 {
 			t.Fatalf("unknown root reached the runtime provider: calls=%d err=%v", calls, err)
+		}
+		unavailable := errors.New("registry unavailable")
+		_, _, err = r.ExecuteSQLPlanWithOptions(ctx, nil, []string{"$marketplacePackages"}, dashboardstore.ExecutionOptions{
+			Runtime: func(context.Context, string) (model.Source, error) {
+				return model.Source{}, unavailable
+			},
+		})
+		if !errors.Is(err, unavailable) {
+			t.Fatalf("runtime failure fell back to snapshot inventory: %v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSnapshotMarketplaceInventoryRemainsAvailableWithoutRuntimeProvider(t *testing.T) {
+	path := testutil.SQLiteSnapshot(t, map[string][]model.Row{
+		"marketplacePackages": {{"id": "retained", "name": "Retained package"}},
+	})
+	store, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		sources, _, err := r.ExecuteSQLPlan(ctx, nil, []string{"$marketplacePackages"})
+		if err != nil {
+			return err
+		}
+		if rows := sources["$marketplacePackages"].Rows; len(rows) != 1 || rows[0]["name"] != "Retained package" {
+			t.Fatalf("snapshot-only reader lost retained inventory: %v", rows)
 		}
 		return nil
 	})

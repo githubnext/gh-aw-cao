@@ -6,7 +6,7 @@ import { renderDashboardQueryUsageGraph } from '../src/query-usage.js';
 import { validateDashboardDocument } from '../src/validator.js';
 
 const repositoryRoot = resolve(process.cwd(), '../..');
-const ignoredDirectories = new Set(['.cao', '.git', 'coverage', 'dist', 'node_modules', 'test-results']);
+const ignoredDirectories = new Set(['.cao', '.git', '.tmp', 'coverage', 'dist', 'node_modules', 'test-results']);
 
 async function findDashboardDocuments(directory) {
   const entries = await readdir(directory, { withFileTypes: true });

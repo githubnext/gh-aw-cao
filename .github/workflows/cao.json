@@ -52,7 +52,7 @@
       ]
     },
     "workflows": {
-      "repo-status": {
+      "daily-repo-status": {
         "enabled": false,
         "mode": "review",
         "max-mode": "review",

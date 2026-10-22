@@ -5,6 +5,11 @@ on:
     paths:
       - .github/workflows/cid.yml
       - dashboard/site/**
+      - server/cmd/cao-dashboard/serve_pages*.go
+      - scripts/simulate-dashboard-pages.mjs
+      - tests/helpers/dashboard-pages-preview.mjs
+      - tests/e2e/dashboard-pages.spec.mjs
+      - tests/playwright/configs/dashboard-pages.config.mjs
       - docs/assets/logo-day.svg
       - docs/assets/logo-night.svg
       - public/favicon.svg
@@ -18,6 +23,11 @@ on:
       - activity/commands/**
       - activity/dashboard-complexity.mjs
       - dashboard/site/**
+      - server/cmd/cao-dashboard/serve_pages*.go
+      - scripts/simulate-dashboard-pages.mjs
+      - tests/helpers/dashboard-pages-preview.mjs
+      - tests/e2e/dashboard-pages.spec.mjs
+      - tests/playwright/configs/dashboard-pages.config.mjs
       - docs/assets/logo-day.svg
       - docs/assets/logo-night.svg
       - public/favicon.svg
@@ -38,6 +48,39 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  pages:
+    name: Go Pages and IndexedDB
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Install dependencies
+        run: npm ci --ignore-scripts && npm --prefix dashboard/site ci --omit=dev --ignore-scripts
+      - name: Install Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
+      - name: Test Pages deployment
+        run: npm run test:e2e:dashboard-pages
+      - name: Upload Pages evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dashboard-pages-evidence
+          path: test-results/dashboard-pages/
+          if-no-files-found: error
+          retention-days: 14
+
   lint-unit:
     name: Lint and unit tests
     runs-on: ubuntu-latest

@@ -7,7 +7,11 @@ on:
     paths:
       - .github/workflows/dashboard-views.yml
       - dashboard/site/**
-      - dashboard/local-server.mjs
+      - server/cmd/cao-dashboard/**
+      - server/go.mod
+      - server/go.sum
+      - scripts/simulate-dashboard-pages.mjs
+      - tests/helpers/dashboard-pages-preview.mjs
       - dashboard/report/**
       - "**/dashboard.json"
       - "**/dashboard-fragments/**"
@@ -46,7 +50,11 @@ jobs:
           node-version: 24
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        run: npm ci && npm --prefix dashboard/site ci --omit=dev --ignore-scripts
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
       - name: Cache Chromium
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

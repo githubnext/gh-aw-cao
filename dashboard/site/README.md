@@ -72,7 +72,7 @@ WebMCP is progressive enhancement. The runtime feature-detects `document.modelCo
 WebMCP is experimental and only reachable from a secure context (`https:` or `localhost`).
 
 1. Use Chromium 146 or newer and enable `chrome://flags/#enable-webmcp-testing` (`edge://flags/#enable-webmcp-testing` on Edge), then restart the browser.
-2. Serve a built dashboard — `npm run build` then serve `dist/`, or `npm run dashboard:local -- --repo OWNER/REPOSITORY` from the repository root for a dashboard with real data.
+2. From the repository root, run `npm run dashboard:local` to build and serve through Go/SQLite. To exercise Pages and browser IndexedDB, prepare a deployment with `npm run dashboard:pages:build -- --fixture` (or `--activity-dir PATH`) and serve it with `npm run dashboard:pages -- --base-path /gh-cao/`. The Node canvas authoring bridge is internal to the Copilot extension, not a standalone server.
 3. Open the dashboard and confirm the API is present in DevTools:
 
    ```js

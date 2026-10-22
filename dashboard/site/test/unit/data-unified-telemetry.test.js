@@ -41,13 +41,14 @@ describe('complete unified telemetry ingestion', () => {
     }
     for (const event of native) {
       if (['session.format', 'mcp.tool_call', 'mcp.guard.blocked', 'mcp.difc.filtered',
-        'firewall.http_access', 'skill.invoked'].includes(event.type)) continue;
+        'firewall.http_access', 'skill.invoked', 'firewall.event', 'model.inventory'].includes(event.type)) continue;
       expect(types.has(event.type), event.type).toBe(true);
     }
     expect(parsed.events.filter((event) => event.type === 'mcp.configuration')).toHaveLength(2);
     expect(parsed.events.find((event) => event.type === 'workflow.info')).not.toHaveProperty('timestamp', expect.anything());
     expect(JSON.stringify(parsed)).not.toMatch(/PRIVATE_/);
     const batch = normalize(adaptCachedGhAwJsonl(cached()).observations);
+    expect(batch.audits.some((row) => ['firewall.event', 'model.inventory'].includes(String(row.type)))).toBe(false);
     expect(batch.tools.filter((row) => row.type === 'mcp.tool_call')).toHaveLength(1);
     expect(batch.domains).toHaveLength(2);
     expect(batch.domains.find((row) => row.domain === 'api.github.com')).toMatchObject({

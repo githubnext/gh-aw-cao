@@ -189,7 +189,22 @@ volatile memory adapter for an explicitly acknowledged single-process server.
 The PostgreSQL operational adapter implements durable
 deployment-scoped services in separate `cao_operational_*` tables. Operational
 adapters never store dashboard entities or execute dashboard queries.
-Local admin and trusted canvas CLI actions use a separate, single-owner
+The Go server is the unified local and hosted dashboard serving runtime.
+`npm run dev` and `npm run dashboard:local` build the site and invoke `serve`
+against a verified cached SQLite snapshot; `serve-hosted` retains the reviewed
+PostgreSQL/OAuth host. Explicit `serve-pages` serves a prepared static Pages
+artifact unchanged, including repository base paths, so the browser exercises
+IndexedDB rather than the hosted HTTP backend. The local Pages preparation
+script runs production Activity normalization/SQLite ingestion and Dashboard
+building from an existing snapshot or explicitly labelled synthetic evidence;
+it does not simulate GitHub collection, Actions permissions or artifact transport.
+There is no standalone Node dashboard CLI, admin server, process replacement,
+or JavaScript Go launcher. `dashboard/canvas-server.mjs` is an internal,
+loopback-only authoring bridge for the Copilot canvas, retaining JSON live
+reload, authoring callbacks, bounded read-only GitHub access, and canvas data
+adapters. Canvas command execution requires paired trusted execution and
+approval callbacks; read-only authoring starts no command queue.
+Trusted canvas CLI actions use a separate, single-owner
 operational SQLite queue in `.cao/cli-actions.sqlite`, never browser IndexedDB
 or the disposable dashboard projection. Capability-protected local endpoints
 admit only declared, validated actions with the existing trusted approval
@@ -998,7 +1013,7 @@ and removal remain authenticated and never hydrate notification payloads.
 | `activity/` | Deterministic Activity collection, JSONL ingestion, SQLite projection, and the `cao` CLI. |
 | `cmd/gh-cao/`, `internal/cli/`, `internal/ghcli/`, `dashboard/catalog.go` | Independent, entirely Go operator-facing `gh cao` executable, including onboarding, campaign and policy management, SQLite queries, computations and MCP; embeds the dashboard's authoritative JSON contracts. Actions pipeline commands remain Node-owned. |
 | `internal/dashboardquery/` | Small independent Go module sharing the bounded local Dashboard Language evaluator and read-only canonical SQLite reader between the extension and explicit local server profile; never a hosted PostgreSQL fallback. |
-| `dashboard/` | Dashboard campaign, report/source adapters, local preview server, and shared browser UI built for either Pages or the hosted Go server. |
+| `dashboard/` | Dashboard campaign, report/source adapters, canvas-only authoring bridge, and shared browser UI built for Pages or the unified Go server. |
 | `server/` | Optional host-neutral Go HTTP(S) service, deployed-artifact ingester, authenticated canonical API, webhook/rebuild control, Postgres entity storage and default operational state, explicit Redis or single-process memory alternatives, server-side Dashboard Language query engine, externally hosted handler facade, container image, and Azure Functions deployment profile. |
 | `server/cmd/cao-webhook-gateway/`, `server/internal/webhookgateway/`, `server/internal/webhookgatewayhost/` | Optional isolated gateway entry point, consumer contracts and pure decisions, and host adapters; durable state extends the existing PostgreSQL operational adapter. |
 | `server/spec/` | Editable TypeSpec HTTP/SSE and fresh Postgres storage contracts; generates OpenAPI 3.1, wire JSON Schemas, standalone SQL DDL, and Go entity bindings; checks routes, payloads, and query-required table fields. |
@@ -1167,7 +1182,7 @@ artifact/attestation access, not npm.
 The materializer installs only owned canonical destinations from the archive
 and does not replace consumer-owned root package metadata. Installed control
 repositories keep the
-repository-local pipeline CLI, collection and query runtime, local preview,
+repository-local pipeline CLI, collection and query runtime, canvas authoring,
 dashboard production sources, build inputs, and dependency manifests. Tests,
 fixtures, screenshots, contributor tooling, and catalog-only component
 manifests stay in the catalog. Dashboard workflow builds install production

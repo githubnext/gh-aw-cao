@@ -354,6 +354,7 @@ func newRootCommand() *cobra.Command {
 		newAdmissionCommand(),
 		newAppKeyCheckCommand(),
 		newServeCommand(),
+		newServePagesCommand(),
 		newServeHostedCommand(),
 		newIngestCommand(),
 		newCollectCommand(),

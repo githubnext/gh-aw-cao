@@ -69,8 +69,8 @@ non-public evidence; a private repository does not guarantee a private dashboard
 **Optional, later:** describe the outcome and scope using
 [From Outcome to Execution](docs/operation-patterns.md), browse the
 [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-or try one standalone report with the [Repo Status quickstart](docs/setup/quickstart.md).
-From a configured control checkout, `gh cao add repo-status` installs the workflow
+or try one standalone report with the [Daily Repo Status quickstart](docs/setup/quickstart.md).
+From a configured control checkout, `gh cao add daily-repo-status` installs the workflow
 and registers it in `cao.json` with review-only, one-repository limits. Interactive
 commit/push and first-run prompts are separate opt-ins; campaign packages still
 use `gh cao campaigns add`.
@@ -195,10 +195,7 @@ Canvas previews ingest the downloaded inventory and Activity shards into a
 temporary server-side SQLite projection in an isolated data worker. The page
 uses the remote HTTP query backend, not browser IndexedDB; declarative queries,
 pagination, diagnostics, and revision subscriptions stay behind the preview's
-capability URL. Ordinary non-canvas local previews default to the static browser
-backend. Select either backend explicitly with
-`npm run dashboard:local -- --data-backend sqlite --repo OWNER/REPOSITORY` or
-`--data-backend indexeddb`. The canvas open input also accepts
+capability URL. The canvas open input accepts
 `dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
 startup rather than silently falling back to IndexedDB.
 
@@ -211,11 +208,24 @@ Unavailable or stale reads retain snapshot versions without fabricating fresh
 installed-version evidence. Upgrade is hidden only when recorded versions are known current;
 missing installed-version or release evidence keeps the action available.
 
-`--data-backend postgres` selects the existing Go/PostgreSQL server, with
-PostgreSQL operational storage by default; `--operational-store` may select
-Redis or memory instead. This mode requires the reviewed host policy, built
-site, database, and OAuth/HTTPS configuration described in
-[the server guide](server/README.md), and does not support canvas preview mode.
+All ordinary local serving uses Go: `npm run dev` or `npm run dashboard:local`
+builds the site and runs `cao-dashboard serve` against a verified local SQLite
+snapshot. Set `DASHBOARD_DATA_URL` to another deployed Pages site, or pass
+`--download-sqlite=https://owner.github.io/repository/` to refresh the cache.
+Use `--listen 127.0.0.1:8443` and `--sqlite PATH` for listener and cache overrides.
+Relative server paths resolve from `server/`.
+
+For an explicit Pages/IndexedDB simulation, run
+`npm run dashboard:pages:build -- --fixture` (labelled synthetic evidence), or
+`--activity-dir PATH` with an existing Activity snapshot, then
+`npm run dashboard:pages -- --base-path /gh-cao/`. The Go static server serves
+the actual built Pages artifact without hosted bootstrap or query endpoints.
+This simulates Activity normalization and Dashboard publication locally, not
+GitHub collection, Actions permissions, or Pages deployment infrastructure.
+Hosted PostgreSQL serving uses `go -C server run ./cmd/cao-dashboard serve-hosted`
+with the reviewed policy and OAuth/HTTPS configuration in
+[the server guide](server/README.md). There is no standalone Node server;
+`dashboard/canvas-server.mjs` is an internal canvas-development bridge only.
 
 CLI actions are approved in the canvas's command-review dialog; there is no
 second host confirmation prompt or interactive-elicitation requirement.

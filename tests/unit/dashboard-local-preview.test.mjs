@@ -163,7 +163,7 @@ for (const layout of ["dashboard", ".github/aw/dashboard"]) {
       await mkdir(dashboardDirectory, { recursive: true });
       await mkdir(join(dashboardDirectory, "site"), { recursive: true });
       await writeFile(join(dashboardDirectory, "site", "index.html"), "workspace site must not be served");
-      await writeFile(join(dashboardDirectory, "local-server.mjs"), `
+      await writeFile(join(dashboardDirectory, "canvas-server.mjs"), `
 throw new Error("Workspace server must never execute.");
 `);
       preview = await startLocalDashboardPreview({

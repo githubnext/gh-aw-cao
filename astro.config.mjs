@@ -294,7 +294,7 @@ export default defineConfig({
           label: "Setup",
           items: [
             { label: "Quickstart: install and monitor", link: "/setup-quickstarts/" },
-            { label: "Repo Status (optional)", link: "/setup/quickstart/" },
+            { label: "Daily Repo Status (optional)", link: "/setup/quickstart/" },
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
-import { startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
 import { CANONICAL_SCHEMA_VERSION } from "../../dashboard/site/src/data/model/schema.js";
 import { normalize } from "../../dashboard/site/src/data/normalize/index.js";
 import { queryDashboardSourceObservations } from "../../dashboard/site/src/data/queries/ingestion.js";
@@ -38,15 +38,12 @@ console.log("test-credential");
   return { ghExecutable, requests };
 }
 
-for (const { canvas, dataBackend, expected, compilerVersion } of [
-  { canvas: true, expected: "sqlite", compilerVersion: "v0.91.6" },
-  { canvas: true, expected: "sqlite" },
-  { canvas: true, dataBackend: "indexeddb", expected: "indexeddb", compilerVersion: "v0.91.6" },
-  { canvas: false, expected: "sqlite" },
-  { canvas: false, dataBackend: "indexeddb", expected: "indexeddb" },
-  { canvas: false, dataBackend: "sqlite", expected: "sqlite" },
+for (const { dataBackend, expected, compilerVersion } of [
+  { expected: "sqlite", compilerVersion: "v0.91.6" },
+  { expected: "sqlite" },
+  { dataBackend: "indexeddb", expected: "indexeddb", compilerVersion: "v0.91.6" },
 ]) {
-  test(`local ${canvas ? "canvas" : "browser"} preview selects ${dataBackend ?? "default"} backend${canvas ? ` with ${compilerVersion ? "fresh" : "unavailable"} compiler metadata` : ""}`, async (t) => {
+  test(`canvas preview selects ${dataBackend ?? "default"} backend with ${compilerVersion ? "fresh" : "unavailable"} compiler metadata`, async (t) => {
     const root = await mkdtemp(join(tmpdir(), "cao-backend-selection-"));
     let preview;
     try {
@@ -59,8 +56,8 @@ for (const { canvas, dataBackend, expected, compilerVersion } of [
           pages: [{ id: "test", title: "Test", kind: "custom", views: [] }],
         },
       }));
-      preview = await startDashboardServer({
-        workingDirectory: root, siteRoot: root, catalogRoot: null, port: 0, canvas, dataBackend, ghExecutable,
+      preview = await startCanvasServer({
+        workingDirectory: root, siteRoot: root, catalogRoot: null, port: 0, dataBackend, ghExecutable,
         approveCliAction: async () => false, executeCliAction: async () => {},
         output: () => {}, traceOutput: () => {}, requestOutput: () => {},
         downloadData: async (destination) => {
@@ -92,9 +89,9 @@ for (const { canvas, dataBackend, expected, compilerVersion } of [
         const { sources } = await response.json();
         assert.equal(sources.workflows.rows[0]["gh-aw-current-version"], "v0.92.0");
         assert.equal(sources.workflows.rows[0]["gh-aw-version"], compilerVersion ?? "v0.91.5");
-        assert.equal(sources.workflows.rows[0]["gh-aw-update-state"], canvas && !compilerVersion ? "unknown" : "update-available");
+        assert.equal(sources.workflows.rows[0]["gh-aw-update-state"], !compilerVersion ? "unknown" : "update-available");
       }
-      assert.equal(requests.length, canvas ? 1 : 0);
+      assert.equal(requests.length, 1);
     } finally {
       await preview?.close();
       await rm(root, { recursive: true, force: true });
@@ -103,7 +100,7 @@ for (const { canvas, dataBackend, expected, compilerVersion } of [
 }
 
 test("local server rejects an invalid data backend before startup", async () => {
-  await assert.rejects(startDashboardServer({ dataBackend: "redis" }), /must be sqlite or indexeddb/);
+  await assert.rejects(startCanvasServer({ dataBackend: "redis" }), /must be sqlite or indexeddb/);
 });
 
 async function assertPhasedActivityPreview(t, compilerVersion) {
@@ -137,8 +134,8 @@ async function assertPhasedActivityPreview(t, compilerVersion) {
       },
     }).observations);
     const content = "bounded memory\n";
-    preview = await startDashboardServer({
-      workingDirectory: root, siteRoot: root, catalogRoot: null, port: 0, canvas: true, ghExecutable,
+    preview = await startCanvasServer({
+      workingDirectory: root, siteRoot: root, catalogRoot: null, port: 0, ghExecutable,
       approveCliAction: async () => false,
       executeCliAction: async () => {},
       output: () => {}, traceOutput: () => {}, requestOutput: () => {},

@@ -19,7 +19,8 @@ The dashboard campaign publishes an access-controlled static view of Central Age
 - `.github/workflows/shared/control.mjs`: deterministic policy command adapter used by the build workflow.
 - `dashboard/report`: deterministic collection modules executed by the activity action plus Dashboard Language source adaptation.
 - `dashboard/site`: the bundled Dashboard Language validator, presenter, configuration, and browser runtime.
-- `dashboard/local-server.mjs`: local preview server using Node.js built-ins and GitHub CLI, with live reload.
+- `server/`: unified Go serving for local SQLite, hosted PostgreSQL, and explicit static Pages simulation.
+- `dashboard/canvas-server.mjs`: internal loopback-only Copilot canvas authoring bridge, with JSON live reload; not a standalone server.
 
 The activity action reads trusted workflow data and writes a bounded JSONL and SQLite cache snapshot plus a deterministic `inventory-sources.json` sidecar from the reviewed control policy, installed campaign ownership records, local control workflow inventory, and paginated Actions workflow registries for resolved repositories. Campaign default-branch revisions, the latest stable gh-aw release, and generated lock compiler metadata are collected as independent version evidence. Registry and version lookup failures remain explicit partial evidence, and repository-owned workflows remain standalone rather than becoming campaign workers or rollout authority. An Activity-triggered dashboard build restores the exact triggering run and attempt's cache, or downloads that run's `cao-activity-index` artifact on a cache miss. It never substitutes another run's snapshot or an empty bootstrap. Manual builds can reuse the latest cached snapshot, falling back to a successful default-branch Activity run with a successful `index` job. The browser ingests the activity JSONL and then the sidecar so configured campaigns, including campaigns without recent runs, are available to Dashboard Language queries. AI agents do not receive `pages: write`, `id-token: write`, or deployment authority.
 
@@ -64,53 +65,69 @@ the immutable resolved commit recorded by gh-aw.
 
 ## Local preview
 
-From the root of an installed control repository, start the dashboard with Node.js:
+From a catalog checkout with Go and npm dependencies installed, build and serve
+the dashboard through the Go server:
 
 ```bash
+npm ci
+npm --prefix dashboard/site ci
 npm run dashboard:local
 ```
 
-The server requires GitHub CLI authentication with Actions read access. It downloads the latest non-expired `central-agentic-ops-dashboard` artifact and serves its activity shards and `inventory-sources.json` through the same canonical browser-ingestion path as the Pages site. Run the dashboard action first; the server fails rather than opening a dashboard without data when the artifact cannot be downloaded. Use `--repo OWNER/REPOSITORY` to download from another control repository.
+`npm run dev` is the same entrypoint. The build composes the campaign documents
+and fragments, and Go `serve` uses a verified canonical SQLite snapshot cached
+under `server/`. A missing cache is downloaded from `DASHBOARD_DATA_URL` or the
+public CAO Pages deployment; an invalid existing cache fails startup. Pass
+`--download-sqlite=https://owner.github.io/repository/` to refresh explicitly.
+Use `--listen 127.0.0.1:8443`, `--sqlite PATH`, or `--site PATH` to override the
+listener, cache, or built site. Paths resolve from the `server/` module.
+Open the access URL printed by Go. No GitHub CLI artifact download, standalone
+Node preview, admin flag, automatic process replacement, or Node Go launcher
+is used for normal serving.
 
-Open only the unguessable URL printed by the server. The server uses only Node.js built-ins plus GitHub CLI, binds to the loopback interface by default, rejects unexpected request hosts, and serves the bundled site without a build step. Use `--port` or `--host` to override its address.
+### Local Pages deployment simulation
 
-### Go-backed local server: Redis or memory
-
-Select a Go-backed server explicitly with the same script:
+To exercise the real built Pages artifact and browser IndexedDB, not the hosted
+HTTP query backend:
 
 ```bash
-npm run dashboard:local -- --operational-store redis --policy .github/workflows/cao.redis.json
-npm run dashboard:local -- --operational-store memory --policy .github/workflows/cao.memory.json
+npm run dashboard:pages:build -- --fixture
+npm run dashboard:pages -- --base-path /gh-cao/
 ```
 
-The policy paths above are examples: supply an existing reviewed host policy or
-deployment profile selecting that backend. `--policy` takes precedence over
-`CAO_POLICY_PATH` and `CAO_MARKETPLACE_POLICY_PATH`; otherwise the catalog's
-`.github/workflows/cao.json` is used. The selector checks the resolved policy,
-including profile imports, and never rewrites it or overrides its authority.
+`--fixture` explicitly produces labelled synthetic evidence. For real data, use
+`npm run dashboard:pages:build -- --activity-dir PATH` with an existing Activity
+snapshot containing its control settings, inventory, and raw or manifest-listed
+phased shards. Preparation uses the production Activity normalization, SQLite
+ingestion, hashes and Dashboard build steps. It does not contact GitHub or
+simulate Actions permissions, caches/artifact transport, or Pages infrastructure.
+The existing Actions runtime simulator supports compiled dry-run agentic locks,
+not the ordinary Activity/Dashboard workflows' cache and Pages actions.
 
-Go mode builds and launches `serve-hosted` in one owning process. It requires Go,
-PostgreSQL, a built dashboard (`npm run dashboard:server:build`), and the normal
-hosted OAuth, authorization, and HTTPS/proxy configuration. Use `--site` to select
-another built site, `--host`/`--port` for the listener, and `--cert`/`--key` for
-direct TLS. Redis remains the default operational backend in host policy; memory
-requires its explicit single-process and volatility acknowledgements and
-co-resident workers when collection is enabled. Memory mode does not require
-Redis and loses operational state on restart.
+The output defaults to `.tmp/dashboard-pages`; only owned simulator output may
+be replaced. Go `serve-pages` serves those bytes unchanged on loopback, including
+repository base paths, with no hosted bootstrap, bearer authentication, query
+API, or fallback. Use `--site ../.tmp/OTHER` to select other prepared output.
 
-PostgreSQL owns canonical dashboard entities and query execution in both modes.
-The browser never receives database credentials. Canvas, static artifact
-download (`--repo`), replacement, and preview trace options are not available in
-Go mode. Omitting `--operational-store` retains the browser-only preview described
-above. See [`../server/README.md`](../server/README.md) for hosted configuration,
-webhooks, backfill, and recovery guarantees.
+### Hosted serving and canvas authoring
 
-The preview composes `dashboard/site/dashboard.json` with every installed `<campaign>/dashboard.json` document. Those authoring documents may list feature-oriented JSON fragments through their top-level `fragments` array; the preview watches both roots and fragments. It serves a split core `dashboard.json` plus per-page `dashboard-pages/*.json` chunks, and sends the updated core document over a capability-protected WebSocket after a valid update. The browser re-renders that shell without reloading the page while continuing to use the downloaded report data. Invalid dashboard JSON is reported in the terminal while the last valid preview remains available.
+Hosted deployments invoke `go -C server run ./cmd/cao-dashboard serve-hosted`.
+PostgreSQL owns canonical entities and query execution; reviewed policy selects
+the operational adapter, with PostgreSQL the default and Redis or acknowledged
+volatile memory explicit alternatives. OAuth, authorization and HTTPS/proxy
+protections remain required. See [`../server/README.md`](../server/README.md).
+
+Only the Copilot canvas retains a Node authoring bridge. It downloads the
+dashboard artifact using authenticated GitHub CLI, composes and watches JSON
+documents and fragments, and reloads valid edits over a capability-protected
+WebSocket. It binds only to loopback, requires trusted callback adapters for
+authoring or command execution, and cannot be launched as a standalone CLI.
+Invalid JSON is reported while the last valid canvas remains available.
 
 ### Canvas CLI actions
 
-Dashboard documents may declare local admin and trusted canvas CLI actions.
-They are hidden from the published site and ordinary local previews. In the
+Dashboard documents may declare trusted canvas CLI actions.
+They are hidden from the published site and ordinary local Go serving. In the
 dashboard canvas, each
 action appears in the **Actions** menu for a command preview. Native execution
 also requires independent confirmation in the trusted Copilot host, bound to
@@ -142,16 +159,15 @@ gh aw upgrade --repo {{repository}} --pr-message 'Requested through {{cao-reposi
 ```
 
 Local executable previews resolve the published URL from the control
-repository's GitHub Pages API. For a custom-hosted dashboard, pass
-`--cao-url https://ops.example.com/central/` to the local server or set
-`CAO_DASHBOARD_URL` (also available to the canvas extension). URLs must use
+repository's GitHub Pages API. For a custom-hosted dashboard, set
+`CAO_DASHBOARD_URL=https://ops.example.com/central/` for the canvas extension. URLs must use
 HTTPS and contain no credentials, query, fragment, whitespace, or command
 delimiters. Public dashboards use their own page base URL. Local preview
 capability URLs are never copied into PRs. Missing host context disables the
 action with an explicit message; queue admission rejects missing or overridden
 host context. Substitutions are literal, not expressions, and never run a shell.
 
-Local admin and trusted canvas sessions share one durable FIFO queue per
+Trusted canvas sessions share one durable FIFO queue per
 checkout, stored in `.cao/cli-actions.sqlite`. The online dashboard and ordinary
 read-only previews do not initialize a queue or request its APIs. Execution
 continues while the local server is running, even with every browser closed.
@@ -160,7 +176,7 @@ as failed rather than silently repeated, and queued commands survive restart.
 After an unclean crash, termination of detached subprocesses cannot be assumed:
 the queue preserves history but pauses execution across subsequent restarts.
 Verify that every interrupted subprocess has stopped before explicitly starting
-with `--acknowledge-command-recovery` to resume queued work. Interrupted entries
+with the canvas host's `cliQueueAcknowledgeRecovery` option to resume queued work. Interrupted entries
 remain failed and are never automatically retried. This acknowledgement is a
 local operator action, not a browser API.
 
@@ -184,7 +200,7 @@ GitHub CLI prompts and pagers are disabled. These terminal settings do not
 change the parent shell environment.
 
 The queue defaults to four concurrent executions (configure with
-`--command-concurrency 1..32`) and a 15-minute execution deadline, beginning when
+the canvas host's `cliQueueConcurrency` option, from 1 through 32) and a 15-minute execution deadline, beginning when
 a command starts. GitHub-dependent work uses the existing
 Go GitHub quota service through a local helper, refreshing quota with the same
 GitHub CLI authentication context as execution. Missing quota evidence pauses
@@ -261,7 +277,9 @@ The canvas accepts prompts up to 100,000 UTF-16 code units and bounds each JSON
 request to 1 MiB, including JSON escaping and UTF-8 overhead. Oversized requests
 are rejected before approval or execution.
 
-Catalog contributors can run `npm run dashboard:local`; the same server discovers top-level campaign `dashboard.json` files automatically. Pass a control repository explicitly with `npm run dashboard:local -- --repo OWNER/REPOSITORY`.
+Catalog contributors can run `npm run dashboard:local`; the build composes
+top-level campaign documents. Set `DASHBOARD_DATA_URL` to select another
+deployed snapshot, or use the explicit Pages simulation above for IndexedDB.
 
 To reproduce the deployed dashboard's mobile DOM budget locally with live Pages data, run:
 

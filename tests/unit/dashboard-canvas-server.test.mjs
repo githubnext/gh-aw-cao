@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { parseDashboardServerArguments, runGoDashboardServer, startDashboardServer } from "../../dashboard/local-server.mjs";
+import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
 import { refreshDashboardCompilerRelease } from "../../dashboard/local-release-metadata.mjs";
 
 test("local release refresh preserves snapshot evidence and recomputes upgrade state", () => {
@@ -52,29 +51,6 @@ const dashboard = (pageId, cliActions) => JSON.stringify({
   },
 }, null, 2);
 
-test("command queue concurrency is configurable only for executable local modes", () => {
-  assert.equal(parseDashboardServerArguments(["--admin", "--command-concurrency", "8"]).cliQueueConcurrency, 8);
-  assert.equal(parseDashboardServerArguments(["--canvas", "--command-concurrency", "1"]).cliQueueConcurrency, 1);
-  for (const value of ["0", "33", "1.5", "NaN", ""]) {
-    assert.throws(() => parseDashboardServerArguments(["--admin", "--command-concurrency", value]), /integer from 1 through 32/);
-  }
-  assert.throws(() => parseDashboardServerArguments(["--command-concurrency", "2"]), /requires --admin or --canvas/);
-  assert.throws(() => parseDashboardServerArguments(["--operational-store", "postgres", "--command-concurrency", "2"]), /cannot be used/);
-  assert.equal(parseDashboardServerArguments(["--admin", "--acknowledge-command-recovery"]).cliQueueAcknowledgeRecovery, true);
-  assert.throws(() => parseDashboardServerArguments(["--acknowledge-command-recovery"]), /requires --admin or --canvas/);
-  assert.throws(() => parseDashboardServerArguments(["--operational-store", "postgres", "--acknowledge-command-recovery"]), /cannot be used/);
-});
-
-test("local dashboard URL overrides are safe public URLs and unsupported in Go mode", () => {
-  assert.equal(parseDashboardServerArguments(["--cao-url", "https://ops.example.com/central"]).caoUrl,
-    "https://ops.example.com/central/");
-  for (const value of ["http://localhost/", "https://user:secret@example.com/", "https://example.com/?token=secret", "https://example.com/#page"]) {
-    assert.throws(() => parseDashboardServerArguments(["--cao-url", value]), /CAO URL must be an HTTPS URL/);
-  }
-  assert.throws(() => parseDashboardServerArguments(["--cao-url"]), /requires a value/);
-  assert.throws(() => parseDashboardServerArguments(["--data-backend", "postgres", "--cao-url", "https://ops.example.com/"]), /--cao-url cannot be used/);
-});
-
 async function openDashboardSocket(previewUrl) {
   const url = new URL(previewUrl);
   url.protocol = "ws:";
@@ -94,32 +70,11 @@ async function nextDashboard(socket) {
   });
 }
 
-async function nextSocketMessage(socket, predicate = () => true) {
-  return new Promise((resolve, reject) => {
-    const onMessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (!predicate(message)) return;
-      socket.removeEventListener("message", onMessage);
-      socket.removeEventListener("error", onError);
-      resolve(message);
-    };
-    const onError = (error) => {
-      socket.removeEventListener("message", onMessage);
-      reject(error);
-    };
-    socket.addEventListener("message", onMessage);
-    socket.addEventListener("error", onError, { once: true });
-  });
-}
-
 async function requestWithHost(url, host) {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
     const outgoing = request({
-      hostname: target.hostname,
-      port: target.port,
-      path: target.pathname,
-      headers: { Host: host },
+      hostname: target.hostname, port: target.port, path: target.pathname, headers: { Host: host },
     }, (response) => {
       response.resume();
       response.on("end", () => resolve(response.statusCode));
@@ -137,7 +92,7 @@ test("local GitHub routes enforce read-only same-origin access and advertise the
   await mkdir(catalogRoot);
   await writeFile(path.join(siteRoot, "index.html"), "<!doctype html><html><head></head><body>preview</body></html>");
   await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("preview"));
-  const preview = await startDashboardServer({
+  const preview = await startCanvasServer({
     siteRoot, catalogRoot, workingDirectory: root, dataBackend: "indexeddb", port: 0,
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
@@ -216,7 +171,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   };
   const requestLogs = [];
 
-  const preview = await startDashboardServer({
+  const preview = await startCanvasServer({
     siteRoot,
     catalogRoot: campaignRoot,
     downloadData,
@@ -229,7 +184,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   try {
     const indexResponse = await fetch(`${preview.url}/`);
     assert.equal(indexResponse.status, 200);
-    assert.equal(new URL(indexResponse.url).searchParams.get("local-preview"), "enabled");
+    assert.equal(new URL(indexResponse.url).searchParams.get("local-preview"), "canvas");
     const index = await indexResponse.text();
     assert.equal((await fetch(`${preview.url}/__cli_action`, {
       method: "POST",
@@ -308,20 +263,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   }
 });
 
-test("admin mode is explicit and restricted to the local Node server", async () => {
-  assert.equal(parseDashboardServerArguments(["--admin"]).admin, true);
-  for (const args of [
-    ["--admin", "--canvas"],
-    ["--admin", "--host", "0.0.0.0"],
-    ["--admin", "--host", "example.com"],
-    ["--admin", "--data-backend", "postgres"],
-  ]) {
-    assert.throws(() => parseDashboardServerArguments(args), /admin|loopback/i);
-  }
-  await assert.rejects(startDashboardServer({ admin: true, host: "0.0.0.0" }), /loopback/);
-});
-
-test("admin actions stream incrementally, reject untrusted requests, and survive disconnect", async () => {
+test("canvas actions stream incrementally, reject untrusted requests, and survive disconnect", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-admin-actions-"));
   await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
   await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
@@ -330,8 +272,8 @@ test("admin actions stream incrementally, reject untrusted requests, and survive
   const calls = [];
   let finish;
   let cancelled;
-  const preview = await startDashboardServer({
-    admin: true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+  const preview = await startCanvasServer({
+    approveCliAction: async () => true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
     cliQueueAdmission: async () => ({ concurrency: 1 }),
     dataBackend: "indexeddb",
     output: () => {}, traceOutput: () => {}, requestOutput: () => {},
@@ -351,10 +293,10 @@ test("admin actions stream incrementally, reject untrusted requests, and survive
   });
   try {
     const page = await fetch(`${preview.url}/`);
-    assert.equal(new URL(page.url).searchParams.get("local-preview"), "admin");
+    assert.equal(new URL(page.url).searchParams.get("local-preview"), "canvas");
     const html = await page.text();
     assert.match(html, /globalThis\.__CLI_QUEUE__ = true/);
-    assert.match(html, /globalThis\.__DASHBOARD_ADMIN__ = true/);
+    assert.doesNotMatch(html, /globalThis\.__DASHBOARD_ADMIN__/);
     const url = `${preview.url}/__cli_action`;
     const headers = { "Content-Type": "application/json", Origin: new URL(url).origin };
     const request = (body, customHeaders = headers) => fetch(url, {
@@ -402,59 +344,6 @@ test("admin actions stream incrementally, reject untrusted requests, and survive
   }
 });
 
-test("admin mode runs declared commands through the local CLI without an injected executor", async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "dashboard-admin-cli-"));
-  const ghExecutable = path.join(root, "gh");
-  await writeFile(ghExecutable, `#!${process.execPath}
-const args = process.argv.slice(2).join(" ");
-if (args === "auth token") console.log("test-authentication");
-else if (args === "aw --help") console.log("gh aw");
-else if (args === "api user") console.log(JSON.stringify({ login: "test-user", id: 123 }));
-else if (args === "aw compile") {
-  console.log("compile started");
-  setTimeout(() => { process.stderr.write("compile complete\\n"); }, 50);
-} else process.exitCode = 2;
-`);
-  await chmod(ghExecutable, 0o700);
-  await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
-  await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [
-    { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
-    { id: "unsupported", label: "Unsupported", icon: "play", command: "sh -c whoami" },
-  ]));
-  const preview = await startDashboardServer({
-    admin: true, ghExecutable, siteRoot: root, catalogRoot: null,
-    cliQueueAdmission: async () => ({ concurrency: 1 }),
-    workingDirectory: root, port: 0, dataBackend: "indexeddb",
-    output: () => {}, traceOutput: () => {}, requestOutput: () => {},
-    downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(path.join(destination, "sources.json"), "{}");
-    },
-  });
-  try {
-    const invoke = (id) => fetch(`${preview.url}/__cli_action`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Origin: new URL(preview.url).origin },
-      body: JSON.stringify({ id }),
-    });
-    const response = await invoke("compile");
-    const events = (await response.text()).trim().split("\n").map((line) => JSON.parse(line));
-    assert.equal(events[0].type, "output");
-    assert.equal(events[0].data.replaceAll("\r\n", "\n"), "compile started\n");
-    const output = events.filter((event) => event.type === "output");
-    assert.ok(output.every((event) => event.stream === "stdout"));
-    assert.equal(output.map((event) => event.data).join("").replaceAll("\r\n", "\n"),
-      "compile started\ncompile complete\n");
-    assert.equal(events.at(-1).result.ok, true);
-    assert.equal(events.at(-1).result.exitCode, 0);
-    const rejected = await invoke("unsupported");
-    assert.match(await rejected.text(), /must be an explicit/);
-  } finally {
-    await preview.close();
-    await rm(root, { recursive: true, force: true });
-  }
-});
-
 test("queued commands retain IDs across server restart and replay output by cursor", { timeout: 15_000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-durable-cli-"));
   await writeFile(path.join(root, "index.html"), "<!doctype html><head></head><body>preview</body>");
@@ -462,7 +351,7 @@ test("queued commands retain IDs across server restart and replay output by curs
     { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
   ]));
   const options = {
-    admin: true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+    approveCliAction: async () => true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
     dataBackend: "indexeddb", output: () => {}, traceOutput: () => {}, requestOutput: () => {},
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
@@ -474,7 +363,7 @@ test("queued commands retain IDs across server restart and replay output by curs
       return { ok: true, exitCode: 0 };
     },
   };
-  let preview = await startDashboardServer({
+  let preview = await startCanvasServer({
     ...options, cliQueueAdmission: async () => ({ concurrency: 0, reason: "test-pause" }),
   });
   try {
@@ -488,7 +377,7 @@ test("queued commands retain IDs across server restart and replay output by curs
     const original = await enqueued.json();
     assert.equal((await (await post()).json()).id, original.id);
     await preview.close();
-    preview = await startDashboardServer({
+    preview = await startCanvasServer({
       ...options, cliQueueAdmission: async () => ({ concurrency: 1 }),
     });
     const stream = await fetch(`${preview.url}/__cli_commands/${original.id}/output`);
@@ -508,15 +397,16 @@ test("queued commands retain IDs across server restart and replay output by curs
   }
 });
 
-test("admin queue refuses a persistence directory symlink outside the workspace", async () => {
+test("canvas queue refuses a persistence directory symlink outside the workspace", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-queue-path-"));
   const outside = await mkdtemp(path.join(tmpdir(), "dashboard-queue-outside-"));
   try {
     await writeFile(path.join(root, "index.html"), "<!doctype html><body>preview</body>");
     await writeFile(path.join(root, "dashboard.json"), dashboard("built-in"));
-    await symlink(outside, path.join(root, ".cao"), "dir");
-    await assert.rejects(startDashboardServer({
-      admin: true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+    await symlink(outside, path.join(root, ".queue"), "dir");
+    await assert.rejects(startCanvasServer({
+      approveCliAction: async () => true, executeCliAction: async () => {}, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
+      cliQueuePath: path.join(root, ".queue", "cli-actions.sqlite"),
       dataBackend: "indexeddb", output: () => {}, traceOutput: () => {}, requestOutput: () => {},
       downloadData: async (destination) => {
         await mkdir(destination, { recursive: true });
@@ -538,7 +428,7 @@ test("local dashboard server fails when dashboard data cannot be downloaded", as
 
   try {
     await assert.rejects(
-      startDashboardServer({
+      startCanvasServer({
         siteRoot: root,
         catalogRoot: null,
         downloadData: async () => {
@@ -560,7 +450,7 @@ test("local dashboard server serves repository memory from canonical dashboard d
   await mkdir(siteRoot, { recursive: true });
   await writeFile(path.join(siteRoot, "index.html"), "<!doctype html><body>preview</body>");
   await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("built-in"));
-  const preview = await startDashboardServer({
+  const preview = await startCanvasServer({
     siteRoot,
     catalogRoot: null,
     downloadData: async (destination) => {
@@ -665,14 +555,14 @@ test("canvas dashboard executes only declared CLI actions through the provided e
     },
   ]));
 
-  const preview = await startDashboardServer({
+  const preview = await startCanvasServer({
     siteRoot: root,
     catalogRoot: null,
     downloadData: async (destination) => {
       await mkdir(destination, { recursive: true });
       await writeFile(path.join(destination, "sources.json"), "{}");
     },
-    canvas: true,
+
     cliQueueAdmission: async () => ({ concurrency: 4 }),
     approveCliAction: async () => true,
     executeCliAction: async ({ onOutput, signal, ...action }) => {
@@ -843,7 +733,7 @@ test("local dashboard server rejects paths outside its workspace", async () => {
   await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("built-in"));
   try {
     await assert.rejects(
-      startDashboardServer({
+      startCanvasServer({
         siteRoot: root,
         catalogRoot: null,
         workingDirectory: workspace,
@@ -853,7 +743,7 @@ test("local dashboard server rejects paths outside its workspace", async () => {
     await writeFile(path.join(outside, "dashboard.json"), dashboard("outside"));
     await symlink(outside, path.join(workspace, "example"));
     await assert.rejects(
-      startDashboardServer({
+      startCanvasServer({
         siteRoot,
         catalogRoot: workspace,
         workingDirectory: workspace,
@@ -863,155 +753,6 @@ test("local dashboard server rejects paths outside its workspace", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
-
-test("local dashboard CLI runs directly without a permission sandbox relaunch", () => {
-  const repositoryRoot = path.resolve(import.meta.dirname, "../..");
-  const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", "--help"], {
-    cwd: repositoryRoot,
-    encoding: "utf8",
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /usage: local-server\.mjs/);
-  assert.match(result.stdout, /--canvas/);
-  assert.match(result.stdout, /--data-backend sqlite\|indexeddb/);
-  assert.match(result.stdout, /--replace-existing/);
-  assert.match(result.stdout, /--operational-store redis\|memory/);
-  assert.match(result.stdout, /matching reviewed host policy/);
-});
-
-test("local dashboard CLI rejects invalid or incompatible Go mode flags", () => {
-  for (const [arguments_, message] of [
-    [["--operational-store"], /requires a value/],
-    [["--data-backend"], /must be sqlite, indexeddb, or postgres/],
-    [["--data-backend", "redis"], /must be sqlite, indexeddb, or postgres/],
-    [["--data-backend", "sqlite", "--port", "0"], /--port must be an integer/],
-    [["--data-backend", "indexeddb", "--port", "0"], /--port must be an integer/],
-    [["--operational-store", "sqlite"], /must be redis, memory, or postgres/],
-    [["--operational-store", "memory", "--policy", "--port", "8080"], /--policy requires a value/],
-    [["--operational-store", "redis", "--canvas"], /--canvas cannot be used/],
-    [["--operational-store", "memory", "--data-backend", "sqlite"], /--data-backend cannot be used/],
-    [["--operational-store", "memory", "--repo", "acme/control"], /--repo cannot be used/],
-    [["--operational-store", "redis", "--replace-existing"], /--replace-existing cannot be used/],
-    [["--operational-store", "memory", "--trace-file", "trace.jsonl"], /--trace-file cannot be used/],
-    [["--operational-store", "memory", "--cert", "cert.pem"], /--cert and --key/],
-    [["--data-backend", "postgres", "--canvas"], /--canvas cannot be used/],
-    [["--data-backend", "postgres", "--repo", "acme/control"], /--repo cannot be used/],
-    [["--policy", "cao.json"], /require --data-backend postgres or --operational-store/],
-    [["--operational-store", "memory", "--port", "0"], /--port must be an integer/],
-  ]) {
-    const result = spawnSync(process.execPath, ["dashboard/local-server.mjs", ...arguments_], {
-      cwd: path.resolve(import.meta.dirname, "../.."),
-      encoding: "utf8",
-    });
-    assert.equal(result.status, 1);
-    assert.match(result.stdout, message);
-  }
-});
-
-test("Postgres data backend selects the Go launcher and preserves operational-store selection", async () => {
-  const defaults = parseDashboardServerArguments(["--data-backend", "postgres", "--policy", "reviewed.json"]);
-  assert.equal(defaults.dataBackend, "postgres");
-  assert.equal(defaults.operationalStore, "postgres");
-  assert.equal(defaults.policyPath, "reviewed.json");
-  for (const operationalStore of ["redis", "memory", "postgres"]) {
-    const options = parseDashboardServerArguments([
-      "--data-backend", "postgres", "--operational-store", operationalStore,
-      "--policy", "reviewed.json", "--site", "built", "--port", "8443",
-    ]);
-    const calls = [];
-    await runGoDashboardServer({
-      ...options,
-      runCommand: async (executable, arguments_) => { calls.push({ executable, arguments_ }); },
-    });
-    assert.equal(calls[0].executable, "go");
-    assert.deepEqual(calls[1].arguments_, [
-      "serve-hosted", "--operational-store", operationalStore,
-      "--listen", "127.0.0.1:8443", "--site", path.resolve("built"),
-    ]);
-  }
-});
-
-test("Go local launcher selects each backend without modifying policy or environment", async (t) => {
-  const root = await mkdtemp(path.join(tmpdir(), "dashboard-go-launcher-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  for (const operationalStore of ["redis", "memory", "postgres"]) {
-    const calls = [];
-    const policyPath = path.join(root, `${operationalStore}.json`);
-    const policy = JSON.stringify({ fixture: operationalStore });
-    await writeFile(policyPath, policy);
-    const environment = { CAO_POLICY_PATH: "ignored.json", CAO_POSTGRES_URL: "postgres://fixture" };
-    await runGoDashboardServer({
-      operationalStore,
-      policyPath,
-      workingDirectory: root,
-      environment,
-      host: "::1",
-      port: 8443,
-      siteRoot: "built",
-      certFile: "cert.pem",
-      keyFile: "key.pem",
-      runCommand: async (executable, arguments_, options) => {
-        calls.push({ executable, arguments_, options });
-        if (executable === "go") await writeFile(arguments_[2], "build fixture");
-      },
-    });
-    assert.equal(calls.length, 2);
-    assert.equal(calls[0].executable, "go");
-    assert.deepEqual(calls[0].arguments_.slice(0, 2), ["build", "-o"]);
-    assert.equal(calls[0].arguments_.at(-1), "./cmd/cao-dashboard");
-    assert.equal(calls[1].executable, calls[0].arguments_[2]);
-    assert.deepEqual(calls[1].arguments_, [
-      "serve-hosted", "--operational-store", operationalStore,
-      "--listen", "[::1]:8443", "--site", path.join(root, "built"),
-      "--cert", path.join(root, "cert.pem"), "--key", path.join(root, "key.pem"),
-    ]);
-    assert.equal(calls[1].options.env.CAO_POLICY_PATH, policyPath);
-    assert.equal(calls[1].options.env.CAO_POSTGRES_URL, environment.CAO_POSTGRES_URL);
-    assert.equal(environment.CAO_POLICY_PATH, "ignored.json");
-    assert.equal(await readFile(policyPath, "utf8"), policy);
-    await assert.rejects(stat(calls[1].executable), { code: "ENOENT" });
-  }
-});
-
-test("Go local launcher respects policy environment precedence", async () => {
-  for (const [environment, expected] of [
-    [{ CAO_POLICY_PATH: "primary.json", CAO_MARKETPLACE_POLICY_PATH: "secondary.json" }, "primary.json"],
-    [{ CAO_POLICY_PATH: " ", CAO_MARKETPLACE_POLICY_PATH: "secondary.json" }, "secondary.json"],
-    [{}, path.resolve(import.meta.dirname, "../../.github/workflows/cao.json")],
-  ]) {
-    let selected;
-    await runGoDashboardServer({
-      operationalStore: "memory",
-      environment,
-      runCommand: async (_executable, _arguments, options) => { selected = options.env.CAO_POLICY_PATH; },
-    });
-    assert.equal(selected, path.resolve(expected));
-  }
-});
-
-test("Go local launcher reports build failure and removes its temporary binary", async () => {
-  const failure = new Error("Go build failed");
-  let executable;
-  await assert.rejects(runGoDashboardServer({
-    operationalStore: "memory",
-    runCommand: async (_command, arguments_) => {
-      executable = arguments_[2];
-      await writeFile(executable, "partial build");
-      throw failure;
-    },
-  }), failure);
-  await assert.rejects(stat(executable), { code: "ENOENT" });
-});
-
-test("dashboard local server declares canvas readiness output", async () => {
-  const source = await readFile(
-    new URL("../../dashboard/local-server.mjs", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(source, /options\.canvas \? 0 : 4173/);
-  assert.match(source, /CAO_CANVAS_READY \$\{preview\.url\}\//);
 });
 
 test("local dashboard server downloads dashboard-build data with GitHub CLI", {
@@ -1065,11 +806,11 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
 `);
   await chmod(ghExecutable, 0o755);
 
-  const preview = await startDashboardServer({
+  const preview = await startCanvasServer({
     siteRoot: root,
     catalogRoot: null,
     repository: "acme/control",
-    admin: true,
+    approveCliAction: async () => true,
     cliQueueAdmission: async () => ({ concurrency: 1 }),
     executeCliAction: async ({ command }) => { commands.push(command); return { ok: true, exitCode: 0 }; },
     ghExecutable,
@@ -1112,12 +853,12 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
     });
     await writeFile(path.join(root, "pages-unavailable"), "");
     const executionOptions = {
-      siteRoot: root, catalogRoot: null, repository: "acme/control", admin: true,
+      siteRoot: root, catalogRoot: null, repository: "acme/control", approveCliAction: async () => true,
       ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       executeCliAction: async () => ({ ok: true, exitCode: 0 }),
     };
-    const missing = await startDashboardServer({
+    const missing = await startCanvasServer({
       ...executionOptions, cliQueuePath: path.join(root, ".cao", "missing.sqlite"),
     });
     try {
@@ -1130,7 +871,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
       });
       assert.equal(rejected.status, 400);
     } finally { await missing.close(); }
-    const hosted = await startDashboardServer({
+    const hosted = await startCanvasServer({
       ...executionOptions, caoUrl: "https://custom.example.com/ops",
       cliQueuePath: path.join(root, ".cao", "override.sqlite"),
     });
@@ -1139,7 +880,7 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
       assert.match(hostedHtml, /<meta name="cao-url" content="https:\/\/custom\.example\.com\/ops\/">/);
     } finally { await hosted.close(); }
     await writeFile(path.join(root, "release-unavailable"), "");
-    await assert.rejects(startDashboardServer({
+    await assert.rejects(startCanvasServer({
       siteRoot: root, catalogRoot: null, repository: "acme/control",
       ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
     }), /Unable to refresh the latest stable gh-aw release/);

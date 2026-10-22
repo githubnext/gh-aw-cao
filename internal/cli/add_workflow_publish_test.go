@@ -40,7 +40,7 @@ func (p *workflowAddPrompt) Text(label, _ string) (string, error) {
 	return "", errors.New("unexpected input: " + label)
 }
 
-const workflowDispatchFixture = "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nimports:\n  - uses: shared/control.md\n    with:\n      role: standalone\n      workflow: repo-status\non:\n  workflow_dispatch:\n    inputs:\n      target_repo:\n        required: true\n        type: string\n      safe_output_mode:\n        type: choice\n        default: live\n        options: [review, live]\n      safe_output_repo:\n        type: string\n      max_repos:\n        type: number\n---\nReport.\n"
+const workflowDispatchFixture = "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nimports:\n  - uses: shared/control.md\n    with:\n      role: standalone\n      workflow: daily-repo-status\non:\n  workflow_dispatch:\n    inputs:\n      target_repo:\n        required: true\n        type: string\n      safe_output_mode:\n        type: choice\n        default: live\n        options: [review, live]\n      safe_output_repo:\n        type: string\n      max_repos:\n        type: number\n---\nReport.\n"
 
 func TestWorkflowAddPublicationAndFirstRun(t *testing.T) {
 	for _, tt := range []struct {
@@ -69,15 +69,15 @@ func TestWorkflowAddPublicationAndFirstRun(t *testing.T) {
 					return "", "", nil
 				case args[0] == "aw" && args[1] == "run":
 					runs = append(runs, args)
-					return `[{"workflow":"repo-status","lock_file":"repo-status.lock.yml","status":"triggered"}]`,
-						"To see the workflow run, visit: https://github.com/org/control/actions/runs/42\nTriggered workflow: repo-status.lock.yml\nView workflow run: https://github.com/org/control/actions/runs/42\n", nil
+					return `[{"workflow":"daily-repo-status","lock_file":"daily-repo-status.lock.yml","status":"triggered"}]`,
+						"To see the workflow run, visit: https://github.com/org/control/actions/runs/42\nTriggered workflow: daily-repo-status.lock.yml\nView workflow run: https://github.com/org/control/actions/runs/42\n", nil
 				case args[0] == "repo":
 					return "org/control", "", nil
 				case strings.Contains(strings.Join(args, " "), "/actions/workflows/"):
-					return `{"path":".github/workflows/repo-status.lock.yml","state":"active"}`, "", nil
+					return `{"path":".github/workflows/daily-repo-status.lock.yml","state":"active"}`, "", nil
 				case strings.Contains(strings.Join(args, " "), "/actions/runs/"):
 					commit := setupPublishTestGit(t, cmd, "rev-parse", "HEAD")
-					return `{"head_sha":"` + commit + `","path":".github/workflows/repo-status.lock.yml","event":"workflow_dispatch","html_url":"https://github.com/org/control/actions/runs/42"}`, "", nil
+					return `{"head_sha":"` + commit + `","path":".github/workflows/daily-repo-status.lock.yml","event":"workflow_dispatch","html_url":"https://github.com/org/control/actions/runs/42"}`, "", nil
 				default:
 					return baseGH(ctx, args...)
 				}
@@ -85,7 +85,7 @@ func TestWorkflowAddPublicationAndFirstRun(t *testing.T) {
 			prompt := &workflowAddPrompt{publish: tt.publish, run: tt.run, target: "org/target"}
 			root, stdout, _ := testCommand(t, gh, nil)
 			root.SetContext(context.WithValue(cmd.Context(), nativeSetupPromptKey{}, nativeSetupPrompt(prompt)))
-			root.SetArgs([]string{"add", "repo-status"})
+			root.SetArgs([]string{"add", "daily-repo-status"})
 			if err := root.Execute(); err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +103,7 @@ func TestWorkflowAddPublicationAndFirstRun(t *testing.T) {
 			}
 			if tt.run {
 				commit := publication["commit"].(string)
-				want := [][]string{{"aw", "run", ".github/workflows/repo-status.md", "--ref", "main", "--json",
+				want := [][]string{{"aw", "run", ".github/workflows/daily-repo-status.md", "--ref", "main", "--json",
 					"--raw-field", "max_repos=1", "--raw-field", "safe_output_mode=review",
 					"--raw-field", "safe_output_repo=org/control", "--raw-field", "target_repo=org/target"}}
 				if !reflect.DeepEqual(runs, want) {
@@ -127,7 +127,7 @@ func TestWorkflowAddPublicationAndFirstRun(t *testing.T) {
 				prompt.questions = nil
 				root, _, _ = testCommand(t, gh, nil)
 				root.SetContext(context.WithValue(cmd.Context(), nativeSetupPromptKey{}, nativeSetupPrompt(prompt)))
-				root.SetArgs([]string{"add", "repo-status", "--force"})
+				root.SetArgs([]string{"add", "daily-repo-status", "--force"})
 				if err := root.Execute(); err != nil {
 					t.Fatal(err)
 				}
@@ -154,12 +154,12 @@ func TestWorkflowAddFilesPreservesDirtyWork(t *testing.T) {
 		{"unchanged", map[string]string{policyPath: "same"}, map[string]string{policyPath: "same"}, false, 0},
 		{"unrelated dirty", map[string]string{".github/consumer": "same"}, map[string]string{".github/consumer": "same", policyPath: "new"}, false, 3},
 		{"pre-existing policy", map[string]string{policyPath: "old"}, map[string]string{policyPath: "new"}, true, 0},
-		{"pre-existing source", map[string]string{".github/workflows/repo-status.md": "same"}, map[string]string{".github/workflows/repo-status.md": "same", policyPath: "new"}, true, 0},
+		{"pre-existing source", map[string]string{".github/workflows/daily-repo-status.md": "same"}, map[string]string{".github/workflows/daily-repo-status.md": "same", policyPath: "new"}, true, 0},
 		{"pre-existing shared import", map[string]string{".github/workflows/shared/control.md": "same"}, map[string]string{".github/workflows/shared/control.md": "same", policyPath: "new"}, true, 0},
 		{"outside installation", nil, map[string]string{"notes.txt": "new"}, true, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			files, blocked := workflowAddFiles(tt.before, tt.after, "repo-status")
+			files, blocked := workflowAddFiles(tt.before, tt.after, "daily-repo-status")
 			if (blocked != "") != tt.blocked || len(files) != tt.count {
 				t.Fatalf("files=%v blocked=%s", files, blocked)
 			}
@@ -181,7 +181,7 @@ func TestWorkflowAddCIDoesNotPromptOrPublish(t *testing.T) {
 		return "", "", nil
 	}, nil)
 	root.SetContext(context.WithValue(context.Background(), nativeSetupPromptKey{}, nativeSetupPrompt(prompt)))
-	root.SetArgs([]string{"add", "repo-status"})
+	root.SetArgs([]string{"add", "daily-repo-status"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -202,12 +202,12 @@ func TestWorkflowFirstRunPolicy(t *testing.T) {
 		{"outside repository", `{}`, "acme/other", false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			policyText := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":`+tt.entry+`},"campaigns":`, 1)
+			policyText := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":`+tt.entry+`},"campaigns":`, 1)
 			policy, err := nativeDecodeJSON([]byte(policyText))
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = workflowFirstRunPolicy(policy.(map[string]any), "repo-status", "acme/control", tt.target)
+			err = workflowFirstRunPolicy(policy.(map[string]any), "daily-repo-status", "acme/control", tt.target)
 			if (err == nil) != tt.valid {
 				t.Fatalf("valid=%v error=%v", tt.valid, err)
 			}
@@ -220,7 +220,7 @@ func TestNativeStandaloneWorkflowPolicy(t *testing.T) {
 		`{}`, `{"enabled":false,"mode":"live","max-mode":"review","max-repositories":2,"rollout-percent":5,"monthly-ai-credit-budget":50,"targets":{"acme/target":{"mode":"review"}}}`,
 	} {
 		t.Run(entry, func(t *testing.T) {
-			text := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":`+entry+`},"campaigns":`, 1)
+			text := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":`+entry+`},"campaigns":`, 1)
 			value, err := nativeDecodeJSON([]byte(text))
 			if err != nil {
 				t.Fatal(err)
@@ -234,7 +234,7 @@ func TestNativeStandaloneWorkflowPolicy(t *testing.T) {
 	for _, entry := range []string{
 		`{"permissions":"write"}`, `{"max-repositories":1001}`, `{"targets":{"other/repo":{"mode":"live"}}}`,
 	} {
-		text := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":`+entry+`},"campaigns":`, 1)
+		text := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":`+entry+`},"campaigns":`, 1)
 		value, err := nativeDecodeJSON([]byte(text))
 		if err != nil {
 			t.Fatal(err)
@@ -250,11 +250,11 @@ func TestWorkflowActivatedRunIDUsesOnlyNativeDispatchIdentity(t *testing.T) {
 		name, output, status string
 		valid                bool
 	}{
-		{"native URL", "To see the workflow run, visit:\nhttps://github.com/acme/control/actions/runs/42\nTriggered workflow: repo-status.lock.yml\nView workflow run: https://github.com/acme/control/actions/runs/42", "triggered", true},
-		{"latest fallback", "Triggered workflow: repo-status.lock.yml\nView workflow run: https://github.com/acme/control/actions/runs/42", "triggered", false},
-		{"different repository", "https://github.com/other/control/actions/runs/42\nTriggered workflow: repo-status.lock.yml", "triggered", false},
-		{"ambiguous activation", "https://github.com/acme/control/actions/runs/42\nhttps://github.com/acme/control/actions/runs/43\nTriggered workflow: repo-status.lock.yml", "triggered", false},
-		{"failed summary", "https://github.com/acme/control/actions/runs/42\nTriggered workflow: repo-status.lock.yml", "error", false},
+		{"native URL", "To see the workflow run, visit:\nhttps://github.com/acme/control/actions/runs/42\nTriggered workflow: daily-repo-status.lock.yml\nView workflow run: https://github.com/acme/control/actions/runs/42", "triggered", true},
+		{"latest fallback", "Triggered workflow: daily-repo-status.lock.yml\nView workflow run: https://github.com/acme/control/actions/runs/42", "triggered", false},
+		{"different repository", "https://github.com/other/control/actions/runs/42\nTriggered workflow: daily-repo-status.lock.yml", "triggered", false},
+		{"ambiguous activation", "https://github.com/acme/control/actions/runs/42\nhttps://github.com/acme/control/actions/runs/43\nTriggered workflow: daily-repo-status.lock.yml", "triggered", false},
+		{"failed summary", "https://github.com/acme/control/actions/runs/42\nTriggered workflow: daily-repo-status.lock.yml", "error", false},
 		{"missing marker", "https://github.com/acme/control/actions/runs/42", "triggered", false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -284,9 +284,9 @@ func TestWorkflowFirstRunFailsClosed(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := nativeSetupTestCommand()
-			policy := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"repo-status":{}},"campaigns":`, 1)
+			policy := strings.Replace(standalonePolicy, `"campaigns":`, `"workflows":{"daily-repo-status":{}},"campaigns":`, 1)
 			if tt.name == "disabled" {
-				policy = strings.Replace(policy, `"repo-status":{}`, `"repo-status":{"enabled":false}`, 1)
+				policy = strings.Replace(policy, `"daily-repo-status":{}`, `"daily-repo-status":{"enabled":false}`, 1)
 			}
 			reads := 0
 			cmd.SetContext(context.WithValue(cmd.Context(), setupGitKey{}, setupGitFunc(func(_ *cobra.Command, _ string, args ...string) (string, error) {
@@ -318,7 +318,7 @@ func TestWorkflowFirstRunFailsClosed(t *testing.T) {
 						if tt.name == "unavailable run" {
 							return "", "404", errors.New("exit 1")
 						}
-						commit, path := testCampaignSHA, ".github/workflows/repo-status.lock.yml"
+						commit, path := testCampaignSHA, ".github/workflows/daily-repo-status.lock.yml"
 						if tt.name == "wrong run revision" {
 							commit = strings.Repeat("f", 40)
 						}
@@ -330,7 +330,7 @@ func TestWorkflowFirstRunFailsClosed(t *testing.T) {
 					if tt.name == "unavailable" {
 						return "", "404 not found", errors.New("exit 1")
 					}
-					return `{"path":".github/workflows/repo-status.lock.yml","state":"active"}`, "", nil
+					return `{"path":".github/workflows/daily-repo-status.lock.yml","state":"active"}`, "", nil
 				}
 				if args[0] != "aw" || args[1] != "run" {
 					t.Fatalf("unexpected gh: %q", args)
@@ -341,12 +341,12 @@ func TestWorkflowFirstRunFailsClosed(t *testing.T) {
 				}
 				if tt.name == "wrong run revision" || tt.name == "wrong workflow" || tt.name == "unavailable run" {
 					return `[{"status":"triggered"}]`,
-						"To see the workflow run, visit: https://github.com/acme/control/actions/runs/42\nTriggered workflow: repo-status.lock.yml\n", nil
+						"To see the workflow run, visit: https://github.com/acme/control/actions/runs/42\nTriggered workflow: daily-repo-status.lock.yml\n", nil
 				}
 				return "", "connection lost", errors.New("exit 1")
 			}
 			prompt := &workflowAddPrompt{run: true, target: tt.target}
-			_, err := offerWorkflowFirstRun(cmd, gh, prompt, "repo-status", map[string]any{
+			_, err := offerWorkflowFirstRun(cmd, gh, prompt, "daily-repo-status", map[string]any{
 				"repository": "acme/control", "commit": testCampaignSHA, "branch": "main",
 			})
 			if err == nil || !strings.Contains(err.Error(), tt.want) {

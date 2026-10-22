@@ -9,7 +9,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-cao/server/internal/githubapp"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 )
+
+var appKeyCheckLog = debuglogger.New("cao:dashboard:app-key-check")
 
 func newAppKeyCheckCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -32,12 +35,7 @@ func newAppKeyCheckCommand() *cobra.Command {
 				return errors.New("app key fingerprint checks must not be empty when explicitly requested")
 			}
 		}
-		content, err := readAppKeyCheckFile(*path)
-		if err != nil {
-			return err
-		}
-		defer clear(content)
-		result, err := githubapp.CheckPrivateKey(content, *expected, *previous)
+		result, err := checkAppKeyFile(*path, *expected, *previous)
 		if err != nil {
 			return err
 		}
@@ -47,6 +45,24 @@ func newAppKeyCheckCommand() *cobra.Command {
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
 	}
 	return cmd
+}
+
+// checkAppKeyFile reads the bounded key file, validates it, and wipes the key
+// material before returning only public metadata.
+func checkAppKeyFile(path, expected, previous string) (githubapp.KeyCheck, error) {
+	content, err := readAppKeyCheckFile(path)
+	if err != nil {
+		appKeyCheckLog.Printf("app key file rejected")
+		return githubapp.KeyCheck{}, err
+	}
+	defer clear(content)
+	result, err := githubapp.CheckPrivateKey(content, expected, previous)
+	if err != nil {
+		appKeyCheckLog.Printf("app key validation failed: expected_pinned=%t rotation_checked=%t", expected != "", previous != "")
+		return githubapp.KeyCheck{}, err
+	}
+	appKeyCheckLog.Printf("app key validated: bits=%d expected_checked=%t rotation_checked=%t", result.Bits, result.ExpectedKeyChecked, result.RotationKeyChecked)
+	return result, nil
 }
 
 func readAppKeyCheckFile(path string) ([]byte, error) {

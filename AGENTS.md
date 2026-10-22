@@ -72,7 +72,9 @@ Run `npm run check` for complete repository validation. It executes, in order: `
 | `npm run test:campaign-root` | Clean-room install of the root `aw.yml` campaign only; requires `GH_TOKEN` and a GitHub App |
 | `npm run test:load` | Synthetic enterprise-scale load tests (100 000 repos) |
 | `npm run check:svg` | SVG visual-language compliance via `scripts/check-svg-visual-language.mjs` |
-| `npm run dashboard:local -- --repo OWNER/REPOSITORY` | Download dashboard data and start a local preview |
+| `npm run dashboard:local` | Build the dashboard and serve a verified SQLite cache through Go; set `DASHBOARD_DATA_URL` for another deployment |
+| `npm run dashboard:pages:build -- --fixture` | Prepare a labelled synthetic Pages deployment; use `--activity-dir PATH` for existing Activity data |
+| `npm run dashboard:pages -- --base-path /gh-cao/` | Serve the prepared Pages artifact through Go with browser IndexedDB |
 | `npm run compile` | Dry-run compile of workflow `.md` sources with `gh aw compile` (no lock-file writes) |
 | `npm run compile:locks` | Compile and update `.lock.yml` files |
 | `npm run docs:build` | Build the Astro/Starlight documentation site |
@@ -104,7 +106,7 @@ After UI changes, when Playwright loads the full website, capture and include de
 ### Dashboard performance testing
 
 - Measure page-level regressions with `npm run test:performance` from `dashboard/site/`; it builds the site and runs the CFO, CTO, and CSO Lighthouse scenarios, retaining traces for inspection.
-- Profile slow pages against real data with `npm run dashboard:local -- --repo OWNER/REPOSITORY`, then open the page with `?debug=data:query` to emit per-stage and whole-query timings (duration, input/output rows, estimated operations, status) for each declarative query.
+- Profile browser queries against real data with `npm run dashboard:pages:build -- --activity-dir PATH` followed by `npm run dashboard:pages`, then open the page with `?debug=data:query` to emit per-stage and whole-query timings (duration, input/output rows, estimated operations, status) for each declarative query. Ordinary local serving uses Go/SQLite via `npm run dashboard:local`.
 - Narrow noisy sessions with category filters such as `?debug=data:query,-render:*`, and use `?debug-shard-limit=N` to profile with fewer activity shards.
 - Attribute a slow page to its declarative queries before changing view code; query cost belongs to the query engine in the data Web Worker, not to components.
 - Detect expensive queries headlessly with `npm run dashboard:data:download && npm run test:performance:dashboard-query-cost` for the deployed SQLite snapshot. After building `.tmp/cao-dashboard` and starting local Postgres (numeric loopback or Unix socket only) with `CAO_POSTGRES_URL` set, run `npm run test:performance:dashboard-query-cost-postgres` to measure the same statically ranked candidates through production Go ingestion and query execution. Each Postgres run uses a random namespace and removes its data afterward. SQLite results are written to `test-results/dashboard-query-cost/`; Postgres results (wall time including source reads, Go row operations, output rows, working rows, and retained bytes) are written to `test-results/dashboard-query-cost/postgres/`. The `query-cost-comment` job posts both reports on pull requests. Missing or empty deployed evidence and failed queries fail the Postgres benchmark.
@@ -132,7 +134,7 @@ After UI changes, when Playwright loads the full website, capture and include de
 - Editing control-plane sources under `.github/workflows/shared/` → `npm run typecheck:cao && npm test`
 - Editing dashboard site under `dashboard/site/` → from that directory: `npm test && npm run test:e2e && npm run test:performance && npm run lint && npm run typecheck`
 - Editing dashboard ingestion, canonical storage, or the query engine → also run `npm run test:memory:dashboard-overview` from the repository root
-- Debugging downloaded dashboard data → use `npm run dashboard:local -- --repo OWNER/REPOSITORY`
+- Debugging deployed SQLite data → use `DASHBOARD_DATA_URL=https://OWNER.github.io/REPOSITORY/ npm run dashboard:local -- --download-sqlite`
 - Editing the Activity workflow or JSONL parser under `activity/` → run the focused activity tests and `npm run compile`
 - Editing workflow `.md` files → `npm run compile` (add `compile:locks` if lock files should update)
 - Editing SVGs → `npm run check:svg`
