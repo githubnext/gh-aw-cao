@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import { parse } from "yaml";
-import { APP_PROFILES } from "../../.github/workflows/shared/setup-github-apps.mjs";
+import { APP_PROFILES } from "../../.github/workflows/shared/github-apps.mjs";
 import {
   assertTargetInScope,
   classifyProbe,

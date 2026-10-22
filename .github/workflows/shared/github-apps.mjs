@@ -1,21 +1,12 @@
-#!/usr/bin/env node
-
 import { createSign, randomBytes } from "node:crypto";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
-import { createInterface } from "node:readline";
-import { Writable } from "node:stream";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
-import { pathToFileURL } from "node:url";
-
-import { parsePolicy } from "./policy.mjs";
 
 const MANIFEST_TIMEOUT_MS = 10 * 60 * 1000;
 const INSTALL_POLL_MS = 5 * 1000;
 const APP_NAME_MAX_LENGTH = 34;
-const AUTH_MODE_VARIABLE = "GH_AW_GITHUB_AUTH_MODE";
 
 export const APP_PROFILES = Object.freeze([
   Object.freeze({
@@ -51,67 +42,6 @@ export const APP_PROFILES = Object.freeze([
   }),
 ]);
 
-export function parseArgs(argv) {
-  const options = {
-    repo: "",
-    readAppName: "",
-    writeAppName: "",
-    writeRepositories: [],
-    policy: ".github/workflows/cao.json",
-    dryRun: false,
-    force: false,
-    openBrowser: true,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (argument === "--repo") {
-      options.repo = requireArgument(argv, ++index, argument);
-    } else if (argument === "--read-app-name") {
-      options.readAppName = requireArgument(argv, ++index, argument);
-    } else if (argument === "--write-app-name") {
-      options.writeAppName = requireArgument(argv, ++index, argument);
-    } else if (argument === "--read-client-id") {
-      options.readClientId = requireArgument(argv, ++index, argument);
-    } else if (argument === "--write-client-id") {
-      options.writeClientId = requireArgument(argv, ++index, argument);
-    } else if (argument === "--write-repository") {
-      options.writeRepositories.push(requireArgument(argv, ++index, argument));
-    } else if (argument === "--policy") {
-      options.policy = requireArgument(argv, ++index, argument);
-    } else if (argument === "--dry-run") {
-      options.dryRun = true;
-    } else if (argument === "--force") {
-      options.force = true;
-    } else if (argument === "--no-open") {
-      options.openBrowser = false;
-    } else if (argument === "--help" || argument === "-h") {
-      options.help = true;
-    } else {
-      throw new Error(`unknown argument: ${argument}`);
-    }
-  }
-
-  if (Boolean(options.readClientId) !== Boolean(options.writeClientId)) {
-    throw new Error("--read-client-id and --write-client-id must be supplied together");
-  }
-  if (options.readClientId && (options.force || options.readAppName || options.writeAppName)) {
-    throw new Error("existing App client IDs cannot be combined with --force or App names");
-  }
-  if (options.readClientId && options.readClientId === options.writeClientId) {
-    throw new Error("read and write App client IDs must be distinct");
-  }
-  return options;
-}
-
-function requireArgument(argv, index, flag) {
-  const value = argv[index]?.trim();
-  if (!value || value.startsWith("--")) {
-    throw new Error(`${flag} requires a value`);
-  }
-  return value;
-}
-
 export function deriveAppName(repo, role) {
   const [owner, name] = splitRepo(repo);
   const suffix = `-${role}`;
@@ -141,14 +71,6 @@ export function buildGitHubAppManifest({ name, homepageUrl, redirectUrl, descrip
     default_permissions: permissions,
     default_events: [],
   };
-}
-
-export function deriveInstallationTargets(document, controlRepository) {
-  const [controlOwner] = splitRepo(controlRepository);
-  return groupInstallationTargets([
-    controlRepository,
-    ...(document["control-plane"]?.scope?.["allowed-repositories"] ?? []),
-  ], controlOwner);
 }
 
 export function deriveWriteInstallationTargets(controlRepository, writeRepositories = []) {
@@ -186,13 +108,6 @@ function groupInstallationTargets(repositories, controlOwner) {
     ));
 }
 
-function loadControlPolicy(path) {
-  if (!existsSync(path)) {
-    throw new Error(`CAO policy not found at ${path}; run from the control repository or pass --policy`);
-  }
-  return parsePolicy(readFileSync(path, "utf8"));
-}
-
 export function isManifestCode(code) {
   return /^[A-Za-z0-9_-]+$/.test(code);
 }
@@ -207,20 +122,6 @@ export function githubServerUrl(environment = process.env) {
 
 export function isDataResidencyServer(serverUrl = githubServerUrl()) {
   return new URL(serverUrl).hostname.endsWith(".ghe.com");
-}
-
-export function appPermissionsForServer(profile, serverUrl = githubServerUrl()) {
-  new URL(serverUrl);
-  return profile.permissions;
-}
-
-export function setRepositoryCredentials(profile, app, repo, runner = runGh) {
-  runner(["variable", "set", profile.variable, "--repo", repo, "--body", app.clientId]);
-  runner(["secret", "set", profile.secret, "--repo", repo], { input: app.pem });
-}
-
-export function setRepositoryAuthenticationMode(repo, runner = runGh) {
-  runner(["variable", "set", AUTH_MODE_VARIABLE, "--repo", repo, "--body", "app"]);
 }
 
 export function splitRepo(repo) {
@@ -475,35 +376,6 @@ function createAppJwt(app, now = Date.now()) {
   return `${unsigned}.${signer.sign(app.pem, "base64url")}`;
 }
 
-export async function promptPrivateKey(label, { input = process.stdin, output = process.stderr } = {}) {
-  if (!input.isTTY || !output.isTTY) {
-    throw new Error("reusing an App requires an interactive terminal to enter its private key securely");
-  }
-  const muted = new Writable({ write(_chunk, _encoding, callback) { callback(); } });
-  const reader = createInterface({ input, output: muted, terminal: true, historySize: 0 });
-  try {
-    return await new Promise((resolve, reject) => {
-      let pem = "";
-      reader.on("line", (line) => {
-        pem += `${line}\n`;
-        if (pem.length > 64 * 1024) {
-          reject(new Error("App private key exceeds the supported size"));
-        } else if (/^-----END (?:RSA )?PRIVATE KEY-----$/.test(line)) {
-          resolve(pem);
-        }
-      });
-      reader.once("SIGINT", () => reject(new Error("App private-key entry cancelled")));
-      reader.once("error", reject);
-      reader.once("close", () => reject(new Error("App private-key entry ended before its END line")));
-      output.write(`Enter the ${label} App PEM private key (hidden; finish with its END line):\n`);
-    });
-  } finally {
-    reader.close();
-    muted.end();
-    output.write("\n");
-  }
-}
-
 function appRequest(app, apiUrl, pathname, fetchImpl) {
   return fetchImpl(`${apiUrl}${pathname}`, {
     headers: {
@@ -512,31 +384,6 @@ function appRequest(app, apiUrl, pathname, fetchImpl) {
       "X-GitHub-Api-Version": "2022-11-28",
     },
   });
-}
-
-export async function authenticateExistingApp(clientId, pem, profile, {
-  fetchImpl = fetch,
-  apiUrl = githubApiUrl(),
-} = {}) {
-  const credentials = { clientId, pem };
-  const response = await appRequest(credentials, apiUrl, "/app", fetchImpl);
-  if (!response.ok) throw new Error(`GitHub App authentication failed with HTTP ${response.status}`);
-  const app = await response.json();
-  if (app.client_id !== clientId || !app.id || !app.slug || app.public !== false) {
-    throw new Error("credentials must identify the selected private GitHub App");
-  }
-  const permissions = app.permissions ?? {};
-  for (const [permission, level] of Object.entries(profile.permissions)) {
-    if (permissions[permission] !== level && !(level === "read" && permissions[permission] === "write" && profile.role === "write")) {
-      throw new Error(`${profile.label} App requires ${permission}: ${level}`);
-    }
-  }
-  for (const [permission, level] of Object.entries(permissions)) {
-    if (level !== "read" && profile.permissions[permission] !== level) {
-      throw new Error(`${profile.label} App has an unsupported permission: ${permission}: ${level}`);
-    }
-  }
-  return { id: String(app.id), clientId, pem, slug: app.slug, name: app.name };
 }
 
 export async function findInstallationForApp(app, owner, {
@@ -607,20 +454,9 @@ export function validateInstallationScope(installation, owner) {
   }
 }
 
-export function installationInstruction(repo) {
-  return `Choose "Only select repositories", select only ${repo}, and save.`;
-}
-
 export function installationTargetInstruction(target) {
   const repositories = target.repositories.map((repository) => `${target.owner}/${repository}`).join(", ");
   return `Choose "${target.owner}", choose "Only select repositories", select ${repositories}, and save.`;
-}
-
-export function installationIncludesRepository(installation, repo, listRepositories) {
-  const [owner] = splitRepo(repo);
-  validateInstallationScope(installation, owner);
-  if (!listRepositories) throw new Error("a selected-repository verifier is required");
-  return listRepositories(installation.id, owner).some((name) => name.toLowerCase() === repo.toLowerCase());
 }
 
 export function installationIncludesTarget(installation, target, listRepositories) {
@@ -700,138 +536,4 @@ export async function selectedInstallationForSetup(app, target, {
       `unable to verify selected repository membership for ${app.name || app.slug} on ${target.owner}: ${error.message}`,
     );
   }
-}
-
-function printHelp() {
-  console.log(`Usage: cao-setup [options]
-
-Create or reuse separate read-only and write-capable private GitHub Apps for a CAO control repository.
-
-Options:
-  --repo OWNER/REPO       Control repository (defaults to the current repository)
-  --read-app-name NAME    Globally unique read App name
-  --write-app-name NAME   Globally unique write App name
-  --read-client-id ID     Reuse an approved private read App; securely prompt for its key
-  --write-client-id ID    Reuse an approved private write App; requires --read-client-id
-  --write-repository REPO Repository approved for write App access; repeatable
-  --policy PATH           CAO policy (default: .github/workflows/cao.json)
-  --dry-run               Print manifests or existing App selections without changing GitHub
-  --force                 Create replacements even when both credential pairs exist
-  --no-open               Print browser URLs instead of opening them
-  -h, --help              Show this help`);
-}
-
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
-  if (options.help) {
-    printHelp();
-    return;
-  }
-  const repo = options.repo || runGh(["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]);
-  const [controlOwner] = splitRepo(repo);
-  const policy = loadControlPolicy(options.policy);
-  const installationTargets = {
-    read: deriveInstallationTargets(policy, repo),
-    write: deriveWriteInstallationTargets(repo, options.writeRepositories),
-  };
-  const externalTarget = [...installationTargets.read, ...installationTargets.write].find(
-    (target) => target.owner.toLowerCase() !== controlOwner.toLowerCase(),
-  );
-  if (externalTarget && !options.readClientId) {
-    throw new Error(
-      `private organization-owned Apps cannot be installed on ${externalTarget.owner}; `
-      + "configure existing enterprise-owned Apps or a fine-grained token",
-    );
-  }
-  const homepageUrl = `${githubServerUrl()}/${repo}`;
-  const appNames = {
-    read: options.readAppName || deriveAppName(repo, "read"),
-    write: options.writeAppName || deriveAppName(repo, "write"),
-  };
-  validateAppName(appNames.read, "--read-app-name");
-  validateAppName(appNames.write, "--write-app-name");
-  if (appNames.read.toLowerCase() === appNames.write.toLowerCase()) {
-    throw new Error("read and write App names must be distinct");
-  }
-
-  if (options.dryRun) {
-    if (options.readClientId) {
-      console.log(JSON.stringify({
-        repo,
-        installationTargets,
-        apps: APP_PROFILES.map((profile) => ({
-          role: profile.role,
-          clientId: options[`${profile.role}ClientId`],
-          variable: profile.variable,
-          secret: profile.secret,
-          permissions: profile.permissions,
-        })),
-      }, null, 2));
-      return;
-    }
-    const apps = APP_PROFILES.map((profile) => ({
-      role: profile.role,
-      variable: profile.variable,
-      secret: profile.secret,
-      manifest: buildGitHubAppManifest({
-        name: appNames[profile.role],
-        homepageUrl,
-        redirectUrl: "http://127.0.0.1:0/callback",
-        description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-        permissions: appPermissionsForServer(profile),
-      }),
-    }));
-    console.log(JSON.stringify({ repo, installationTargets, apps }, null, 2));
-    return;
-  }
-
-  runGh(["auth", "status"]);
-  const target = verifyTarget(repo);
-  const state = repositoryState(repo);
-  for (const profile of APP_PROFILES) {
-    const profileInstallationTargets = installationTargets[profile.role];
-    const complete = state.variables.has(profile.variable) && state.secrets.has(profile.secret);
-    let app;
-    if (options.readClientId || (complete && !options.force)) {
-      const clientId = options[`${profile.role}ClientId`] || repositoryVariableValue(repo, profile.variable);
-      const pem = await promptPrivateKey(profile.label);
-      app = await authenticateExistingApp(clientId, pem, profile);
-    } else {
-      if (state.variables.has(profile.variable) !== state.secrets.has(profile.secret)) {
-        console.error(`${profile.label} App credentials are incomplete; creating a replacement pair.`);
-      }
-      app = await createGitHubApp({
-        owner: target.owner,
-        name: appNames[profile.role],
-        homepageUrl: target.homepageUrl,
-        description: `Central Agentic Ops ${profile.label} App for ${repo}`,
-        permissions: appPermissionsForServer(profile),
-        openBrowser: options.openBrowser,
-      });
-    }
-    await ensureInstallations(app, profileInstallationTargets, options.openBrowser, !options.readClientId && (!complete || options.force));
-    setRepositoryCredentials(profile, app, repo);
-    console.error(`Set repository variable ${profile.variable}.`);
-    console.error(`Set repository secret ${profile.secret}.`);
-    if (profile.role === "read") {
-      setRepositoryAuthenticationMode(repo);
-      console.error(`Read-only GitHub App credentials and Activity authentication mode are configured for ${repo}.`);
-    }
-  }
-
-  const finalState = repositoryState(repo);
-  for (const profile of APP_PROFILES) {
-    if (!finalState.variables.has(profile.variable) || !finalState.secrets.has(profile.secret)) {
-      throw new Error(`credential verification failed for the ${profile.label} App`);
-    }
-  }
-  console.error(`Both GitHub App credential pairs are configured for ${repo}.`);
-}
-
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
-if (isMain) {
-  main().catch((error) => {
-    console.error(`Error: ${error.message}`);
-    process.exitCode = 1;
-  });
 }

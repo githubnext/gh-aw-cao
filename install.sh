@@ -751,7 +751,7 @@ main() {
   fi
 
   # gh-aw's markdown scanner rejects the GitHub App manifest page embedded in
-  # .github/workflows/shared/setup-github-apps.mjs, so catalog installs skip it.
+  # .github/workflows/shared/github-apps.mjs, so catalog installs skip it.
   if [[ ! -f "$cao_cli" || ! -f "$control_runtime" || ! -f "$materializer" || ! -f "$runtime_action" ]]; then
     note "Installs 3 workflows, 5 shared control plane resources, and project settings."
     if ! run_quiet_command \

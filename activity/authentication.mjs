@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { readSync } from 'node:fs';
-import { APP_PROFILES, repositoryState, repositoryVariableValue } from '../.github/workflows/shared/setup-github-apps.mjs';
+import { APP_PROFILES, repositoryState, repositoryVariableValue } from '../.github/workflows/shared/github-apps.mjs';
 
 export const FINE_GRAINED_PAT_PROFILES = [
   {

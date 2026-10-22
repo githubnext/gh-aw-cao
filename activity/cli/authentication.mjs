@@ -87,8 +87,7 @@ export function setupCaoAuthentication(method, arguments_ = [], {
   confirmExistingSecret = (secret) => confirmExistingPatSecret(secret, { UsageError }),
 } = {}) {
   if (method === 'github-app') {
-    const script = path.join('.github', 'workflows', 'shared', 'setup-github-apps.mjs');
-    const result = execute(process.execPath, [script, ...arguments_], { stdio: 'inherit' });
+    const result = execute('gh', ['cao', 'setup', 'auth', 'github-app', ...arguments_], { stdio: 'inherit' });
     if (result.error || result.status !== 0) {
       throw new Error(`GitHub App setup failed: ${commandFailureMessage(result, `exit ${result.status}`)}`);
     }
