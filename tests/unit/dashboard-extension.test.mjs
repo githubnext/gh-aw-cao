@@ -57,6 +57,48 @@ test("dashboard canvas shares concurrent opens and closes pending startup", asyn
   assert.equal(closes, 1);
 });
 
+test("dashboard canvas rejects native Windows before starting a preview and recommends WSL", async () => {
+  let starts = 0;
+  const { config, closePreviews } = createDashboardExtension({
+    platform: "win32",
+    startPreview: async () => {
+      starts += 1;
+      throw new Error("Preview startup must not run on Windows.");
+    },
+  });
+  const canvas = config.canvases[0];
+  for (const instanceId of ["preview", "preview", "another-preview"]) {
+    await assert.rejects(canvas.open(context(instanceId)), (error) =>
+      error instanceof CanvasError
+      && error.code === "cao_dashboard_platform_unsupported"
+      && /not supported on native Windows/.test(error.message)
+      && /Windows Subsystem for Linux \(WSL\)/.test(error.message)
+      && /run your Copilot session from inside WSL/.test(error.message));
+  }
+  assert.equal(starts, 0);
+  await closePreviews();
+});
+
+test("dashboard canvas allows Linux including WSL and macOS execution hosts", async () => {
+  for (const platform of ["linux", "darwin"]) {
+    let starts = 0;
+    const { config, closePreviews } = createDashboardExtension({
+      platform,
+      startPreview: async () => {
+        starts += 1;
+        return { url: "http://127.0.0.1:1234/preview", close: async () => {} };
+      },
+    });
+    try {
+      assert.equal((await config.canvases[0].open(context("preview"))).url,
+        "http://127.0.0.1:1234/preview");
+      assert.equal(starts, 1);
+    } finally {
+      await closePreviews();
+    }
+  }
+});
+
 test("dashboard canvas uses hook context and retains each preview's working directory", async () => {
   const previews = [];
   const commands = [];

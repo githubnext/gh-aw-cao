@@ -17,6 +17,7 @@ import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-design
 /**
  * @param {{
  *   workingDirectory?: string,
+ *   platform?: NodeJS.Platform,
  *   startPreview?: typeof startLocalDashboardPreview,
  *   executeCommand?: typeof executeDashboardCommand,
  *   approveCommand?: (request: import("./approval.mjs").DashboardCommandApproval) => Promise<boolean>,
@@ -24,6 +25,7 @@ import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-design
  */
 export function createDashboardExtension({
   workingDirectory = process.cwd(),
+  platform = process.platform,
   startPreview = startLocalDashboardPreview,
   executeCommand = executeDashboardCommand,
   approveCommand = approveDashboardCommand,
@@ -181,6 +183,12 @@ export function createDashboardExtension({
           additionalProperties: false,
         },
         open: async (context) => {
+          if (platform === "win32") {
+            throw new CanvasError(
+              "cao_dashboard_platform_unsupported",
+              "The Central Agentic Ops canvas is not supported on native Windows. Use Windows Subsystem for Linux (WSL) and run your Copilot session from inside WSL, then open the canvas again.",
+            );
+          }
           let pending;
           try {
             if (stopping) {

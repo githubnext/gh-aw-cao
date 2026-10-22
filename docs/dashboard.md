@@ -81,6 +81,11 @@ rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
 
+The **Central Agentic Ops** Copilot canvas is not supported on native Windows.
+On Windows, use **Windows Subsystem for Linux (WSL)** and run your Copilot session
+from inside WSL before opening the canvas. The check uses the extension's
+execution environment, not the operating system of the browser displaying it.
+
 The canvas's local preview server stays available between agent turns, including
 completed, interrupted, or failed turns. It stops when its canvas closes, when
 you exit the session, or when its extension process stops.
