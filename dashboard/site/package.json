@@ -42,6 +42,6 @@
     "puppeteer-core": "^25.10.0",
     "source-map-js": "file:packages/source-map-compat",
     "typescript": "^5.9.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   }
 }
