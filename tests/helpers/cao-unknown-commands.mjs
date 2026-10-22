@@ -19,7 +19,7 @@ export function assertUnknownCommandsRejectBeforeIO(runtimeRoot, t) {
   writeFileSync(path.join(directory, "malformed.json"), "{");
   const before = readdirSync(directory, { recursive: true }).sort();
   const originals = before
-    .filter(name => ![".github", ".github/workflows"].includes(name))
+    .filter(name => ![".github", path.join(".github", "workflows")].includes(name))
     .map(name => [name, readFileSync(path.join(directory, name))]);
   const moduleUrl = relative => pathToFileURL(path.join(runtimeRoot, relative)).href;
   const cases = [
