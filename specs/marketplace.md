@@ -80,4 +80,8 @@ Registry failures are isolated and reported as credential-free diagnostics.
 Repository lookup failures do not hide usable packages. Private repository
 counts and token-derived details are never published, even to authenticated
 dashboard clients. The marketplace displays the package table as a declarative
-card list without search, filters, or derived rankings.
+card list without search, filters, or derived rankings. The directory loads
+canonical query pages of 25 packages as the user scrolls, with an accessible
+manual load/retry control. Summary cards show the package name, description,
+publisher, and registry; version and public repository statistics remain on
+the detail page. Mobile introductory text has a 16-pixel horizontal gutter.

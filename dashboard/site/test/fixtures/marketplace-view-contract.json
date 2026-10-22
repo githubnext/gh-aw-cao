@@ -1,0 +1,26 @@
+{
+  "page": "marketplace",
+  "view": "marketplace-packages",
+  "source": "marketplace-directory",
+  "card": "marketplace-package-summary",
+  "lazy-list": true,
+  "summary-fields": ["package-name", "package-description", "registry-name", "publisher"],
+  "order-by": [
+    { "field": "package-name", "direction": "asc" },
+    { "field": "package-source", "direction": "asc" }
+  ],
+  "rows": [
+    {
+      "id": "one", "registry-id": "primary", "registry-name": "Primary", "publisher": "Alpha",
+      "package-name": "Audit Helper", "package-description": "Audit quality checks", "stars": 2
+    },
+    {
+      "id": "two", "registry-id": "other", "registry-name": "Other", "publisher": "Beta",
+      "package-name": "Audit Runner", "package-description": "Audit security", "stars": null
+    },
+    {
+      "id": "three", "registry-id": "primary", "registry-name": "Primary", "publisher": "Alpha",
+      "package-name": "Workflow Manager", "package-description": "Manage deployments", "stars": 11
+    }
+  ]
+}

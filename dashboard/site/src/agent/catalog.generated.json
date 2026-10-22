@@ -885,6 +885,7 @@
       "experimental": false,
       "parameters": [],
       "queries": [
+        "marketplace-directory",
         "marketplace-package-detail"
       ]
     },
@@ -4935,6 +4936,27 @@
         "local": false,
         "requirements": [],
         "reason": "Requires github-quota-usage, which the local SQLite projection does not provide."
+      }
+    },
+    {
+      "id": "marketplace-directory",
+      "subject": "Browse packages from configured marketplace registries.",
+      "objective": "Present a stable alphabetical directory that can be loaded in bounded pages.",
+      "acceptance": "Preserve resolver-produced provenance and package metadata. Order by package name and immutable source so continuation pages neither skip nor duplicate entries; discovery grants no installation authority.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "marketplace-packages"
+      ],
+      "used-by-pages": [
+        "marketplace"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "marketplace-packages"
+        ]
       }
     },
     {
