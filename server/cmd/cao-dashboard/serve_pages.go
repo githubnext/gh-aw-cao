@@ -17,7 +17,11 @@ import (
 	"unicode"
 
 	"github.com/spf13/cobra"
+
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 )
+
+var pagesLog = debuglogger.New("cao:dashboard:serve-pages")
 
 func newServePagesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -66,13 +70,38 @@ type pagesHandler struct {
 	basePath string
 }
 
-func newPagesHandler(directory, basePath string) (*os.Root, *pagesHandler, error) {
+// normalizePagesBasePath validates a clean absolute URL path and returns it
+// with exactly one trailing slash.
+func normalizePagesBasePath(basePath string) (string, error) {
 	if !strings.HasPrefix(basePath, "/") || strings.ContainsAny(basePath, `\?#%`) ||
 		strings.IndexFunc(basePath, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0 ||
 		path.Clean(basePath) != strings.TrimSuffix(basePath, "/") && basePath != "/" {
-		return nil, nil, errors.New("--base-path must be a clean absolute URL path")
+		return "", errors.New("--base-path must be a clean absolute URL path")
 	}
-	basePath = strings.TrimSuffix(basePath, "/") + "/"
+	return strings.TrimSuffix(basePath, "/") + "/", nil
+}
+
+// pagesFileName maps a request path under basePath to a relative file name
+// ("." for the site root); ok is false for paths outside the base or invalid.
+func pagesFileName(basePath, requestPath string) (name string, ok bool) {
+	if !strings.HasPrefix(requestPath, basePath) {
+		return "", false
+	}
+	name = strings.TrimSuffix(strings.TrimPrefix(requestPath, basePath), "/")
+	if strings.Contains(name, `\`) || name != "" && !fs.ValidPath(name) {
+		return "", false
+	}
+	if name == "" {
+		name = "."
+	}
+	return name, true
+}
+
+func newPagesHandler(directory, basePath string) (*os.Root, *pagesHandler, error) {
+	basePath, err := normalizePagesBasePath(basePath)
+	if err != nil {
+		return nil, nil, err
+	}
 	if strings.TrimSpace(directory) == "" {
 		return nil, nil, errors.New("--site must name a prepared Pages directory")
 	}
@@ -93,6 +122,7 @@ func newPagesHandler(directory, basePath string) (*os.Root, *pagesHandler, error
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("pages directory requires a readable built index.html: %w", err)
 	}
+	pagesLog.Printf("pages handler ready: base_path_depth=%d", strings.Count(basePath, "/")-1)
 	return root, &pagesHandler{root: root, basePath: basePath}, nil
 }
 
@@ -107,18 +137,10 @@ func (h *pagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target.String(), http.StatusMovedPermanently)
 		return
 	}
-	if !strings.HasPrefix(r.URL.Path, h.basePath) {
+	name, ok := pagesFileName(h.basePath, r.URL.Path)
+	if !ok {
 		http.NotFound(w, r)
 		return
-	}
-	name := strings.TrimPrefix(r.URL.Path, h.basePath)
-	name = strings.TrimSuffix(name, "/")
-	if strings.Contains(name, `\`) || name != "" && !fs.ValidPath(name) {
-		http.NotFound(w, r)
-		return
-	}
-	if name == "" {
-		name = "."
 	}
 	// Root confines even symlink resolution and concurrent renames to the
 	// prepared deployment. Never use an unconfined path after this check.
@@ -177,9 +199,11 @@ func runPagesServer(ctx context.Context, httpServer *http.Server, listener net.L
 		}
 		return err
 	case <-ctx.Done():
+		pagesLog.Printf("pages server shutting down: timeout_ms=%d", shutdownTimeout.Milliseconds())
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 		defer cancel()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			pagesLog.Printf("pages server graceful shutdown failed: forced_close=true")
 			_ = httpServer.Close()
 			<-stopped
 			return fmt.Errorf("stop Pages server: %w", err)
