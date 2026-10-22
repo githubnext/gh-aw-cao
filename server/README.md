@@ -1419,7 +1419,7 @@ native webhook declarations. Assertions require every workflow job to run,
 exact sample output, `dry_run` and staged evidence, zero GitHub mutations, and
 CAO policy denial preventing agent execution.
 
-The `actions-runtime` job in `workflow-contracts.yml` runs this on pull requests
+The standalone `actions-runtime.yml` workflow runs this on pull requests
 and pushes with `contents: read` only. Containers are removed even after timeout.
 Successful fixture directories are deleted; failures retain per-step logs,
 summaries, artifacts and `report.json` under `.tmp/actions-runtime/e2e-*/`.

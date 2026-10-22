@@ -1,0 +1,57 @@
+name: Docker Actions runtime
+
+on:
+  pull_request:
+    paths-ignore:
+      - .github/workflows/cid.yml
+      - dashboard/site/**
+  push:
+    branches: [main]
+    paths-ignore:
+      - .github/workflows/cid.yml
+      - dashboard/site/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actions-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  actions-runtime:
+    name: Docker AWI, CAO, and webhook gateway integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: 1.27.3
+          cache: false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts
+      - name: Install gh-aw
+        uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Checked-in compiler setup with the reviewed version.
+      - name: Pull minimal runner image
+        run: docker pull node:24-bookworm
+      - name: Run credential-free samples and gateway integration
+        run: npm run test:integration:actions-runtime
+      - name: Retain failed simulator diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: actions-runtime-failure
+          path: |
+            .tmp/actions-runtime/e2e-*/**/report.json
+            .tmp/actions-runtime/e2e-*/**/*.log
+            .tmp/actions-runtime/e2e-*/**/*.error
+          if-no-files-found: ignore
+          retention-days: 7
