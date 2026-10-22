@@ -1239,14 +1239,13 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `gh cao campaigns add` is the
+resources; they do not import the root catalog package. `gh cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
 
-`gh cao add WORKFLOW` installs standalone workflows; `gh cao campaigns add CAMPAIGN`
-explicitly installs campaign packages. The existing native root campaign-add
-form remains a compatibility alias, not repository enrollment. Bare catalog
+`gh cao add WORKFLOW_OR_CAMPAIGN` is the single workflow/campaign installation
+command, without a campaign-add subcommand or repository enrollment. Bare catalog
 workflow names, explicit `.md` sources, GitHub blob URLs and the published
 Daily Repo Status qualified shorthands select standalone installation; campaign
 coordinates and existing local directories select campaign installation with

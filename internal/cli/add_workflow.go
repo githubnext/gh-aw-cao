@@ -18,14 +18,15 @@ func addCommand(gh ghExecutor) *cobra.Command {
 	var force bool
 	var engine string
 	cmd := &cobra.Command{
-		Use:                "add WORKFLOW [OPTIONS...]",
-		Short:              "Install a standalone CAO workflow",
+		Use:                "add WORKFLOW_OR_CAMPAIGN [OPTIONS...]",
+		Short:              "Install a standalone CAO workflow or campaign",
 		DisableFlagParsing: true,
-		Long: `Install a standalone workflow with gh aw add.
+		Long: `Install a standalone workflow or campaign with gh aw add.
 
-Use gh cao campaigns add CAMPAIGN to install a campaign. Qualified campaign
-coordinates and existing local directories remain accepted here for compatibility.
-Campaign options are passed unchanged to gh aw add, without widening rollout policy.
+Qualified campaign coordinates and existing local directories select campaign
+installation. Campaign options are passed unchanged to gh aw add. CAO materializes
+the exact installed revision and merges declared workers without widening rollout
+policy. Campaign installation never commits, pushes, enables workflows, or runs work.
 
 Standalone workflows are compiled and registered in
 .github/workflows/cao.json. New entries are review-only and limited to one
@@ -45,8 +46,8 @@ Noninteractive and unchanged workflow additions never publish or run.`,
   gh cao add daily-repo-status@v1.2.3
   gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
   gh cao add ./my-report.md --force
-  gh cao campaigns add dependabot@v1.2.3
-  gh cao campaigns add ./dependabot --force`,
+  gh cao add githubnext/gh-cao/dependabot@v1.2.3
+  gh cao add ./dependabot --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, arg := range args {
 				if arg == "--" {

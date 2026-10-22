@@ -35,7 +35,7 @@ test("exposes the dashboard data CLI as cao", async () => {
     assert.match(stdout, /^Usage:\n  cao discover-workflows\b/);
     assert.match(stdout, /\n  cao ingest /);
     assert.doesNotMatch(stdout, /\n  cao (?:init|add)\b/);
-    assert.match(stdout, /gh cao --help; campaign installation is gh cao campaigns add CAMPAIGN/);
+    assert.match(stdout, /gh cao --help; workflow and campaign installation is gh cao add SOURCE/);
     assert.match(stdout, /\n  cao discover-workflows /);
     assert.match(stdout, /\n  cao download /);
     assert.match(stdout, /cao query .*--stdin/);

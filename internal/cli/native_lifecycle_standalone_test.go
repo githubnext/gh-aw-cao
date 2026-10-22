@@ -105,7 +105,7 @@ esac
 	if got := run("add", "daily-repo-status", "--force"); got["workflow"] != "daily-repo-status" {
 		t.Fatalf("standalone workflow was dispatched as a campaign: %#v", got)
 	}
-	if got := run("campaigns", "add", "demo@v1.0.0", "--force"); got["campaign"] != "demo" {
+	if got := run("add", "githubnext/gh-cao/demo@v1.0.0", "--force"); got["campaign"] != "demo" {
 		t.Fatalf("unexpected campaign installation: %#v", got)
 	}
 	run("campaigns", "mode", "preview", "demo")

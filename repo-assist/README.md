@@ -20,7 +20,7 @@ Workers are independently dispatchable and handle exactly one authorized target 
 ## First run
 
 After [setting up the control repository](../docs/setup-quickstarts.md), install
-the campaign with `gh cao campaigns add githubnext/gh-cao/repo-assist`.
+the campaign with `gh cao add githubnext/gh-cao/repo-assist`.
 For a first review, explicitly select one existing target in policy and enable
 only the existing maintenance worker in review mode. Issue triage, issue fix,
 and PR upkeep remain disabled. No demo repository or special worker is created.
@@ -92,7 +92,7 @@ separately reviewed choices. Keeping the repository unchanged is valid.
 Install from a reviewed catalog release into a Central Agentic Ops control repository:
 
 ```bash
-gh cao campaigns add githubnext/gh-cao/repo-assist
+gh cao add githubnext/gh-cao/repo-assist
 ```
 
 Configure the campaign in `.github/workflows/cao.json`:

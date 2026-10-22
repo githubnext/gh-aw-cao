@@ -92,7 +92,7 @@ test("reports retired cao add without a stack trace", async () => {
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.equal(error.stderr, "Error: Node cao add has been retired; use gh cao campaigns add CAMPAIGN (repository enrollment: gh cao repos add OWNER/REPO)\n");
+  assert.equal(error.stderr, "Error: Node cao add has been retired; use gh cao add CAMPAIGN (repository enrollment: gh cao repos add OWNER/REPO)\n");
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });
 

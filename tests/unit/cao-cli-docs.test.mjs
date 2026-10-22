@@ -175,7 +175,7 @@ test("outcome-to-execution guidance derives structures without granting authorit
 test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init", "setup", "setup auth github-app", "setup auth enterprise-app",
-    "setup auth token", "campaigns add OWNER/REPO/CAMPAIGN", "update",
+    "setup auth token", "add OWNER/REPO/CAMPAIGN", "update",
     "upgrade-gh-aw", "campaigns mode preview", "campaigns mode live",
     "campaigns enable", "campaigns disable", "download", "doctor",
     "computation runtime-health", "query", "gh runs", "gh issues", "gh prs",
@@ -239,17 +239,18 @@ test("CAO command guide explains the workflow execution boundary", () => {
 test("campaign guides distinguish native campaign installation from standalone workflows", () => {
   for (const campaign of ["bug-bash", "repo-assist"]) {
     const guide = readFileSync(`${campaign}/README.md`, "utf8");
-    assert.ok(guide.includes(`gh cao campaigns add githubnext/gh-cao/${campaign}`));
+    assert.ok(guide.includes(`gh cao add githubnext/gh-cao/${campaign}`));
   }
-  assert.match(docs, /gh cao campaigns add CAMPAIGN/);
+  assert.match(docs, /gh cao add CAMPAIGN/);
   assert.match(docs, /gh cao add WORKFLOW/);
-  assert.match(docs, /existing native.*gh cao add CAMPAIGN.*form remains supported as an alias/);
+  assert.match(docs, /single native command for installing a standalone CAO workflow\s+or a campaign package/);
+  assert.doesNotMatch(docs, /gh cao campaigns add/);
   assert.match(docs, /Campaign installation never commits, pushes\s+or dispatches work/);
   assert.match(docs, /Standalone workflows accept only `--force` and `--engine`/);
 });
 
 test("manual Repo Assist walkthrough separates installation, execution, and evidence collection", () => {
-  const install = walkthrough.indexOf("gh cao campaigns add githubnext/gh-cao/repo-assist");
+  const install = walkthrough.indexOf("gh cao add githubnext/gh-cao/repo-assist");
   const review = walkthrough.indexOf("gh cao campaigns mode preview repo-assist");
   const run = walkthrough.indexOf("gh aw run repo-assist");
   const collect = walkthrough.indexOf("gh workflow run cao-activity.yml");

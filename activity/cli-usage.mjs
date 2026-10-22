@@ -84,7 +84,7 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao gh prs -R githubnext/gh-cao -w cao-activity -L 10
 
 Operator onboarding and lifecycle commands run natively in gh cao.
-Use gh cao --help; campaign installation is gh cao campaigns add CAMPAIGN.
+Use gh cao --help; workflow and campaign installation is gh cao add SOURCE.
 
 Agent analysis:
   Download the current CAO snapshot:

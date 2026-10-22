@@ -15,7 +15,7 @@ const replacements = new Map([
   ["init", "gh cao init"],
   ["setup", "gh cao setup"],
   ["setup-auth", "gh cao setup auth"],
-  ["add", "gh cao campaigns add"],
+  ["add", "gh cao add"],
   ["mode", "gh cao campaigns mode"],
   ["enable", "gh cao campaigns enable"],
   ["disable", "gh cao campaigns disable"],

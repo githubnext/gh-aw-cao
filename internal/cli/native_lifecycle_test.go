@@ -10,23 +10,19 @@ import (
 	"testing"
 )
 
-func TestNativeCampaignAddCanonicalSources(t *testing.T) {
-	for _, source := range []string{"demo", "demo@feature/config", "githubnext/gh-cao/demo@feature/config"} {
+func TestNativeCampaignAddQualifiedSources(t *testing.T) {
+	for _, source := range []string{"githubnext/gh-cao/demo", "githubnext/gh-cao/demo@feature/config"} {
 		t.Run(source, func(t *testing.T) {
 			nativeManagementDirectory(t)
 			t.Setenv("PATH", "")
 			archive := campaignArchive(t, map[string]string{"catalog/demo/cao.json": testCampaignDeclaration})
 			var calls [][]string
 			cmd, _, _ := testCommand(t, campaignGH(t, archive, &calls), nil)
-			cmd.SetArgs([]string{"campaigns", "add", source, "--engine", "copilot", "--unknown-future-option"})
+			cmd.SetArgs([]string{"add", source, "--engine", "copilot", "--unknown-future-option"})
 			if err := cmd.Execute(); err != nil {
 				t.Fatal(err)
 			}
-			spec := source
-			if strings.HasPrefix(spec, "demo") {
-				spec = catalogRepository + "/" + spec
-			}
-			if want := []string{"aw", "add", spec, "--engine", "copilot", "--unknown-future-option"}; !reflect.DeepEqual(calls[0], want) {
+			if want := []string{"aw", "add", source, "--engine", "copilot", "--unknown-future-option"}; !reflect.DeepEqual(calls[0], want) {
 				t.Fatalf("install arguments = %q, want %q", calls[0], want)
 			}
 		})
@@ -35,12 +31,12 @@ func TestNativeCampaignAddCanonicalSources(t *testing.T) {
 
 func TestNativeCampaignAddInvalidSourceDoesNotExecute(t *testing.T) {
 	for _, args := range [][]string{
-		{}, {""}, {"--force"}, {"demo@"}, {"./missing"}, {"missing.md"}, {catalogRepository},
+		{}, {""}, {"--force"}, {"demo@"}, {"./missing"}, {catalogRepository},
 	} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			nativeManagementDirectory(t)
 			cmd, stdout, _ := testCommand(t, nil, nil)
-			cmd.SetArgs(append([]string{"campaigns", "add"}, args...))
+			cmd.SetArgs(append([]string{"add"}, args...))
 			if err := cmd.Execute(); err == nil {
 				t.Fatal("invalid campaign source accepted")
 			}

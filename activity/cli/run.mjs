@@ -26,7 +26,7 @@ const RETIRED_OPERATOR_COMMANDS = new Map([
   ['init', 'gh cao init'],
   ['setup', 'gh cao setup'],
   ['setup-auth', 'gh cao setup auth'],
-  ['add', 'gh cao campaigns add CAMPAIGN (repository enrollment: gh cao repos add OWNER/REPO)'],
+  ['add', 'gh cao add CAMPAIGN (repository enrollment: gh cao repos add OWNER/REPO)'],
   ['mode', 'gh cao campaigns mode'],
   ['enable', 'gh cao campaigns enable'],
   ['disable', 'gh cao campaigns disable'],
