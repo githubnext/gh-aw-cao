@@ -1,7 +1,9 @@
 export const promptWizardStyles = `
 .prompt-wizard{max-width:960px;margin:0 auto;min-width:0}
-.prompt-wizard-progress{display:flex;gap:12px;list-style-position:inside;padding:0;margin:24px 0;flex-wrap:wrap}
-.prompt-wizard-progress li{padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--muted)}
+.prompt-wizard-progress{display:flex;gap:12px;list-style:none;padding:0;margin:24px 0;flex-wrap:wrap}
+.prompt-wizard-progress button{padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--fg);background:var(--canvas);font:inherit;cursor:pointer;text-align:left}
+.prompt-wizard-progress button:disabled{color:var(--muted);cursor:default}
+.prompt-wizard-progress button:enabled:hover{border-color:var(--accent);background:var(--canvas-subtle)}
 .prompt-wizard-progress [aria-current="step"]{color:var(--accent);border-color:var(--accent);font-weight:600}
 .prompt-wizard-step{border:0;padding:0;min-width:0;margin:0}
 .prompt-wizard-step>legend{font-size:20px;font-weight:600;padding:0}
@@ -32,5 +34,5 @@ export const promptWizardStyles = `
 .prompt-wizard-actions>.table-intent-control{margin-left:auto}
 .prompt-wizard-status{display:block;color:var(--muted)}
 .prompt-wizard [hidden]{display:none!important}
-@media(max-width:600px){.prompt-wizard-progress{gap:6px}.prompt-wizard-progress li{font-size:12px;padding:6px}.prompt-wizard-options{padding:6px}}
+@media(max-width:600px){.prompt-wizard-progress{gap:6px}.prompt-wizard-progress button{font-size:12px;padding:6px}.prompt-wizard-options{padding:6px}}
 `;

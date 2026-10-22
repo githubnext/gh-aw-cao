@@ -96,6 +96,7 @@ test("dashboard canvas reports startup errors and allows a fresh retry", async (
       return { url: "http://127.0.0.1:1234/preview", close: async () => {} };
     },
   });
+
   const canvas = config.canvases[0];
   await assert.rejects(canvas.open(context("preview")), (error) =>
     error instanceof CanvasError
@@ -104,6 +105,30 @@ test("dashboard canvas reports startup errors and allows a fresh retry", async (
   assert.equal((await canvas.open(context("preview"))).url, "http://127.0.0.1:1234/preview");
   assert.equal(starts, 2);
   await closePreviews();
+});
+
+test("canvas prompt handoff invokes the Copilot app session tool, not an agent task", async () => {
+  let previewOptions;
+  const requests = [];
+  let result = { resultType: "success", textResultForLlm: "Created session." };
+  const { config, closePreviews } = createDashboardExtension({
+    executeSessionTool: async (request) => { requests.push(request); return result; },
+    startPreview: async (options) => {
+      previewOptions = options;
+      return { url: "http://127.0.0.1:1234/", close: async () => {} };
+    },
+  });
+  await config.canvases[0].open(context("session-handoff"));
+  await previewOptions.startSession("Create a Pull Request for the following task:\nTriage issues.");
+  assert.deepEqual(requests, [{
+    name: "create_session",
+    arguments: { kickoff: { prompt: "Create a Pull Request for the following task:\nTriage issues." } },
+  }]);
+  result = { resultType: "failure", textResultForLlm: "Unavailable." };
+  await assert.rejects(previewOptions.startSession("Try again."), /could not start the session/);
+  await closePreviews();
+  await assert.rejects(previewOptions.startSession("After closing."), /shutting down/);
+  assert.equal(requests.length, 2);
 });
 
 test("dashboard extension waits for all preview cleanup and reports failures", async () => {

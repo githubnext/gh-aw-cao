@@ -105,8 +105,13 @@ export function renderPromptWizard(context) {
     return root;
   }))));
   const status = renderLiveRegion('output', 'prompt-wizard-status');
+  const stepButtons = [...wizard.steps.map((step) => step.title), 'Review'].map((title, index) =>
+    /** @type {HTMLButtonElement} */ (h('button', {
+      type: 'button', 'aria-label': `Return to ${title}`,
+      onClick: () => goBack(index)
+    }, `${index + 1}. ${title}`)));
   const progress = h('ol', { className: 'prompt-wizard-progress', 'aria-label': 'Wizard progress' },
-    ...[...wizard.steps.map((step) => step.title), 'Review'].map((title) => h('li', null, title)));
+    ...stepButtons.map((button) => h('li', null, button)));
   const summary = h('dl', { className: 'prompt-wizard-summary' });
   render(summary, () => reviewEntries.get().map((entry) => renderDlRow(entry.label, entry.value, entry.description)), { signal: scope.signal });
   const preview = renderPromptPreviewAction(normalizeAction({
@@ -114,7 +119,7 @@ export function renderPromptWizard(context) {
   }, { id: `${context.viewId ?? 'wizard'}-generate`, type: 'prompt' }), reviewedPrompt.get);
   const review = h('section', { className: 'prompt-wizard-review', 'aria-label': 'Review your design' },
     h('h3', { tabindex: -1 }, 'Review your design'),
-    h('p', null, 'Confirm the scenario, outputs and capabilities below. A title and file name will be inferred. Generate prompt opens a preview for your coding agent; nothing is installed or activated here.'),
+    h('p', null, 'Confirm the scenario, outputs and capabilities below. A title and file name will be inferred. Generate opens a preview; then start a Copilot app session in canvas mode or copy the prompt for your coding agent. Nothing is installed or activated here.'),
     summary);
   const validateStep = () => {
     const step = wizard.steps[active.get()];
@@ -143,9 +148,16 @@ export function renderPromptWizard(context) {
       return true;
     });
   };
+  /** @param {number} index */
+  const goBack = (index) => {
+    if (scope.signal.aborted || index < 0 || index >= active.get()) return;
+    active.set(index);
+    error.set('');
+    focusPanel();
+  };
   const back = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'cli-action-trigger',
-    onClick: () => { if (!scope.signal.aborted) { active.set(Math.max(0, active.get() - 1)); error.set(''); focusPanel(); } }
+    onClick: () => goBack(active.get() - 1)
   }, 'Back'));
   const advance = () => {
       if (scope.signal.aborted || !validateStep()) return;
@@ -178,7 +190,8 @@ export function renderPromptWizard(context) {
     const fields = wizard.steps[current]?.fields;
     navigation.hidden = current === 0 && fields?.length === 1 && fields[0]['advance-on-select'] === true;
     panels.forEach((panel, index) => { panel.hidden = index !== current; panel.disabled = index !== current; });
-    [...progress.children].forEach((item, index) => {
+    stepButtons.forEach((item, index) => {
+      item.disabled = index >= current;
       if (index === current) item.setAttribute('aria-current', 'step');
       else item.removeAttribute('aria-current');
     });

@@ -517,6 +517,7 @@ function readWebsocketFrames(buffer) {
  *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { latestGhAwVersion?: string, repository?: string }>,
  *   generateQuery?: (intent: import('./query-editor-contract.mjs').QueryEditorIntent, options: { signal: AbortSignal }) => Promise<{ document: string }>,
  *   enhanceQueryIntent?: (request: import('./query-editor-contract.mjs').QueryEditorEnhancement, options: { signal: AbortSignal }) => Promise<import('./query-editor-contract.mjs').QueryEditorAuthoring>,
+ *   startSession?: (prompt: string) => Promise<void>,
  *   dataBackend?: 'sqlite' | 'indexeddb',
  *   executeCliAction?: (action: { id: string, command: string, input?: string, signal?: AbortSignal, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
@@ -553,6 +554,7 @@ export async function startCanvasServer({
   lookupSelector = lookupDialogOptions,
   generateQuery,
   enhanceQueryIntent,
+  startSession,
   allowMissingOrigin = false,
   traceFile,
   traceOutput = console.log,
@@ -703,6 +705,7 @@ export async function startCanvasServer({
   let refreshRetryCount = 0;
   let closed = false;
   let cliQueue;
+  let sessionStarting = false;
   let cliAdmission;
   /** @type {AbortController | null} */
   let queryGeneration = null;
@@ -944,6 +947,44 @@ export async function startCanvasServer({
           && !url.searchParams.has("local-preview")) {
         url.searchParams.set("local-preview", "canvas");
         response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
+        return;
+      }
+      if (pathname === "/__copilot_session") {
+        if (typeof startSession !== "function") { response.writeHead(404).end("Not found\n"); return; }
+        if (request.method !== "POST") { response.writeHead(405, { Allow: "POST" }).end(); return; }
+        if (!isAllowedOrigin(request.headers.origin)
+            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+          response.writeHead(403).end("Forbidden\n");
+          return;
+        }
+        let body;
+        try {
+          body = await readJsonRequest(request, 600_100);
+          if (!body || typeof body !== "object" || Array.isArray(body)
+              || Object.keys(body).length !== 1 || typeof body.prompt !== "string"
+              || !body.prompt.trim() || body.prompt.length > 100_000) {
+            throw new Error("Provide a non-empty prompt of at most 100000 characters.");
+          }
+        } catch (error) {
+          sendJson(response, error?.code === "REQUEST_TOO_LARGE" ? 413 : 400, {
+            error: error instanceof Error ? error.message : "Invalid session request.",
+          });
+          return;
+        }
+        if (sessionStarting) {
+          sendJson(response, 409, { error: "A session is already starting. Wait before retrying." });
+          return;
+        }
+        sessionStarting = true;
+        try {
+          await startSession(body.prompt);
+          sendJson(response, 200, { ok: true });
+        } catch (error) {
+          output("Copilot session start failed.", { errorName: error instanceof Error ? error.name : "unknown" });
+          sendJson(response, 503, { error: "Could not start the Copilot session. Check the app session for details." });
+        } finally {
+          sessionStarting = false;
+        }
         return;
       }
       if (pathname === "/__query_designer" || pathname === "/__query_designer/enhance") {
@@ -1297,6 +1338,7 @@ export async function startCanvasServer({
       }
       if (extension === ".html") {
         content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
+${startSession ? `<meta name="dashboard-copilot-session" content="${routePrefix}/__copilot_session">` : ""}
 <meta name="dashboard-github-api-base" content="${routePrefix}/">${caoUrl === undefined ? "" : `
 <meta name="cao-url" content="${caoUrl}">`}`);
       }

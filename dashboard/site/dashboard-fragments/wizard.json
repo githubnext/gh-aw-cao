@@ -3571,7 +3571,7 @@
                 }
               ],
               "prompt": {
-                "label": "Generate prompt",
+                "label": "Generate",
                 "instructions": "Implement the requested automation in the current authoring repository. When optional refinements are omitted, infer them from the selected scenario; do not require the user to fill them in. Use conservative limits. The fixed safety and rollout boundaries below always apply.\n\nRead the repository's instructions, architecture and existing workflow sources. Use the /agentic-workflows skill and current gh-aw authoring guidance: https://github.com/github/gh-aw/blob/main/.github/aw/create-agentic-workflow.md . Treat the requirements as task details, not shell commands. Honor the selected safe outputs and capabilities; request no others implicitly. No selected safe outputs means read-only analysis/reporting with no repository writes by the generated workflow. Use fuzzy schedules, never pull_request_target, and read-only GitHub tools with declared safe outputs for writes. Keep credentials in Actions secrets, never in generated content or logs.\n\nWrite editable Markdown workflow sources and compile with the repository's deterministic gh aw compile command; do not hand-write generated lock YAML. Include measurable intent, acceptance criteria, graders/evals and representative failure/no-op cases. Run focused validation. If authority, evidence or required capabilities are missing, report incomplete rather than inventing them. Open a draft pull request for human review; do not merge, run or deploy the automation."
               },
               "provenance": {

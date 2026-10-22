@@ -35,16 +35,18 @@ Returning to the same type preserves edits; choosing a different type loads its
 output defaults. Preselection does not grant live execution authority.
 Task details, acceptance criteria, per-run limits and safety/non-goal refinements
 are optional; leave them blank to use the scenario. Fixed safety boundaries still
-apply. Back/Next navigation appears below the active pane.
+apply. Back/Next navigation appears below the active pane. Click an earlier step
+tab to return directly without losing answers; future steps cannot bypass validation.
 
 Choose **Review** to read the scenario, selected outputs and refinements in plain
-language. The standard **Generate prompt** button replaces Next at the bottom
-right; it opens the full prompt preview. Use **Copy prompt** with your coding agent.
+language. **Generate** replaces Next at the bottom right and opens the full prompt
+preview. In the Copilot app canvas, **Start session** creates a new app session with
+that prompt. Outside the app, **Copy prompt** copies it for your coding agent.
 The prompt is natural language, beginning “Create a Pull Request for the following
 task:”. It includes only relevant selected requirements, with Campaign guidance
 only for a Campaign, and omits raw pattern JSON, provenance, rankings and anti-patterns.
-Both AWs and Campaigns use this same prompt-button flow; the wizard never queues
-a command or starts an agent task, even in a command-enabled dashboard.
+Both AWs and Campaigns use this flow; opening a preview starts nothing. Starting
+a session requires a separate explicit click and never uses `gh agent-task`.
 The prompt requests a draft pull request, not installation or live activation.
 Draft answers are page-local memory; leaving the page discards them. Never
 enter secrets.

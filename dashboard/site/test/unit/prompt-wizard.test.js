@@ -72,6 +72,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   document.body.replaceChildren();
+  document.querySelector('meta[name="dashboard-copilot-session"]')?.remove();
   vi.unstubAllGlobals();
   setDeclaredCliActions([]);
 });
@@ -239,6 +240,86 @@ describe('declarative wizard contract', () => {
 });
 
 describe('wizard interaction and lifecycle', () => {
+  it('starts an app session with the reviewed prompt only after an explicit canvas handoff', async () => {
+    const meta = document.createElement('meta');
+    meta.name = 'dashboard-copilot-session';
+    meta.content = '/__copilot_session';
+    document.head.append(meta);
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal('fetch', fetch);
+    const root = mount();
+    review(root);
+    button(root, 'Generate').click();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(root.textContent).not.toContain('Copy prompt');
+    const start = button(root, 'Start session');
+    start.click();
+    start.click();
+    await vi.waitFor(() => expect(root.textContent).toContain('Session started in the Copilot app.'));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0].pathname).toBe('/__copilot_session');
+    expect(JSON.parse(fetch.mock.calls[0][1].body).prompt).toMatch(/^Create a Pull Request for the following task:\n/);
+    expect(JSON.parse(fetch.mock.calls[0][1].body).prompt).toContain('Triage issues.');
+    expect(start.disabled).toBe(true);
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('reports canvas session failures and cancels detached handoffs', async () => {
+    const meta = document.createElement('meta');
+    meta.name = 'dashboard-copilot-session';
+    meta.content = '/__copilot_session';
+    document.head.append(meta);
+    const fetch = vi.fn().mockResolvedValue({ ok: false, json: async () => ({ error: 'Session unavailable.' }) });
+    vi.stubGlobal('fetch', fetch);
+    const root = mount();
+    review(root);
+    button(root, 'Generate').click();
+    const start = button(root, 'Start session');
+    start.click();
+    await vi.waitFor(() => expect(root.textContent).toContain('Session unavailable.'));
+    expect(start.disabled).toBe(false);
+    root.remove();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    start.click();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+
+  it('allows direct backward step navigation without losing answers or bypassing validation', async () => {
+    const root = mount();
+    const tabs = [...root.querySelectorAll('button')].filter((button) => button.closest('.prompt-wizard-progress'));
+    expect(tabs).toHaveLength(wizard.steps.length + 1);
+    expect(tabs.every((tab) => tab.hasAttribute('disabled'))).toBe(true);
+    fillGoal(root, 'campaign', 'issue-triage');
+    const comment = /** @type {HTMLInputElement} */ (root.querySelector('input[value="add-comment"]'));
+    comment.click();
+    button(root, 'Review').click();
+    expect(root.querySelector('.prompt-wizard-status')?.textContent).toContain('Campaign target repositories is required.');
+    tabs.at(-1)?.dispatchEvent(new MouseEvent('click'));
+    expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(true);
+    input(root, 'Campaign target repositories', 'acme/one');
+    button(root, 'Review').click();
+    expect(tabs.at(-1)?.getAttribute('aria-current')).toBe('step');
+    tabs[1].click();
+    expect(root.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
+    expect(root.querySelector('[id$="-purpose"]')).toHaveProperty('value', 'Triage issues.');
+    expect(root.querySelector('.prompt-wizard-status')?.textContent).not.toContain('is required');
+    tabs[0].click();
+    expect(document.activeElement).toBe(button(root, 'Issue Triage'));
+    button(root, 'Issue Triage').click();
+    button(root, 'Next').click();
+    expect(comment.checked).toBe(false);
+    expect(root.querySelector('[id$="-targets"]')).toHaveProperty('value', 'acme/one');
+    button(root, 'Review').click();
+    tabs[2].click();
+    expect(root.querySelector('[id$="-targets"]')).toBe(document.activeElement);
+    expect(queue.enqueue).not.toHaveBeenCalled();
+    root.remove();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    tabs[0].click();
+    expect(tabs[2].getAttribute('aria-current')).toBe('step');
+  });
+
   it.each(['workflow', 'campaign'])('uses the standard prompt button for %s even when command execution is available', async (artifact) => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });

@@ -4,6 +4,7 @@ import { approveDashboardCommand } from "./approval.mjs";
 
 const { config, closePreviews } = createDashboardExtension({
   approveCommand: approveDashboardCommand,
+  executeSessionTool: (request) => session.rpc.tools.execute(request),
 });
 
 let shuttingDown = false;
@@ -21,4 +22,4 @@ const shutdown = () => {
 process.once("SIGTERM", shutdown);
 process.once("SIGINT", shutdown);
 
-await joinSession(config);
+const session = await joinSession(config);

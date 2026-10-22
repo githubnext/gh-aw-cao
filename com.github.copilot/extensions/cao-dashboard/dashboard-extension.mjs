@@ -20,6 +20,7 @@ import { enhanceQueryEditorIntent, generateDashboardQuery } from "./query-design
  *   startPreview?: typeof startLocalDashboardPreview,
  *   executeCommand?: typeof executeDashboardCommand,
  *   approveCommand?: (request: import("./approval.mjs").DashboardCommandApproval) => Promise<boolean>,
+ *   executeSessionTool?: (request: { name: string, arguments: { kickoff: { prompt: string } } }) => Promise<unknown>,
  * }} [options]
  */
 export function createDashboardExtension({
@@ -27,6 +28,7 @@ export function createDashboardExtension({
   startPreview = startLocalDashboardPreview,
   executeCommand = executeDashboardCommand,
   approveCommand = approveDashboardCommand,
+  executeSessionTool,
 } = {}) {
   /** @type {Map<string, ReturnType<typeof startLocalDashboardPreview>>} */
   const previews = new Map();
@@ -205,6 +207,17 @@ export function createDashboardExtension({
                 enhanceQueryIntent: enhanceQueryEditorIntent,
                 dataBackend: input && typeof input === "object" && !Array.isArray(input)
                   && (input.dataBackend === "sqlite" || input.dataBackend === "indexeddb") ? input.dataBackend : undefined,
+                startSession: executeSessionTool ? async (prompt) => {
+                  if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
+                  const result = await executeSessionTool({
+                    name: "create_session", arguments: { kickoff: { prompt } },
+                  });
+                  if (typeof result !== "string"
+                      && (!result || typeof result !== "object" || !("resultType" in result)
+                        || result.resultType !== "success")) {
+                    throw new Error("Copilot could not start the session. Check the app session for details.");
+                  }
+                } : undefined,
                 approveCliAction: async ({ command, input: commandInput }) => {
                   if (stopping) throw new Error("The CAO dashboard extension is shutting down.");
                   const approved = await approveCommand(Object.freeze({

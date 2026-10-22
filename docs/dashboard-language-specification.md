@@ -115,14 +115,15 @@ and optional `description`, concise `summary`, authoring `instructions`, Octicon
 validated values. Choosing a different option applies them; selecting the same
 option preserves edits. Optional `when: { field, equals }` matches an earlier
 single-choice option. Hidden answers survive Back navigation but are excluded
-from prompts. Unknown keys, invalid values and defaults fail closed.
+from prompts. Earlier step buttons allow direct Back navigation; future steps
+cannot bypass validation. Invalid configuration fails closed.
 
 Review shows labels, descriptions and empty-value messages, not raw JSON.
-`prompt` declares `label` and `instructions`. The standard **Generate prompt**
+`prompt` declares `label` and `instructions`. **Generate**
 button replaces Next in bottom navigation and opens the shared `propose`-level
-preview. **Copy prompt** copies the full prompt, bounded to 100000 characters.
-Opening a preview copies or executes nothing. The wizard never binds a CLI action,
-queues a task, installs or activates automation, even on command-enabled dashboards.
+preview. **Copy prompt** copies up to 100000 characters. App canvases instead offer
+**Start session** through the native Copilot session tool. Opening previews does
+nothing; handoff requires a click, never a CLI task or automation activation.
 Generated prompts start with “Create a Pull Request for the following task:”
 and render the design as natural language. Only selected authoring instructions
 are included; Campaign guidance is conditional. Raw pattern records, provenance,

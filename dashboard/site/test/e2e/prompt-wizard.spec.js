@@ -29,6 +29,9 @@ for (const width of [390, 1280]) {
     await page.addStyleTag({ content: getPrimerStyles() });
     const root = page.locator('.prompt-wizard');
     await expect(root).toBeVisible();
+    const tabs = root.locator('.prompt-wizard-progress button');
+    await expect(tabs).toHaveCount(4);
+    await expect(tabs.nth(3)).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeHidden();
     await expect(page.getByLabel('What should the agent do? (optional)')).toBeHidden();
     await expect(page.getByLabel('Workflow or campaign name (required)')).toHaveCount(0);
@@ -43,6 +46,7 @@ for (const width of [390, 1280]) {
     await page.getByLabel('Intent and acceptance criteria (optional)').press('Tab');
     await page.getByRole('button', { name: 'Next', exact: true }).click();
     await expect(page.getByLabel('Campaign target repositories (required)')).toBeFocused();
+    await expect(tabs.nth(3)).toBeDisabled();
     await page.getByLabel('Per-run scope and limits (optional)').fill('One dispatched target, one issue per worker.');
     await page.getByLabel('Campaign target repositories (required)').fill('acme/one\nacme/two');
     await expect(page.getByRole('checkbox', { name: 'add comment', exact: false })).toBeChecked();
@@ -55,14 +59,14 @@ for (const width of [390, 1280]) {
     await expect(review.locator('dl')).toContainText('add comment, add labels');
     await expect(review).not.toContainText('recommended_tools');
     await expect(review).not.toContainText('Selected requirements and historical pattern guidance');
-    const generate = page.getByRole('button', { name: 'Generate prompt', exact: true });
-    await expect(page.locator('.prompt-wizard-actions')).toContainText('Generate prompt');
+    const generate = page.getByRole('button', { name: 'Generate', exact: true });
+    await expect(page.locator('.prompt-wizard-actions')).toContainText('Generate');
     const navigation = page.locator('.prompt-wizard-actions');
     const [generateBox, navigationBox] = await Promise.all([generate.boundingBox(), navigation.boundingBox()]);
     if (!generateBox || !navigationBox) throw new Error('Review navigation must be visible.');
     expect(Math.abs(generateBox.x + generateBox.width - navigationBox.x - navigationBox.width)).toBeLessThanOrEqual(2);
-    await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Generate prompt prompt preview' });
+    await page.getByRole('button', { name: 'Generate', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Generate prompt preview' });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('.table-intent-preview')).toContainText('acme/one');
     await expect(dialog.locator('.table-intent-preview')).toContainText('default to review mode');
@@ -73,11 +77,16 @@ for (const width of [390, 1280]) {
     expect(bounds?.width).toBeLessThanOrEqual(width);
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
-    await expect(page.getByRole('button', { name: 'Generate prompt', exact: true })).toBeFocused();
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Generate', exact: true })).toBeFocused();
+    await tabs.nth(2).click();
     await expect(page.getByLabel('Campaign target repositories (required)')).toHaveValue('acme/one\nacme/two');
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await page.getByRole('button', { name: 'Review', exact: true }).click();
+    await tabs.nth(1).focus();
+    await tabs.nth(1).press('Enter');
+    await expect(page.getByLabel('What do you want to generate? (required)')).toBeFocused();
+    await expect(page.getByLabel('What should the agent do? (optional)')).toHaveValue('Label new issues and leave uncertain reports for human review.');
+    await tabs.nth(0).focus();
+    await tabs.nth(0).press('Space');
     const selected = page.getByRole('button', { name: 'Issue Triage', exact: true });
     await expect(selected).toHaveAttribute('aria-pressed', 'true');
     await expect(selected).toBeFocused();
@@ -88,10 +97,15 @@ for (const width of [390, 1280]) {
 }
 
 test.describe('populated dashboard wizard', () => {
-  for (const width of [390, 594, 1280]) {
-    test(`full-site workflow prompt button copies without command execution at ${width}px`, async ({ page }, testInfo) => {
+  for (const { width, app } of [
+    { width: 390, app: false }, { width: 594, app: false }, { width: 1280, app: false },
+    { width: 390, app: true }, { width: 1280, app: true },
+  ]) {
+    test(`full-site workflow prompt ${app ? 'starts an app session' : 'copies'} without command execution at ${width}px`, async ({ page }, testInfo) => {
       /** @type {Array<{ id: string, command: string, input?: string }>} */
       const commands = [];
+      /** @type {string[]} */
+      const sessions = [];
       const server = await startCanvasServer({
         workingDirectory: fileURLToPath(new URL('../../../../', import.meta.url)),
         repository: 'acme/control', port: 0,
@@ -99,6 +113,7 @@ test.describe('populated dashboard wizard', () => {
         cliQueuePath: testInfo.outputPath('.cao', 'cli-actions.sqlite'),
         cliQueueAdmission: async () => ({ concurrency: 1 }),
         output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+        startSession: app ? async (/** @type {string} */ prompt) => { sessions.push(prompt); } : undefined,
         executeCliAction: async (/** @type {{ id: string, command: string, input?: string }} */ request) => {
           commands.push({ id: request.id, command: request.command, input: request.input });
           return { ok: true, exitCode: 0 };
@@ -181,19 +196,34 @@ test.describe('populated dashboard wizard', () => {
         await expect(review.locator('pre')).toHaveCount(0);
         await expect(review.locator('dl')).toContainText('Classify and label new issues');
         await expect(review.locator('dl')).toContainText('Infer conservative per-run limits');
+        await page.locator('.prompt-wizard-progress button').nth(1).click();
+        await expect(page.getByLabel('What do you want to generate? (required)')).toBeFocused();
+        await page.getByRole('button', { name: 'Next', exact: true }).click();
+        await page.getByRole('button', { name: 'Review', exact: true }).click();
         const reviewScreenshot = testInfo.outputPath(`workflow-wizard-review-${width}.png`);
         await page.screenshot({ path: reviewScreenshot, fullPage: true });
         await testInfo.attach(`Human-readable review (${width}px)`, { path: reviewScreenshot, contentType: 'image/png' });
-        await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
+        await page.getByRole('button', { name: 'Generate', exact: true }).click();
         expect(commands).toEqual([]);
+        expect(sessions).toEqual([]);
         await expect(page.getByRole('button', { name: 'Start agent task', exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toBeUndefined();
         const screenshot = testInfo.outputPath(`workflow-wizard-prompt-${width}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
         await testInfo.attach(`Workflow wizard prompt (${width}px)`, { path: screenshot, contentType: 'image/png' });
-        await page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true }).click();
-        await expect(page.getByRole('dialog')).toContainText('Prompt copied.');
-        const copied = await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'));
+        let copied;
+        if (app) {
+          await expect(page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true })).toHaveCount(0);
+          await page.getByRole('dialog').getByRole('button', { name: 'Start session', exact: true }).click();
+          await expect(page.getByRole('dialog')).toContainText('Session started in the Copilot app.');
+          expect(sessions).toHaveLength(1);
+          expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toBeUndefined();
+          copied = sessions[0];
+        } else {
+          await page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true }).click();
+          await expect(page.getByRole('dialog')).toContainText('Prompt copied.');
+          copied = await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'));
+        }
         expect(copied).toMatch(/^Create a Pull Request for the following task:\n/);
         expect(copied).toContain('Classify and label new issues');
         expect(copied).toContain('infer them from the selected scenario');

@@ -3,7 +3,7 @@
   "view": "workflow-design",
   "element": "prompt-wizard",
   "sources": [],
-  "prompt-label": "Generate prompt",
+  "prompt-label": "Generate",
   "presentation": "copy-prompt",
   "upstream": "githubnext/gh-aw-wizard",
   "revision": "2e1f1d62adcbfa68fd6abab65eb9372af50a8ba5",
