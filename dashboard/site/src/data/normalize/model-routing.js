@@ -1,9 +1,11 @@
 import databaseQueries from '../queries/database.json' with { type: 'json' };
 import routing from '../../../dashboard-fragments/model-routing.json' with { type: 'json' };
 import ingestionQueries from './routing-aggregate.json' with { type: 'json' };
+import { createDebug } from '../../debug.js';
 import { executeDashboardQueries } from '../queries/declarative.js';
 import { dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../queries/view-payload-compiler.js';
 
+const debugRouting = createDebug('normalize:model-routing');
 const transientFields = ['routingBaselineModel', 'routingBaselineComplete', 'routingBaselineMainRequests', 'eligibleChoices', 'catalogueOverlap'];
 
 /** Stored facts are query outputs, not a second JavaScript accounting implementation. */
@@ -58,6 +60,7 @@ export function compactRoutingRuns(batch) {
     $audits: input('$audits', batch.audits), $runs: input('$runs', batch.runs)
   }, ['routing-ingestion-aggregate'])['routing-ingestion-aggregate'];
   if (result.metadata?.availability === 'unavailable') {
+    debugRouting({ operation: 'compact-routing-runs', status: 'unavailable', audits: batch.audits.length, runs: batch.runs.length });
     throw new TypeError(`Routing aggregate unavailable: ${JSON.stringify(result.metadata)}`);
   }
   const runs = new Map(batch.runs.map((run) => [run.id, run]));
@@ -69,6 +72,7 @@ export function compactRoutingRuns(batch) {
       run[field] = row[source] ?? null;
     }
   }
+  debugRouting({ operation: 'compact-routing-runs', status: 'aggregated', aggregateRows: result.rows.length, runs: runs.size, audits: batch.audits.length });
   // No inventory, generic proxy events or ingestion-only facts enter storage,
   // including when replaying older cached session projections.
   batch.audits = batch.audits.filter((record) => !['model.inventory', 'firewall.event'].includes(String(record.type)))
