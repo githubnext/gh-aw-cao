@@ -96,6 +96,11 @@ behavior-preserving acceptance remains unverified. The collector retains
 immutable inventories, applied receipts and all previously accepted snapshot
 cutoffs under its supplied workspace's `latest/proof/` directory. Failed or
 incomplete refreshes do not replace that accepted proof.
+On a cold start it retrieves only the skill's historical evidence archives at
+immutable source revision `0782148c0af21f4f1d10b7cb5e81b571ed58c463`, validates
+their digests, then acquires fresh discovery and lifecycle evidence. This
+preserves verified receipts after upstream artifact expiry without treating the
+historical capture as fresh. Subsequent collections reuse their own retained proof.
 Rich evidence acquisition has a ten-minute per-collector runtime ceiling
 (the hosted wrapper allows ten additional seconds for shutdown), independent
 of the shorter compact-measurement budget.

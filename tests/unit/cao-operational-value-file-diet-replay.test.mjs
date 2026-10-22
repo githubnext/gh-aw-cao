@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { gzipSync } from "node:zlib";
@@ -9,7 +9,7 @@ import { fileDietEvents, readFileDietProof } from "../../.github/skills/add-oper
 import { eventPulse } from "../../.github/skills/add-operational-value/scripts/pulse-model.mjs";
 import { preserveFileDietSnapshots } from "../../.github/skills/add-operational-value/examples/acquire-file-diet.mjs";
 import { operationalValueEvidenceJsonl } from "../../.github/skills/add-operational-value/scripts/export-evidence.mjs";
-import { collectValueEvidence, definition } from "../../.github/value-collectors/daily-file-diet.mjs";
+import { collectValueEvidence, definition, seedFileDietProof } from "../../.github/value-collectors/daily-file-diet.mjs";
 import { runWorkflowValues } from "../../activity/workflow-values.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
@@ -103,6 +103,45 @@ test("the real reviewed File Diet collector loads in the isolated worker and reu
   assert.deepEqual(result, { collected: 0, skipped: 1, warnings: [] });
 });
 
+test("cold-start proof is pinned, evidence-only, bounded and validated before reuse", async t => {
+  const directory = temporary(t);
+  const source = path.join(directory, "source");
+  mkdirSync(source);
+  preserve(example(), source);
+  const prefix = "docs/operational-value/proof/file-diet-lifetime";
+  const tree = readdirSync(source).map(name =>
+    `100644 blob ${sha("a")}\t${prefix}/${name}`).join("\n");
+  const commands = [];
+  const git = async (...args) => {
+    commands.push(args);
+    if (args.includes("ls-tree")) return { stdout: tree };
+    if (args.includes("checkout")) cpSync(source, path.join(args[1], prefix), { recursive: true });
+    return { stdout: "" };
+  };
+  const result = await seedFileDietProof(path.join(directory, "seed"), git);
+  assert.equal(readFileDietProof(result).proof.until, example().proof.until);
+  assert.ok(commands.some(args => args.includes("https://github.com/githubnext/gh-cao.git")));
+  assert.ok(commands.filter(args => args.includes("fetch") || args.includes("checkout"))
+    .every(args => args.includes("0782148c0af21f4f1d10b7cb5e81b571ed58c463")));
+  assert.ok(commands.some(args => args.includes("sparse-checkout") && args.includes(`/${prefix}/`)));
+  for (const invalid of [tree.replace("100644", "120000"), tree.replace("proof.json.gz", "script.mjs"),
+    Array(1025).fill(tree.split("\n")[0]).join("\n")]) {
+    let checkedOut = false;
+    await assert.rejects(seedFileDietProof(path.join(directory, "invalid"), async (...args) => {
+      if (args.includes("checkout")) checkedOut = true;
+      return { stdout: args.includes("ls-tree") ? invalid : "" };
+    }), /Historical proof/);
+    assert.equal(checkedOut, false);
+  }
+  await assert.rejects(seedFileDietProof(path.join(directory, "oversized"), async (...args) => {
+    if (args.includes("checkout")) {
+      mkdirSync(path.join(args[1], prefix), { recursive: true });
+      writeFileSync(path.join(args[1], prefix, "proof.json.gz"), Buffer.alloc(16 * 1024 * 1024 + 1));
+    }
+    return { stdout: args.includes("ls-tree") ? `100644 blob ${sha("a")}\t${prefix}/proof.json.gz` : "" };
+  }), /byte budget/);
+});
+
 test("recurring File Diet collection reuses originals and only promotes validated cumulative proof", async t => {
   const directory = temporary(t);
   const input = example();
@@ -110,10 +149,19 @@ test("recurring File Diet collection reuses originals and only promotes validate
     baselineCommit: sha("0") };
   input.inventories.set(definition.adoption.commit, input.inventories.get(adopted));
   input.proof.snapshots[0] = { at: definition.adoption.adoptedAt, commit: definition.adoption.commit };
+  let seeds = 0;
+  let seeded;
+  const seed = directory => {
+    seeds++;
+    seeded = directory;
+    mkdirSync(directory);
+    preserve(input, directory);
+    return directory;
+  };
   let calls = 0;
   const acquire = ({ endAt, output, previous }) => {
-    assert.equal(previous, calls ? path.join(directory, "latest", "proof") : undefined);
-    if (previous) assert.equal(readFileDietProof(previous).proof.until, input.proof.until);
+    assert.equal(previous, calls ? path.join(directory, "latest", "proof") : seeded);
+    assert.equal(readFileDietProof(previous).proof.until, input.proof.until);
     calls++;
     if (calls > 1) input.proof.snapshots.push({ at: endAt, commit: merged });
     input.proof.until = endAt;
@@ -125,10 +173,11 @@ test("recurring File Diet collection reuses originals and only promotes validate
   };
   const request = { repository: definition.repository, workflow: definition.slug,
     observedAt: "2026-05-01T00:00:00.000Z", workspace: { directory } };
-  const first = await collectValueEvidence(request, acquire);
+  const first = await collectValueEvidence(request, acquire, seed);
   const second = await collectValueEvidence({ ...request, observedAt: "2026-05-02T00:00:00.000Z",
     previous: first.operational_value_evidence }, acquire);
   assert.equal(second.operational_value_evidence.contractDigest, first.operational_value_evidence.contractDigest);
+  assert.equal(seeds, 1, "Retained proof must replace the one-time historical seed.");
   const originals = first.operational_value_evidence.facts.filter(fact => fact["fact-kind"] === "snapshot");
   assert.ok(originals.every(fact => second.operational_value_evidence.facts.some(next =>
     JSON.stringify(next) === JSON.stringify(fact))));

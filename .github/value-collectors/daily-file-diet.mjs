@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
 import { mkdtemp, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import { refreshFileDiet } from '../skills/add-operational-value/examples/acquire-file-diet.mjs';
 import { readFileDietProof } from '../skills/add-operational-value/examples/daily-file-diet.mjs';
 import { assertValueHistory } from '../../activity/workflow-value-history.mjs';
@@ -17,7 +19,33 @@ export const definition = {
   evidence: { repositories: ['github/gh-aw'], window: { cadenceDays: 1, maturationDays: 0 } },
 };
 
-export async function collectValueEvidence(request, acquire = refreshFileDiet) {
+const executeFile = promisify(execFile);
+const historicalRevision = '0782148c0af21f4f1d10b7cb5e81b571ed58c463';
+const historicalPath = 'docs/operational-value/proof/file-diet-lifetime';
+
+export async function seedFileDietProof(directory, git = (...args) =>
+  executeFile('git', args, { maxBuffer: 1024 * 1024 })) {
+  await git('init', '--quiet', directory);
+  await git('-C', directory, 'remote', 'add', 'origin', 'https://github.com/githubnext/gh-cao.git');
+  await git('-C', directory, 'fetch', '--quiet', '--depth=1', '--filter=blob:none', 'origin', historicalRevision);
+  const { stdout } = await git('-C', directory, 'ls-tree', '-r', historicalRevision, '--', historicalPath);
+  const entries = stdout.trim().split('\n');
+  assert.ok(entries.length <= 1024, 'Historical proof exceeds its file budget');
+  const files = entries.map(entry => {
+    const match = /^100644 blob [a-f0-9]{40}\t(docs\/operational-value\/proof\/file-diet-lifetime\/(?:proof|inventory-[a-f0-9]{40})\.json\.gz)$/.exec(entry);
+    assert.ok(match, 'Historical proof must contain only regular, confined evidence archives');
+    return match[1];
+  });
+  await git('-C', directory, 'sparse-checkout', 'set', '--no-cone', `/${historicalPath}/`);
+  await git('-C', directory, '-c', 'core.hooksPath=/dev/null', 'checkout', '--quiet', '--detach', historicalRevision);
+  const bytes = files.reduce((total, file) => total + statSync(path.join(directory, file)).size, 0);
+  assert.ok(bytes <= 16 * 1024 * 1024, 'Historical proof exceeds its byte budget');
+  const proof = path.join(directory, historicalPath);
+  readFileDietProof(proof);
+  return proof;
+}
+
+export async function collectValueEvidence(request, acquire = refreshFileDiet, seed = seedFileDietProof) {
   assert.equal(request.repository.toLowerCase(), definition.repository);
   assert.equal(request.workflow, definition.slug);
   assert.ok(Number.isFinite(Date.parse(request.observedAt)), 'A valid collection cutoff is required');
@@ -26,9 +54,9 @@ export async function collectValueEvidence(request, acquire = refreshFileDiet) {
   const staging = await mkdtemp(path.join(request.workspace.directory, '.capture-'));
   const output = path.join(staging, 'report');
   try {
+    const previous = existsSync(retained) ? path.join(retained, 'proof') : await seed(path.join(staging, 'seed'));
     await acquire({
-      endAt, output, scratch: request.workspace.scratch,
-      ...(existsSync(retained) ? { previous: path.join(retained, 'proof') } : {}),
+      endAt, output, scratch: request.workspace.scratch, previous,
     });
     const { proof } = readFileDietProof(path.join(output, 'proof'));
     assert.equal(proof.adoption.commit, definition.adoption.commit, 'Frozen adoption changed');
