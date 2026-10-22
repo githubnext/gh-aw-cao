@@ -115,6 +115,12 @@ Update CAO:
   release-update options (--major, --cool-down, or --pre-releases).
 
 Agent analysis:
+  These are supported evidence APIs for agents inside agentic workflows.
+  Invoke the installed Node runtime as node activity/cao.mjs <command>.
+  gh cao owns human/operator commands; cao-dashboard owns server hosting and
+  administration. Similar operator reads do not replace these workflow APIs.
+  Workflow agents use queries, query-info, prompt, query, gh runs/issues/prs,
+  computation, mcp, and download without building or installing gh cao.
   Download the current CAO snapshot:
     cao download
   Discover dashboard pages:

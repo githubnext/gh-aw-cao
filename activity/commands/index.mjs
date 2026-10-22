@@ -33,6 +33,9 @@ import { runUpgradeGhAw } from "./upgrade-gh-aw.mjs";
 import { runValidateActivityData } from "./validate-activity-data.mjs";
 import { runValidate } from "./validate.mjs";
 
+// Node cao is the Actions runtime, including supported workflow-agent evidence
+// APIs. Overlap with operator-facing gh cao is intentional, not parity-only code.
+// Keep workflow-agent evidence handlers and dependencies in the installed runtime.
 export const commandHandlers = new Map([
   ["activity-stats", runActivityStats],
   ["add", runAdd],

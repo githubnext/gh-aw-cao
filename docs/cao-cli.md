@@ -1,6 +1,6 @@
 ---
 title: CAO Commands
-description: Configure and inspect CAO with the Go extension, and prepare evidence with the repository-local pipeline CLI.
+description: Configure and inspect CAO with the Go extension, and use the Node Actions runtime for workflow-agent evidence APIs.
 agent:
   type: cli-reference
   prominent: true
@@ -15,8 +15,15 @@ using the CLI should follow the
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
-Internal Node implementations remain for Actions and parity tests, not as an
-alternative operator surface. Run policy commands from the control repository root:
+The Node `cao` entry point is the supported Actions runtime, including evidence
+APIs for agents inside agentic workflows, not an alternative operator surface.
+Its `queries`, `query-info`, `prompt`, `query`, `gh runs|issues|prs`,
+`computation`, `mcp`, and `download` commands and runtime dependencies remain
+installed and supported. Similar read capabilities in `gh cao` are intentional:
+operators use `gh cao`, workflow agents use `node activity/cao.mjs`, and server
+hosting/administration belongs to `cao-dashboard`. Workflow agents need not
+build, install, or invoke the Go extension. See [workflow-agent evidence](agent-analysis.md#inside-an-agentic-workflow).
+Run policy commands from the control repository root:
 
 ```bash
 gh cao --help
