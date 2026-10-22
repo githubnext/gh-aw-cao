@@ -9,7 +9,7 @@
       "filter": { "predicates": [{ "field": "event-type", "in": [
         "session.format", "workflow.info", "workflow.job_result", "agent.execution",
         "firewall.model_routing", "firewall.token_usage", "usage.report", "firewall.steering",
-        "firewall.event", "firewall.upstream_error", "model.config", "model.inventory", "model.resolution",
+        "firewall.upstream_error", "model.config", "model.baseline_estimate", "model.resolution",
         "model_routing.outcome", "model_endpoint.mismatch", "session.collection", "session.collection_warning",
         "subagent.request", "subagent.started", "subagent.configured", "subagent.completed",
         "subagent.failed", "subagent.model_unavailable"

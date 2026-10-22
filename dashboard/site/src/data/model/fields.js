@@ -102,6 +102,10 @@ export function mergeCanonicalRun(existing, incoming) {
   if (!existing || !Number.isInteger(existing.attempt) || Number(existing.attempt) < 1
       || existing.attempt !== incoming.attempt) return incoming;
   let merged = incoming;
+  if (incoming.routingAggregateVersion === undefined && existing.routingAggregateVersion !== undefined) {
+    merged = { ...incoming, ...Object.fromEntries(Object.entries(existing)
+      .filter(([field]) => field.startsWith('routing'))) };
+  }
   for (const field of ['aicTotal', 'inputTokens', 'outputTokens', 'cacheReadTokens',
     'cacheWriteTokens', 'reasoningTokens']) {
     if (incoming[field] == null && typeof existing[field] === 'number'

@@ -54,13 +54,23 @@ describe('incremental canonical storage shards', () => {
         now, payloadIdentity: scope, payloadScope: scope, expectedPhase: 'runs', deferMaintenance: true
       });
     };
-    await ingest({ ...run, aicTotal: 172.72252, inputTokens: 100 }, 'measured');
+    await ingest({ ...run, aicTotal: 172.72252, inputTokens: 100,
+      routingAggregateVersion: 1, routingState: 'selected', routingBaselineAic: 6.02079 }, 'measured');
     await ingest({ ...run, aicTotal: null, inputTokens: null }, 'sparse-refresh');
     expect((await readCollection(indexedDB, 'runs'))[0]).toMatchObject({
-      aicTotal: 172.72252, inputTokens: 100
+      aicTotal: 172.72252, inputTokens: 100,
+      routingAggregateVersion: 1, routingState: 'selected', routingBaselineAic: 6.02079
     });
     await expect(ingest({ ...run, aicTotal: null, inputTokens: null }, 'sparse-refresh'))
       .resolves.toMatchObject({ skipped: true });
+    await expectAccurateTotals(indexedDB);
+    await ingest({ ...run, routingAggregateVersion: 1, routingState: 'unrouted', routingBaselineAic: null }, 'replacement');
+    expect((await readCollection(indexedDB, 'runs'))[0]).toMatchObject({
+      routingState: 'unrouted', routingBaselineAic: null
+    });
+    await ingest({ ...run, attempt: 2 }, 'rerun');
+    expect((await readCollection(indexedDB, 'runs'))[0]).not.toHaveProperty('routingAggregateVersion');
+    expect((await readCollection(indexedDB, 'runs'))[0]).not.toHaveProperty('routingBaselineAic');
     await expectAccurateTotals(indexedDB);
   });
 

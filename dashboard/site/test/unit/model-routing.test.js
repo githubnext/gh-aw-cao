@@ -66,7 +66,7 @@ const run101 = [
 
 describe('model routing unified-session contract', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it.each(['firewall.event', 'firewall.upstream_error'])('preserves numeric status and HTTP evidence for %s', (type) => {
+  it.each(['firewall.upstream_error'])('preserves numeric status and HTTP evidence for %s', (type) => {
     const document = session(1, [event(type, { status: 429 })]);
     expect(document.events.find((entry) => entry.type === type)?.fields)
       .toMatchObject({ status: '429', httpStatus: 429 });

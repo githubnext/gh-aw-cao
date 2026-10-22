@@ -169,7 +169,9 @@ describe('model resolution', () => {
 
     const rerun = replay('opus-before');
     rerun.records = rerun.records.map((record) => record.envelope.type === 'model.resolution'
-      ? { ...record, envelope: { ...record.envelope, data: { ...record.envelope.data, resolved_model: 'claude-opus-5.5' } } } : record);
+      ? { ...record, envelope: { ...record.envelope, data: { ...record.envelope.data, resolved_model: 'claude-opus-5.5' } } }
+      : record.envelope.type === 'workflow.info'
+      ? { ...record, envelope: { ...record.envelope, data: { ...record.envelope.data, run_attempt: 2 } } } : record);
     await ingest(indexedDB, rerun, { attempt: 2 });
     const latest = await query(indexedDB, ['routing-resolutions', 'routing-runs']);
     expect(latest['routing-resolutions'].rows.filter((row) => row.run === '990000001')).toMatchObject([{ 'resolved-model-label': 'claude-opus-5.5' }]);
