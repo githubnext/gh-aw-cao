@@ -10,7 +10,11 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
+
+var egressLog = logger.New("cao:cliegress")
 
 const (
 	MaxConnections = 32
@@ -67,10 +71,8 @@ type proxy struct {
 }
 
 func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodConnect || r.URL == nil || r.URL.Host != r.Host ||
-		r.URL.User != nil || r.URL.RawQuery != "" || r.URL.Path != "" ||
-		r.URL.Scheme != "" || r.URL.Opaque != "" || r.URL.Fragment != "" ||
-		r.ContentLength > 0 || len(r.TransferEncoding) != 0 {
+	if !isTunnelRequest(r) {
+		egressLog.Printf("egress request rejected: reason=not_connect")
 		http.Error(w, "HTTPS CONNECT required", http.StatusForbidden)
 		return
 	}
@@ -87,19 +89,15 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	addresses, err := p.policy.destination(resolveCtx, r.Host, p.lookup)
 	resolveCancel()
 	if err != nil {
+		egressLog.Printf("egress request rejected: reason=destination_denied")
 		http.Error(w, "egress destination denied or unavailable", http.StatusForbidden)
 		return
 	}
 	dialCtx, dialCancel := context.WithTimeout(ctx, 10*time.Second)
-	var upstream net.Conn
-	for _, address := range addresses {
-		upstream, err = p.dial(dialCtx, "tcp", address)
-		if err == nil || dialCtx.Err() != nil {
-			break
-		}
-	}
+	upstream, err := p.dialFirst(dialCtx, addresses)
 	dialCancel()
 	if err != nil {
+		egressLog.Printf("egress dial failed: candidates=%d", len(addresses))
 		http.Error(w, "egress destination unavailable", http.StatusBadGateway)
 		return
 	}
@@ -137,6 +135,32 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_ = client.Close()
 	_ = upstream.Close()
 	<-done
+}
+
+// isTunnelRequest reports whether r is a bare authority-form CONNECT request
+// with no userinfo, path, query, or body.
+func isTunnelRequest(r *http.Request) bool {
+	return r.Method == http.MethodConnect && r.URL != nil && r.URL.Host == r.Host &&
+		r.URL.User == nil && r.URL.RawQuery == "" && r.URL.Path == "" &&
+		r.URL.Scheme == "" && r.URL.Opaque == "" && r.URL.Fragment == "" &&
+		r.ContentLength <= 0 && len(r.TransferEncoding) == 0
+}
+
+// dialFirst tries each vetted address in order and returns the first
+// connection, stopping early when ctx ends. With no addresses it fails.
+func (p *proxy) dialFirst(ctx context.Context, addresses []string) (net.Conn, error) {
+	err := errors.New("no egress addresses")
+	for _, address := range addresses {
+		var conn net.Conn
+		conn, err = p.dial(ctx, "tcp", address)
+		if err == nil {
+			return conn, nil
+		}
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, err
 }
 
 type boundedListener struct {
