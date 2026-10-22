@@ -35,7 +35,8 @@ func CheckPrivateKey(content []byte, expected, previous string) (KeyCheck, error
 	}
 	content = bytes.TrimSpace(content)
 	block, rest := pem.Decode(content)
-	if block == nil || len(bytes.TrimSpace(rest)) != 0 || len(block.Headers) != 0 ||
+	if block == nil || bytes.Count(content, []byte("-----BEGIN ")) != 1 ||
+		len(bytes.TrimSpace(rest)) != 0 || len(block.Headers) != 0 ||
 		!bytes.HasPrefix(content, []byte("-----BEGIN "+block.Type+"-----")) {
 		return KeyCheck{}, errors.New("app key check requires exactly one unencrypted private-key PEM block")
 	}

@@ -59,6 +59,10 @@ func TestAppKeyCheckCommandOfflineRollover(t *testing.T) {
 	if err != nil || !pinned.ExpectedKeyChecked || !pinned.RotationKeyChecked {
 		t.Fatalf("pinned rollover check: %+v, %v", pinned, err)
 	}
+	malformedPath := filepath.Join(t.TempDir(), "malformed.pem")
+	if err := os.WriteFile(malformedPath, append([]byte("-----BEGIN RSA PRIVATE KEY-----\ninvalid!base64\n-----END RSA PRIVATE KEY-----\n"), content...), 0600); err != nil {
+		t.Fatal(err)
+	}
 	for name, args := range map[string][]string{
 		"no implicit env key": {},
 		"same key rollover":   {"--key-file", path, "--previous-public-key-sha256", result.PublicKeySHA256},
@@ -67,6 +71,7 @@ func TestAppKeyCheckCommandOfflineRollover(t *testing.T) {
 		"empty previous":      {"--key-file", path, "--previous-public-key-sha256="},
 		"missing file":        {"--key-file", filepath.Join(t.TempDir(), "sensitive-missing-key.pem")},
 		"directory":           {"--key-file", t.TempDir()},
+		"malformed prefix":    {"--key-file", malformedPath},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, output, err := execute(args...)
