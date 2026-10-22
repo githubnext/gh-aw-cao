@@ -119,8 +119,8 @@ GitHub creation or ingestion time.
 
 The Model routing page SHALL admit `model.resolution` into
 `routing-session-observations` and apply the same latest-attempt selection and
-Routing scope filters before joining resolution events. Failed resolutions
-SHALL appear in its Problems view with their distinct causes and a link to the
+run-route scope before joining resolution events. Failed resolutions
+SHALL appear in its problem view with their distinct causes and a link to the
 run page; per-run resolution roles SHALL stay on the run page. Roles are
 records, not runs: four roles from one run count as one run. A routed session is
 expected to have no configured-model resolution; absence SHALL NOT classify a
@@ -147,26 +147,35 @@ source-query limits before view scope. All authored query limits, including a
 displayed source's limit, remain semantic boundaries and MUST NOT be moved across
 scope.
 
-The Model routing page currently provides five views. Routing health by
-workflow answers whether routing is on and working: per repository and workflow
+The Model routing overview and run detail SHALL load without a scope form or
+user-entered filters. The overview includes all retained routing sessions,
+including untimed runs, and leads with **Fix routing problems**. Each problem
+row SHALL show an evidence-backed next action and a link to its run.
+**Review workflow routing** prioritizes failures and deviations: per repository and workflow
 with a routed run, it shows routed runs, the share with a model selected, the
 share with an agent-phase routing failure or degraded classification (no
 separate fallback field exists), the share of runs whose agent-phase requests
 followed the pick, the success rate over known agent-job outcomes and the median
-AIC per complete run. Models picked over time answers what the router chooses,
+AIC per complete run in its query payload. Its compact table shows next actions,
+failure and adherence shares, the named baseline comparison and paired-run counts.
+Cost-setting actions require at least ten paired runs; missing selection evidence
+and insufficient paired evidence SHALL request collection, not imply success.
+**Review model choices** answers what the router chooses,
 counting proxy-selected runs with a known pick model per UTC ISO week.
 Health also shows estimated main-request cost versus each named baseline.
-Cost per run over time retains weekly median agent-phase accounting AIC per
+**Compare routing costs** retains weekly median agent-phase accounting AIC per
 routing state and adds paired observed main-request and explicitly estimated
 baseline series, grouped by baseline model. Paired series use identical eligible
-runs, UTC ISO weeks and the same minimum-sample floor. The baseline is a
+runs, UTC ISO weeks and a fixed minimum of ten complete runs per series. The baseline is a
 counterfactual estimate, not a claim of causal savings; routed versus unrouted
 accounting remains observational because these are different tasks.
-Problems answers what needs attention
+The problem view answers what needs attention
 with one row per run and kind (routing failure, deviation, resolution failure,
 upstream error or candidates not rankable),
-its cause, a run-page link and the run's recorded observation time. Routing runs
-lists identified runs and opens the run drill-down. A share or median without
+its cause, a run-page link and the run's recorded observation time. **Inspect recent runs**
+is a supplemental disclosure listing identified runs and opening the run drill-down.
+The route identity alone scopes run detail; removed scope filters SHALL NOT hide its evidence.
+A share or median without
 evidence (a zero denominator or no complete cost) and a week with fewer complete
 runs than the minimum sample SHALL be unknown or a gap, never zero. It does
 not implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full

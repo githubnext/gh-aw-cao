@@ -6,7 +6,7 @@ import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { readCollection } from '../../src/data/storage/indexeddb.js';
 import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
-import { compileDashboardViewPayloadQueries, dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../../src/data/queries/view-payload-compiler.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/model-routing-contract.json' with { type: 'json' };
 
@@ -55,15 +55,13 @@ async function ingestObserved(indexedDB, fixture, records = fixture.records) {
   }), { now: Date.parse('2026-10-21T12:00:00Z') });
 }
 
-/** @param {IDBFactory} indexedDB @param {string[]} names @param {Record<string, string|number|boolean>} [parameters] */
-async function query(indexedDB, names, parameters = {}) {
+/** @param {IDBFactory} indexedDB @param {string[]} names */
+async function query(indexedDB, names) {
   vi.stubGlobal('indexedDB', indexedDB);
   const required = new Set(resolveDashboardQuerySources(dashboard.queries, names));
   return /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
     operation: 'load-dashboard-query-sources', sources: {},
-    queries: resolveDashboardQueryParameters(dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name)), {
-      ...dashboardFormDefaultValues(dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page).form), ...parameters
-    }), sourceNames: names
+    queries: dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name)), sourceNames: names
   }));
 }
 
@@ -85,7 +83,7 @@ describe('model routing unified-session contract', () => {
   it('compacts real SDK, routed and CLI sessions and pairs only matching main-request costs', async () => {
     const indexedDB = new IDBFactory();
     for (const fixture of contract['observed-sessions']) await ingestObserved(indexedDB, fixture);
-    const result = await query(indexedDB, ['routing-runs', 'routing-health', 'routing-weekly-cost'], { 'minimum-sample': 1 });
+    const result = await query(indexedDB, ['routing-runs', 'routing-health', 'routing-weekly-cost']);
     expect(result['routing-runs'].rows).toHaveLength(3);
     const sdk = result['routing-runs'].rows.find((row) => row.run === '39529495361');
     expect(sdk).toMatchObject({ 'routing-aggregate-version': 1, 'routing-state': 'selected',
@@ -95,9 +93,9 @@ describe('model routing unified-session contract', () => {
     const health = result['routing-health'].rows.find((row) => row['baseline-model'] === 'claude-sonnet-5.5');
     expect(health?.['estimated-cost-vs-baseline']).toBeCloseTo(0.671398 / 6.02079, 10);
     const baseline = result['routing-weekly-cost'].rows.find((row) => String(row['cost-series']).startsWith('Baseline estimate'));
-    expect(baseline).toMatchObject({ 'median-aic': 6.02079, 'complete-runs': 1 });
+    expect(baseline).toMatchObject({ 'median-aic': null, 'complete-runs': 1 });
     const observed = result['routing-weekly-cost'].rows.find((row) => String(row['cost-series']).startsWith('Main requests observed'));
-    expect(observed?.['median-aic']).toBeCloseTo(0.671398, 10);
+    expect(observed?.['median-aic']).toBeNull();
     expect(result['routing-runs'].rows.find((row) => row.run === '39529502581')).toMatchObject({
       'routing-state': 'unrouted', 'baseline-aic': null, paired: false
     });
@@ -119,7 +117,7 @@ describe('model routing unified-session contract', () => {
     const records = fixture.records.map((record) => record.type === 'model.baseline_estimate'
       ? { ...record, data: { ...record.data, complete, aic, unpricedRequests: complete ? 0 : 1 } } : record);
     await ingestObserved(indexedDB, fixture, records);
-    const result = await query(indexedDB, ['routing-health', 'routing-weekly-cost'], { 'minimum-sample': 1 });
+    const result = await query(indexedDB, ['routing-health', 'routing-weekly-cost']);
     expect(result['routing-health'].rows[0]['estimated-cost-vs-baseline']).toBeNull();
     expect(result['routing-weekly-cost'].rows.some((row) => String(row['cost-series']).startsWith('Baseline estimate'))).toBe(false);
   });
@@ -215,7 +213,7 @@ describe('model routing unified-session contract', () => {
       .toMatchObject({ status: '429', httpStatus: 429 });
   });
 
-  it('declares the five essential views and resolves payloads through the production worker', async () => {
+  it('loads action-first views without forms or parameters through the production worker', async () => {
     const indexedDB = new IDBFactory();
     vi.stubGlobal('indexedDB', indexedDB);
     await ingest(indexedDB, 1, [
@@ -228,10 +226,15 @@ describe('model routing unified-session contract', () => {
     ]);
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
     expect(page.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual(contract.views);
-    expect(page.views.map((/** @type {{ title: string }} */ view) => view.title)).toEqual([
-      'Routing health by workflow', 'Models picked over time', 'Cost per run over time', 'Problems', 'Routing runs'
+    expect(page.views.map((/** @type {{ title?: string, 'disclosure-label'?: string }} */ view) => view.title ?? view['disclosure-label'])).toEqual([
+      'Fix routing problems', 'Review workflow routing', 'Review model choices', 'Compare routing costs', 'Inspect recent runs'
     ]);
-    expect(page.views.filter((/** @type {{ disclosure?: string }} */ view) => view.disclosure)).toEqual([]);
+    expect(page.form).toBeUndefined();
+    expect(page.views.filter((/** @type {{ disclosure?: string }} */ view) => !view.disclosure)
+      .map((/** @type {{ id: string }} */ view) => view.id)).toEqual(contract['essential-views']);
+    const routingQueries = new Set(resolveDashboardQuerySources(dashboard.queries, contract.queries));
+    expect(dashboard.queries.filter((/** @type {{ name: string }} */ definition) => routingQueries.has(definition.name))
+      .every((/** @type {{ parameters?: unknown }} */ definition) => !definition.parameters)).toBe(true);
     for (const view of page.views) {
       const payload = compileDashboardViewPayloadQueries(page, page.id, {
         queries: dashboard.queries, views: dashboard.views, viewId: view.id, sourceNames: [view.data.source]
@@ -248,6 +251,7 @@ describe('model routing unified-session contract', () => {
       expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
     }
     const detail = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.detail);
+    expect(detail.form).toBeUndefined();
     expect(detail.views.map((/** @type {{ id: string }} */ view) => view.id)).toEqual(contract['detail-views']);
     for (const view of detail.views) {
       const payload = compileDashboardViewPayloadQueries(detail, detail.id, {
@@ -261,7 +265,7 @@ describe('model routing unified-session contract', () => {
       }));
       expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
     }
-    const result = await query(indexedDB, contract.queries, { 'minimum-sample': 1 });
+    const result = await query(indexedDB, contract.queries);
     expect(result['routing-resolutions'].rows).toEqual([]);
     expect(result['routing-runs'].rows).toMatchObject([{
       'routing-state': 'selected', 'pick-model': 'gpt-5', 'pick-effort': 'high', 'failure-count': 1,
@@ -274,6 +278,7 @@ describe('model routing unified-session contract', () => {
     expect(result['routing-problems'].rows).toEqual([expect.objectContaining({
       run: '1', 'full-repository': 'octo/api', workflow: '.github/workflows/worker.md',
       'problem-kind': 'routing failure', 'problem-cause': 'ai_credits_limit_exceeded', 'observed-at': '2026-10-16T10:00:00.000Z',
+      'next-action': contract['problem-actions']['routing failure'],
       'routing-dashboard-link': expect.objectContaining({ 'dashboard-href': '#page-routing-run?routing-run=octo%2Fapi%3A1' })
     })]);
   });
@@ -336,6 +341,66 @@ describe('model routing unified-session contract', () => {
     expect(result['routing-problems'].rows).toEqual([expect.objectContaining({
       run: '1', 'problem-kind': 'deviation', 'problem-cause': 'deviated'
     })]);
+  });
+
+  it('provides a concrete next action and run link for every recorded problem kind', async () => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 1, [
+      event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', eligibleChoices: 6, catalogueOverlap: 5 }),
+      event('firewall.model_routing', { stage: 'failure', code: 'unsupported_reasoning_effort' }),
+      event('firewall.model_routing', { stage: 'request', requestId: 'a', routed: 'deviated' }),
+      event('firewall.upstream_error', { requestId: 'a', errorCode: 'invalid_reasoning_effort' }),
+      event('model.resolution', { engine: 'copilot', role: 'main', configured_model: 'small',
+        status: 'failed', cause: 'model_unavailable' })
+    ]);
+    const result = await query(indexedDB, ['routing-problems']);
+    expect(result['routing-problems'].rows).toHaveLength(contract['problem-kinds'].length);
+    for (const [kind, action] of Object.entries(contract['problem-actions'])) {
+      expect(result['routing-problems'].rows.find((row) => row['problem-kind'] === kind)).toMatchObject({
+        'next-action': action,
+        'routing-dashboard-link': { 'dashboard-href': '#page-routing-run?routing-run=octo%2Fapi%3A1' }
+      });
+    }
+  });
+
+  it.each([
+    { events: [event('firewall.model_routing', { stage: 'failure', code: 'provider_unavailable' })],
+      action: 'Investigate failures or fallbacks' },
+    { events: [event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5' }),
+      event('firewall.model_routing', { stage: 'request', requestId: 'a', routed: 'deviated' })],
+      action: 'Inspect requests that did not follow the pick' },
+    { events: [event('model.config', { routing: { enabled: true } })],
+      action: 'Collect missing proxy selection evidence' },
+    { events: run101, action: 'Collect at least 10 paired baseline runs' }
+  ])('prioritizes "$action" without user input', async ({ events, action }) => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 1, events);
+    const result = await query(indexedDB, ['routing-health']);
+    expect(result['routing-health'].rows).toMatchObject([{ 'next-action': action }]);
+  });
+
+  it.each([
+    { baseline: 8, action: 'Monitor costs and validate outcome quality' },
+    { baseline: 2, action: 'Review routing goal or mode' }
+  ])('requires ten paired runs before recommending "$action"', async ({ baseline, action }) => {
+    const indexedDB = new IDBFactory();
+    const events = [...run101, event('model.baseline_estimate', {
+      estimated: true, baselineModel: 'baseline-model', aic: baseline, mainRequests: 1,
+      pricedRequests: 1, unpricedRequests: 0, unattributedRequests: 0, complete: true
+    })];
+    for (let run = 1; run <= 9; run++) await ingest(indexedDB, run, events);
+    const sparse = await query(indexedDB, ['routing-health', 'routing-weekly-cost']);
+    expect(sparse['routing-health'].rows).toMatchObject([{
+      'paired-runs': 9, 'next-action': 'Collect at least 10 paired baseline runs'
+    }]);
+    expect(sparse['routing-weekly-cost'].rows.every((row) => row['median-aic'] === null)).toBe(true);
+    await ingest(indexedDB, 10, events);
+    const enough = await query(indexedDB, ['routing-health', 'routing-weekly-cost']);
+    expect(enough['routing-health'].rows).toMatchObject([{ 'paired-runs': 10, 'next-action': action }]);
+    expect(enough['routing-weekly-cost'].rows.filter((row) => String(row['cost-series']).startsWith('Baseline estimate')))
+      .toMatchObject([{ 'complete-runs': 10, 'median-aic': baseline }]);
+    expect(enough['routing-weekly-cost'].rows.filter((row) => String(row['cost-series']).startsWith('Main requests observed')))
+      .toMatchObject([{ 'complete-runs': 10, 'median-aic': 4 }]);
   });
 
   it('counts only the four specified agent-job outcomes as known results', async () => {
@@ -462,7 +527,7 @@ describe('model routing unified-session contract', () => {
       'usage/aw_session.jsonl', { runId: '1', attempt: 1 }).events).toHaveLength(1);
   });
 
-  it('filters entire runs before event joins rather than truncating accounting at time bounds', async () => {
+  it('includes all routing states and late accounting without filter input', async () => {
     const indexedDB = new IDBFactory();
     await ingest(indexedDB, 1, [
       event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', selectedEffort: 'high' }),
@@ -470,17 +535,12 @@ describe('model routing unified-session contract', () => {
         provenance: { phase: 'agent', timestampMs: now + 3600000 } }
     ]);
     await ingest(indexedDB, 2, [event('model.config', { routing: { enabled: false } })]);
-    const result = await query(indexedDB, ['routing-runs', 'routing-attributed-accounting'], {
-      'routing-filter-state': 'selected', 'routing-filter-repository': 'octo/api',
-      'routing-filter-start': new Date(now).toISOString(), 'routing-filter-end': new Date(now + 1).toISOString()
-    });
-    expect(result['routing-runs'].rows).toHaveLength(1);
+    const result = await query(indexedDB, ['routing-runs', 'routing-attributed-accounting']);
+    expect(result['routing-runs'].rows).toHaveLength(2);
     expect(result['routing-attributed-accounting'].rows).toMatchObject([{ aic: 4 }]);
     expect(result['routing-runs'].rows[0]['routing-dashboard-link']).toMatchObject({
       'dashboard-href': '#page-routing-run?routing-run=octo%2Fapi%3A1'
     });
-    const absent = await query(indexedDB, ['routing-runs'], { 'routing-filter-repository': 'octo/not-enrolled' });
-    expect(absent['routing-runs'].rows).toHaveLength(0);
   });
 
   it('replaces ingested attempts without mixing their picks or accounting', async () => {
@@ -499,7 +559,7 @@ describe('model routing unified-session contract', () => {
     expect(result['routing-attributed-accounting'].rows).toHaveLength(1);
   });
 
-  it('uses every recorded source clock and leaves wholly untimed sessions outside bounded ranges', async () => {
+  it('uses recorded source clocks and includes wholly untimed sessions without invented dates', async () => {
     const indexedDB = new IDBFactory();
     await ingest(indexedDB, 1, [
       { type: 'user.message', data: { content: 'NEVER_RETAIN_MESSAGE' },
@@ -521,23 +581,24 @@ describe('model routing unified-session contract', () => {
       { run: '1', 'run-clock': now - 60000 }, { run: '2', 'run-clock': null }
     ]);
     expect(JSON.stringify(all)).not.toContain('NEVER_RETAIN_MESSAGE');
-    const bounded = await query(indexedDB, ['routing-runs'], {
-      'routing-filter-start': new Date(now - 120000).toISOString(), 'routing-filter-end': new Date(now).toISOString()
-    });
-    expect(bounded['routing-runs'].rows).toHaveLength(1);
-    expect(bounded['routing-runs'].rows[0].run).toBe('1');
+    const models = await query(indexedDB, ['routing-weekly-models']);
+    expect(models['routing-weekly-models'].rows).toMatchObject([{ runs: 1 }]);
   });
 
-  it('gates weekly cost medians by the configured complete sample', async () => {
+  it('gates weekly cost medians at exactly ten complete runs without a slider', async () => {
     const indexedDB = new IDBFactory();
     await ingest(indexedDB, 101, run101);
     const sparse = await query(indexedDB, ['routing-weekly-cost']);
     expect(sparse['routing-weekly-cost'].rows).toEqual([expect.objectContaining({
       week: '2026-10-12T00:00:00.000Z', 'routing-state': 'selected', runs: 1, 'complete-runs': 1, 'median-aic': null, 'sample-status': 'insufficient data'
     })]);
-    const enough = await query(indexedDB, ['routing-weekly-cost'], { 'minimum-sample': 1 });
+    for (let run = 102; run <= 109; run++) await ingest(indexedDB, run, run101);
+    const nine = await query(indexedDB, ['routing-weekly-cost']);
+    expect(nine['routing-weekly-cost'].rows).toMatchObject([{ 'complete-runs': 9, 'median-aic': null }]);
+    await ingest(indexedDB, 110, run101);
+    const enough = await query(indexedDB, ['routing-weekly-cost']);
     expect(enough['routing-weekly-cost'].rows).toEqual([expect.objectContaining({
-      week: '2026-10-12T00:00:00.000Z', 'routing-state': 'selected', runs: 1, 'complete-runs': 1, 'median-aic': 4, 'sample-status': 'observational'
+      week: '2026-10-12T00:00:00.000Z', 'routing-state': 'selected', runs: 10, 'complete-runs': 10, 'median-aic': 4, 'sample-status': 'observational'
     })]);
   });
 

@@ -6,7 +6,7 @@ import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { executeDashboardQueries, resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
-import { compileDashboardViewPayloadQueries, dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../../src/data/queries/view-payload-compiler.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import contract from '../fixtures/model-routing-contract.json' with { type: 'json' };
 
@@ -38,17 +38,15 @@ async function ingest(indexedDB, run, events, attempt = 1) {
   }), { now });
 }
 
-/** @param {Record<string, string|number|boolean>} [values] */
-function definitions(values = {}) {
-  return /** @type {Array<Record<string, unknown>>} */ (resolveDashboardQueryParameters(
-    dashboard.queries.filter((/** @type {{ name: string }} */ query) => required.has(query.name)),
-    { ...dashboardFormDefaultValues(page.form), ...values }));
+function definitions() {
+  return /** @type {Array<Record<string, unknown>>} */ (
+    dashboard.queries.filter((/** @type {{ name: string }} */ query) => required.has(query.name)));
 }
 
-/** @param {IDBFactory} indexedDB @param {string} run @param {string} viewId @param {Record<string, string|number|boolean>} [values] */
-async function viewResult(indexedDB, run, viewId, values = {}) {
+/** @param {IDBFactory} indexedDB @param {string} run @param {string} viewId */
+async function viewResult(indexedDB, run, viewId) {
   vi.stubGlobal('indexedDB', indexedDB);
-  const queries = definitions(values);
+  const queries = definitions();
   const view = page.views.find((/** @type {{ id: string }} */ value) => value.id === viewId);
   const payload = compileDashboardViewPayloadQueries(page, page.id, {
     queries, viewId, sourceNames: [view.data.source], routeParameters: { 'routing-run': run }
@@ -119,12 +117,7 @@ describe('run-scoped model routing', () => {
     for (const run of ['', 'not/a/run', 'octo/api:999']) {
       for (const view of page.views) expect((await viewResult(indexedDB, run, view.id)).rows).toEqual([]);
     }
-    for (const view of page.views) {
-      expect((await viewResult(indexedDB, 'octo/api:1', view.id, { 'routing-filter-state': 'unrouted' })).rows).toEqual([]);
-    }
-    expect((await viewResult(indexedDB, 'octo/api:1', 'routing-run-attribution', {
-      'routing-filter-start': new Date(now).toISOString(), 'routing-filter-end': new Date(now + 1).toISOString()
-    })).rows).toHaveLength(6);
+    expect((await viewResult(indexedDB, 'octo/api:1', 'routing-run-attribution')).rows).toHaveLength(6);
   });
 
   it('reads only the selected audit partition and stays fresh when the attempt changes', async () => {

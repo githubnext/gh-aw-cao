@@ -5,7 +5,7 @@ import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-ses
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
-import { compileDashboardViewPayloadQueries, dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../../src/data/queries/view-payload-compiler.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import { originalSessions, realSession, replay, runCacheLine } from '../model-resolution-fixture.js';
 
@@ -19,40 +19,36 @@ async function ingest(indexedDB, source, overrides = {}) {
   await ingestCachedGhAwJsonl(indexedDB, runCacheLine(source, now, overrides), { now });
 }
 
-/** @param {IDBFactory} indexedDB @param {string[]} names @param {Record<string, string|number|boolean>} [parameters] @param {string} [pageId] */
-async function query(indexedDB, names, parameters = {}, pageId = 'model-routing') {
+/** @param {IDBFactory} indexedDB @param {string[]} names */
+async function query(indexedDB, names) {
   vi.stubGlobal('indexedDB', indexedDB);
   const required = new Set(resolveDashboardQuerySources(dashboard.queries, names));
   return /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
     operation: 'load-dashboard-query-sources', sources: {},
-    queries: resolveDashboardQueryParameters(dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name)), {
-      ...dashboardFormDefaultValues(dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === pageId).form), ...parameters
-    }), sourceNames: names
+    queries: dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name)), sourceNames: names
   }));
 }
 
 /**
  * Resolves one declared view through the production view-payload compiler and data worker.
  * @param {IDBFactory} indexedDB @param {string} pageId @param {string} viewId
- * @param {Record<string, string>} [routeParameters] @param {Record<string, string|number|boolean>} [parameters]
+ * @param {Record<string, string>} [routeParameters]
  */
-async function viewRows(indexedDB, pageId, viewId, routeParameters = {}, parameters = {}) {
+async function viewRows(indexedDB, pageId, viewId, routeParameters = {}) {
   vi.stubGlobal('indexedDB', indexedDB);
   const page = dashboard.pages.find((/** @type {{ id: string }} */ entry) => entry.id === pageId);
   const view = page.views.find((/** @type {{ id: string }} */ entry) => entry.id === viewId);
   const required = new Set(resolveDashboardQuerySources(dashboard.queries, [view.data.source]));
-  const queries = resolveDashboardQueryParameters(dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name)), {
-    ...dashboardFormDefaultValues(page.form), ...parameters
-  });
+  const queries = dashboard.queries.filter((/** @type {{ name: string }} */ definition) => required.has(definition.name));
   const payload = compileDashboardViewPayloadQueries(page, page.id, {
     queries, views: dashboard.views, viewId, sourceNames: [view.data.source], routeParameters
   });
-  expect(payload.aliases.length).toBeGreaterThan(0);
+  const sources = payload.aliases.length ? payload.aliases : [view.data.source];
   const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
-    operation: 'load-dashboard-query-sources', sources: {}, queries: [.../** @type {unknown[]} */ (queries), ...payload.queries], sourceNames: payload.aliases
+    operation: 'load-dashboard-query-sources', sources: {}, queries: [...queries, ...payload.queries], sourceNames: sources
   }));
-  expect(result[payload.aliases[0]].metadata.availability).not.toBe('unavailable');
-  return result[payload.aliases[0]].rows;
+  expect(result[sources[0]].metadata.availability).not.toBe('unavailable');
+  return result[sources[0]].rows;
 }
 
 /** @param {IDBFactory} indexedDB */
@@ -117,7 +113,7 @@ describe('model resolution', () => {
       'routing-dashboard-link': expect.objectContaining({ 'dashboard-href': `#page-routing-run?routing-run=github%2Fgh-aw%3A${990000004 - index}` })
     })));
     expect(problems.map((row) => row['observed-at'] ?? null)).toEqual([null, null]);
-    expect(await viewRows(indexedDB, 'model-routing', 'routing-problems', {}, { 'routing-filter-engine': 'codex' })).toEqual([]);
+    expect(problems.every((row) => row['next-action'] === 'Check configured model and catalogue availability')).toBe(true);
     const drill = await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000003' });
     expect(drill).toMatchObject([{
       'resolution-role-label': 'main', 'resolution-status': 'failed', 'resolution-cause': 'model_unavailable',
@@ -147,22 +143,18 @@ describe('model resolution', () => {
     expect(await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000006' })).toEqual([]);
   });
 
-  it('honors scope, latest attempt, and unknown clocks', async () => {
+  it('honors run routes, latest attempt, and unknown clocks without scope input', async () => {
     const indexedDB = new IDBFactory();
     await ingestOriginals(indexedDB);
     await ingest(indexedDB, replay('opus-before'));
     await ingest(indexedDB, replay('opus-after'));
-    const pi = await query(indexedDB, ['routing-resolutions'], { 'routing-filter-engine': 'pi' });
-    expect(pi['routing-resolutions'].rows).toHaveLength(4);
-    expect(new Set(pi['routing-resolutions'].rows.map((row) => row['resolution-engine']))).toEqual(new Set(['pi']));
-    const workflow = await query(indexedDB, ['routing-resolutions'], { 'routing-filter-workflow': '.github/workflows/smoke-copilot-small.md' });
-    expect(workflow['routing-resolutions'].rows.map((row) => row.run)).toEqual(['39091097441']);
-
-    const bounded = { 'routing-filter-start': '2026-10-18T03:30:00Z' };
-    const timed = await query(indexedDB, ['routing-resolutions', 'routing-runs'], bounded);
-    expect(timed['routing-runs'].rows.map((row) => row.run)).toEqual(['990000002']);
-    expect(timed['routing-resolutions'].rows).toMatchObject([{ run: '990000002', 'configured-model': 'opus', 'resolved-model-label': 'claude-opus-5.5' }]);
-    expect(await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000001' }, bounded)).toEqual([]);
+    const pi = await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:39091103540' });
+    expect(pi).toHaveLength(4);
+    expect(new Set(pi.map((row) => row['resolution-engine']))).toEqual(new Set(['pi']));
+    const later = await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000002' });
+    expect(later).toMatchObject([{ run: '990000002', 'configured-model': 'opus', 'resolved-model-label': 'claude-opus-5.5' }]);
+    const earlier = await viewRows(indexedDB, 'routing-run', 'routing-run-resolutions', { 'routing-run': 'github/gh-aw:990000001' });
+    expect(earlier).toMatchObject([{ run: '990000001' }]);
 
     const untimed = await query(indexedDB, ['routing-resolutions']);
     expect(untimed['routing-resolutions'].rows.find((row) => row['configured-model'] === 'haiku')).toMatchObject({ untimed: true });

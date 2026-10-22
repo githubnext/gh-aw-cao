@@ -2,12 +2,21 @@
   "page": "model-routing",
   "detail": "routing-run",
   "views": [
+    "routing-problems",
     "routing-health",
     "routing-models",
     "routing-cost-trend",
-    "routing-problems",
     "routing-runs"
   ],
+  "essential-views": ["routing-problems", "routing-health", "routing-models", "routing-cost-trend"],
+  "minimum-complete-runs": 10,
+  "problem-actions": {
+    "routing failure": "Inspect failure code and routing configuration",
+    "deviation": "Check requested model and effort against the pick",
+    "resolution failure": "Check configured model and catalogue availability",
+    "upstream error": "Check provider support for the model and effort",
+    "candidates not rankable": "Review allowed models against the router catalogue"
+  },
   "detail-views": [
     "routing-run-cost",
     "routing-run-requests",

@@ -45,17 +45,29 @@ async function startRoutingServer(shards, timestamp, repository = 'octo/api') {
   return { server, workspace };
 }
 
-const ROUTING_VIEWS = ['routing-health', 'routing-models', 'routing-cost-trend', 'routing-problems', 'routing-runs'];
-const ROUTING_TITLES = ['Routing health by workflow', 'Models picked over time', 'Cost per run over time', 'Problems', 'Routing runs'];
+const ROUTING_VIEWS = routingContract.views;
+const ROUTING_TITLES = ['Fix routing problems', 'Review workflow routing', 'Review model choices', 'Compare routing costs', 'Inspect recent runs'];
 
 /** @param {import('@playwright/test').Page} page */
 async function expectFiveViews(page) {
   const views = page.locator('.dashboard-page:not([hidden]) [data-view-id^="routing-"]');
   await expect.poll(() => views.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-view-id')))).toEqual(ROUTING_VIEWS);
-  for (const [index, title] of ROUTING_TITLES.entries()) {
+  for (const [index, title] of ROUTING_TITLES.slice(0, 4).entries()) {
     await expect(views.nth(index)).toContainText(title);
   }
-  await expect(page.locator('.dashboard-page:not([hidden]) [data-disclosure="supplemental"]')).toHaveCount(0);
+  await expect(page.locator('details', { has: page.locator('[data-view-id="routing-runs"]') }).locator('summary'))
+    .toContainText(ROUTING_TITLES[4]);
+  await expect(page.locator('.dashboard-page:not([hidden]) [data-view-id][data-disclosure="supplemental"]')).toHaveCount(1);
+  await expect(page.getByRole('textbox', { name: 'Routing state', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('slider', { name: 'Minimum complete runs per group' })).toHaveCount(0);
+  await expect(page.getByText('Routing scope', { exact: true })).toHaveCount(0);
+  await expect(page.locator('.dashboard-page:not([hidden]) form')).toHaveCount(0);
+}
+
+/** @param {import('@playwright/test').Page} page */
+async function openRecentRuns(page) {
+  const details = page.locator('details', { has: page.locator('[data-view-id="routing-runs"]') });
+  if (await details.getAttribute('open') === null) await details.locator('summary').first().click();
 }
 
 /** @param {import('@playwright/test').Page} page @param {number} width */
@@ -120,20 +132,47 @@ async function inTables(page, width, check) {
       if (workspace) await rm(workspace, { recursive: true, force: true });
     });
 
+    test('shows honest empty states without requiring filters', async ({ page }) => {
+      const timestamp = new Date().toISOString();
+      const shards = normalizedActivityShards(JSON.stringify({ schema_version: 5, kind: 'run', run: {
+        run_id: 999, run_attempt: 1, organization: 'octo', repository: 'octo/api',
+        workflow_name: 'No routing evidence', workflow_path: '.github/workflows/worker.lock.yml',
+        created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success'
+      } }));
+      const empty = await startRoutingServer(shards, timestamp);
+      try {
+        await page.goto(`${empty.server.url}/?local-preview=canvas#page-model-routing`);
+        await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
+        await expectFiveViews(page);
+        await expect(page.locator('[data-view-id="routing-problems"]')).toContainText('missing evidence does not establish success');
+        await expect(page.locator('[data-view-id="routing-health"]')).toContainText('No routed runs are available');
+        await expect(page.locator('[data-view-id="routing-cost-trend"]')).toContainText('Collect at least 10 complete runs');
+        await openRecentRuns(page);
+        await expect(page.locator('[data-view-id="routing-runs"]')).toContainText('No identified routing sessions');
+      } finally {
+        await empty.server.close();
+        await rm(empty.workspace, { recursive: true, force: true });
+      }
+    });
+
     for (const width of [1280, 390]) {
       test(`renders the real paired SDK baseline at ${width}px`, async ({ page }, testInfo) => {
         const fixture = routingContract['observed-sessions'][0];
-        const sessionDocument = parseUnifiedSessionDocument(fixture.records.map((record) => JSON.stringify(record)).join('\n'),
-          'usage/aw_session.jsonl', { runId: fixture.run, attempt: 1 });
         const timestamp = new Date().toISOString();
-        const shards = normalizedActivityShards(JSON.stringify({
-          schema_version: 5, kind: 'run', run: {
-            run_id: Number(fixture.run), run_attempt: 1, organization: 'github', repository: 'github/gh-aw',
+        // Ten identified replays of the observed session meet the fixed sample floor.
+        const shards = normalizedActivityShards(Array.from({ length: routingContract['minimum-complete-runs'] }, (_, index) => {
+          const run = Number(fixture.run) + index;
+          const records = fixture.records.map((record) => record.type === 'workflow.info'
+            ? { ...record, data: { ...record.data, runId: run } } : record);
+          const sessionDocument = parseUnifiedSessionDocument(records.map((record) => JSON.stringify(record)).join('\n'),
+            'usage/aw_session.jsonl', { runId: String(run), attempt: 1 });
+          return JSON.stringify({ schema_version: 5, kind: 'run', run: {
+            run_id: run, run_attempt: 1, organization: 'github', repository: 'github/gh-aw',
             workflow_name: 'Smoke Copilot SDK Routed', workflow_path: '.github/workflows/smoke-copilot-sdk-routed.lock.yml',
             created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success',
             cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...sessionDocument }
-          }
-        }));
+          } });
+        }).join('\n'));
         const real = await startRoutingServer(shards, timestamp, 'github/gh-aw');
         try {
           await page.setViewportSize({ width, height: 900 });
@@ -145,7 +184,6 @@ async function inTables(page, width, check) {
             await expect(health).toContainText('claude-sonnet-5.5');
             await expect(health).toContainText('11.2%');
           });
-          await page.getByRole('slider', { name: 'Minimum complete runs per group' }).press('Home');
           await inTables(page, width, async () => {
             await expect(page.locator('[data-view-id="routing-cost-trend"]'))
               .toContainText('Baseline estimate (estimated, main requests): claude-sonnet-5.5');
@@ -153,7 +191,11 @@ async function inTables(page, width, check) {
           const screenshot = testInfo.outputPath(`routing-baseline-go-${width}.png`);
           await page.screenshot({ path: screenshot, fullPage: true });
           await testInfo.attach(`routing-baseline-go-${width}`, { path: screenshot, contentType: 'image/png' });
-          await inTables(page, width, () => page.locator('[data-view-id="routing-runs"] a[href*="routing-run="]:visible').first().click());
+          await openRecentRuns(page);
+          await inTables(page, width, async () => {
+            await openRecentRuns(page);
+            await page.locator('[data-view-id="routing-runs"] a[href*="routing-run="]:visible').first().click();
+          });
           await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('claude-sonnet-5.5');
           await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('Baseline estimate (estimated)');
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -168,19 +210,15 @@ async function inTables(page, width, check) {
         await page.goto(`${server.url}/?local-preview=canvas#page-model-routing`);
         await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
         await expectFiveViews(page);
-        await expect(page.getByRole('heading', { name: 'Models picked over time', exact: true })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'Cost per run over time', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Review model choices', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Compare routing costs', exact: true })).toBeVisible();
         const runs = page.locator('[data-view-id="routing-runs"]');
+        await openRecentRuns(page);
         await expect(runs).toContainText('selected');
         await expect(runs).toContainText('gpt-5');
         const screenshot = testInfo.outputPath(`model-routing-go-${width}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
         await testInfo.attach(`model-routing-go-${width}`, { path: screenshot, contentType: 'image/png' });
-        const state = page.getByRole('textbox', { name: 'Routing state', exact: true });
-        await state.fill('unrouted');
-        await expect(runs).toContainText('No identified routing sessions');
-        await state.fill('');
-        await expect(runs).toContainText('selected');
         const health = page.locator('[data-view-id="routing-health"]');
         await inTables(page, width, async () => {
           await expect(health).toBeVisible({ timeout: 1000 });
@@ -188,21 +226,23 @@ async function inTables(page, width, check) {
           await expect(health).toContainText('.github/workflows/worker.md', { timeout: 1000 });
           await expect(health).toContainText('100%', { timeout: 1000 });
           await expect(health).toContainText('0%', { timeout: 1000 });
+          await expect(health).toContainText('Collect at least 10 paired baseline runs', { timeout: 1000 });
           await expect(page.locator('[data-view-id="routing-problems"]'))
-            .toContainText('No routing failures, deviations or resolution failures were recorded', { timeout: 1000 });
+            .toContainText('No recorded routing problems', { timeout: 1000 });
         });
         const tableScreenshot = testInfo.outputPath(`model-routing-go-${width}-table.png`);
         await page.screenshot({ path: tableScreenshot, fullPage: true });
         await testInfo.attach(`model-routing-go-${width}-table`, { path: tableScreenshot, contentType: 'image/png' });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-        await inTables(page, width, () => runs.locator('a[href*="routing-run="]:visible').first().click({ timeout: 1000 }));
+        await inTables(page, width, async () => {
+          await openRecentRuns(page);
+          await runs.locator('a[href*="routing-run="]:visible').first().click({ timeout: 1000 });
+        });
         await expect(page.getByRole('heading', { name: 'Agent-phase accounting coverage', exact: true })).toBeVisible();
         await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         await expect(page.locator('[data-view-id="routing-run-requests"]')).toContainText('as_selected');
         await expect(page.locator('[data-view-id="routing-run-timeline"]')).toContainText('firewall.model_routing');
-        await page.getByRole('textbox', { name: 'Routing state', exact: true }).fill('unrouted');
-        await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('No per-response accounting evidence');
-        await page.getByRole('textbox', { name: 'Routing state', exact: true }).fill('');
+        await expect(page.getByText('Routing scope', { exact: true })).toHaveCount(0);
         await expect(page.locator('[data-view-id="routing-run-attribution"]')).toContainText('main_agent');
         await page.evaluate(() => { location.hash = '#page-routing-run?routing-run=octo%2Fapi%3A999'; });
         await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('no retained verified workflow identity');
@@ -253,11 +293,7 @@ async function inTables(page, width, check) {
         await testInfo.attach(`model-resolution-go-${width}`, { path: screenshot, contentType: 'image/png' });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-        const engine = page.getByRole('textbox', { name: 'Engine', exact: true });
-        await engine.fill('codex');
-        await expect(problems).toContainText('No routing failures, deviations or resolution failures were recorded');
-        await engine.fill('');
-        await expect(problems).toContainText('model_unavailable');
+        await expect(problems).toContainText('Check configured model and catalogue availability');
 
         await inTables(page, width, () => problems.locator('a[href*="routing-run=github%2Fgh-aw%3A990000003"]:visible').first().click({ timeout: 1000 }));
         await expect(page).toHaveURL(/#page-routing-run\?routing-run=github%2Fgh-aw%3A990000003$/);

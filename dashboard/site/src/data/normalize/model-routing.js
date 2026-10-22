@@ -2,7 +2,6 @@ import databaseQueries from '../queries/database.json' with { type: 'json' };
 import routing from '../../../dashboard-fragments/model-routing.json' with { type: 'json' };
 import ingestionQueries from './routing-aggregate.json' with { type: 'json' };
 import { executeDashboardQueries } from '../queries/declarative.js';
-import { dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../queries/view-payload-compiler.js';
 
 const transientFields = ['routingBaselineModel', 'routingBaselineComplete', 'routingBaselineMainRequests', 'eligibleChoices', 'catalogueOverlap'];
 
@@ -33,8 +32,7 @@ export function compactRoutingRuns(batch) {
   if (!batch.audits.some((record) => record.type === 'session.format')) return;
   const auditProjection = databaseQueries.find((query) => query.name === 'audits');
   if (!auditProjection?.select) throw new TypeError('Routing ingestion requires the canonical Audit projection');
-  const definitions = /** @type {Array<Record<string, unknown>>} */ (resolveDashboardQueryParameters([...routing.queries, ...ingestionQueries],
-    dashboardFormDefaultValues(routing.pages[0].form)));
+  const definitions = /** @type {Array<Record<string, unknown>>} */ ([...routing.queries, ...ingestionQueries]);
   /** @param {string} source @param {Record<string, unknown>[]} rows */
   const input = (source, rows) => ({ source, rows, metadata: {
     'source-id': source, 'source-kind': 'canonical',
