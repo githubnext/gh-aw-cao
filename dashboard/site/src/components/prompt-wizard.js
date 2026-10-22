@@ -165,17 +165,11 @@ export function renderPromptWizard(context) {
     type: 'button', className: 'cli-action-confirm', onClick: advance
   }, 'Next'));
   const navigation = h('div', { className: 'prompt-wizard-actions' }, back, next);
-  const source = wizard.provenance;
   const root = h('section', { className: 'prompt-wizard', 'aria-label': context.title },
     h('p', null, wizard.intro),
     progress,
-    navigation,
     ...panels, review, status,
-    source ? h('aside', { className: 'prompt-wizard-provenance' },
-      h('p', null, h('a', { href: source.url, target: '_blank', rel: 'noopener noreferrer' }, 'Patterns from gh-aw-wizard'),
-        ` · ${source['source-repositories']} repositories · ${source['total-workflows']} workflows · mined ${source['generated-at'].slice(0, 10)} · revision ${source.revision.slice(0, 12)}`),
-      h('p', null, source.notice),
-      h('details', null, h('summary', null, 'Upstream dataset license'), h('pre', null, source.license))) : null);
+    navigation);
   effect(() => {
     const current = active.get();
     const fields = wizard.steps[current]?.fields;
@@ -187,7 +181,7 @@ export function renderPromptWizard(context) {
     });
     back.disabled = current === 0;
     next.hidden = current === wizard.steps.length;
-    next.textContent = current === wizard.steps.length - 1 ? 'Review design' : 'Next';
+    next.textContent = current === wizard.steps.length - 1 ? 'Review' : 'Next';
     review.hidden = current !== wizard.steps.length;
     summary.textContent = reviewJson.get();
     status.textContent = error.get() || `Step ${current + 1} of ${wizard.steps.length + 1}: ${wizard.steps[current]?.title ?? 'Review'}`;

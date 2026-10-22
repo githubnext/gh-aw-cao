@@ -25,14 +25,16 @@ main-thread JavaScript data derivation.
 Open **Workflow wizard** (`#page-wizard`) to design a generation prompt. The
 first step is a marketplace-style workflow-type gallery: select a mined pattern
 or **Custom automation**. Next, choose an AW or Campaign, optionally refine its
-task and intent/acceptance criteria, then select explicit triggers, per-run limits, safe outputs
+task and intent/acceptance criteria, then select triggers and safe outputs
 and optional capabilities. Titles and file/package names are inferred from the
 intent and selected type, not requested as separate inputs. Campaigns also
 require proposed target repositories. Pattern recommendations do not
 automatically enable permissions.
-Leave the task and acceptance fields blank to use the selected scenario.
+Task details, acceptance criteria, per-run limits and safety/non-goal refinements
+are optional; leave them blank to use the scenario. Fixed safety boundaries still
+apply. Back/Next navigation appears below the active pane.
 
-Choose **Review design**, then the standard **Generate prompt** button.
+Choose **Review**, then the standard **Generate prompt** button.
 Review the complete prompt and use **Copy prompt** with your coding agent.
 Both AWs and Campaigns use this same prompt-button flow; the wizard never queues
 a command or starts an agent task, even in a command-enabled dashboard.
@@ -45,7 +47,7 @@ in `dashboard/site/dashboard-fragments/wizard.json`. They use the reusable
 `prompt-wizard` element rather than view-specific JavaScript. Its pattern
 choices and generation guidance reuse the MIT-licensed dataset mined in
 [`githubnext/gh-aw-wizard`](https://github.com/githubnext/gh-aw-wizard). The
-footer identifies the immutable revision and mining date; historical rates
+configuration records the immutable revision, mining date and license; historical rates
 and tips are reference material, not efficacy claims.
 
 To refresh the dataset, review an upstream commit, then run:
@@ -56,6 +58,7 @@ node dashboard/site/scripts/update-wizard-patterns.mjs FULL_UPSTREAM_COMMIT_SHA
 
 The importer uses `gh api`, retains the upstream license and provenance, and
 updates only pattern/trigger/output/capability choices in the JSON document.
+Authored capability labels and descriptions are preserved during refresh.
 It does not fetch remote data at page runtime. Review the generated diff and
 run dashboard validation and the focused wizard tests before publishing.
 

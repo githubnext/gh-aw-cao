@@ -16,7 +16,7 @@ export const promptWizardStyles = `
 .prompt-wizard-options>.prompt-wizard-choice{display:flex;gap:12px;align-items:flex-start;padding:10px;margin:0;font-weight:400;min-height:44px;cursor:pointer}
 .prompt-wizard-choice input{margin-top:4px;flex:none}
 .prompt-wizard-choice small{display:block;color:var(--muted)}
-.prompt-wizard-actions{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:12px;margin:16px 0;padding:12px 0;background:var(--canvas);border-bottom:1px solid var(--border)}
+.prompt-wizard-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;padding:16px 0;border-top:1px solid var(--border)}
 .prompt-wizard-cards{border:0;padding:0}
 .prompt-wizard .prompt-wizard-cards .entity-card-list-marketplace .prompt-wizard-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:48px 1fr;min-height:200px;gap:14px;padding:20px;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--fg);font:inherit;text-align:left}
 .prompt-wizard-cards .prompt-wizard-card .issue-list-card-icon{grid-column:1;grid-row:1;width:48px;height:48px}
@@ -28,8 +28,6 @@ export const promptWizardStyles = `
 .prompt-wizard-summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:16px;background:var(--canvas-subtle);border:1px solid var(--border);border-radius:6px;max-height:480px;overflow:auto}
 .prompt-wizard-review>.table-intent-control{display:block;margin:20px 0}
 .prompt-wizard-status{display:block;color:var(--muted)}
-.prompt-wizard-provenance{border-top:1px solid var(--border);margin-top:24px;padding-top:16px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
-.prompt-wizard-provenance pre{white-space:pre-wrap}
 .prompt-wizard [hidden]{display:none!important}
 @media(max-width:600px){.prompt-wizard-progress{gap:6px}.prompt-wizard-progress li{font-size:12px;padding:6px}.prompt-wizard-options{padding:6px}}
 `;

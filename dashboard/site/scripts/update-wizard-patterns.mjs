@@ -43,9 +43,10 @@ fields.get('pattern').options = [
   { value: 'custom', label: 'Custom automation', summary: 'Design an automation from your own requirements.', icon: 'sparkle', description: 'Start from your own requirements.' }, ...patterns
 ];
 for (const [field, definitions] of [['triggers', generation.triggers], ['outputs', generation.outputs], ['extras', generation.extras]]) {
+  const authored = new Map((field === 'extras' ? fields.get(field).options : []).map((option) => [option.value, option]));
   fields.get(field).options = Object.entries(definitions).filter(([, definition]) => !definition.alias).map(([value, context]) => ({
-    value, label: value.replaceAll('_', ' ').replaceAll('-', ' '),
-    description: context.description ?? value, context
+    value, label: authored.get(value)?.label ?? value.replaceAll('_', ' ').replaceAll('-', ' '),
+    description: authored.get(value)?.description ?? context.description ?? context.requirement ?? value, context
   }));
 }
 wizard.provenance = {

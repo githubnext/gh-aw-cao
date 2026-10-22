@@ -9,6 +9,6 @@
   "revision": "2e1f1d62adcbfa68fd6abab65eb9372af50a8ba5",
   "pattern-count": 34,
   "steps": ["type", "goal", "behavior"],
-  "optional-fields": ["purpose", "success"],
-  "fields": ["pattern", "artifact", "purpose", "success", "scope", "targets", "triggers", "trigger-details", "outputs", "extras", "engine", "constraints"]
+  "optional-fields": ["purpose", "success", "scope", "constraints"],
+  "fields": ["pattern", "artifact", "purpose", "success", "targets", "triggers", "trigger-details", "outputs", "extras", "engine", "scope", "constraints"]
 }

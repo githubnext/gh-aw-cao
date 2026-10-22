@@ -59,7 +59,7 @@ function fillGoal(root, artifact = 'workflow', pattern = 'custom') {
 function review(root) {
   fillGoal(root);
   input(root, 'Per-run scope and limits', 'Only the triggering issue.');
-  button(root, 'Review design').click();
+  button(root, 'Review').click();
 }
 
 beforeEach(() => {
@@ -140,18 +140,34 @@ describe('declarative wizard contract', () => {
     expect(wizardDesign(wizard, { ...values, artifact: 'workflow' })).not.toHaveProperty('targets');
   });
 
+  it('explains each optional capability while preserving its upstream tool or safe-output context', () => {
+    const extras = wizard.steps.flatMap((step) => step.fields).find((field) => field.id === 'extras');
+    expect(extras?.default).toEqual([]);
+    expect(extras?.options).toHaveLength(5);
+    for (const option of extras?.options ?? []) {
+      expect(option.label).not.toBe(option.value);
+      expect(option.description?.length).toBeGreaterThan(90);
+      expect(option.description).not.toBe(option.value);
+      expect(option.context).toHaveProperty('requirement');
+    }
+    const prompt = buildWizardPrompt(wizard, { ...completeValues(), extras: ['memory', 'charts'] });
+    expect(prompt).toContain('Remember across runs');
+    expect(prompt).toContain('"tool": "cache-memory"');
+    expect(prompt).toContain('"safe_output": "upload-assets"');
+  });
+
   it('rejects missing, forged, duplicate and oversized answers instead of generating a partial prompt', () => {
     const changes = /** @type {import('../../src/prompt-wizard.js').WizardValues[]} */ ([
       { pattern: '' }, { pattern: 'not-a-pattern' }, { outputs: ['not-an-output'] },
       { outputs: ['add-comment', 'add-comment'] }, { artifact: 'campaign', targets: '' },
       { artifact: 'campaign', targets: 'acme/*' },
-      { purpose: 'x'.repeat(6001) }, { triggers: 'issues' }
+      { purpose: 'x'.repeat(6001) }, { scope: 'x'.repeat(3001) }, { constraints: 'x'.repeat(4001) }, { triggers: 'issues' }
     ]);
     for (const changed of changes) expect(() => buildWizardPrompt(wizard, { ...completeValues(), ...changed })).toThrow();
   });
 
-  it.each(['workflow', 'campaign'])('uses the selected scenario for %s when optional task and acceptance fields are blank', (artifact) => {
-    const values = { ...completeValues(), artifact, pattern: 'issue-triage', purpose: '', success: '', targets: 'acme/one' };
+  it.each(['workflow', 'campaign'])('uses the selected scenario for %s when all optional refinements are blank', (artifact) => {
+    const values = { ...completeValues(), artifact, pattern: 'issue-triage', purpose: '', success: '', scope: '', constraints: '', targets: 'acme/one' };
     const prompt = buildWizardPrompt(wizard, values);
     expect(prompt).toContain('Classify and label new issues');
     expect(prompt).toContain('infer them from the selected scenario');
@@ -159,6 +175,10 @@ describe('declarative wizard contract', () => {
     const design = wizardDesign(wizard, values);
     expect(design.purpose.value).toBe('');
     expect(design.success.value).toBe('');
+    expect(design.scope.value).toBe('');
+    expect(design.constraints.value).toBe('');
+    expect(prompt).toContain('fixed safety and rollout boundaries below always apply');
+    expect(prompt).toContain('Use conservative limits.');
   });
 
   it('fails closed on malformed and unknown declarative configuration', () => {
@@ -190,7 +210,7 @@ describe('wizard interaction and lifecycle', () => {
     fillGoal(root, artifact);
     input(root, 'Per-run scope and limits', 'Only the triggering issue.');
     if (artifact === 'campaign') input(root, 'Campaign target repositories', 'acme/one');
-    button(root, 'Review design').click();
+    button(root, 'Review').click();
     expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(false);
     expect(queue.enqueue).not.toHaveBeenCalled();
     const promptButton = button(root, contract['prompt-label']);
@@ -220,11 +240,11 @@ describe('wizard interaction and lifecycle', () => {
     const root = mount();
     fillGoal(root, 'campaign', 'issue-triage');
     input(root, 'Per-run scope and limits', 'One dispatched target per worker.');
-    button(root, 'Review design').click();
+    button(root, 'Review').click();
     expect(root.textContent).toContain('Campaign target repositories is required.');
     expect(root.querySelectorAll('.prompt-wizard-options input:checked')).toHaveLength(1);
     input(root, 'Campaign target repositories', 'acme/one');
-    button(root, 'Review design').click();
+    button(root, 'Review').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('.table-intent-preview')?.textContent).toContain('acme/one');
   });
@@ -251,6 +271,22 @@ describe('wizard interaction and lifecycle', () => {
     expect(explicitRoot.querySelector('[id$="-artifact"]')).toBe(document.activeElement);
   });
 
+  it('keeps navigation at the bottom and omits the visible provenance/license footer', () => {
+    const root = mount();
+    const navigation = root.querySelector('.prompt-wizard-actions');
+    expect(root.lastElementChild).toBe(navigation);
+    expect(root.querySelector('.prompt-wizard-provenance')).toBeNull();
+    expect(root.textContent).not.toContain('Patterns from gh-aw-wizard');
+    expect(root.textContent).not.toContain('Upstream dataset license');
+    expect(wizard.provenance?.license).toContain('MIT License');
+    button(root, 'Issue Triage').click();
+    button(root, 'Next').click();
+    input(root, 'Per-run scope and limits', '');
+    input(root, 'Safety constraints and non-goals', '');
+    button(root, 'Review').click();
+    expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(false);
+  });
+
   it('provides copy-only handoff when execution is unavailable and treats input as text', async () => {
     vi.stubGlobal('__CLI_QUEUE__', false);
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -258,7 +294,7 @@ describe('wizard interaction and lifecycle', () => {
     const root = mount();
     fillGoal(root);
     input(root, 'Per-run scope and limits', '<img src=x onerror=alert(1)> $(touch /tmp/not-run)');
-    button(root, 'Review design').click();
+    button(root, 'Review').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('img')).toBeNull();
     button(root, 'Copy prompt').click();
