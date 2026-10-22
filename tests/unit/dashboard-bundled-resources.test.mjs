@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import { cp, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createInterface } from "node:readline";
 import { executeDashboardQueryRequest, readDashboardDataSpecification } from "../../com.github.copilot/extensions/cao-dashboard/dashboard-agent-tools.mjs";
+import { writeCanvasSnapshot } from "../helpers/canvas-snapshot.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -18,7 +22,7 @@ async function relocatedPlugin(root) {
   await cp(dashboard, join(plugin, "dashboard"), {
     recursive: true,
     filter: (path) => !relative(dashboard, path).split(sep)
-      .some((part) => ["node_modules", "dist", "test", "test-results"].includes(part)),
+      .some((part) => ["node_modules", "dist", ".tmp", "test", "test-results"].includes(part)),
   });
   return realpath(plugin);
 }
@@ -74,4 +78,53 @@ test("bundled-resource symlinks cannot escape the trusted package", async () => 
     const resources = await import(pathToFileURL(join(plugin, "com.github.copilot/extensions/cao-dashboard/bundled-resources.mjs")).href);
     await assert.rejects(resources.resolveBundledResource("queryEngine"), /outside the plugin root/);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("a relocated plugin builds its own Go host and child lifetime follows its owner", { timeout: 180_000 }, async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "cao-plugin-go-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const plugin = await relocatedPlugin(root);
+  for (const path of ["server/go.mod", "server/go.sum", "server/cmd/cao-dashboard", "server/internal", "internal/dashboardquery"]) {
+    await mkdir(join(plugin, path, ".."), { recursive: true });
+    await cp(join(repositoryRoot, path), join(plugin, path), { recursive: true });
+  }
+  const resources = await import(pathToFileURL(join(plugin, "com.github.copilot/extensions/cao-dashboard/bundled-resources.mjs")).href);
+  for (const name of ["canvasGoHost", "serverModule", "serverCommand", "nativeQueryModule"]) {
+    assert.ok((await resources.resolveBundledResource(name)).startsWith(plugin));
+  }
+  const directory = join(root, "preview");
+  const sqlite = await writeCanvasSnapshot(directory);
+  const site = join(directory, "site");
+  await mkdir(site);
+  await writeFile(join(site, "index.html"), "<html><head></head><body>relocated</body></html>");
+  const config = join(directory, "canvas.json");
+  await writeFile(config, JSON.stringify({
+    prefix: `/${"a".repeat(48)}`, adapterUrl: `http://127.0.0.1:1/${"a".repeat(48)}`,
+  }));
+  const moduleUrl = pathToFileURL(join(plugin, "dashboard/canvas-go-host.mjs")).href;
+  const environment = { ...process.env };
+  delete environment.CAO_DASHBOARD_EXECUTABLE;
+  const owner = spawn(process.execPath, ["--input-type=module", "-e", `
+    import { startCanvasGoHost } from ${JSON.stringify(moduleUrl)};
+    const host = await startCanvasGoHost(${JSON.stringify({ directory, site, sqlite, config, host: "127.0.0.1", port: 0 })});
+    console.log(host.url);
+  `], { env: environment, stdio: ["ignore", "pipe", "pipe"] });
+  let stderr = "";
+  owner.stderr.on("data", (chunk) => { stderr += chunk; });
+  const lines = createInterface({ input: owner.stdout });
+  t.after(() => { owner.kill("SIGKILL"); lines.close(); });
+  const [url] = await Promise.race([
+    once(lines, "line"),
+    once(owner, "exit").then(([code]) => { throw new Error(`relocated host failed (${code}): ${stderr}`); }),
+  ]);
+  assert.equal((await fetch(url)).status, 200);
+  owner.kill("SIGKILL");
+  await once(owner, "exit");
+  let stopped = false;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    try { await fetch(url, { signal: AbortSignal.timeout(1000) }); }
+    catch { stopped = true; break; }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.ok(stopped, "Go host remained alive after losing its owning adapter");
 });

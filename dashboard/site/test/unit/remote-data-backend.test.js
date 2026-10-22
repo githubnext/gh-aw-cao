@@ -429,6 +429,29 @@ describe("remote dashboard data backend", () => {
     }
   });
 
+  it("does not let a separate query swallow a revision needed by active subscriptions", async () => {
+    /** @type {ReadableStreamDefaultController<Uint8Array> | undefined} */
+    let events;
+    const stream = new ReadableStream({ start(controller) { events = controller; } });
+    const fetchMock = vi.fn(async (url) => String(url).endsWith("/events")
+      ? new Response(stream, { status: 200 })
+      : new Response(JSON.stringify({
+        revision: 6002, evaluatedAt: "2026-10-10T11:00:00Z", sources: {}
+      }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const changed = vi.fn();
+    const stop = subscribeRemoteRevision(changed);
+    try {
+      events?.enqueue(new TextEncoder().encode('data: {"revision":6001}\n\n'));
+      await vi.waitFor(() => expect(changed.mock.calls[0]?.[0]).toBe(6001));
+      changed.mockClear();
+      await queryRemoteDashboard([], { pages: [] });
+      events?.enqueue(new TextEncoder().encode('data: {"revision":6002}\n\n'));
+      await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+      expect(changed.mock.calls[0]?.[0]).toBe(6002);
+    } finally { stop(); }
+  });
+
   it("isolates failing subscribers and reconnects after the revision stream closes", async () => {
     /** @type {ReadableStreamDefaultController<Uint8Array> | undefined} */
     let streamController;

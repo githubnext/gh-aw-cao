@@ -1,16 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import previewDocument from '../fixtures/query-editor.json' with { type: 'json' };
 import sources from '../fixtures/query-editor-sources.json' with { type: 'json' };
 import { normalizedRunShard } from './normalized-shard.js';
+import { writeCanvasArtifact } from './canvas-fixture.js';
+import { createSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
+import { ingestDashboardSources } from '../../src/data/ingest/coordinator.js';
 
-for (const dataBackend of ['indexeddb', 'sqlite']) {
-test.describe(`${dataBackend} canvas query editor`, () => {
+test.describe('Go canvas query editor', () => {
 /** @type {{ url: string, close: () => Promise<void> }} */
 let server;
 let workspace = '';
+let artifactDirectory = '';
 
 test.beforeAll(async () => {
   const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
@@ -23,7 +26,7 @@ test.beforeAll(async () => {
   server = await startCanvasServer({
     workingDirectory: workspace,
     siteRoot: join(workspace, 'site'),
-    catalogRoot: null, port: 0, dataBackend,
+    catalogRoot: null, port: 0,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => ({}), approveCliAction: async () => false,
     generateQuery: async () => ({ document: JSON.stringify(previewDocument, null, 2) }),
@@ -31,11 +34,10 @@ test.beforeAll(async () => {
       ['intent', 'subject', 'objective', 'acceptance'].map((name) => [name, `Enhanced ${name}: ${request[name] || 'measurable criteria'}`])
     ),
     downloadData: async (/** @type {string} */ destination) => {
-      await mkdir(destination, { recursive: true });
-      await mkdir(join(destination, 'gh-aw-logs-runs'), { recursive: true });
-      await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify(sources));
-      await writeFile(join(destination, 'gh-aw-logs-runs', `logs-1-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`),
-        normalizedRunShard(await readFile(new URL('../fixtures/query-editor-runs.jsonl', import.meta.url), 'utf8')));
+      artifactDirectory = destination;
+      await writeCanvasArtifact(destination, {
+        sources, shards: [normalizedRunShard(await readFile(new URL('../fixtures/query-editor-runs.jsonl', import.meta.url), 'utf8'))]
+      });
     },
   });
 });
@@ -46,17 +48,11 @@ test.afterAll(async () => {
 
 /** @param {import('@playwright/test').Page} page */
 async function openEditor(page) {
-  if (dataBackend === 'sqlite') {
-    await page.addInitScript(() => {
-      IDBFactory.prototype.open = () => { throw new Error('SQLite canvas must not open browser IndexedDB.'); };
-    });
-  }
+  await page.addInitScript(() => {
+    IDBFactory.prototype.open = () => { throw new Error('Go canvas must not open browser IndexedDB.'); };
+  });
   await page.goto(`${server.url}/?local-preview=canvas#page-query-editor`);
-  if (dataBackend === 'indexeddb') {
-    await expect(page.locator('.dashboard-current-status .tooltip-trigger')).toHaveAttribute('aria-label', 'Dashboard data is stale');
-  } else {
-    await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
-  }
+  await expect(page.locator('meta[name="dashboard-data-backend"]')).toHaveAttribute('content', 'server-http');
   await expect(page.getByRole('textbox', { name: 'Intent', exact: true })).toBeVisible();
   const experimental = page.locator('.org-sidebar [data-nav-section="Experimental"]');
   await expect(experimental.getByRole('link', { name: 'Query editor', exact: true, includeHidden: true }))
@@ -302,16 +298,14 @@ test('checks the combined 512-character Unicode budget before generation and fie
   await expect(generate).toBeEnabled();
 });
 
-test('preview subscriptions refresh from canonical ingestion and worker output stays bounded', async ({ page, context }) => {
-  test.skip(dataBackend !== 'indexeddb', 'Browser canonical ingestion is exclusive to the IndexedDB backend.');
+test('preview subscriptions refresh from Go canonical revisions and query output stays bounded', async ({ page }) => {
   await openEditor(page);
   await page.getByRole('textbox', { name: 'Intent', exact: true }).fill('Compare run conclusions');
   await page.getByRole('textbox', { name: 'Subject', exact: true }).fill('Workflow runs');
   await page.getByRole('textbox', { name: 'Acceptance criteria', exact: true }).fill('Show native conclusion counts');
   await page.getByRole('button', { name: 'Generate query and view', exact: true }).click();
   await expect(page.locator('.query-editor > [role=status]')).toContainText('Preview updated');
-  await context.route('**/query-editor-update.json', (route) => route.fulfill({
-    json: {
+  await ingestDashboardSources(createSqliteIndexedDB(join(artifactDirectory, 'gh-aw-logs.sqlite')), {
       ...sources,
       runs: {
         metadata: { 'as-of': '2026-10-10T11:00:00Z', 'artifact-generation': 'query-editor-refresh' },
@@ -321,12 +315,10 @@ test('preview subscriptions refresh from canonical ingestion and worker output s
           'started-at': '2026-10-10T10:00:00Z'
         }))
       }
-    }
-  }));
+  });
   const outputCounts = await page.evaluate(async () => {
-    const { refreshCanonicalDashboardSources, loadCanonicalDashboardPage, validateQueryEditorDocument } =
+    const { loadCanonicalDashboardPage, validateQueryEditorDocument } =
       await import(new URL('./src/data-processor.js', location.href).href);
-    await refreshCanonicalDashboardSources(new URL('./query-editor-update.json', location.href).href, [], { pages: [] });
     const result = await validateQueryEditorDocument(JSON.stringify({
       'language-version': '0.1.0',
       dashboard: {
@@ -380,4 +372,3 @@ test('intent improvement preserves edits during an in-flight request and cancels
   await expect(page.locator('.query-editor')).toHaveCount(0);
 });
 });
-}

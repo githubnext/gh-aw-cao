@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
+import { writeCanvasSnapshot } from "../helpers/canvas-snapshot.mjs";
 import { refreshDashboardCompilerRelease } from "../../dashboard/local-release-metadata.mjs";
 
 test("local release refresh preserves snapshot evidence and recomputes upgrade state", () => {
@@ -93,10 +94,9 @@ test("local GitHub routes enforce read-only same-origin access and advertise the
   await writeFile(path.join(siteRoot, "index.html"), "<!doctype html><html><head></head><body>preview</body></html>");
   await writeFile(path.join(siteRoot, "dashboard.json"), dashboard("preview"));
   const preview = await startCanvasServer({
-    siteRoot, catalogRoot, workingDirectory: root, dataBackend: "indexeddb", port: 0,
+    siteRoot, catalogRoot, workingDirectory: root, port: 0,
     downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(path.join(destination, "sources.json"), "{}");
+      await writeCanvasSnapshot(destination);
     },
     output: () => {},
     requestOutput: () => {},
@@ -158,16 +158,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
   );
   await writeFile(path.join(stalePreviewDirectory, "dashboard.json"), dashboard("built-in"));
   const downloadData = async (destination) => {
-    await mkdir(destination, { recursive: true });
-    await writeFile(path.join(destination, "sources.json"), JSON.stringify({
-      repositories: {
-        rows: [{
-          token: syntheticToken,
-          note: ["github", "pat", "abcdefghijklmnopqrstuvwxyz123456"].join("_"),
-          detail: "x".repeat(2_048),
-        }],
-      },
-    }));
+    await writeCanvasSnapshot(destination);
   };
   const requestLogs = [];
 
@@ -175,7 +166,6 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     siteRoot,
     catalogRoot: campaignRoot,
     downloadData,
-    dataBackend: "indexeddb",
     allowMissingOrigin: true,
     workingDirectory: root,
     requestOutput: (message) => requestLogs.push(message),
@@ -197,7 +187,7 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     assert.match(index, /\[REDACTED\]/);
     const markdownResponse = await fetch(`${preview.url}/guide.md`);
     assert.equal(markdownResponse.status, 200);
-    assert.equal(markdownResponse.headers.get("content-type"), "text/markdown; charset=utf-8");
+    assert.equal(markdownResponse.headers.get("content-type"), "text/plain; charset=utf-8");
     assert.doesNotMatch(await markdownResponse.text(), new RegExp(syntheticToken));
     const imageResponse = await fetch(`${preview.url}/image.png`);
     assert.equal(imageResponse.status, 200);
@@ -208,28 +198,17 @@ test("local dashboard server composes campaign dashboards and reloads after upda
     const defaultsResponse = await fetch(`${preview.url}/src/environment-defaults.js`);
     assert.equal(defaultsResponse.status, 200);
     assert.equal(await defaultsResponse.text(), defaultsSource);
-    assert.ok(requestLogs.some((message) => /^GET \/ 302 \d+ms$/.test(message)));
 
     const dashboardResponse = await fetch(`${preview.url}/dashboard.json`);
     assert.equal(dashboardResponse.headers.get("cache-control"), "no-store");
     const browserDashboard = await dashboardResponse.json();
-    assert.ok(requestLogs.some((message) => /^GET \/dashboard\.json 200 \d+ms$/.test(message)));
     assert.deepEqual(
       browserDashboard.dashboard.pages.map(({ id }) => id),
       ["built-in", "campaign-one"],
     );
     assert.equal(browserDashboard.dashboard.description, "[REDACTED]");
-    const sourcesResponse = await fetch(`${preview.url}/sources.json`);
-    assert.deepEqual(await sourcesResponse.json(), {
-      repositories: {
-        rows: [{ token: "[REDACTED]", note: "[REDACTED]", detail: "x".repeat(2_048) }],
-      },
-    });
-    const splitSourceResponse = await fetch(`${preview.url}/sources/repositories.json`);
-    assert.equal(splitSourceResponse.headers.get("content-encoding"), "gzip");
-    assert.deepEqual(await splitSourceResponse.json(), {
-      rows: [{ token: "[REDACTED]", note: "[REDACTED]", detail: "x".repeat(2_048) }],
-  });
+    assert.equal((await fetch(`${preview.url}/sources.json`)).status, 404);
+    assert.equal((await fetch(`${preview.url}/sources/repositories.json`)).status, 404);
     const traversalResponse = await fetch(`${preview.url}/..%2Foutside.txt`);
     assert.equal(traversalResponse.status, 404);
     assert.equal(await requestWithHost(`${preview.url}/sources.json`, "attacker.example"), 400);
@@ -275,11 +254,9 @@ test("canvas actions stream incrementally, reject untrusted requests, and surviv
   const preview = await startCanvasServer({
     approveCliAction: async () => true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
     cliQueueAdmission: async () => ({ concurrency: 1 }),
-    dataBackend: "indexeddb",
     output: () => {}, traceOutput: () => {}, requestOutput: () => {},
     downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(path.join(destination, "sources.json"), "{}");
+      await writeCanvasSnapshot(destination);
     },
     executeCliAction: async ({ command, onOutput, signal }) => {
       calls.push(command);
@@ -351,11 +328,9 @@ test("queued commands retain IDs across server restart and replay output by curs
     { id: "compile", label: "Compile", icon: "play", command: "gh aw compile" },
   ]));
   const options = {
-    approveCliAction: async () => true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
-    dataBackend: "indexeddb", output: () => {}, traceOutput: () => {}, requestOutput: () => {},
+    approveCliAction: async () => true, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0, output: () => {}, traceOutput: () => {}, requestOutput: () => {},
     downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(path.join(destination, "sources.json"), "{}");
+      await writeCanvasSnapshot(destination);
     },
     executeCliAction: async ({ onOutput }) => {
       await onOutput({ stream: "stdout", data: "first\n" });
@@ -406,11 +381,9 @@ test("canvas queue refuses a persistence directory symlink outside the workspace
     await symlink(outside, path.join(root, ".queue"), "dir");
     await assert.rejects(startCanvasServer({
       approveCliAction: async () => true, executeCliAction: async () => {}, siteRoot: root, catalogRoot: null, workingDirectory: root, port: 0,
-      cliQueuePath: path.join(root, ".queue", "cli-actions.sqlite"),
-      dataBackend: "indexeddb", output: () => {}, traceOutput: () => {}, requestOutput: () => {},
+      cliQueuePath: path.join(root, ".queue", "cli-actions.sqlite"), output: () => {}, traceOutput: () => {}, requestOutput: () => {},
       downloadData: async (destination) => {
-        await mkdir(destination, { recursive: true });
-        await writeFile(path.join(destination, "sources.json"), "{}");
+        await writeCanvasSnapshot(destination);
       },
       cliQueueAdmission: async () => ({ concurrency: 1 }),
     }), /queue database must remain within the workspace/);
@@ -455,23 +428,29 @@ test("local dashboard server serves repository memory from canonical dashboard d
     catalogRoot: null,
     downloadData: async (destination) => {
       const dataRoot = path.join(destination, "cao");
-      await mkdir(path.join(dataRoot, "gh-aw-logs-runs"), { recursive: true });
+      await writeCanvasSnapshot(dataRoot);
       await mkdir(path.join(dataRoot, "memory", "ambient-context"), { recursive: true });
-      await writeFile(path.join(dataRoot, "inventory-sources.json"), "{}");
-      await writeFile(path.join(dataRoot, "memory", "manifest.json"), JSON.stringify({ version: 1 }));
+      const content = "bounded memory";
+      await writeFile(path.join(dataRoot, "memory", "manifest.json"), JSON.stringify({
+        version: 1, campaigns: [{
+          campaign: "ambient-context", branch: "memory/ambient-context", commit: "a".repeat(40),
+          files: [{ path: "notes.md", size: Buffer.byteLength(content), oid: "b".repeat(40),
+            sha256: createHash("sha256").update(content).digest("hex") }],
+        }],
+      }));
       await writeFile(
         path.join(dataRoot, "memory", "ambient-context", "notes.md"),
-        "token ghp_abcdefghijklmnopqrstuvwxyz123456",
+        content,
       );
     },
     workingDirectory: root,
     port: 0,
   });
   try {
-    assert.deepEqual(await (await fetch(`${preview.url}/memory/manifest.json`)).json(), { version: 1 });
+    assert.equal((await fetch(`${preview.url}/memory/manifest.json`)).status, 404);
     assert.equal(
-      await (await fetch(`${preview.url}/memory/ambient-context/notes.md`)).text(),
-      "token [REDACTED]",
+      (await (await fetch(`${preview.url}/api/v1/memory/ambient-context/content?path=notes.md`)).json()).content,
+      "bounded memory",
     );
   } finally {
     await preview.close();
@@ -559,8 +538,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
     siteRoot: root,
     catalogRoot: null,
     downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(path.join(destination, "sources.json"), "{}");
+      await writeCanvasSnapshot(destination);
     },
 
     cliQueueAdmission: async () => ({ concurrency: 4 }),
@@ -761,6 +739,8 @@ test("local dashboard server downloads dashboard-build data with GitHub CLI", {
   const root = await mkdtemp(path.join(tmpdir(), "dashboard-local-server-"));
   const ghExecutable = path.join(root, "gh");
   const commands = [];
+  const artifact = path.join(root, "artifact");
+  await writeCanvasSnapshot(artifact);
   await writeFile(path.join(root, "index.html"), "<!doctype html><head></head><body>preview</body>");
   await writeFile(path.join(root, "dashboard.json"), dashboard("built-in", [{
     id: "update", command: "gh aw update --repo {{repository}} --pr-message '{{cao-repository}} {{cao-repository-url}} {{cao-url}}#page-maintenance'",
@@ -800,9 +780,9 @@ fi
   [ "$6" = "--dir" ] &&
   [ "$8" = "--repo" ] &&
   [ "$9" = "acme/control" ] || exit 3
-mkdir -p "$7/cao/gh-aw-logs-runs"
-printf '%s\n' '{"schema_version":2,"repository":"acme/control","token":"sensitive"}' > "$7/cao/gh-aw-logs-runs/logs-1.jsonl"
-printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":[{"gh-aw-version":"v0.91.5","gh-aw-current-version":"v0.89.21","gh-aw-update-state":"up-to-date"}]}}' > "$7/cao/inventory-sources.json"
+mkdir -p "$7/cao"
+cp ${JSON.stringify(path.join(artifact, "gh-aw-logs.sqlite"))} "$7/cao/gh-aw-logs.sqlite"
+cp ${JSON.stringify(path.join(artifact, "payload-hashes.json"))} "$7/cao/payload-hashes.json"
 `);
   await chmod(ghExecutable, 0o755);
 
@@ -814,7 +794,6 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
     cliQueueAdmission: async () => ({ concurrency: 1 }),
     executeCliAction: async ({ command }) => { commands.push(command); return { ok: true, exitCode: 0 }; },
     ghExecutable,
-    dataBackend: "indexeddb",
     workingDirectory: root,
     port: 0,
   });
@@ -831,30 +810,13 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
     assert.deepEqual(commands, [
       "gh aw update --repo octo/target --pr-message 'acme/control https://github.com/acme/control https://ops.example.com/central/#page-maintenance'",
     ]);
-    const logsResponse = await fetch(`${preview.url}/gh-aw-logs-runs/logs-1.jsonl`);
-    assert.equal(logsResponse.status, 200);
-    assert.equal(logsResponse.headers.get("content-type"), "application/x-ndjson; charset=utf-8");
-    const logsContent = await logsResponse.text();
-    assert.deepEqual(JSON.parse(logsContent.trim()), {
-      schema_version: 2,
-      repository: "acme/control",
-      token: "[REDACTED]",
-    });
-    const hashesResponse = await fetch(`${preview.url}/payload-hashes.json`);
-    assert.deepEqual(await hashesResponse.json(), {
-      "gh-aw-logs-runs/logs-1.jsonl": createHash("sha256").update(logsContent).digest("hex"),
-    });
-    const inventoryResponse = await fetch(`${preview.url}/inventory-sources.json`);
-    assert.deepEqual(await inventoryResponse.json(), {
-      repositories: { rows: [{ repository: "control" }] },
-      workflows: { rows: [{
-        "gh-aw-version": "v0.91.5", "gh-aw-current-version": "v0.92.0", "gh-aw-update-state": "update-available",
-      }] },
-    });
+    for (const pathname of ["gh-aw-logs-runs/logs-1.jsonl", "payload-hashes.json", "inventory-sources.json"]) {
+      assert.equal((await fetch(`${preview.url}/${pathname}`)).status, 404);
+    }
     await writeFile(path.join(root, "pages-unavailable"), "");
     const executionOptions = {
       siteRoot: root, catalogRoot: null, repository: "acme/control", approveCliAction: async () => true,
-      ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
+      ghExecutable, workingDirectory: root, port: 0,
       cliQueueAdmission: async () => ({ concurrency: 1 }),
       executeCliAction: async () => ({ ok: true, exitCode: 0 }),
     };
@@ -879,11 +841,6 @@ printf '{"repositories":{"rows":[{"repository":"control"}]},"workflows":{"rows":
       const hostedHtml = await (await fetch(`${hosted.url}/`)).text();
       assert.match(hostedHtml, /<meta name="cao-url" content="https:\/\/custom\.example\.com\/ops\/">/);
     } finally { await hosted.close(); }
-    await writeFile(path.join(root, "release-unavailable"), "");
-    await assert.rejects(startCanvasServer({
-      siteRoot: root, catalogRoot: null, repository: "acme/control",
-      ghExecutable, dataBackend: "indexeddb", workingDirectory: root, port: 0,
-    }), /Unable to refresh the latest stable gh-aw release/);
   } finally {
     await preview.close();
     await rm(root, { recursive: true, force: true });

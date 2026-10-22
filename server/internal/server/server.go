@@ -60,6 +60,8 @@ type Config struct {
 	CertFile               string
 	KeyFile                string
 	AccessToken            string
+	Canvas                 *LocalCanvasConfig
+	OnListen               func(string) error
 	HostProfile            HostProfile
 	SingleReplicaConfirmed bool
 	AllowVolatile          bool
@@ -145,6 +147,9 @@ func New(ctx context.Context, store operational.Store, config Config) (*App, err
 	}
 	postgresDatabase, isPostgres := config.Database.(*postgresx.Store)
 	sqliteDatabase, localSQLite := config.Database.(*sqlitex.Store)
+	if err := validateLocalCanvas(config, localSQLite); err != nil {
+		return nil, err
+	}
 	if config.Database == nil || isPostgres && postgresDatabase == nil || localSQLite && sqliteDatabase == nil {
 		return nil, errors.New("dashboard database is required")
 	}
@@ -601,6 +606,12 @@ func (a *App) Serve(ctx context.Context) error {
 		return err
 	}
 	serverLog.Printf("listener ready")
+	if a.config.OnListen != nil {
+		if err := a.config.OnListen(listener.Addr().String()); err != nil {
+			_ = listener.Close()
+			return err
+		}
+	}
 	servingListener := listener
 	if a.config.CertFile != "" {
 		certificate, certificateErr := tls.LoadX509KeyPair(a.config.CertFile, a.config.KeyFile)
@@ -622,7 +633,7 @@ func (a *App) Serve(ctx context.Context) error {
 	}
 	if a.oauth != nil {
 		a.config.Logger.Printf("serving hosted dashboard on %s", a.config.Listen)
-	} else {
+	} else if a.config.Canvas == nil {
 		a.config.Logger.Printf("serving local dashboard at %s", a.capabilityURL())
 	}
 	serveDone := make(chan struct{})
@@ -793,7 +804,7 @@ func (a *App) Handler() http.Handler {
 		}
 		instrumented.ServeHTTP(response, safe)
 	})
-	return securityHeaders(safeTelemetry)
+	return a.canvasHandler(securityHeaders(safeTelemetry))
 }
 
 type originalHTTPRequestKey struct{}
@@ -1138,10 +1149,15 @@ func constantTimeTokenEqual(candidate, expected string) bool {
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		response.Header().Set("X-Content-Type-Options", "nosniff")
-		response.Header().Set("X-Frame-Options", "DENY")
+		if request.Context().Value(localCanvasContextKey{}) != true {
+			response.Header().Set("X-Frame-Options", "DENY")
+		}
 		response.Header().Set("Referrer-Policy", "same-origin")
 		response.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		response.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+		if request.Context().Value(localCanvasContextKey{}) == true {
+			response.Header().Set("Cache-Control", "no-store")
+		}
 		if strings.HasPrefix(request.URL.Path, "/api/") {
 			response.Header().Set("Cache-Control", "no-store")
 		}
@@ -1816,7 +1832,7 @@ func (a *App) static(response http.ResponseWriter, request *http.Request) {
 	defer func() { _ = root.Close() }()
 	file, err := root.Open(clean)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, os.ErrNotExist) && a.config.Canvas == nil {
 			a.serveIndex(response, request, "")
 		} else {
 			http.NotFound(response, request)
@@ -1854,6 +1870,9 @@ func (a *App) serveIndex(response http.ResponseWriter, request *http.Request, ac
 		storageBackend = "sqlite"
 	}
 	injections := `<meta name="dashboard-data-backend" content="server-http"><meta name="dashboard-storage-backend" content="` + storageBackend + `">`
+	if a.config.Canvas != nil {
+		injections += `<meta name="dashboard-api-base" content="` + a.config.Canvas.Prefix + `/">`
+	}
 	if a.oauth != nil {
 		injections += `<meta name="cao-auth-mode" content="github">`
 		if a.adminAuthorized(request) {

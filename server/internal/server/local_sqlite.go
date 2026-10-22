@@ -3,7 +3,10 @@ package server
 import (
 	"context"
 	"errors"
+	"path/filepath"
 
+	"github.com/githubnext/gh-cao/server/internal/ingest"
+	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/operational"
 	"github.com/githubnext/gh-cao/server/internal/operational/memory"
 	"github.com/githubnext/gh-cao/server/internal/sqlitex"
@@ -18,7 +21,18 @@ func NewLocalSQLiteApp(ctx context.Context, path string, config Config) (*App, e
 	if err := validateLocalSQLiteConfig(config); err != nil {
 		return nil, err
 	}
-	database, err := sqlitex.Open(ctx, path)
+	if err := validateLocalCanvas(config, true); err != nil {
+		return nil, err
+	}
+	var metadata map[string]model.Metadata
+	if config.Canvas != nil && config.Canvas.MemoryDirectory != "" {
+		var err error
+		metadata, err = ingest.ReadInventoryMetadata(ctx, filepath.Join(config.Canvas.MemoryDirectory, "inventory-sources.json"))
+		if err != nil {
+			return nil, errors.New("read published canvas inventory quality")
+		}
+	}
+	database, err := sqlitex.OpenWithMetadata(ctx, path, metadata)
 	if err != nil {
 		return nil, err
 	}

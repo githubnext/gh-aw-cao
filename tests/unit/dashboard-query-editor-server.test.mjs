@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
+import { writeCanvasSnapshot } from "../helpers/canvas-snapshot.mjs";
 
 const document = await readFile(new URL("../../dashboard/site/test/fixtures/query-editor.json", import.meta.url), "utf8");
 const intent = { intent: "Find failing workflows", subject: "Workflow failures", acceptance: "Show native conclusions." };
@@ -19,10 +20,7 @@ async function preview(t, options = {}) {
     siteRoot: join(root, "site"), catalogRoot: null, workingDirectory: root, port: 0,
     output: () => {}, requestOutput: () => {}, traceOutput: () => {},
     executeCliAction: async () => ({}), approveCliAction: async () => true,
-    downloadData: async (destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(join(destination, "sources.json"), "{}");
-    },
+    downloadData: async (destination) => { await writeCanvasSnapshot(destination); },
     ...serverOptions,
   });
   t.after(() => server.close());

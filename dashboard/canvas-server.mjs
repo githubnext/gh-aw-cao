@@ -8,15 +8,14 @@ import {
   readFile,
   readdir,
   realpath,
+  rename,
   rm,
   stat,
   writeFile,
 } from "node:fs/promises";
-import { createReadStream, createWriteStream, watch } from "node:fs";
+import { createReadStream, watch } from "node:fs";
 import { isIP } from "node:net";
 import { createRequire } from "node:module";
-import { Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import {
   basename,
@@ -29,21 +28,19 @@ import {
   sep,
 } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createGzip, gzipSync } from "node:zlib";
 import { bundleDashboardFiles, loadDashboardSource } from "./report/bundle-dashboards.mjs";
 import { buildDashboardPageChunkPath, splitDashboardDocument } from "./site/src/dashboard-chunks.js";
 import { assertQueryEditorAuthoring, assertQueryEditorEnhancement, assertQueryEditorIntent, maximumQueryEditorRequestBytes } from "./query-editor-contract.mjs";
 import queryEditorDocument from "./site/canvas-query-editor.json" with { type: "json" };
 import { InvalidCustomViewDocumentError, loadLocalCustomViews, materializeLocalCustomView, saveLocalCustomView } from "./local-custom-views.mjs";
 import { composeDashboardDocuments } from "./report/compose-dashboard-documents.mjs";
-import { startLocalSqliteBackend } from "./local-sqlite-backend.mjs";
+import { startCanvasGoHost } from "./canvas-go-host.mjs";
 import { createLocalGitHubService } from "./local-github-service.mjs";
 import { lookupDialogOptions } from "./dialog-selector.mjs";
 import { createCliActionQueue } from "./cli-action-queue.mjs";
 import { createCliActionApi } from "./cli-action-api.mjs";
 import { cliActionTemplateContext, cliActionTemplateFields, validateCliActionUrl } from "./site/src/cli-action-template.js";
 import { createCliActionAdmission } from "./cli-action-quota.mjs";
-import { compilerVersionOverrides, refreshCanonicalCompilerRelease, refreshDashboardCompilerRelease, refreshDashboardCompilerVersions } from "./local-release-metadata.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const executeFile = promisify(execFile);
@@ -63,7 +60,6 @@ const contentTypes = new Map([
   [".jpg", "image/jpeg"],
   [".js", "text/javascript; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
-  [".jsonl", "application/x-ndjson; charset=utf-8"],
   [".md", "text/markdown; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],
   [".png", "image/png"],
@@ -73,95 +69,6 @@ const contentTypes = new Map([
 const redactedTextExtensions = new Set([
   ".css", ".html", ".js", ".json", ".jsonl", ".md", ".mjs", ".svg", ".txt", ".yaml", ".yml",
 ]);
-const repositoryMemoryExtensions = new Set([".json", ".jsonl", ".md", ".txt", ".yaml", ".yml"]);
-const repositoryMemoryContentTypes = new Map([
-  [".json", "application/json; charset=utf-8"],
-  [".jsonl", "application/x-ndjson; charset=utf-8"],
-  [".md", "text/markdown; charset=utf-8"],
-  [".txt", "text/plain; charset=utf-8"],
-  [".yaml", "text/yaml; charset=utf-8"],
-  [".yml", "text/yaml; charset=utf-8"],
-]);
-const compressibleContentTypes = new Set([
-  "application/json; charset=utf-8",
-  "application/x-ndjson; charset=utf-8",
-  "image/svg+xml",
-  "text/css; charset=utf-8",
-  "text/html; charset=utf-8",
-  "text/javascript; charset=utf-8",
-  "text/markdown; charset=utf-8",
-]);
-const minimumCompressedBytes = 1_024;
-const minimumCacheableCompressionBytes = 1_048_576;
-const maximumCachedCompressions = 4;
-/** @type {Map<string, Buffer>} */
-const compressedPayloads = new Map();
-
-function compressPayload(body) {
-  if (body.byteLength < minimumCacheableCompressionBytes) return gzipSync(body);
-  const key = createHash("sha256").update(body).digest("hex");
-  const cached = compressedPayloads.get(key);
-  if (cached) return cached;
-  const compressed = gzipSync(body);
-  compressedPayloads.set(key, compressed);
-  for (const staleKey of [...compressedPayloads.keys()].slice(0, -maximumCachedCompressions)) {
-    compressedPayloads.delete(staleKey);
-  }
-  return compressed;
-}
-
-/**
- * Serves preview content the way GitHub Pages serves the deployed dashboard, so
- * throttled-network previews measure compressed transfer sizes.
- */
-function sendContent(request, response, contentType, content) {
-  const headers = { "Cache-Control": "no-store", "Content-Type": contentType };
-  const body = Buffer.isBuffer(content) ? content : Buffer.from(String(content));
-  const acceptsGzip = /(^|,)\s*gzip\s*(;|,|$)/.test(String(request.headers["accept-encoding"] ?? ""));
-  if (request.method === "HEAD") {
-    response.writeHead(200, compressibleContentTypes.has(contentType)
-      ? { ...headers, Vary: "Accept-Encoding" }
-      : headers);
-    response.end();
-    return;
-  }
-
-  if (acceptsGzip && compressibleContentTypes.has(contentType) && body.byteLength >= minimumCompressedBytes) {
-    const compressed = compressPayload(body);
-    response.writeHead(200, { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" });
-    response.end(compressed);
-    return;
-  }
-  response.writeHead(200, compressibleContentTypes.has(contentType)
-    ? { ...headers, Vary: "Accept-Encoding" }
-    : headers);
-  response.end(body);
-}
-
-async function sendFileContent(request, response, contentType, path) {
-  const headers = { "Cache-Control": "no-store", "Content-Type": contentType };
-  const acceptsGzip = /(^|,)\s*gzip\s*(;|,|$)/.test(String(request.headers["accept-encoding"] ?? ""));
-  if (request.method === "HEAD") {
-    const file = await stat(path);
-    response.writeHead(200, {
-      ...headers,
-      "Content-Length": file.size,
-      Vary: "Accept-Encoding",
-    });
-    response.end();
-    return;
-  }
-  response.writeHead(200, acceptsGzip
-    ? { ...headers, "Content-Encoding": "gzip", Vary: "Accept-Encoding" }
-    : { ...headers, Vary: "Accept-Encoding" });
-  const source = createReadStream(path);
-  if (acceptsGzip) {
-    await pipeline(source, createGzip(), response);
-    return;
-  }
-  await pipeline(source, response);
-}
-
 function sendJson(response, statusCode, value) {
   response.writeHead(statusCode, {
     "Cache-Control": "no-store",
@@ -279,16 +186,7 @@ async function downloadDashboardData(destination, repository, ghExecutable, work
   } catch {
     throw new Error(`Unable to download ${dataArtifactName} from workflow run ${runId}.`);
   }
-  try {
-    const result = await executeFile(ghExecutable, [
-      "api", "repos/github/gh-aw/releases/latest", "--jq", ".tag_name",
-    ], options);
-    const latestGhAwVersion = result.stdout.trim();
-    refreshDashboardCompilerRelease({}, latestGhAwVersion);
-    return { latestGhAwVersion, repository: controlRepository };
-  } catch {
-    throw new Error("Unable to refresh the latest stable gh-aw release. Check GitHub CLI authentication and try again.");
-  }
+  return { repository: controlRepository };
 }
 
 async function findCanonicalDashboardData(root) {
@@ -296,7 +194,7 @@ async function findCanonicalDashboardData(root) {
   const visit = async (directory) => {
     const entries = await readdir(directory, { withFileTypes: true });
     const names = new Set(entries.map((entry) => entry.name));
-    if (names.has("inventory-sources.json") && names.has("gh-aw-logs-runs")) {
+    if (names.has("gh-aw-logs.sqlite") && names.has("payload-hashes.json")) {
       matches.push(directory);
     }
     await Promise.all(entries
@@ -307,7 +205,22 @@ async function findCanonicalDashboardData(root) {
   if (matches.length > 1) {
     throw new Error("The dashboard artifact contains multiple canonical data directories.");
   }
-  return matches[0] ?? null;
+  if (!matches.length) {
+    throw new Error("The dashboard artifact requires a canonical gh-aw-logs.sqlite snapshot and payload-hashes.json. Run the dashboard action to republish it.");
+  }
+  const directory = matches[0];
+  const snapshot = join(directory, "gh-aw-logs.sqlite");
+  if (!isWithin(await realpath(root), await realpath(snapshot))) {
+    throw new Error("The canonical dashboard snapshot must remain inside the downloaded artifact.");
+  }
+  const hashes = JSON.parse(await readFile(join(directory, "payload-hashes.json"), "utf8"));
+  const expected = hashes["gh-aw-logs.sqlite"];
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(snapshot)) hash.update(chunk);
+  if (!/^[a-f0-9]{64}$/.test(expected ?? "") || hash.digest("hex") !== expected) {
+    throw new Error("The canonical dashboard SQLite snapshot checksum does not match its manifest.");
+  }
+  return directory;
 }
 
 async function sourceSignature(paths) {
@@ -350,50 +263,6 @@ function redactJsonSecrets(source) {
   return JSON.stringify(redact(JSON.parse(source)), null, 2);
 }
 
-async function redactJsonlSecretsFile(sourcePath, destinationPath, latestGhAwVersion, compilerVersions) {
-  const decoder = new TextDecoder();
-  const hash = createHash("sha256");
-  let pending = "";
-  const redactLine = (line) => {
-    if (!line.trim()) return "";
-    const value = JSON.parse(redactJsonSecrets(line));
-    return JSON.stringify(latestGhAwVersion
-      ? refreshCanonicalCompilerRelease(value, latestGhAwVersion, compilerVersions)
-      : value);
-  };
-  const emit = (stream, content) => {
-    hash.update(content);
-    stream.push(content);
-  };
-  const redactor = new Transform({
-    transform(chunk, _encoding, callback) {
-      try {
-        pending += decoder.decode(chunk, { stream: true });
-        let newline;
-        while ((newline = pending.indexOf("\n")) !== -1) {
-          const line = pending.slice(0, newline).replace(/\r$/, "");
-          emit(this, `${redactLine(line)}\n`);
-          pending = pending.slice(newline + 1);
-        }
-        callback();
-      } catch (error) {
-        callback(error);
-      }
-    },
-    flush(callback) {
-      try {
-        pending += decoder.decode();
-        if (pending) emit(this, redactLine(pending));
-        callback();
-      } catch (error) {
-        callback(error);
-      }
-    },
-  });
-  await pipeline(createReadStream(sourcePath), redactor, createWriteStream(destinationPath));
-  return hash.digest("hex");
-}
-
 function browserSafeFileContent(path, content) {
   const extension = extname(path).toLowerCase();
   if (extension === ".json") return redactJsonSecrets(content.toString("utf8"));
@@ -401,6 +270,31 @@ function browserSafeFileContent(path, content) {
     return redactSecretValues(content.toString("utf8"));
   }
   return content;
+}
+
+async function writeCanvasAsset(root, path, content) {
+  const destination = join(root, path);
+  await mkdir(dirname(destination), { recursive: true });
+  const staging = `${destination}.tmp`;
+  await writeFile(staging, content);
+  await rename(staging, destination);
+}
+
+async function stageCanvasAssets(source, destination, root = source) {
+  await mkdir(destination, { recursive: true });
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || ["node_modules", "dist", "test", "test-results", "scripts", "public",
+      "sources", "memory", "gh-aw-logs-runs", "gh-aw-logs-records"].includes(entry.name)) continue;
+    const input = join(source, entry.name);
+    const output = join(destination, entry.name);
+    if (entry.isDirectory()) await stageCanvasAssets(input, output, root);
+    else if (entry.isFile() && contentTypes.has(extname(entry.name).toLowerCase())
+      && !["sources.json", "inventory-sources.json", "payload-hashes.json"].includes(entry.name)) {
+      const canonical = await realpath(input);
+      if (!isWithin(root, canonical)) throw new Error("Canvas assets must remain inside the bundled site.");
+      await writeFile(output, browserSafeFileContent(input, await readFile(input)));
+    }
+  }
 }
 
 function errorMetadata(error) {
@@ -514,10 +408,9 @@ function readWebsocketFrames(buffer) {
  *   repository?: string,
  *   caoUrl?: string,
  *   ghExecutable?: string,
- *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { latestGhAwVersion?: string, repository?: string }>,
+ *   downloadData?: (destination: string, repository?: string, ghExecutable?: string, workingDirectory?: string) => Promise<void | { repository?: string }>,
  *   generateQuery?: (intent: import('./query-editor-contract.mjs').QueryEditorIntent, options: { signal: AbortSignal }) => Promise<{ document: string }>,
  *   enhanceQueryIntent?: (request: import('./query-editor-contract.mjs').QueryEditorEnhancement, options: { signal: AbortSignal }) => Promise<import('./query-editor-contract.mjs').QueryEditorAuthoring>,
- *   dataBackend?: 'sqlite' | 'indexeddb',
  *   executeCliAction?: (action: { id: string, command: string, input?: string, signal?: AbortSignal, onOutput: (event: { stream: 'stdout'|'stderr', data: string }) => void }) => Promise<unknown>,
  *   approveCliAction?: (action: { id: string, command: string, input?: string }) => Promise<boolean>,
  *   cliQueuePath?: string,
@@ -542,7 +435,6 @@ export async function startCanvasServer({
   caoUrl = process.env.CAO_DASHBOARD_URL,
   ghExecutable = "gh",
   downloadData = downloadDashboardData,
-  dataBackend = "sqlite",
   executeCliAction,
   approveCliAction,
   cliQueuePath,
@@ -562,9 +454,6 @@ export async function startCanvasServer({
   host = "127.0.0.1",
   port = 0,
 } = {}) {
-  if (!["sqlite", "indexeddb"].includes(dataBackend)) {
-    throw new Error("Dashboard data backend must be sqlite or indexeddb.");
-  }
   if (!isLoopbackHost(host)) {
     throw new Error("Canvas development requires a loopback host. Use the Go server for dashboard serving.");
   }
@@ -619,14 +508,9 @@ export async function startCanvasServer({
   const temporaryDirectory = await mkdtemp(join(resolvedWorkingDirectory, ".cao-dashboard-preview-"));
   const bundledDashboardPath = join(temporaryDirectory, "dashboard.json");
   const dashboardDataDirectory = join(temporaryDirectory, "data");
-  let sourcesContent;
-  let sourceManifestContent;
-  const dashboardDataShards = new Map();
-  let payloadHashesContent;
-  let inventorySourcesContent;
-  let repositoryMemoryDirectory;
-  const splitSourceContent = new Map();
-  let sqliteBackend;
+  const servedSite = join(temporaryDirectory, "site");
+  let canonicalDataDirectory;
+  let goHost;
   const githubService = createLocalGitHubService({
     databasePath: join(temporaryDirectory, "github-resources.sqlite"),
     token: async () => (await executeFile(ghExecutable, ["auth", "token", "--hostname", "github.com"], {
@@ -636,53 +520,10 @@ export async function startCanvasServer({
   try {
     const downloaded = await downloadData(dashboardDataDirectory, repository, ghExecutable, resolvedWorkingDirectory);
     repository ??= downloaded?.repository;
-    const prepareSources = async (content) => {
-      let sources = JSON.parse(redactJsonSecrets(content));
-      if (downloaded?.latestGhAwVersion) sources = refreshDashboardCompilerRelease(sources, downloaded.latestGhAwVersion);
-      sources = await refreshDashboardCompilerVersions(sources, {
-        request: (path) => githubService.request(path), output,
-      });
-      return JSON.stringify(sources);
-    };
-    const canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
-    if (canonicalDataDirectory) {
-      inventorySourcesContent = await prepareSources(
-        await readFile(join(canonicalDataDirectory, "inventory-sources.json"), "utf8"),
-      );
-      const compilerVersions = compilerVersionOverrides(JSON.parse(inventorySourcesContent));
-      const payloadHashes = {};
-      for (const shardDirectoryName of ["gh-aw-logs-runs", "gh-aw-logs-records"]) {
-        const shardDirectory = join(canonicalDataDirectory, shardDirectoryName);
-        for (const entry of await readdir(shardDirectory, { withFileTypes: true }).catch(() => [])) {
-          if (!entry.isFile() || !/^[A-Za-z0-9._-]+\.jsonl$/.test(entry.name)) continue;
-          const outputPath = join(temporaryDirectory, shardDirectoryName, entry.name);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const hash = await redactJsonlSecretsFile(
-            join(shardDirectory, entry.name), outputPath, downloaded?.latestGhAwVersion, compilerVersions,
-          );
-          const publishedName = `${shardDirectoryName}/${entry.name}`;
-          dashboardDataShards.set(`/${publishedName}`, outputPath);
-          payloadHashes[publishedName] = hash;
-        }
-      }
-      payloadHashesContent = JSON.stringify(payloadHashes);
-      const memoryDirectory = await realpath(join(canonicalDataDirectory, "memory")).catch(() => undefined);
-      repositoryMemoryDirectory = memoryDirectory && isWithin(canonicalDataDirectory, memoryDirectory)
-        ? memoryDirectory
-        : undefined;
-    } else {
-      sourcesContent = await prepareSources(
-        await readFile(join(dashboardDataDirectory, "sources.json"), "utf8"),
-      );
-      const parsedSources = JSON.parse(sourcesContent);
-      for (const [name, logicalSource] of Object.entries(parsedSources)) {
-        const browserSource = name === "runs"
-          ? { ...logicalSource, rows: logicalSource.rows.map(({ "logs-payload": _logsPayload, ...row }) => row) }
-          : logicalSource;
-        splitSourceContent.set(name, JSON.stringify(browserSource));
-      }
-      sourceManifestContent = JSON.stringify({ version: 1, sources: [...splitSourceContent.keys()] });
-    }
+    canonicalDataDirectory = await findCanonicalDashboardData(dashboardDataDirectory);
+    await stageCanvasAssets(resolvedSiteRoot, servedSite);
+    if (terminalBundle) await writeCanvasAsset(servedSite, "src/components/cli-terminal-runtime.js", terminalBundle);
+    if (queryEditorValidationBundle) await writeCanvasAsset(servedSite, "src/data/query-editor.js", queryEditorValidationBundle);
   } catch (error) {
     await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
@@ -782,6 +623,9 @@ export async function startCanvasServer({
         redactJsonSecrets(JSON.stringify(chunk)),
       ]),
     );
+    await Promise.all([...dashboardPageChunkContent].map(([path, content]) =>
+      writeCanvasAsset(servedSite, path.slice(1), content)));
+    await writeCanvasAsset(servedSite, "dashboard.json", dashboardContent);
     signature = nextSignature;
     output("Dashboard preview rebuilt.", {
       bundledDashboardPath,
@@ -845,37 +689,25 @@ export async function startCanvasServer({
 
   try {
     const initialCampaignPaths = await rebuild(false);
-    if (dataBackend === "sqlite") {
-      sqliteBackend = await startLocalSqliteBackend({
-        databasePath: join(temporaryDirectory, "dashboard.sqlite"),
-        sourcesContent: inventorySourcesContent ?? sourcesContent,
-        shards: [...dashboardDataShards].map(([name, path]) => ({
-          path,
-          hash: JSON.parse(payloadHashesContent)[name.slice(1)],
-          phase: name.startsWith("/gh-aw-logs-runs/") ? "runs" : "records",
-        })),
-      });
-    }
     await refreshWatchers(initialCampaignPaths);
   } catch (error) {
     for (const watcher of watchers.values()) watcher.close();
-    await sqliteBackend?.close();
+    await goHost?.close();
     await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
 
   let expectedAuthority = null;
-  let localhostAuthority = null;
-  const isAllowedHost = (host) =>
-      host === expectedAuthority
-      || (localhostAuthority && host === localhostAuthority);
+  let publicAuthority = null;
+  let boundHost;
+  const isAllowedHost = (host) => host === expectedAuthority;
   const isAllowedOrigin = (origin) => {
     if (typeof origin !== "string") return false;
     try {
       const parsed = new URL(origin);
       return (parsed.protocol === "http:" || parsed.protocol === "https:")
-        && isAllowedHost(parsed.host);
+        && parsed.host === publicAuthority;
     } catch {
       return false;
     }
@@ -903,7 +735,7 @@ export async function startCanvasServer({
   } catch (error) {
     await cliAdmission?.close();
     for (const watcher of watchers.values()) watcher.close();
-    await sqliteBackend?.close();
+    await goHost?.close();
     await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
@@ -938,12 +770,6 @@ export async function startCanvasServer({
         pathname = decodeURIComponent(url.pathname.slice(routePrefix.length) || "/");
       } catch {
         response.writeHead(400).end("Bad request\n");
-        return;
-      }
-      if ((pathname === "/" || pathname === "/index.html")
-          && !url.searchParams.has("local-preview")) {
-        url.searchParams.set("local-preview", "canvas");
-        response.writeHead(302, { Location: `${routePrefix}/${url.search}`, "Content-Type": "text/html; charset=utf-8" }).end();
         return;
       }
       if (pathname === "/__query_designer" || pathname === "/__query_designer/enhance") {
@@ -1075,59 +901,6 @@ export async function startCanvasServer({
         }
         return;
       }
-      if (sqliteBackend && pathname.startsWith("/api/")) {
-        const memoryMatch = pathname.match(/^\/api\/v1\/memory\/([a-z0-9][a-z0-9._-]{0,99})(\/content)?$/);
-        const operation = {
-          "/api/v1/query": "query",
-          "/api/v1/refresh": "refresh",
-          "/api/v1/diagnostics": "diagnostics",
-          "/api/v1/events": "events",
-        }[pathname] ?? (memoryMatch ? "memory" : undefined);
-        if (!operation) {
-          sendJson(response, 404, { error: "Dashboard API endpoint not found." });
-          return;
-        }
-        const method = ["query", "refresh"].includes(operation) ? "POST" : "GET";
-        if (request.method !== method) {
-          response.writeHead(405, { Allow: method }).end();
-          return;
-        }
-        if (method === "POST" && (!isAllowedOrigin(request.headers.origin)
-            || !String(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json"))) {
-          sendJson(response, 403, { error: "Forbidden." });
-          return;
-        }
-        if (operation === "events") {
-          response.writeHead(200, {
-            "Cache-Control": "no-store",
-            "Content-Type": "text/event-stream",
-          });
-          response.write(`data: ${JSON.stringify(sqliteBackend.status)}\n\n`);
-          const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), 15_000);
-          response.once("close", () => clearInterval(heartbeat));
-          return;
-        }
-        try {
-          const payload = operation === "query" ? await readJsonRequest(request, 4 * 1024 * 1024)
-            : operation === "memory" ? {
-              action: memoryMatch[2] ? "content" : "list",
-              campaign: memoryMatch[1],
-              path: url.searchParams.get("path"),
-              memoryRoot: `http://${expectedAuthority}${routePrefix}/memory/`,
-            } : undefined;
-          sendJson(response, 200, await sqliteBackend.request(operation, payload));
-        } catch (error) {
-          output("SQLite dashboard request failed.", errorMetadata(error));
-          sendJson(response, error.code === "REQUEST_TOO_LARGE" ? 413
-            : error instanceof SyntaxError ? 400 : error.statusCode ?? 500, {
-            error: error.message,
-            code: error.code ?? "",
-            queryId: error.queryId ?? "",
-            boundary: error.boundary ?? "",
-          });
-        }
-        return;
-      }
       if (pathname === "/__dialog_selector") {
         if (request.method !== "POST") { response.writeHead(405, { Allow: "POST" }).end(); return; }
         if (!isAllowedOrigin(request.headers.origin)
@@ -1161,152 +934,7 @@ export async function startCanvasServer({
         return;
       }
       if (await handleCliAction(request, response, pathname, url)) return;
-      if (request.method !== "GET" && request.method !== "HEAD") {
-        response.writeHead(405, { Allow: "GET, HEAD" }).end();
-        return;
-      }
-      if (pathname === "/") pathname = "/index.html";
-      if (pathname === "/sources.json") {
-        if (sourcesContent === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(request, response, contentTypes.get(".json"), sourcesContent);
-        return;
-      }
-      if (dashboardDataShards.has(pathname)) {
-        await sendFileContent(
-          request,
-          response,
-          contentTypes.get(".jsonl"),
-          dashboardDataShards.get(pathname),
-        );
-        return;
-      }
-      if (pathname === "/payload-hashes.json") {
-        if (payloadHashesContent === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(request, response, contentTypes.get(".json"), payloadHashesContent);
-        return;
-      }
-      if (pathname === "/inventory-sources.json") {
-        if (inventorySourcesContent === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(request, response, contentTypes.get(".json"), inventorySourcesContent);
-        return;
-      }
-      if (dashboardPageChunkContent.has(pathname)) {
-        sendContent(request, response, contentTypes.get(".json"), dashboardPageChunkContent.get(pathname));
-        return;
-      }
-      if (pathname === "/src/data/query-editor.js" && queryEditorValidationBundle) {
-        sendContent(request, response, contentTypes.get(".js"), queryEditorValidationBundle);
-        return;
-      }
-      if (pathname === "/src/components/cli-terminal-runtime.js" && terminalBundle) {
-        sendContent(request, response, contentTypes.get(".js"), terminalBundle);
-        return;
-      }
-      if (pathname === "/sources/manifest.json") {
-        if (sourceManifestContent === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(request, response, contentTypes.get(".json"), sourceManifestContent);
-        return;
-      }
-      if (pathname.startsWith("/memory/")) {
-        if (!repositoryMemoryDirectory) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        const candidate = resolve(repositoryMemoryDirectory, `.${pathname.slice("/memory".length)}`);
-        if (!isWithin(repositoryMemoryDirectory, candidate)) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        const metadata = await stat(candidate).catch(() => null);
-        const extension = extname(candidate).toLowerCase();
-        if (!metadata?.isFile() || !repositoryMemoryExtensions.has(extension)) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        const canonicalFilePath = await realpath(candidate);
-        if (!isWithin(repositoryMemoryDirectory, canonicalFilePath)) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(
-          request,
-          response,
-          repositoryMemoryContentTypes.get(extension),
-          browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath)),
-        );
-        return;
-      }
-      const splitSourceMatch = pathname.match(/^\/sources\/([a-z0-9-]+)\.json$/);
-      if (splitSourceMatch) {
-        const content = splitSourceContent.get(splitSourceMatch[1]);
-        if (content === undefined) {
-          response.writeHead(404).end("Not found\n");
-          return;
-        }
-        sendContent(request, response, contentTypes.get(".json"), content);
-        return;
-      }
-      const candidate = resolve(resolvedSiteRoot, `.${pathname}`);
-      if (!isWithin(resolvedSiteRoot, candidate)) {
-        response.writeHead(404).end("Not found\n");
-        return;
-      }
-
-      let filePath = candidate;
-      let metadata = await stat(filePath).catch(() => null);
-      if (metadata?.isDirectory()) {
-        filePath = join(filePath, "index.html");
-        metadata = await stat(filePath).catch(() => null);
-      }
-      if (!metadata?.isFile()) {
-        response.writeHead(404).end("Not found\n");
-        return;
-      }
-      const extension = extname(filePath).toLowerCase();
-      if (!contentTypes.has(extension)) {
-        output("Refused unsupported dashboard file type.", { extension: extension || null });
-        response.writeHead(404).end("Not found\n");
-        return;
-      }
-      const canonicalFilePath = await realpath(filePath);
-      if (!isWithin(resolvedSiteRoot, canonicalFilePath)) {
-        response.writeHead(404).end("Not found\n");
-        return;
-      }
-
-      let content;
-      if (pathname === "/dashboard.json") content = dashboardContent;
-      else content = browserSafeFileContent(canonicalFilePath, await readFile(canonicalFilePath));
-      if (cliQueue && extension === ".html") {
-        const capabilityScript = "<script>globalThis.__CLI_QUEUE__ = true; globalThis.__LOCAL_CLI_QUEUE__ = true;</script>";
-        content = /<head(\s[^>]*)?>/i.test(String(content))
-          ? String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}\n${capabilityScript}`)
-          : `${capabilityScript}\n${content}`;
-      }
-      if (extension === ".html") {
-        content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
-<meta name="dashboard-github-api-base" content="${routePrefix}/">${caoUrl === undefined ? "" : `
-<meta name="cao-url" content="${caoUrl}">`}`);
-      }
-      if (sqliteBackend && extension === ".html") {
-        content = String(content).replace(/<head(\s[^>]*)?>/i, (head) => `${head}
-<meta name="dashboard-data-backend" content="server-http">
-<meta name="dashboard-storage-backend" content="sqlite">
-<meta name="dashboard-api-base" content="${routePrefix}/">`);
-      }
-      sendContent(request, response, contentTypes.get(extension), content);
+      response.writeHead(404).end("Not found\n");
     } catch (error) {
       output(`Dashboard request failed: ${error instanceof Error ? error.message : String(error)}`);
       if (!response.headersSent) response.writeHead(500);
@@ -1374,19 +1002,16 @@ export async function startCanvasServer({
   try {
     await new Promise((accept, reject) => {
       server.once("error", reject);
-      server.listen(port, host, () => {
+      server.listen(0, host, () => {
         const address = server.address();
         if (!address || typeof address === "string") {
           reject(new Error("dashboard server did not bind to a TCP port"));
           return;
         }
         expectedAuthority = `${address.address.includes(":") ? `[${address.address}]` : address.address}:${address.port}`;
-        if (isLoopbackHost(address.address)) {
-          localhostAuthority = `localhost:${address.port}`;
-        }
+        boundHost = address.address;
         output("Dashboard server listening.", {
           authority: expectedAuthority,
-          ...(localhostAuthority ? { localhostAuthority } : {}),
         });
         trace.record("server", "server.ready", {
           details: {
@@ -1401,18 +1026,48 @@ export async function startCanvasServer({
     for (const watcher of watchers.values()) watcher.close();
     await cliQueue?.close();
     await cliAdmission?.close();
-    await sqliteBackend?.close();
+    await goHost?.close();
+    await githubService.close();
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
+  try {
+    const indexPath = join(servedSite, "index.html");
+    const index = await readFile(indexPath, "utf8");
+    const injections = `<meta name="dashboard-github-api-base" content="${routePrefix}/">`
+      + (caoUrl === undefined ? "" : `<meta name="cao-url" content="${caoUrl}">`)
+      + (cliQueue ? "<script>globalThis.__CLI_QUEUE__ = true; globalThis.__LOCAL_CLI_QUEUE__ = true;</script>" : "");
+    const headEnd = index.toLowerCase().indexOf("</head>");
+    await writeCanvasAsset(servedSite, "index.html", headEnd < 0 ? injections + index
+      : index.slice(0, headEnd) + injections + index.slice(headEnd));
+    const config = join(temporaryDirectory, "canvas.json");
+    await writeFile(config, JSON.stringify({
+      prefix: routePrefix, adapterUrl: `http://${expectedAuthority}${routePrefix}`,
+      memoryDirectory: canonicalDataDirectory,
+    }), { mode: 0o600 });
+    goHost = await startCanvasGoHost({
+      directory: temporaryDirectory, site: servedSite,
+      sqlite: join(canonicalDataDirectory, "gh-aw-logs.sqlite"), config, host: boundHost, port,
+    });
+    publicAuthority = new URL(goHost.url).host;
+  } catch (error) {
+    server.closeAllConnections();
+    await new Promise((accept) => server.close(accept));
+    for (const watcher of watchers.values()) watcher.close();
+    await cliQueue?.close();
+    await cliAdmission?.close();
     await githubService.close();
     await rm(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
   return {
-    url: `http://${expectedAuthority}${routePrefix}`,
+    url: goHost.url,
     async close() {
       if (closed) return;
       closed = true;
       const queueShutdown = cliQueue?.close();
       queryGeneration?.abort();
+      await goHost.close();
       output("Stopping dashboard server.");
       clearTimeout(refreshTimer);
       for (const watcher of watchers.values()) watcher.close();
@@ -1425,7 +1080,6 @@ export async function startCanvasServer({
       if (queryGenerationPending) await Promise.allSettled([queryGenerationPending]);
       if (customViewSavePending) await Promise.allSettled([customViewSavePending]);
       await refreshPromise;
-      await sqliteBackend?.close();
       await githubService.close();
       await rm(temporaryDirectory, { recursive: true, force: true });
       trace.record("server", "server.stopped");

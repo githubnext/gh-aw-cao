@@ -1,17 +1,18 @@
 import { test, expect } from '@playwright/test';
-import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join, relative, sep } from 'node:path';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
 import { normalizedActivityShards } from './normalized-shard.js';
 import { originalSessions, replay, runCacheLine } from '../model-resolution-fixture.js';
+import { writeCanvasArtifact } from './canvas-fixture.js';
 
 /**
  * Serves a copy of the site with the supplied normalized activity shards.
- * @param {string} dataBackend @param {{ runs: string, records: string }} shards @param {string} run @param {string} timestamp
+ * @param {{ runs: string, records: string }} shards @param {string} timestamp
  * @param {string} [repository]
  */
-async function startRoutingServer(dataBackend, shards, run, timestamp, repository = 'octo/api') {
+async function startRoutingServer(shards, timestamp, repository = 'octo/api') {
   const [organization, name] = repository.split('/');
   const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
   const workspace = await mkdtemp(fileURLToPath(new URL('../../../../.cao-routing-e2e-', import.meta.url)));
@@ -21,25 +22,25 @@ async function startRoutingServer(dataBackend, shards, run, timestamp, repositor
     filter: (path) => !['node_modules', 'dist', '.tmp', 'test', 'test-results', 'scripts'].includes(relative(siteRoot, path).split(sep)[0])
   });
   /** @type {{ url: string, close: () => Promise<void> }} */
-  const server = await startCanvasServer({
-    workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
-    port: 0, dataBackend,
-    output: () => {}, requestOutput: () => {}, traceOutput: () => {},
-    executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
-    approveCliAction: async () => false,
-    downloadData: async (/** @type {string} */ destination) => {
-      await mkdir(destination, { recursive: true });
-      await writeFile(join(destination, 'inventory-sources.json'), JSON.stringify({
-        repositories: { rows: [{ organization, repository: name, 'observed-at': timestamp }],
-          metadata: { 'as-of': timestamp, 'artifact-generation': 'routing-e2e' } }
-      }));
-      for (const phase of /** @type {const} */ (['runs', 'records'])) {
-        const directory = join(destination, `gh-aw-logs-${phase}`);
-        await mkdir(directory, { recursive: true });
-        await writeFile(join(directory, `logs-${run}-${'a'.repeat(64)}-${'1'.repeat(16)}.jsonl`), shards[phase]);
+  let server;
+  try {
+    server = await startCanvasServer({
+      workingDirectory: workspace, siteRoot: join(workspace, 'site'), catalogRoot: null,
+      port: 0,
+      output: () => {}, requestOutput: () => {}, traceOutput: () => {},
+      executeCliAction: async () => { throw new Error('CLI actions are disabled in routing browser tests.'); },
+      approveCliAction: async () => false,
+      downloadData: async (/** @type {string} */ destination) => {
+        await writeCanvasArtifact(destination, { sources: {
+          repositories: { rows: [{ organization, repository: name, 'observed-at': timestamp }],
+            metadata: { 'as-of': timestamp, 'artifact-generation': 'routing-e2e' } }
+        }, shards: [shards.runs, shards.records] });
       }
-    }
-  });
+    });
+  } catch (error) {
+    await rm(workspace, { recursive: true, force: true });
+    throw error;
+  }
   return { server, workspace };
 }
 
@@ -81,8 +82,7 @@ async function inTables(page, width, check) {
   }).toPass({ timeout: 20000 });
 }
 
-for (const dataBackend of ['indexeddb', 'sqlite']) {
-  test.describe(`${dataBackend} model routing`, () => {
+  test.describe('Go SQLite model routing', () => {
     /** @type {{ url: string, close: () => Promise<void> }} */
     let server;
     let workspace = '';
@@ -112,7 +112,7 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
           created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success',
           cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...document } }
       }));
-      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '101', timestamp));
+      ({ server, workspace } = await startRoutingServer(shards, timestamp));
     });
     test.afterAll(async () => {
       await server?.close();
@@ -130,9 +130,9 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
         const runs = page.locator('[data-view-id="routing-runs"]');
         await expect(runs).toContainText('selected');
         await expect(runs).toContainText('gpt-5');
-        const screenshot = testInfo.outputPath(`model-routing-${dataBackend}-${width}.png`);
+        const screenshot = testInfo.outputPath(`model-routing-go-${width}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
-        await testInfo.attach(`model-routing-${dataBackend}-${width}`, { path: screenshot, contentType: 'image/png' });
+        await testInfo.attach(`model-routing-go-${width}`, { path: screenshot, contentType: 'image/png' });
         const state = page.getByRole('textbox', { name: 'Routing state', exact: true });
         await state.fill('unrouted');
         await expect(runs).toContainText('No identified routing sessions');
@@ -148,9 +148,9 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
           await expect(page.locator('[data-view-id="routing-problems"]'))
             .toContainText('No routing failures, deviations or resolution failures were recorded', { timeout: 1000 });
         });
-        const tableScreenshot = testInfo.outputPath(`model-routing-${dataBackend}-${width}-table.png`);
+        const tableScreenshot = testInfo.outputPath(`model-routing-go-${width}-table.png`);
         await page.screenshot({ path: tableScreenshot, fullPage: true });
-        await testInfo.attach(`model-routing-${dataBackend}-${width}-table`, { path: tableScreenshot, contentType: 'image/png' });
+        await testInfo.attach(`model-routing-go-${width}-table`, { path: tableScreenshot, contentType: 'image/png' });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await inTables(page, width, () => runs.locator('a[href*="routing-run="]:visible').first().click({ timeout: 1000 }));
         await expect(page.getByRole('heading', { name: 'Agent-phase accounting coverage', exact: true })).toBeVisible();
@@ -170,10 +170,8 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
       });
     }
   });
-}
 
-for (const dataBackend of ['indexeddb', 'sqlite']) {
-  test.describe(`${dataBackend} model resolution`, () => {
+  test.describe('Go SQLite model resolution', () => {
     /** @type {{ url: string, close: () => Promise<void> }} */
     let server;
     let workspace = '';
@@ -184,7 +182,7 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
       const sessions = [...originalSessions, replay('opus-before'), replay('opus-after'),
         replay('pi-main-model-unavailable'), replay('pi-main-catalog-unavailable')];
       const shards = normalizedActivityShards(sessions.map((source) => runCacheLine(source, now)).join('\n'));
-      ({ server, workspace } = await startRoutingServer(dataBackend, shards, '39091103540', new Date(now).toISOString(), 'github/gh-aw'));
+      ({ server, workspace } = await startRoutingServer(shards, new Date(now).toISOString(), 'github/gh-aw'));
     });
     test.afterAll(async () => {
       await server?.close();
@@ -207,9 +205,9 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
           await expect(problems).toContainText('resolution failure', { timeout: 1000 });
           await expect(problems).toContainText('.github/workflows/smoke-pi-sub-agents.md', { timeout: 1000 });
         });
-        const screenshot = testInfo.outputPath(`model-resolution-${dataBackend}-${width}.png`);
+        const screenshot = testInfo.outputPath(`model-resolution-go-${width}.png`);
         await page.screenshot({ path: screenshot, fullPage: true });
-        await testInfo.attach(`model-resolution-${dataBackend}-${width}`, { path: screenshot, contentType: 'image/png' });
+        await testInfo.attach(`model-resolution-go-${width}`, { path: screenshot, contentType: 'image/png' });
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
         const engine = page.getByRole('textbox', { name: 'Engine', exact: true });
@@ -229,4 +227,3 @@ for (const dataBackend of ['indexeddb', 'sqlite']) {
       });
     }
   });
-}

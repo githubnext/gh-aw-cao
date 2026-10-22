@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { writeCanvasArtifact } from './canvas-fixture.js';
+import { mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 const { startCanvasServer } = await import(new URL("../../../canvas-server.mjs", import.meta.url).href);
@@ -18,7 +18,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
       traceOutput: () => {},
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
-        await writeFile(join(destination, "sources.json"), JSON.stringify({
+        await writeCanvasArtifact(destination, { sources: {
           repositories: {
             metadata: {
               "as-of": new Date().toISOString(), availability: "available",
@@ -26,7 +26,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
             },
             rows: [{ organization: "acme", repository: "control" }],
           },
-        }));
+        } });
       },
     });
     try {

@@ -236,6 +236,18 @@ remain open until cancellation or server drain.
 
 ## Local SQLite snapshot serving
 
+The Copilot canvas uses this same local Go host. Its internal `--canvas-config`
+file selects a random capability path, a private numeric-loopback integration
+adapter and downloaded read-only memory/inventory-quality evidence. Go owns all
+browser assets and canonical APIs; only JSON reload, authoring, approved command
+and local-user GitHub routes are forwarded to the adapter. This mode cannot
+enable hosted OAuth, PostgreSQL collection or hosted App authority. Missing
+inventory quality stays unknown. Inventory rows never replace SQLite query data.
+The owner receives a machine-readable readiness URL and keeps stdin open for
+the lifetime of the child; EOF shuts the host down. This is an internal extension
+contract, not a second dashboard CLI. Canvas startup requires a verified
+published SQLite artifact and never falls back to Node queries or browser ingestion.
+
 Build the dashboard once, then run the local server without PostgreSQL, Redis,
 `gh`, or a separate download command:
 
@@ -320,6 +332,9 @@ only storage reads and query execution differ. The local snapshot profile admits
 500,000 input/intermediate rows and 50 million operations per query plan, with
 1 GiB per working source and 2 GiB / 2 million rows of simultaneously retained
 results. Completed dependency inputs are released after their final consumer.
+Shared server dependency traversal is capped at 32 queries deep, accommodating
+the shipped routing-attribution plans without changing join, row, byte or
+operation budgets.
 The planner traces live fields across consumers, prunes unused row-local
 computations, and projects only required properties inside SQLite. Requested
 raw sources and unknown result shapes keep full documents; original-record byte
@@ -327,12 +342,13 @@ limits, JSON types, missing fields, and canonical UTF-16 key order are preserved
 Read-only SQLite memory mapping is capped at 1 GiB to reduce page-read overhead.
 These are bounded accounting limits, not an RSS guarantee; large snapshots can
 require several GiB of developer-machine memory. Hosted PostgreSQL and CLI
-defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
+row/memory defaults are unchanged. Wire results remain bounded to 100,000 rows per source;
 ordinary continuation pagination remains available. Local query admission has
 a 300-unit/minute token bucket so expensive snapshot plans do not exhaust the
 hosted 30-unit burst during ordinary page navigation; per-plan cost accounting,
 other request limits, and explicit embedding overrides remain enforced. Snapshot
-quality is reported as unknown rather than verified complete or current.
+quality without explicit published inventory metadata is reported as unknown
+rather than inferred complete or current.
 In-place SQLite commits update revisions and active subscriptions without a
 server restart. Restart after replacing the snapshot file itself.
 

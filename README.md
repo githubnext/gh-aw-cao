@@ -193,21 +193,28 @@ local server's path restrictions. Workspace campaign documents remain JSON
 data. Closing the canvas or stopping/reloading the extension removes its
 temporary preview files and prevents new previews from starting.
 
-Canvas previews ingest the downloaded inventory and Activity shards into a
-temporary server-side SQLite projection in an isolated data worker. The page
-uses the remote HTTP query backend, not browser IndexedDB; declarative queries,
-pagination, diagnostics, and revision subscriptions stay behind the preview's
-capability URL. The canvas open input accepts
-`dataBackend: "sqlite"` or `"indexeddb"`. SQLite initialization failures stop
-startup rather than silently falling back to IndexedDB.
+Canvas previews launch the shared Go dashboard server against the downloaded,
+checksum-verified canonical `gh-aw-logs.sqlite` snapshot. Go serves browser assets,
+declarative queries, pagination, diagnostics, repository memory and revision
+subscriptions behind one loopback capability URL. The private Node adapter
+retains only Copilot integration, JSON composition/live reload, local-user
+GitHub reads and approved command execution. There is no canvas backend selector,
+Node query engine, legacy source transport or browser IndexedDB fallback.
+Missing, corrupt or unsupported snapshots stop startup.
 
-Canvas startup also reads compiler metadata from the default-branch lock files
-of workflows already present in the downloaded inventory, through its
-read-only GitHub API service. Reads are cached per credential and limited to
+Install Go compatible with the bundled server module, or set
+`CAO_DASHBOARD_EXECUTABLE` to an absolute path to a compatible `cao-dashboard`
+binary. The installed plugin includes its own Go sources and native query module;
+it never compiles executable code from the active checkout. Closing the canvas
+stops the Go child before removing its temporary assets; owner-process exit also
+terminates the child through its stdin lifetime.
+
+The canvas read-only GitHub API can read compiler metadata from default-branch
+lock files. Reads are cached per credential and limited to
 128 distinct files with eight concurrent requests. The API returns only file
 identity and the parsed compiler version, never workflow contents or credentials.
-Unavailable or stale reads retain snapshot versions without fabricating fresh
-installed-version evidence. Upgrade is hidden only when recorded versions are known current;
+Live API reads do not rewrite immutable snapshot evidence. Unavailable or stale
+reads never fabricate fresh installed-version evidence. Upgrade is hidden only when recorded versions are known current;
 missing installed-version or release evidence keeps the action available.
 
 All ordinary local serving uses Go: `npm run dev` or `npm run dashboard:local`

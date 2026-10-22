@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { writeCanvasArtifact } from './canvas-fixture.js';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 const { startCanvasServer } = await import(new URL('../../../canvas-server.mjs', import.meta.url).href);
@@ -15,13 +15,13 @@ for (const width of [1440, 390]) {
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeCanvasArtifact(destination, { sources: {
           repositories: { metadata, rows: [{ organization: 'octo', repository: 'example' }] },
           workflows: { metadata, rows: [{
             organization: 'octo', repository: 'example', workflow: 'demo.md', 'workflow-name': 'Demo',
             'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0'
           }] }
-        }));
+        } });
       }
     });
     try {
@@ -102,7 +102,7 @@ for (const { width, canExecute } of [
       downloadData: async (/** @type {string} */ destination) => {
         await mkdir(destination, { recursive: true });
         const metadata = { 'as-of': new Date().toISOString(), availability: 'available', completeness: 'complete', freshness: 'fresh' };
-        await writeFile(join(destination, 'sources.json'), JSON.stringify({
+        await writeCanvasArtifact(destination, { sources: {
           campaigns: { metadata, rows: campaigns.map((campaign) => ({
             campaign, 'campaign-name': campaign, 'campaign-version': 'v1',
             'campaign-current-version': 'v2', 'campaign-update-state': 'update-available',
@@ -117,7 +117,7 @@ for (const { width, canExecute } of [
             return { organization, repository, workflow: 'demo.md', 'workflow-name': 'Demo',
               'gh-aw-version': 'v0.91.5', 'gh-aw-current-version': 'v0.92.0' };
           }) }
-        }));
+        } });
       }
     });
     try {

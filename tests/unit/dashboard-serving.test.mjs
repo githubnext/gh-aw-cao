@@ -28,5 +28,4 @@ test("canvas development requires loopback and trusted execution adapters", asyn
   }
   await assert.rejects(startCanvasServer({ approveCliAction: async () => false }), /requires a CLI action executor/);
   await assert.rejects(startCanvasServer({ executeCliAction: async () => {} }), /requires trusted CLI action approval/);
-  await assert.rejects(startCanvasServer({ dataBackend: "postgres" }), /must be sqlite or indexeddb/);
 });

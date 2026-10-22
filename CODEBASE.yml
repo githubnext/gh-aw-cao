@@ -304,7 +304,11 @@ components:
     responsibility: prepare built static Pages output through production Activity normalization/SQLite ingestion and Dashboard building from an existing snapshot or explicitly labelled fixture, without simulating collection, Actions authority or artifact transport
   canvas_authoring_bridge:
     path: dashboard/canvas-server.mjs
-    responsibility: provide internal loopback-only Copilot canvas JSON reload, authoring callbacks, read-only GitHub access and data adapters; only paired trusted execution and approval adapters initialize command execution; no standalone CLI, admin mode, process replacement or Go launcher
+    responsibility: privately provide Copilot canvas JSON composition/reload, authoring callbacks, bounded local-user GitHub reads and trusted commands; Go owns the capability-protected public origin, assets and canonical SQLite APIs and proxies only integration routes; paired trusted execution and approval adapters are required for commands
+    launcher: dashboard/canvas-go-host.mjs
+    lifecycle: launch bundled Go sources/native query module or an explicitly selected compatible executable, never workspace code; stdin lifetime terminates the child when its owner exits; stop before removing staging, including failed startup
+    data_contract: require a checksum-verified published canonical SQLite snapshot; optional published inventory quality is metadata only and missing quality stays unknown; no Node query backend, logical-source transport or browser-ingestion fallback
+    prohibited: standalone Node CLI, admin mode, process replacement, hosted App authority for local-user GitHub reads
   local_cli_queue:
     path: dashboard/cli-action-queue.mjs
     responsibility: own durable single-owner FIFO operational SQLite commands independently of browser lifetimes, with bounded concurrency, deadlines, cancellation, ordered output, retry ancestry and terminal-only UTC weekly retention

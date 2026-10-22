@@ -198,12 +198,23 @@ IndexedDB rather than the hosted HTTP backend. The local Pages preparation
 script runs production Activity normalization/SQLite ingestion and Dashboard
 building from an existing snapshot or explicitly labelled synthetic evidence;
 it does not simulate GitHub collection, Actions permissions or artifact transport.
-There is no standalone Node dashboard CLI, admin server, process replacement,
-or JavaScript Go launcher. `dashboard/canvas-server.mjs` is an internal,
-loopback-only authoring bridge for the Copilot canvas, retaining JSON live
-reload, authoring callbacks, bounded read-only GitHub access, and canvas data
-adapters. Canvas command execution requires paired trusted execution and
-approval callbacks; read-only authoring starts no command queue.
+There is no standalone Node dashboard CLI, admin server or process replacement.
+The Copilot canvas also uses Go `serve`: `dashboard/canvas-go-host.mjs` launches
+the bundled server module or an explicitly selected compatible executable.
+Go owns the capability-protected browser origin, assets, verified canonical
+SQLite queries, diagnostics, read-only repository memory and revision events.
+Canvas startup requires a checksum-verified published SQLite snapshot; there is
+no Node query backend, logical-source HTTP transport or browser ingestion
+fallback. Published inventory quality may accompany the snapshot as metadata
+only; missing quality remains unknown, never inferred complete from row counts.
+`dashboard/canvas-server.mjs` is a private loopback-only integration adapter
+for JSON composition/live reload, authoring callbacks, bounded local-user
+GitHub reads and trusted command callbacks. Go proxies only those integration
+routes on the same public origin. Installed plugins carry the server sources
+and native query module; they never build or import executable workspace code.
+The adapter owns the Go child's stdin lifetime, stops it before removing staged
+assets, and cleans up failed startup. Canvas command execution requires paired
+trusted execution and approval callbacks; read-only authoring starts no command queue.
 Trusted canvas CLI actions use a separate, single-owner
 operational SQLite queue in `.cao/cli-actions.sqlite`, never browser IndexedDB
 or the disposable dashboard projection. Capability-protected local endpoints

@@ -29,6 +29,7 @@ type Store struct {
 	db          *sql.DB
 	dataVersion int64
 	state       dashboardstore.State
+	metadata    map[string]model.Metadata
 }
 
 type reader struct {
@@ -40,6 +41,12 @@ var _ dashboardstore.Store = (*Store)(nil)
 var _ dashboardstore.Reader = (*reader)(nil)
 
 func Open(ctx context.Context, path string) (*Store, error) {
+	return OpenWithMetadata(ctx, path, nil)
+}
+
+// OpenWithMetadata retains explicitly supplied published inventory quality.
+// Snapshots without independent quality evidence keep unknown quality.
+func OpenWithMetadata(ctx context.Context, path string, metadata map[string]model.Metadata) (*Store, error) {
 	if strings.TrimSpace(path) == "" || strings.ContainsRune(path, 0) {
 		return nil, errors.New("SQLite requires an existing canonical snapshot file")
 	}
@@ -66,7 +73,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	// State's data_version cache belongs to this one SQLite connection.
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	store := &Store{db: db}
+	store := &Store{db: db, metadata: metadata}
 	if err := store.WithReadTransaction(ctx, func(ctx context.Context, r dashboardstore.Reader) error {
 		_, err := r.State(ctx)
 		return err
