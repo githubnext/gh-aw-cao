@@ -36,19 +36,6 @@ export const DEFAULT_ACTIVITY_STATS_LIMIT = 5;
 export const DEFAULT_GH_LIMIT = 30;
 
 export const USAGE = `Usage:
-  cao init
-  cao setup [--json] [--repository OWNER/REPO|OWNER/*...]
-  cao setup-auth github-app [--repo OWNER/REPO] [APP_SETUP_OPTIONS...]
-    Reuse approved private Apps with --read-client-id ID --write-client-id ID; keys are prompted securely.
-  cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
-  cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]
-  cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao update [--campaign SLUG] [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
-  cao update (main|master|latest|COMMIT_SHA) [--campaign SLUG] [GH_AW_ADD_OPTIONS...]
-  cao upgrade-gh-aw VERSION
-  cao mode (live|preview) CAMPAIGN...
-  cao enable CAMPAIGN...
-  cao disable CAMPAIGN...
   cao discover-workflows --control-settings FILE --inventory FILE --output FILE --repo OWNER/REPO [--root DIRECTORY] [--offline]
   cao dashboard-complexity [QUERY_ID] --input FILE [--database FILE] [--format json|markdown] [--limit COUNT]
   cao prune-dashboard --input FILE [--output FILE]
@@ -96,25 +83,16 @@ Query local CAO data as JSON. Download the deployed snapshot before querying:
   cao gh issues -R githubnext/gh-cao --since 2026-09-01
   cao gh prs -R githubnext/gh-cao -w cao-activity -L 10
 
-Update CAO:
-  cao update                         Latest compatible published release
-  cao update main                    Catalog default-branch HEAD, pinned to a full SHA
-  cao update master                  Alias for the catalog default-branch HEAD
-  cao update latest                  Return to the latest published stable release
-  cao update --campaign dependabot   Update only the installed Dependabot campaign
-  cao update 0123456789abcdef0123456789abcdef01234567
-  Explicit refs accept main, master, latest, or a 7-40 character commit SHA and reapply
-  selected installed CAO packages at that commit, replacing campaign-owned files.
-  --campaign SLUG selects exactly one installed campaign; use root for the CAO root
-  package. Omit it to update all installed CAO packages.
-  Options may appear before or after the ref.
-  main and master both use the catalog repository's GitHub default branch.
-  Use latest after an untagged branch/SHA install; subsequent bare updates follow
-  releases again. latest bypasses major-version and cooldown selection.
-  Ref updates accept gh-aw add options (such as --no-security-scanner), not
-  release-update options (--major, --cool-down, or --pre-releases).
+Operator onboarding and lifecycle commands run natively in gh cao.
+Use gh cao --help; workflow and campaign installation is gh cao add SOURCE.
 
 Agent analysis:
+  These are supported evidence APIs for agents inside agentic workflows.
+  Invoke the installed Node runtime as node activity/cao.mjs <command>.
+  gh cao owns human/operator commands; cao-dashboard owns server hosting and
+  administration. Similar operator reads do not replace these workflow APIs.
+  Workflow agents use queries, query-info, prompt, query, gh runs/issues/prs,
+  computation, mcp, and download without building or installing gh cao.
   Download the current CAO snapshot:
     cao download
   Discover dashboard pages:

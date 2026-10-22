@@ -1,6 +1,6 @@
 ---
 title: Agent analysis
-description: Give an agent the dashboard's own pages and named queries through gh cao or a read-only MCP server, with or without shell access.
+description: Give agents canonical evidence through the Node workflow runtime, the operator Go extension, or a read-only MCP server.
 agent:
   type: agent-interface
   prominent: true
@@ -22,9 +22,48 @@ list of pages or queries:
 | Shell agent | `gh cao` | `gh cao pages`, `gh cao queries` | `gh cao query QUERY_ID` |
 | Agent without a shell | HTTP MCP server | `cao_catalog` | `cao_query` |
 
+## Inside an agentic workflow
+
+The installed Node `cao` runtime provides supported evidence APIs for workflow
+agents. These are production interfaces, not deprecated duplicates or test-only
+parity implementations of the operator CLI. Invoke them directly from the
+control-repository runtime root:
+
+```bash
+node activity/cao.mjs download
+node activity/cao.mjs queries --json
+node activity/cao.mjs query-info campaign-runs --json
+node activity/cao.mjs prompt campaign-runs
+node activity/cao.mjs query campaign-runs --param campaign=CAMPAIGN_SLUG --limit 50
+node activity/cao.mjs gh runs --repo OWNER/REPO --limit 20
+node activity/cao.mjs gh issues --repo OWNER/REPO
+node activity/cao.mjs gh prs --repo OWNER/REPO
+node activity/cao.mjs computation runtime-health
+node activity/cao.mjs computation intelligence
+node activity/cao.mjs mcp --host 127.0.0.1 --port 8765
+```
+
+Workflow execution and evidence preparation do not build, install, or invoke
+`gh cao`. The Node commands and their dependencies ship in the verified runtime.
+Human/operator commands belong to `gh cao`; server hosting and administration
+belong to `cao-dashboard`. Overlapping read capabilities are intentional, not a
+reason to migrate workflow consumers to the Go extension.
+
+The Node query APIs use the canonical snapshot and reviewed Dashboard Language
+definitions, including declared parameters, bounds and availability metadata.
+`gh runs|issues|prs` reads local evidence, not the live GitHub API; issue and PR
+results describe recorded safe outputs, not every item in a target repository.
+Computations are advisory, not execution authority. Downloading prepares local
+evidence; serving MCP grants no GitHub credentials or write capabilities.
+The authentication, snapshot-integrity and job-local MCP boundaries below still
+apply. Missing evidence is not a successful empty observation.
+
 ## Decide which path applies
 
 ```
+Inside an agentic workflow?
+  YES           -> node activity/cao.mjs (or the prepared job-local MCP endpoint)
+  NO            -> choose the operator/interactive transport below
 Do you have shell access?
   YES           -> gh cao
   NO / MCP only -> cao_catalog, then cao_query

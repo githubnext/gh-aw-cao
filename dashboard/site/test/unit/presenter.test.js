@@ -4506,6 +4506,8 @@ describe('presenter built-in and custom pages', () => {
     expect(renderedSecond.hidden).toBe(false);
     expect(renderedSecond.hasAttribute('data-page-pending')).toBe(false);
     expect(renderedSecond.hasAttribute('aria-busy')).toBe(false);
+    expect(renderedSecond.dataset.pageExperimental).toBe('true');
+    expect(/** @type {HTMLElement} */ (rendered.querySelector('.title-area [data-page-experimental]')).hidden).toBe(false);
     expect(rendered.querySelector('#page-title')?.textContent).toBe('Canonical second');
     expect(rendered.querySelector('[data-page-description]')?.textContent).toBe('Canonical second description');
 

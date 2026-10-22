@@ -1337,6 +1337,7 @@ function renderCustomPage(page, title, sources, units, dashboardDefaults, cardTe
       'data-page-id': page.id,
       'data-page-title': title,
       'data-page-description': page.description ?? '',
+      'data-page-experimental': page.experimental === true ? 'true' : undefined,
       'data-route-parameter': routeParameter,
       'data-route-navigation-page': routeNavigationPage,
       'data-route-title-format': page.route?.['title-format'],
@@ -2668,7 +2669,7 @@ function renderElementView(pageId, title, view, viewIndex, sources, contextDetai
   const elementName = typeof view.element === 'string' ? view.element : '';
   const sourceNames = getViewSources(view);
   const viewData = isPlainObject(view.data) ? view.data : undefined;
-  if (sourceNames.length === 0 && !['query-editor', 'command-terminal', 'storage-info', 'environment-defaults'].includes(elementName)) {
+  if (sourceNames.length === 0 && !['query-editor', 'command-terminal', 'storage-info', 'environment-defaults', 'prompt-wizard'].includes(elementName)) {
     return renderCustomViewState(pageId, title, null, 'unavailable', [...contextDetails, 'No sources declared for element view.'], headingTag);
   }
 

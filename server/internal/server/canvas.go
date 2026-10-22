@@ -50,7 +50,7 @@ func validateLocalCanvas(config Config, localSQLite bool) error {
 func canvasAdapterPath(path string) bool {
 	switch path {
 	case "/__dashboard_socket", "/__query_designer", "/__query_designer/enhance",
-		"/__custom_views", "/__dialog_selector":
+		"/__custom_views", "/__dialog_selector", "/__copilot_session":
 		return true
 	}
 	return strings.HasPrefix(path, "/__cli_") || strings.HasPrefix(path, "/api/v1/github/")

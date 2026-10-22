@@ -315,7 +315,6 @@ test("root materialization leaves separately installed plugin resources untouche
 });
 
 for (const missingResource of [
-  "activity/setup.mjs",
   "activity/cli",
   "dashboard/site/src",
   "dashboard/site/scripts/build.mjs",

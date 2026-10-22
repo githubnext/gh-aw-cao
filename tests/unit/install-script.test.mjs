@@ -79,6 +79,8 @@ const addedFiles = [
 ];
 
 const fixtureRoot = await mkdtemp(path.join(os.tmpdir(), "cao-install-fixture-"));
+const nativeCao = path.join(fixtureRoot, process.platform === "win32" ? "gh-cao-native.exe" : "gh-cao-native");
+await executeFile("go", ["build", "-o", nativeCao, "./cmd/gh-cao"], { cwd: catalog, timeout: 120_000 });
 const archive = path.join(fixtureRoot, "gh-cao.tar.gz");
 const archiveName = path.basename(archive);
 const runtimeArchive = buildCaoRuntime(catalog, fixtureRoot, revision).archive;
@@ -371,7 +373,7 @@ if [[ "$url" == https://github.com/githubnext/gh-cao/releases/download/* ]]; the
 if [[ "\\$*" == --version ]]; then
   echo "gh cao version \${FAKE_CAO_BINARY_VERSION:-$release}"
 else
-  exec node activity/cao.mjs "\\$@"
+  exec "$FAKE_NATIVE_CAO" "\\$@"
 fi
 EOF
   fi
@@ -435,6 +437,7 @@ async function createConsumer(t, ghAwVersion, { repository = "alpha-org/control"
     FAKE_GH_SCRIPT: path.join(bin, "gh"),
     FAKE_CAO_ARCHIVE: archive,
     FAKE_CAO_RUNTIME_ARCHIVE: runtimeArchive,
+    FAKE_NATIVE_CAO: nativeCao,
     FAKE_COMMAND_LOG: log,
     FAKE_GH_AW_INSTALLED: ghAwInstalled,
     FAKE_CONTROL_REPOSITORY: repository,
@@ -1271,7 +1274,7 @@ test("install-gh-cao.sh rejects an unparseable GitHub CLI version before sign-in
 test("streamed new-repository installation enters bundled setup without consuming script stdin", { skip: process.platform === "win32" }, async (t) => {
   const { consumer, env, repository, log } = await createConsumer(t, supportedGhAw);
   let step = 0;
-  const steps = ["Repositories CAO should read", "Apply this setup?"];
+  const steps = ["Repositories (comma-separated", "Apply this setup?"];
   const quoted = `'${installScript.replaceAll("'", "'\\''")}'`;
   const result = await runTerminal("bash", ["-c", `cat ${quoted} | bash -s -- --create-repo ${repository} --setup`], {
     cwd: consumer, env: { ...env, TERM: "xterm-256color", FORCE_COLOR: "0", CI: "" }, timeout,
@@ -1284,7 +1287,8 @@ test("streamed new-repository installation enters bundled setup without consumin
   });
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.equal(step, 2);
-  assert.match(result.stdout, /Setup cancelled/);
+  assert.match(result.stdout, /Apply this setup\? \(y\/n\) \[n\]/);
+  assert.doesNotMatch(result.stdout, /Monitoring configured locally|Deployment pending/);
   assert.match(result.stdout, /Open the new checkout: cd control/);
   assert.doesNotMatch(result.stdout, /"command": "setup"/);
   assert.equal(await log(), "create-private\nadd\n");
@@ -1380,7 +1384,7 @@ test("headless guided reinstallation preserves incompatible operator-owned polic
     FAKE_CONTROL_VISIBILITY: "PUBLIC",
   }, ["--setup"]);
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /requires a bare control plane with no declared campaigns/);
+  assert.match(result.stderr, /setup only configures a bare control plane with no declared campaigns/);
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
   assert.equal(await log(), "add\n");
 });
@@ -1397,7 +1401,7 @@ test("headless setup does not reconfigure an existing standalone control plane",
     ...env, CI: "1", FAKE_CONTROL_VISIBILITY: "PUBLIC",
   }, ["--setup"]);
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /requires a bare control plane with no declared standalone workflows/);
+  assert.match(result.stderr, /setup only configures a bare control plane with no declared standalone workflows/);
   assert.equal(await readFile(path.join(consumer, policyPath), "utf8"), customPolicy);
   assert.equal(await log(), "add\n");
 });

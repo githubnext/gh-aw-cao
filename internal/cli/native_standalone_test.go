@@ -72,4 +72,7 @@ func TestNativeStandaloneBinary(t *testing.T) {
 	if len(files) != 0 {
 		t.Fatal("standalone read-only commands wrote to the working directory")
 	}
+	t.Run("operator lifecycle without Node", func(t *testing.T) {
+		testNativeStandaloneLifecycle(t, binary)
+	})
 }

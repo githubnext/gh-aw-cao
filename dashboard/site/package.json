@@ -19,7 +19,8 @@
   "overrides": {
     "postcss": "8.5.30",
     "rolldown": "1.2.13",
-    "source-map-js": "$source-map-js"
+    "source-map-js": "$source-map-js",
+    "vite": "8.3.4"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
@@ -42,6 +43,6 @@
     "puppeteer-core": "^25.10.0",
     "source-map-js": "file:packages/source-map-compat",
     "typescript": "^5.9.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   }
 }

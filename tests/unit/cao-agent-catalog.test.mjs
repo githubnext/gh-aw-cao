@@ -89,7 +89,7 @@ test("cao query-info exposes authored semantic annotations", async () => {
   assert.match(text, /objective: Locate repositories/);
 });
 
-test("Node parity prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
+test("workflow-agent prompt renders a named query using the dashboard prompt template without a snapshot", async () => {
   const cwd = await mkdtemp(path.join(tmpdir(), "cao-agent-prompt-"));
   try {
     const { stdout } = await executeFile(process.execPath, [cao, "prompt", "cost-by-repository"], { cwd });

@@ -116,21 +116,25 @@ export function createPromptCliActionControl(actionId, getPrompt, options = {}) 
     type: 'button',
     className: 'table-intent-copy-button',
     onClick: async () => {
+      if (scope.signal.aborted || busy.get()) return;
       busy.set(true);
       statusText.set('Starting agent task…');
       outputText.set('');
       outputVisible.set(true);
       try {
         const result = await executeAction(action.id, {}, {}, ({ data }) => {
+          if (scope.signal.aborted) return;
           outputText.set((current) => current + data);
           output.scrollTop = output.scrollHeight;
         }, getPrompt(), scope.signal);
+        if (scope.signal.aborted) return;
         statusText.set(result.ok ? 'Agent task started.' : (result.error || 'Could not start agent task.'));
         if (!outputText.get()) outputText.set(resultText(result));
       } catch (error) {
+        if (scope.signal.aborted) return;
         statusText.set(error instanceof Error ? error.message : 'Could not start agent task.');
       } finally {
-        busy.set(false);
+        if (!scope.signal.aborted) busy.set(false);
       }
     }
   }, options.level === 'operate' ? options.label ?? action.label : 'Start agent task'));

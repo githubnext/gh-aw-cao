@@ -72,22 +72,27 @@ func TestCampaignCommandInventory(t *testing.T) {
 	}
 }
 
-func TestCampaignAddIsNotACommand(t *testing.T) {
+func TestCampaignHelpExcludesInstallation(t *testing.T) {
 	root, stdout, _ := testCommand(t, nil, nil)
-	root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/dependabot"})
-	if err := root.Execute(); err == nil {
-		t.Fatal("removed campaigns add command accepted")
-	}
-	if stdout.Len() != 0 {
-		t.Fatalf("removed command reported success: %s", stdout)
-	}
-	root, stdout, _ = testCommand(t, nil, nil)
 	root.SetArgs([]string{"campaigns", "--help"})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(stdout.String(), "Install a campaign") || strings.Contains(stdout.String(), "\n  add ") {
-		t.Fatalf("removed command advertised in campaign help: %s", stdout)
+	if strings.Contains(stdout.String(), "\n  add ") {
+		t.Fatalf("campaign installation must use the root add command: %s", stdout)
+	}
+}
+
+func TestAddHelpCoversWorkflowsAndCampaignsOffline(t *testing.T) {
+	root, stdout, _ := testCommand(t, nil, nil)
+	root.SetArgs([]string{"add", "--help"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{"add WORKFLOW_OR_CAMPAIGN", "gh cao add daily-repo-status", "gh cao add githubnext/gh-cao/dependabot", "gh cao add ./dependabot"} {
+		if !strings.Contains(stdout.String(), text) {
+			t.Fatalf("add help is missing %q: %s", text, stdout)
+		}
 	}
 }
 
@@ -252,6 +257,7 @@ func TestOperatorInvalidInputDoesNotExecute(t *testing.T) {
 		{"add", "--repository", "owner/*"}, {"add", "--repository", "owner/repo", "extra"},
 		{"add", "githubnext/gh-cao"}, {"add", "githubnext/gh-cao", "--force"},
 		{"campaigns", "add"}, {"campaigns", "add", "--repository", "owner/repo"},
+		{"campaigns", "add", "githubnext/gh-cao/demo"}, {"campaigns", "add", "./demo"},
 		{"repos"}, {"repos", "unknown"}, {"repos", "add"}, {"repos", "add", "owner/*"},
 		{"repos", "add", "owner/repo", "extra"}, {"repos", "add", "--repository", "owner/repo"},
 	} {

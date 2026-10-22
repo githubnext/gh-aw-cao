@@ -22,6 +22,7 @@ These are the default product destinations. They are custom pages composed from 
 | `overview` | Overview | `factory-header`, `factory-floor`, `link-button-list` | Summarizes campaign health, repository coverage, weekly rhythm, and campaign shortcuts. |
 | `configuration` | Settings | `configuration-policy` | Presents checked-in control policy and its editable settings surface. |
 | `governance` | Governance | `environment-defaults` | Visible only to authorized hosted administrators; loads, previews, and explicitly approves gh-aw compiler default variables through authorized CLI actions. |
+| `wizard` | Workflow wizard | `prompt-wizard` | Designs reviewed generation prompts for an Agentic Workflow or Campaign from pinned upstream patterns, without installing or activating work. |
 | `value` | Value | Shared entity cards | Trophy-marked entry point for workflow results and their native evidence reports. |
 | `workflow-value` | Workflow Value tab | Shared entity cards | Shows direction-aware native repository movement and opens its evidence report. |
 | `value-report` | Workflow value report | `workflow-value-report` | Connects consolidated intent, safe outputs, distinct accepted implementations and independent repository snapshots. |
@@ -133,6 +134,7 @@ Named elements own specialized DOM, accessibility, interaction, local state, and
 | `entity-route` | Allocates a route-selected entity title and native GitHub link. |
 | `configuration-policy` | Presents and edits checked-in CAO policy. |
 | `environment-defaults` | Edits the full gh-aw defaults YAML through declared `gh aw env` actions, with scope selection, dry-run preview, explicit approval, and private temporary-file transport; does not query activity evidence or grant rollout authority. |
+| `prompt-wizard` | Renders JSON-declared authoring steps and conditional fields, validates explicit choices, and uses the standard prompt button to review and copy an AW or Campaign generation prompt; has no operational data sources or command execution. |
 | `measure-history` | Presents reusable grouped temporal-measure history from declarative query results. |
 | `workflow-value-report` | Presents query-prepared workflow value, a linked snapshot plot and an evidence disclosure; owns only presentation, scoped reveal/focus and reactive cleanup. |
 | `workflow-value-snapshot` | Presents exact immutable item links and distinguishes omitted item evidence from an explicitly empty population. |
