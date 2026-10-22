@@ -43,6 +43,27 @@ test("installer help and implementation no longer expose Quickstart", async () =
   assert.doesNotMatch(installerSource, /quickstart|target_repository/i);
 });
 
+test("installer release ordering handles same-version prerelease progression", async () => {
+  const comparator = installerSource.slice(installerSource.indexOf("version_at_least() {"),
+    installerSource.indexOf("\nget_gh_version()"));
+  assert.ok(comparator.startsWith("version_at_least() {"));
+  for (const [current, required, accepted] of [
+    ["v1.0.0-rc.10", "v1.0.0-rc.2", true],
+    ["v1.0.0-rc.2", "v1.0.0-rc.10", false],
+    ["v1.0.0", "v1.0.0-rc.10", true],
+    ["v1.0.0-rc.10", "v1.0.0", false],
+    ["v1.0.0-beta", "v1.0.0-alpha", true],
+    ["v1.0.0-2", "v1.0.0-beta", false],
+    ["v1.0.0-beta.1", "v1.0.0-beta", true],
+    ["v1.0.0-beta", "v1.0.0-beta.1", false],
+    ["v1.0.0-rc.1", "v1.0.0-rc.1", true],
+  ]) {
+    const result = executeFile("bash", ["-c", `${comparator}\nversion_at_least "$1" "$2"`, "--", current, required]);
+    if (accepted) await result;
+    else await assert.rejects(result, { code: 1 });
+  }
+});
+
 const upgradePrompt = new RegExp(`Upgrade it now with ${curlCommand} \\S+/install-gh-aw\\.sh \\| bash -s -- v\\S+\\? \\[y/N\\]`);
 const addedFiles = [
   ...manifest.resources.map(({ source, destination }) => ({
@@ -773,6 +794,19 @@ test(`streamed install-gh-cao.sh requires the local aw.yml min-version ${manifes
   const { consumer, env, log, installedGhAw } = await createConsumer(t, supportedGhAw);
   await writeFile(path.join(consumer, "aw.yml"), `min-version: ${manifestGhAw}\n`);
   const result = await runStreamed(consumer, env);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, manualUpgrade(manifestGhAw));
+  assert.equal(await log(), "");
+  assert.equal(await installedGhAw(), `${supportedGhAw}\n`);
+  await assertNothingInstalled(consumer);
+});
+
+test("explicit local catalog minimum is checked before installing CAO components", async (t) => {
+  const { root, consumer, env, log, installedGhAw } = await createConsumer(t, supportedGhAw);
+  const source = path.join(root, "local catalog");
+  await mkdir(source);
+  await writeFile(path.join(source, "aw.yml"), `min-version: ${manifestGhAw}\n`);
+  const result = await runStreamed(consumer, env, [source]);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, manualUpgrade(manifestGhAw));
   assert.equal(await log(), "");

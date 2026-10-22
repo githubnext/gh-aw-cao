@@ -145,6 +145,38 @@ plan supports restricted Pages, or that the deployed site is inaccessible
 outside the enterprise. It does not execute the ordinary Activity/Dashboard
 Actions workflows or render their resulting deployed dashboard.
 
+## Playground retirement gate
+
+`gh-cao` now owns the replacement checks in
+`.github/workflows/installer-canary.yml`. Its daily schedule and manual trigger
+run the real public installer integration on Linux and macOS for stable and
+prerelease gh-aw, each with missing, current, outdated and newer installations.
+Pull requests run deterministic canary contracts only. The integration uses
+isolated homes/configuration, a real local control checkout and source catalog,
+anonymous public release downloads, checksum verification, real extension
+discovery and source materialization. Control-repository sign-in/identity are
+synthetic; no remote repository is created or configured.
+
+The same canary reads existing default-branch Activity, Dashboard build and
+deployed-dashboard integration results. It requires recent successful completed
+runs (less than 24 hours old), successful collection/indexing and build jobs,
+and a successful populated-dashboard browser check. Skipped jobs, missing
+evidence and a latest completed failure do not count as success. This reuses
+the existing deployment rather than creating or dispatching a second one;
+Pages deployment may intentionally be disabled for the hosted deployment.
+Run these read-only checks locally with:
+
+```bash
+node scripts/installer-canary.mjs matrix
+node scripts/installer-canary.mjs smoke
+```
+
+Archive `githubnext/cao-playground` only after the replacement workflow is
+merged and all 16 platform/channel/scenario cells plus the deployed smoke job
+pass in Actions. Preserve the repository and its run/issue history; do not
+delete it. Local simulator or single-platform results are not that retirement
+gate. Archival is a separate operator action, not something the canary performs.
+
 ## Live verification still required
 
 Only in an approved disposable environment, have the actual operator and

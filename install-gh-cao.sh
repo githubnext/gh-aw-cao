@@ -108,7 +108,7 @@ version_at_least() {
 const parse = (value) => {
   const match = value.match(/^v([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z.-]+))?$/);
   if (!match) process.exit(2);
-  return { numbers: match.slice(1, 4).map(Number), prerelease: match[4] || "" };
+  return { numbers: match.slice(1, 4).map(BigInt), prerelease: match[4]?.split(".") || [] };
 };
 const [current, required] = process.argv.slice(1).map(parse);
 for (let index = 0; index < 3; index += 1) {
@@ -116,8 +116,19 @@ for (let index = 0; index < 3; index += 1) {
     process.exit(current.numbers[index] > required.numbers[index] ? 0 : 1);
   }
 }
-if (current.prerelease === required.prerelease || !current.prerelease) process.exit(0);
-process.exit(1);
+if (!current.prerelease.length || !required.prerelease.length) {
+  process.exit(!current.prerelease.length ? 0 : 1);
+}
+for (let index = 0; index < Math.max(current.prerelease.length, required.prerelease.length); index++) {
+  const left = current.prerelease[index], right = required.prerelease[index];
+  if (left === right) continue;
+  if (left === undefined || right === undefined) process.exit(left === undefined ? 1 : 0);
+  const leftNumeric = /^\d+$/.test(left), rightNumeric = /^\d+$/.test(right);
+  if (leftNumeric && rightNumeric) process.exit(BigInt(left) >= BigInt(right) ? 0 : 1);
+  if (leftNumeric !== rightNumeric) process.exit(leftNumeric ? 1 : 0);
+  process.exit(left > right ? 0 : 1);
+}
+process.exit(0);
 ' "$1" "$2"
 }
 
@@ -728,8 +739,10 @@ main() {
   else
     package_source="$catalog_source"
   fi
-  if [[ "$catalog_source" == "githubnext/gh-cao" && -f aw.yml ]]; then
-    manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' aw.yml)"
+  if [[ -d "$catalog_source" || ( "$catalog_source" == "githubnext/gh-cao" && -f aw.yml ) ]]; then
+    local version_manifest="aw.yml"
+    [[ ! -d "$catalog_source" ]] || version_manifest="$catalog_source/aw.yml"
+    manifest_required_gh_aw="$(awk '$1 == "min-version:" { print $2; exit }' "$version_manifest")"
     if [[ -n "$manifest_required_gh_aw" ]]; then
       required_gh_aw="$manifest_required_gh_aw"
     fi
