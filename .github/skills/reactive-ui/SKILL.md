@@ -38,6 +38,7 @@ Use `dashboard/site/src/reactive.js` for state-driven updates:
 - `render(root, update, { signal }?)` renders reactive output into an isolated shadow tree and morphs it into an owned root with the fewest mutations, preserving focus, scroll position, and control state without hand-written diffing. Prefer it over a raw `effect` plus `replaceChildren` whenever a component's entire visible output is a function of its reactive state, as in `dashboard/site/src/components/animated-number.js`, `factory-station.js`, and `factory-header.js`.
 - `onCleanup` removes listeners, observers, timers, and other resources created by an effect.
 - `batch` groups related writes so dependents observe one consistent final state.
+- `untracked` reads reactive values inside an effect without subscribing to them; use it only for values that must not retrigger the effect.
 - Pass an `AbortSignal` to effects whose lifetime follows a page, view, request, or asynchronous operation. Use `createFactoryScope()` from `dashboard/site/src/components/factory-elements.js` to obtain that signal and bind it to detachment of an owned root instead of writing a bespoke `MutationObserver`/`wasConnected` pair; every new element should stop its effects and requests once its root leaves the document.
 - Use stable keyed rendering from `dashboard/site/src/dom.js` for changing collections; do not rebuild an entire view when only state or list membership changed.
 - Do not put source derivation, querying, or business rules in effects. Perform those operations in Dashboard Language or the data worker and react only to their results.
@@ -53,7 +54,7 @@ Use `dashboard/site/src/reactive.js` for state-driven updates:
 
 ## Styles and Primer
 
-- Put dashboard component styles in the focused `dashboard/site/src/styles-*.js` modules composed by `styles-primer.js`; `styles.js` remains the shared minified stylesheet entry point. Preserve composition order and keep responsive and accessibility overrides last. Do not add inline styles or element-local style injection for ordinary views.
+- Put dashboard component styles in the focused `dashboard/site/src/styles-*.js` modules composed by `styles-primer.js` (or by a parent module such as `styles-overview.js`, which composes `styles-first-load.js` and `styles-overview-grid.js`); `styles.js` remains the shared minified stylesheet entry point and also exposes `styles-notifications.js` separately for the notification service. Preserve composition order and keep responsive and accessibility overrides last. Do not add inline styles or element-local style injection for ordinary views.
 - Reuse existing classes and CSS custom properties before adding selectors or tokens.
 - Follow the established Primer visual language: system font stack, semantic canvas/foreground/border/accent/status tokens, Octicons, six-pixel control radii, restrained elevation, compact spacing, and visible focus rings.
 - Support light, dark, and explicit dashboard themes through existing semantic tokens. Do not hard-code a color where a token exists.
