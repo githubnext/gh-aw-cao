@@ -255,6 +255,34 @@ final source-bound native implementation evidence and broader validation
 handoff are pending. No new authority, retention or operating-evidence claim
 is authorized by this language/location correction.
 
+**Native migration final handoff, 2026-10-22:** verified open/draft head
+`ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b` supersedes the pending revision
+above. The JavaScript collector and its test file are removed. At this SHA,
+`internal/cli/evidence.go:72` defines the native command/flags;
+`internal/cli/evidence_release.go:274` collects the report;
+`internal/cli/evidence_provenance.go:39` binds verifier policy/invocation;
+`internal/cli/evidence_azure.go:41` reuses existing Azure receipt types and
+development-only/per-target digest checks; `internal/ghcli/bounded.go:16`
+bounds subprocess output with redacted failures. Operator contracts are in
+`docs/cao-cli.md:29` and `server/README.md:2329`. No Node or dashboard-server
+dependency is introduced.
+
+The session reports all checks exiting zero: root lint/CAO typecheck,
+`make lint`, `go test -race -json ./internal/cli ./internal/ghcli ./cmd/gh-cao -count=1`,
+73-workflow compilation, docs build (two discovery tests), whitespace and
+standalone build/help with `PATH=/nonexistent`. Race results: 1,322 passing
+test/subtest events, one skipped `TestSetupRuntimePublishedRelease` requiring
+`CAO_SETUP_RUNTIME_INTEGRATION=1`; all three packages passed. Log:
+`/Users/peli/.copilot/session-state/bb48a53b-9959-4b2a-88ce-5f7f7c703f42/files/native-evidence-go-tests.jsonl`.
+Coordinator verified publication/change surfaces, not runtime test execution.
+The narrow native collection design is **design-supported at this SHA**;
+REL-OP-01/OPS-08 remain **evidence-needed/open**. Reports remain incomplete,
+raw verifier bundles are not archived, and destination ACLs remain
+operator-owned (mode 0600 only where supported, especially relevant on
+Windows). Actual registry/API verification, production image measurements,
+independent retention/approval, exceptions/rollback and period evidence
+remain unverified. Operating effectiveness is **not-assessed**.
+
 #### Offline App key rollover preflight proposal
 
 Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424), commit

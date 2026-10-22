@@ -688,3 +688,26 @@ Dates are UTC. Corrections are new events; original observations remain.
   remediate/in-progress. Authority, retention, operator decisions and
   operating effectiveness (not-assessed) are unchanged. No deployment or
   compliance conclusion.
+
+## 2026-10-22 - SOC2-LOG-030 - Native release evidence collector handoff
+
+- Type: final user-directed native implementation revision;
+  RFC-035 record schema version 1.
+- Verified [#19423](https://github.com/githubnext/gh-cao/pull/19423) open/draft
+  at `ef1e3356ca4aff3aff20f2a3e64e69f0c9d5799b`. Native Go
+  `gh cao evidence release` replaces the JavaScript collector and tests,
+  reuses existing Azure receipt types and shared bounded gh execution, and
+  adds no Node/dashboard-server dependency. This supersedes SOC2-LOG-029's
+  pending native handoff; original JavaScript evidence remains historical.
+- Current source citations, exact race command, log and exclusions are in
+  the maintained register. Session reports 1,322 passing race test/subtest
+  events and one published-runtime integration skip; root lint/typecheck,
+  Go lint, compile (73), docs build and standalone build/help passed.
+  Coordinator verified identity/change surfaces, not runtime execution.
+- REL-OP-01/OPS-08 remain evidence-needed/open. Native collection is narrowly
+  design-supported; incomplete reports do not establish independent approval,
+  original-bundle retention, running-image identity or operating effectiveness.
+  Operator destination ACL enforcement remains required; 0600 is
+  platform-dependent. Actual registry/API verification, deployment,
+  retention/rollback/governance and period evidence remain unverified.
+  No merge, production/authority change or finding closure.
