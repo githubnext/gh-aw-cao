@@ -3,6 +3,40 @@ import { authoritativeDashboard, buildPresenterModuleUrl, builtInPage, expect, r
 registerSmokeRoutes();
 
 for (const width of [1200, 390]) {
+  test(`Marketplace follows Overview in the navigation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.setContent(`
+      <div id="root"></div>
+      <script type="module">
+        import { renderDashboard } from ${JSON.stringify(buildPresenterModuleUrl())};
+        document.querySelector('#root').append(renderDashboard({
+          document: {
+            languageVersion: '0.1.0',
+            dashboard: {
+              id: 'marketplace-navigation-dashboard',
+              title: 'Marketplace Navigation',
+              navigation: ${JSON.stringify(authoritativeDashboard.dashboard.navigation)},
+              pages: ${JSON.stringify(authoritativeDashboard.dashboard.pages.map((/** @type {{ id: string, title: string }} */ { id, title }) => ({
+                id, title, kind: 'custom', views: []
+              })))}
+            }
+          },
+          sources: {}
+        }));
+      </script>
+    `);
+    if (width < 768) await page.getByRole('button', { name: 'Select view', exact: true }).click();
+    const links = page.locator(width < 768 ? '[data-mobile-nav-page-id]' : '[data-nav-page-id]');
+    await expect(links.nth(0)).toHaveAttribute('href', '#page-overview');
+    await expect(links.nth(1)).toHaveAttribute('href', '#page-marketplace');
+    await expect(links.nth(1)).toBeVisible();
+    await expect(links.filter({ hasText: 'Marketplace' })).toHaveCount(1);
+    await links.nth(1).click();
+    await expect(page.getByRole('heading', { name: 'Marketplace', level: 1 })).toBeVisible();
+  });
+}
+
+for (const width of [1200, 390]) {
   test(`back navigation stays visible on directly loaded pages at ${width}px and falls back to Overview`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(() => { window.history.replaceState(null, '', '#page-runs'); });

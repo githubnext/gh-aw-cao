@@ -1072,7 +1072,7 @@
         "label": "Add",
         "description": "Copy the canonical CAO add command for this package. The dashboard does not install packages.",
         "icon": "plus",
-        "command": "gh cao campaigns add {{package-source}}",
+        "command": "gh cao add {{package-source}}",
         "placement": "row",
         "copy-only": true
       },
@@ -1165,7 +1165,8 @@
     "navigation": [
       {
         "pages": [
-          "overview"
+          "overview",
+          "marketplace"
         ]
       },
       {
@@ -1210,7 +1211,6 @@
           "maintenance",
           "governance",
           "commands",
-          "marketplace",
           "indexing",
           "configuration"
         ]

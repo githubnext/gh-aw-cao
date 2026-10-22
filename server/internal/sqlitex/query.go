@@ -200,6 +200,9 @@ func snapshotInputs(definition query.Definition) []string {
 }
 
 func (r *reader) source(ctx context.Context, name string, state dashboardstore.State, options dashboardstore.ExecutionOptions, fields snapshotFields) (model.Source, error) {
+	if postgresx.IsRuntimeSource(name) && options.Runtime != nil {
+		return options.Runtime(ctx, name)
+	}
 	collection := strings.TrimPrefix(name, "$")
 	if strings.HasPrefix(name, "$") && canonicalCollection(collection) {
 		if _, declared := state.Counts[name]; !declared {
@@ -244,11 +247,6 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 		}
 		metadata["availability"] = availability
 		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
-	}
-	if postgresx.IsRuntimeSource(name) {
-		if options.Runtime != nil {
-			return options.Runtime(ctx, name)
-		}
 	}
 	return model.Source{}, fmt.Errorf("local query source %q is not registered", name)
 }

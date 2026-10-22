@@ -8,7 +8,7 @@
   "scripts": {
     "postinstall": "node dashboard/site/scripts/prepare-terminal.mjs",
     "install:gh-aw": "GH_AW_VERSION=$(node .github/workflows/shared/control.mjs compiler-version .github/workflows/cao.json) && curl -sL https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh | bash -s -- \"$GH_AW_VERSION\"",
-    "dashboard:local": "go -C server run ./cmd/cao-dashboard serve",
+    "dashboard:local": "CAO_MARKETPLACE_POLICY_PATH=\"${CAO_MARKETPLACE_POLICY_PATH:-$PWD/.github/workflows/cao.json}\" go -C server run ./cmd/cao-dashboard serve",
     "predashboard:local": "npm --prefix dashboard/site run build -- dist ../../.github/workflows/cao.json",
     "dashboard:pages": "go -C server run ./cmd/cao-dashboard serve-pages",
     "dashboard:pages:build": "node scripts/simulate-dashboard-pages.mjs",
@@ -19,7 +19,7 @@
     "dashboard:server:redis-down": "docker-compose -f server/docker-compose.yml down",
     "dashboard:server:setup:macos": "bash scripts/setup-dashboard-server-macos.sh",
     "dashboard:server:ingest": "go -C server run ./cmd/cao-dashboard ingest",
-    "dashboard:server:serve": "go -C server run ./cmd/cao-dashboard serve",
+    "dashboard:server:serve": "CAO_MARKETPLACE_POLICY_PATH=\"${CAO_MARKETPLACE_POLICY_PATH:-$PWD/.github/workflows/cao.json}\" go -C server run ./cmd/cao-dashboard serve",
     "dashboard:server:otel-smoke": "go -C server run ./cmd/cao-dashboard otel-smoke",
     "dashboard:server:lint": "cd server && golangci-lint fmt --diff && golangci-lint run ./...",
     "dashboard:server:test": "go -C server test -p 1 ./...",
