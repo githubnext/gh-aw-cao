@@ -1,35 +1,7 @@
 {
   "source_sha": "cf53719535fcebea76de1791671f8c4b769c98d6",
-  "next_category": "scheduling, concurrency, and avoidable rebuilds",
+  "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-22T02:05:00Z",
-      "worker_run_id": "39708978204",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39708509403,
-        39706637559,
-        39706197220,
-        39704459343,
-        39704096906,
-        39703889092,
-        39702392148,
-        39701994784,
-        39697372755,
-        39697049120,
-        39695525774,
-        39694184337,
-        39692879468,
-        39692776203,
-        39691227215,
-        39690627226,
-        39689267940,
-        39688952080,
-        39687733005,
-        39687483733
-      ],
-      "outcome": "no-op: the 2026-10-21T22:34:35Z to 2026-10-22T01:55:56Z latest-20 window contained 14 successful and six skipped completed docs.yml runs, with no failed or cancelled runs. Seven successful builds were comparable (four schedule and three push, across seven source SHAs): median/p90 end-to-end 136/188.8 seconds, initial queue 3/3.4 seconds, queue-excluded execution 132/184 seconds, build job 80/125 seconds, and deploy job 44/55.4 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml. Trusted step metadata showed all seven builds restored the dashboard cache in median/p90 3/3 seconds and skipped dashboard run lookup and artifact fallback; a bounded log read of the newest build verified both a 300 MiB npm package-cache hit and a 58 MiB reusable dashboard-cache hit. Dependency installation was 21/24.2 seconds, Astro generation 12/15.4 seconds, and Pages upload 11/14 seconds. The latest five successful dashboard producer workflows had median/p90 end-to-end 310/751 seconds and build jobs 291/730.8 seconds; activity-data upgrade work was 202/630.4 seconds, while dashboard assembly itself was 5/7.4 seconds. Reuse therefore avoids repeating the producer path in every docs build. Eliminating the 3-second median restore would save only 2.3% of median queue-excluded execution and far less than 60 seconds, while the dominant producer upgrade operates on fresh activity snapshots and lacks evidence that cross-snapshot caching preserves correctness or freshness. No correctness- and freshness-preserving reusable-dashboard improvement met the actionability threshold, so the category advanced. Runs 39704459343 and 39697049120 had 63-second and 49-second checkout outliers, and deployment-service variance was disclosed rather than attributed to dashboard reuse."
-    },
     {
       "evaluated_at": "2026-10-22T02:29:50Z",
       "worker_run_id": "39711347654",
@@ -692,6 +664,34 @@
         39839577721
       ],
       "outcome": "no-op: the 2026-10-22T19:23:00Z to 2026-10-22T21:01:49Z latest-20 completed docs.yml window contained 17 successful, two skipped, and one cancelled run; the cancelled workflow_run was excluded. The five newest verified successful build-and-deploy paths were comparable (two workflow_run, two push, and one schedule, across three source SHAs): median/p90 end-to-end 114/149.6 seconds, initial queue 4/4.6 seconds, queue-excluded execution 109/146.2 seconds, build job 79/80 seconds, and deploy job 13/54.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows were 31/39.6 seconds median/p90 end-to-end and their build jobs were 16/25 seconds. Dependency installation was 22/25.4 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 2/2.6 seconds, and Pages artifact upload 2/3 seconds. Trusted step metadata showed all five reusable-dashboard restores hit and skipped dashboard lookup/artifact fallback; a bounded trusted log for the newest build verified a 301 MiB npm package-cache hit, a 3 MiB reusable-dashboard-cache hit, and an 8.25 MB Pages artifact upload. Packaging was only 1.8% of median queue-excluded execution, and even eliminating the 2-second median upload would save neither 60 seconds nor 15%. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. The newest schedule run had a 65-second Deploy Pages service outlier; it was disclosed rather than attributed to packaging."
+    },
+    {
+      "evaluated_at": "2026-10-22T21:37:27Z",
+      "worker_run_id": "39858231433",
+      "category": "scheduling, concurrency, and avoidable rebuilds",
+      "evidence_run_ids": [
+        39858147029,
+        39856721920,
+        39853841365,
+        39851881587,
+        39850101910,
+        39849775463,
+        39848891781,
+        39848482868,
+        39848428490,
+        39848107063,
+        39846338334,
+        39845758662,
+        39845403154,
+        39845248093,
+        39843325812,
+        39843076599,
+        39842243038,
+        39840996309,
+        39840164347,
+        39839755798
+      ],
+      "outcome": "no-op: the 2026-10-22T19:24:14Z to 2026-10-22T21:33:07Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Ten successful build-and-deploy runs were comparable (five push, four workflow_run, and one schedule, across seven source SHAs): median/p90 end-to-end 109/126.6 seconds, initial queue 2/4.1 seconds, queue-excluded execution 106/125.4 seconds, build job 78/80.7 seconds, and deploy job 11.5/36.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows had median/p90 end-to-end 31/39.6 seconds and build jobs 16/25 seconds. Dependency installation was 22.5/28.8 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2.1 seconds, and Pages artifact upload 2/3 seconds. Trusted step metadata showed all ten builds restored the dashboard cache and skipped artifact fallback; a bounded trusted log for the newest build verified a 301 MiB npm package-cache hit and a 3 MiB reusable-dashboard-cache hit. Eight other successful schedule runs freshness-checked and avoided build and deploy. Initial queueing remained 1-5 seconds, and same-SHA push/workflow_run pairs reflected publication of newer successful dashboard snapshots rather than redundant work. The one 65-second Deploy Pages service outlier was disclosed rather than attributed to scheduling. Existing open issues #17171 and #18158 already represent freshness-history and historical push-deployment work. No new non-duplicate, correctness- and deployment-safe scheduling improvement met the repeated-evidence and 60-second or 15% thresholds, so the category advanced."
     }
   ]
 }
