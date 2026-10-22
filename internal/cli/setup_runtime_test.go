@@ -208,6 +208,7 @@ func TestSetupInstallsOnlyMissingGHAW(t *testing.T) {
 }
 
 func TestSetupProgressPrecedesSlowOperations(t *testing.T) {
+	t.Setenv("CI", "")
 	nativeSetupTestDirectory(t)
 	cmd := nativeSetupTestCommand()
 	var calls []string

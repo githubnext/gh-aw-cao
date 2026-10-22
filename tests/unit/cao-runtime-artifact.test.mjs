@@ -179,11 +179,12 @@ test("the prebuilt archive runs keyboard setup without consumer npm dependencies
   const fixture = setupTerminalFixture(t, path.join(root, "activity/setup.mjs"));
   const result = await walkSetupTerminal(fixture, [
     ["Repositories CAO should read", "\r"],
-    ["How should CAO authenticate?", "\r"],
     ["Apply this setup?", "\r"],
   ]);
   assert.equal(result.code, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /"cancelled":true/);
+  assert.doesNotMatch(result.stdout, /How should CAO authenticate\?/);
+  assert.deepEqual(fixture.saved(), fixture.policy);
   assert.ok(!fixture.calls().some(([command]) => command === "connect" || command === "api"));
 });
 
