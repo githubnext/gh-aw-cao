@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
@@ -39,7 +40,7 @@ func TestReadTransactionPlannerSettingsAreLocal(t *testing.T) {
 					return err
 				}
 				timeout := time.Duration(timeoutMS) * time.Millisecond
-				if jit || nestloop || timeout <= 0 || timeout > readTransactionTimeout {
+				if jit || nestloop || timeout <= 0 || timeout > inputlimits.PostgresReadTransactionTimeout {
 					t.Errorf("read settings: jit=%t enable_nestloop=%t statement_timeout=%s", jit, nestloop, timeout)
 				}
 				return tc.err

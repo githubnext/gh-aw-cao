@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
 
@@ -42,7 +43,7 @@ func TestReadTransactionResourceCeilings(t *testing.T) {
 				sentinel := errors.New("rollback")
 				err := store.WithReadTransaction(t.Context(), func(ctx context.Context, reader NativeReader) error {
 					deadline, ok := ctx.Deadline()
-					if !ok || time.Until(deadline) > readTransactionTimeout {
+					if !ok || time.Until(deadline) > inputlimits.PostgresReadTransactionTimeout {
 						t.Fatal("read callback has no bounded transaction deadline")
 					}
 					rows, err := reader.(*readTransaction).tx.QueryContext(ctx, `SELECT name,setting::bigint
@@ -58,7 +59,7 @@ func TestReadTransactionResourceCeilings(t *testing.T) {
 						if err := rows.Scan(&name, &value); err != nil {
 							return err
 						}
-						if value <= 0 || value > readTransactionTimeout.Milliseconds() || (tc.wantMS != 0 && value != tc.wantMS) {
+						if value <= 0 || value > inputlimits.PostgresReadTransactionTimeout.Milliseconds() || (tc.wantMS != 0 && value != tc.wantMS) {
 							t.Errorf("%s = %dms, stricter ceiling = %d", name, value, tc.wantMS)
 						}
 						count++

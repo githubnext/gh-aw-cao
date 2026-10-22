@@ -3,6 +3,7 @@ package inputlimits
 import (
 	"fmt"
 	"strconv"
+	"time"
 )
 
 type ByteLimit string
@@ -15,6 +16,8 @@ const (
 	DefaultRepositoryMemoryManifestBytes = 2 * 1024 * 1024
 	DefaultMarketplaceJSONBytes          = 512 * 1024
 	DefaultMarketplaceTreeJSONBytes      = 8 * 1024 * 1024
+
+	PostgresReadTransactionTimeout = 60 * time.Second
 )
 
 func (limit ByteLimit) Resolve(lookup func(string) (string, bool)) (int64, error) {

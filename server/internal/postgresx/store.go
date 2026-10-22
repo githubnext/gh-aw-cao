@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/postgresconn"
@@ -56,8 +57,6 @@ type readTransaction struct {
 	store *Store
 	tx    *sql.Tx
 }
-
-const readTransactionTimeout = 60 * time.Second
 
 func New(ctx context.Context, dsn string, namespaces ...string) (*Store, error) {
 	if len(namespaces) > 1 {
@@ -317,7 +316,7 @@ func (r *readTransaction) State(ctx context.Context) (State, error) {
 }
 
 func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context, NativeReader) error) error {
-	ctx, cancel := context.WithTimeout(ctx, readTransactionTimeout)
+	ctx, cancel := context.WithTimeout(ctx, inputlimits.PostgresReadTransactionTimeout)
 	defer cancel()
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
