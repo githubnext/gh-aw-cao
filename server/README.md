@@ -106,6 +106,9 @@ storage clients use exact numeric-loopback transports, rejecting redirects,
 environment proxies, metadata-service addresses, and nonlocal destinations.
 The Azurite container uses a disposable internal-only Docker network and a local
 Unix Docker socket; remote Docker contexts and TCP/SSH daemons are refused.
+Docker does not publish ports on internal-only networks, so a host-loopback
+relay carries blob traffic through `docker exec` to the container's loopback
+listener without adding a network with external access or publishing a port.
 Regression probes verify live GitHub, ARM, Entra, and metadata destinations are
 rejected or handled only by local fixtures, and ambient GitHub/Azure/OIDC
 credentials are not inherited.

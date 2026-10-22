@@ -57,14 +57,20 @@ func startSetupAzurite(t *testing.T, ctx context.Context) *azureBlobStore {
 			docker(cleanup, "network", "rm", network)
 		})
 		id := strings.TrimSpace(docker(ctx, "run", "--pull=never", "--detach", "--rm",
-			"--publish", "127.0.0.1::10000", "--env", "AZURITE_ACCOUNTS", "--network", network, setupAzuriteImage,
-			"azurite-blob", "--blobHost", "0.0.0.0", "--silent"))
+			"--env", "AZURITE_ACCOUNTS", "--network", network, setupAzuriteImage,
+			"azurite-blob", "--blobHost", "127.0.0.1", "--silent"))
 		t.Cleanup(func() {
 			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 			defer cancel()
 			docker(cleanup, "rm", "--force", id)
 		})
-		port = strings.TrimSpace(docker(ctx, "port", id, "10000/tcp"))
+		// Docker does not publish ports on an internal-only network. Relay over
+		// the validated local Unix socket instead of granting container egress.
+		port = startSetupAzuriteRelay(t, ctx, func(ctx context.Context) *exec.Cmd {
+			command := exec.CommandContext(ctx, "docker", "--host", host, "exec", "--interactive", id, "node", "-e", setupAzuriteRelayScript, "10000") // #nosec G204 -- local Docker socket, test-owned container, and fixed container-loopback relay.
+			command.Env = env
+			return command
+		})
 	}
 	if !strings.HasPrefix(port, "127.0.0.1:") || strings.ContainsAny(port, "\r\n") {
 		t.Fatalf("Azurite did not bind one numeric-loopback endpoint: %q", port)
