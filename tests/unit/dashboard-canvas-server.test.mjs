@@ -528,7 +528,7 @@ test("canvas dashboard executes only declared CLI actions through the provided e
       id: "copy-package-command",
       label: "Copy add command",
       icon: "copy",
-      command: "gh cao campaigns add octo/packages/demo@abc123",
+      command: "gh cao add octo/packages/demo@abc123",
       placement: "row",
       "copy-only": true,
     },

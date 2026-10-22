@@ -317,7 +317,7 @@ describe('CLI actions', () => {
       id: 'copy-package-command',
       label: 'Copy add command',
       icon: 'copy',
-      command: 'gh cao campaigns add octo/packages/demo@abc123',
+      command: 'gh cao add octo/packages/demo@abc123',
       'copy-only': true
     }], { canExecute: true });
 
@@ -325,7 +325,7 @@ describe('CLI actions', () => {
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
-      'gh cao campaigns add octo/packages/demo@abc123'
+      'gh cao add octo/packages/demo@abc123'
     ));
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -673,7 +673,7 @@ describe('CLI actions', () => {
     rendered?.querySelector('.cli-action-confirm')?.dispatchEvent(new MouseEvent('click'));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(
-      'gh cao campaigns add octo/packages/demo@abc123'
+      'gh cao add octo/packages/demo@abc123'
     ));
     expect(fetch).not.toHaveBeenCalled();
   });

@@ -38,7 +38,7 @@ function resolve() {
 describe('marketplace discovery', () => {
   it('explains that add commands do not use AI in list and detail contracts', () => {
     const detail = dashboard.pages.find((/** @type {{id: string}} */ candidate) => candidate.id === 'marketplace-package');
-    expect(page.views[0].description).toContain('gh cao campaigns add');
+    expect(page.views[0].description).toContain('gh cao add');
     expect(page.views[0].description).not.toContain('gh aw add');
     expect(page.views[0].description).toContain('does not use AI');
     expect(page.acceptance).toContain('use no AI');

@@ -348,7 +348,7 @@ commit, or push. The explicit public-monitoring shortcut below and a previously
 saved public-only scope MAY select a wider exact public collection scope.
 
 Operational campaigns MUST remain separate from installation and setup.
-Operators install campaigns with `gh cao campaigns add`, review and commit
+Operators install campaigns with `gh cao add`, review and commit
 workflows and policy together, then explicitly dispatch authorized work through
 `gh aw run`. Installation and setup MUST NOT commit, push, or dispatch campaigns.
 Validation MUST report a manually paused orchestrator with active workers as a

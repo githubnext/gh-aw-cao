@@ -67,8 +67,27 @@ func TestCampaignCommandInventory(t *testing.T) {
 		names = append(names, command.Name())
 	}
 	slices.Sort(names)
-	if want := []string{"add", "disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
+	if want := []string{"disable", "enable", "mode"}; !reflect.DeepEqual(names, want) {
 		t.Fatalf("campaign command inventory = %v, want %v", names, want)
+	}
+}
+
+func TestCampaignAddIsNotACommand(t *testing.T) {
+	root, stdout, _ := testCommand(t, nil, nil)
+	root.SetArgs([]string{"campaigns", "add", "githubnext/gh-cao/dependabot"})
+	if err := root.Execute(); err == nil {
+		t.Fatal("removed campaigns add command accepted")
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("removed command reported success: %s", stdout)
+	}
+	root, stdout, _ = testCommand(t, nil, nil)
+	root.SetArgs([]string{"campaigns", "--help"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(stdout.String(), "Install a campaign") || strings.Contains(stdout.String(), "\n  add ") {
+		t.Fatalf("removed command advertised in campaign help: %s", stdout)
 	}
 }
 

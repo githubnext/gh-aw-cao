@@ -220,7 +220,9 @@ source mappings are embedded directly from their authoritative JSON; do not
 maintain a separate catalog. SQLite evidence access is read-only and does not
 migrate or repair downloaded projections. `TestNativeStandaloneBinary` runs
 the built binary with an empty `PATH` outside the checkout to enforce this boundary.
-`campaigns add` and `update` pass evolving gh-aw options unchanged.
+Campaign installation through `add` and package updates through `update` pass
+evolving gh-aw options unchanged. Standalone workflow installation retains its
+bounded `--force` and `--engine` options.
 Activity/Dashboard pipeline commands are deliberately not registered in Go;
 their Actions, Node command modules and runtime ownership remain unchanged.
 CI invokes the shipped JavaScript validator directly with

@@ -78,7 +78,7 @@ or try one standalone report with the [Daily Repo Status quickstart](docs/setup/
 From a configured control checkout, `gh cao add daily-repo-status` installs the workflow
 and registers it in `cao.json` with review-only, one-repository limits. Interactive
 commit/push and first-run prompts are separate opt-ins; campaign packages still
-use `gh cao campaigns add`.
+use `gh cao add`.
 For the campaign pattern, follow the manual
 [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
 You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)

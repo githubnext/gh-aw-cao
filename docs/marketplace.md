@@ -20,7 +20,7 @@ The dashboard does not contact registries or install packages. Its **Add**
 action only copies the canonical command:
 
 ```sh
-gh cao campaigns add OWNER/REPOSITORY[/PATH]@COMMIT
+gh cao add OWNER/REPOSITORY[/PATH]@COMMIT
 ```
 
 Individual workflow entries instead copy:
@@ -30,7 +30,7 @@ gh aw add githubnext/agentics/workflows/WORKFLOW.md@COMMIT
 ```
 
 Review the command and run it separately from a trusted checkout.
-`gh cao campaigns add` and `gh aw add` install packages without using AI. AI is used only
+`gh cao add` and `gh aw add` install packages without using AI. AI is used only
 when installed agentic workflows run; copying or running an add command does
 not start those workflows.
 

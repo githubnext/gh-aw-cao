@@ -14,13 +14,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addWorkflowCommand(gh ghExecutor) *cobra.Command {
+func addCommand(gh ghExecutor) *cobra.Command {
 	var force bool
 	var engine string
 	cmd := &cobra.Command{
-		Use:   "add WORKFLOW",
-		Short: "Install and register a standalone CAO workflow",
-		Long: `Install one standalone workflow with gh aw add, then register it in
+		Use:                "add WORKFLOW_OR_CAMPAIGN [OPTIONS...]",
+		Short:              "Install a CAO workflow or campaign",
+		DisableFlagParsing: true,
+		Long: `Install a standalone workflow or campaign with gh aw add.
+
+Campaigns use an OWNER/REPO[/PATH][@REF] coordinate or an existing local
+directory. Campaign options are passed unchanged to gh aw add. CAO materializes
+the exact installed campaign revision and merges its declared workers without
+widening rollout policy. Campaign installation never commits, pushes or runs work.
+
+Standalone workflows are compiled and registered in
 .github/workflows/cao.json. New entries are review-only and limited to one
 repository. Existing policy settings and repository scope are preserved.
 
@@ -33,14 +41,45 @@ and its exact workflow identity. Prepare the shared runtime with gh cao setup.
 Review and publish the workflow, generated lock and policy together.
 Interactive additions separately offer commit/push
 and an opt-in first review run after publication. Both default to No.
-Noninteractive and unchanged additions never publish or run.
-For campaign packages use gh cao campaigns add instead.`,
+Noninteractive and unchanged workflow additions never publish or run.`,
 		Example: `  gh cao add daily-repo-status
   gh cao add daily-repo-status@v1.2.3
   gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
-  gh cao add ./my-report.md --force`,
-		Args: cobra.ExactArgs(1),
+  gh cao add ./my-report.md --force
+  gh cao add githubnext/gh-cao/dependabot@v1.2.3
+  gh cao add ./dependabot --force`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, arg := range args {
+				if arg == "--" {
+					break
+				}
+				if arg == "--help" || arg == "-h" {
+					return cmd.Help()
+				}
+			}
+			if len(args) == 0 {
+				return errors.New("add requires a workflow or campaign")
+			}
+			if !strings.HasPrefix(args[0], "-") {
+				campaign, err := addSourceIsCampaign(args[0])
+				if err != nil {
+					return err
+				}
+				if campaign {
+					result, err := installCampaign(cmd.Context(), gh, args[0], args[1:])
+					if err != nil {
+						return err
+					}
+					return printJSON(cmd, result)
+				}
+			}
+			if err := cmd.Flags().Parse(args); err != nil {
+				return err
+			}
+			args = cmd.Flags().Args()
+			if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+				return err
+			}
 			spec, name, err := standaloneWorkflowSpec(args[0])
 			if err != nil {
 				return err
@@ -82,7 +121,7 @@ For campaign packages use gh cao campaigns add instead.`,
 
 func standaloneWorkflowSpec(input string) (spec, name string, err error) {
 	invalid := func() (string, string, error) {
-		return "", "", errors.New("add requires a catalog workflow name or one explicit .md workflow source; use gh cao campaigns add for campaign packages")
+		return "", "", errors.New("add requires a catalog workflow name, an explicit .md workflow source, or a campaign coordinate or directory")
 	}
 	if input == "" || strings.HasPrefix(input, "-") || strings.ContainsAny(input, "*?[]\\\r\n") {
 		return invalid()

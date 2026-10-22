@@ -1053,7 +1053,7 @@ depends on `internal/ghcli/` and the declarative assets embedded by
 `github.com/cli/go-gh/v2`, the same helper used by gh-aw. The Go command layer
 owns all extension implementation, argument validation and help. Campaign installation, policy
 initialization, campaign mode changes, and workflow enablement run natively in Go.
-`gh cao campaigns add` delegates package ownership and workflow generation to
+`gh cao add` delegates package ownership and workflow generation to
 `gh aw add`, preserves its option vector, then materializes only the selected
 campaign from its installed full `resolvedCommit` SHA or a local catalog's
 Git-tracked files. Archive extraction rejects escaping paths and links; staged
@@ -1220,13 +1220,18 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `gh cao campaigns add` is the
+resources; they do not import the root catalog package. `gh cao add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
 
-`gh cao add WORKFLOW` is the first-class standalone workflow installation command.
-It delegates installation and compilation to gh-aw, verifies the exact standalone
+`gh cao add WORKFLOW_OR_CAMPAIGN` is the single installation command. Bare catalog
+workflow names, explicit `.md` sources, GitHub blob URLs and the published
+Daily Repo Status qualified shorthands select standalone installation; campaign
+coordinates and existing local directories select campaign installation with
+unchanged gh-aw options. There is no separate campaign-add subcommand or
+failure-driven fallback between installation kinds.
+Standalone installation delegates installation and compilation to gh-aw, verifies the exact standalone
 identity and CAO admission gate, and registers new workflows in review mode without
 widening existing policy. Repository enrollment is separate: `gh cao repos add
 OWNER/REPO` verifies one exact repository and stages review-safe policy.
@@ -1329,7 +1334,7 @@ Pages or authentication changes. A fresh bare installation remains scoped to
 the exact control repository with no campaigns before setup.
 
 Campaign installation and execution are separate operator actions through
-`gh cao campaigns add` and `gh aw run`. Operators review and commit workflows
+`gh cao add` and `gh aw run`. Operators review and commit workflows
 and bounded review-mode policy together before dispatching work. Campaign
 installation never commits, pushes or dispatches; setup's separately approved
 publication is monitoring-only.

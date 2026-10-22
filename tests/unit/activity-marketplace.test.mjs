@@ -73,7 +73,7 @@ test("package manifests normalize immutable coordinates and the canonical add co
   });
   assert.equal(normalized.id, "example/packages/demo");
   assert.equal(normalized.source, `example/packages/demo@${SHA}`);
-  assert.equal(normalized["add-command"], `gh cao campaigns add example/packages/demo@${SHA}`);
+  assert.equal(normalized["add-command"], `gh cao add example/packages/demo@${SHA}`);
   assert.deepEqual(normalized["repository-link"], {
     relation: "repository",
     href: "https://github.com/example/packages",

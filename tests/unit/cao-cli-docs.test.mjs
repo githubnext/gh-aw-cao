@@ -177,7 +177,7 @@ test("outcome-to-execution guidance derives structures without granting authorit
 test("CAO command guide covers the operator-facing command surface", () => {
   for (const command of [
     "init", "setup", "setup auth github-app", "setup auth enterprise-app",
-    "setup auth token", "campaigns add OWNER/REPO/CAMPAIGN", "update",
+    "setup auth token", "add OWNER/REPO/CAMPAIGN", "update",
     "upgrade-gh-aw", "campaigns mode preview", "campaigns mode live",
     "campaigns enable", "campaigns disable", "download", "doctor",
     "computation runtime-health", "query", "gh runs", "gh issues", "gh prs",
@@ -231,16 +231,28 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.doesNotMatch(docs, /gh cao validate/);
 });
 
-test("campaign guides use supported native campaign installation", () => {
+test("campaign guides use the unified native add command", () => {
   for (const campaign of ["bug-bash", "repo-assist"]) {
     const guide = readFileSync(`${campaign}/README.md`, "utf8");
-    assert.ok(guide.includes(`gh cao campaigns add githubnext/gh-cao/${campaign}`));
+    assert.ok(guide.includes(`gh cao add githubnext/gh-cao/${campaign}`));
     assert.doesNotMatch(guide, /\.\/cao\.sh (?:add|quickstart)\b/);
   }
+  for (const filename of [
+    "docs/cao-cli.md", "docs/marketplace.md", "docs/configuration.md",
+    "docs/repo-assist-quickstart.md", "skills/cao-cli/SKILL.md",
+    "skills/add-cao-campaign/SKILL.md", "README.md", "CONTRIBUTING.md",
+    "ARCHITECTURE.md", "CODEBASE.yml",
+  ]) {
+    assert.doesNotMatch(readFileSync(filename, "utf8"), /campaigns add/, filename);
+  }
+  assert.match(docs, /gh cao add WORKFLOW_OR_CAMPAIGN/);
+  assert.match(docs, /installs standalone workflows or campaign packages, not repositories/);
+  assert.match(docs, /Campaign installation never commits, pushes\s+or dispatches work/);
+  assert.match(docs, /Standalone workflows accept only `--force` and `--engine`/);
 });
 
 test("manual Repo Assist walkthrough separates installation, execution, and evidence collection", () => {
-  const install = walkthrough.indexOf("gh cao campaigns add githubnext/gh-cao/repo-assist");
+  const install = walkthrough.indexOf("gh cao add githubnext/gh-cao/repo-assist");
   const review = walkthrough.indexOf("gh cao campaigns mode preview repo-assist");
   const run = walkthrough.indexOf("gh aw run repo-assist");
   const collect = walkthrough.indexOf("gh workflow run cao-activity.yml");

@@ -462,7 +462,7 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(quickstart, /deployment pending.*links immediately/);
   assert.match(quickstart, /Declining, blocked, or unattended setup stays local/);
   const campaignWalkthrough = readFileSync(join(root, "docs", "repo-assist-quickstart.md"), "utf8");
-  assert.match(campaignWalkthrough, /gh cao campaigns add githubnext\/gh-cao\/repo-assist/);
+  assert.match(campaignWalkthrough, /gh cao add githubnext\/gh-cao\/repo-assist/);
   assert.match(campaignWalkthrough, /gh aw run repo-assist/);
   assert.doesNotMatch(campaignWalkthrough, /--quickstart|node activity\/cao\.mjs quickstart/);
   assert.doesNotMatch(quickstart, /commits\/main|full commit SHA/);
