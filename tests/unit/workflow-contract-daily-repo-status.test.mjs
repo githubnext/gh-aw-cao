@@ -58,7 +58,7 @@ test("Daily Repo Status preserves single-target standalone execution and shared 
     if (access !== "read") continue;
     assert.equal(control.with[`read_${permission.replaceAll("-", "_")}`], "read", permission);
   }
-  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/repo-status\.md\}\}/);
+  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/daily-repo-status\.md\}\}/);
   assert.equal(report.on.schedule, undefined);
   assert.equal(report.on.workflow_dispatch.inputs.target_repo.required, true);
   assert.deepEqual(report.on.workflow_dispatch.inputs.safe_output_mode, {

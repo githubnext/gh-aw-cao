@@ -192,7 +192,7 @@ target issue, PR, comment, branch or code change.
 
 ## Step 4 - Customize your report (optional)
 
-Add optional report priorities in `.github/cao/repo-status.md`; steering cannot
+Add optional report priorities in `.github/cao/daily-repo-status.md`; steering cannot
 expand authority. Review, commit, and publish your steering change, then repeat
 Step 2 with the same target and review-mode inputs to try it. Edit the Markdown
 workflow source, not its generated `.lock.yml`; if you change the workflow,

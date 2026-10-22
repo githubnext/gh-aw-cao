@@ -321,4 +321,4 @@ SOFTWARE.
 
 </details>
 
-{{#runtime-import? .github/cao/repo-status.md}}
+{{#runtime-import? .github/cao/daily-repo-status.md}}
