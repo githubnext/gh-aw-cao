@@ -25,8 +25,11 @@ export const promptWizardStyles = `
 .prompt-wizard .prompt-wizard-cards .prompt-wizard-card[aria-pressed="true"]{border-color:var(--accent);background:var(--canvas-subtle);box-shadow:inset 0 0 0 1px var(--accent)}
 .prompt-wizard .prompt-wizard-cards .prompt-wizard-card:hover{border-color:var(--accent)}
 .prompt-wizard :is(button,.table-intent-button){min-height:44px}
-.prompt-wizard-summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:16px;background:var(--canvas-subtle);border:1px solid var(--border);border-radius:6px;max-height:480px;overflow:auto}
-.prompt-wizard-review>.table-intent-control{display:block;margin:20px 0}
+.prompt-wizard-summary{display:grid;gap:20px;overflow-wrap:anywhere;padding:20px;background:var(--canvas-subtle);border:1px solid var(--border);border-radius:6px}
+.prompt-wizard-summary dt{font-weight:600;color:var(--muted)}
+.prompt-wizard-summary dd{margin:6px 0 0;white-space:pre-wrap}
+.prompt-wizard-summary p{margin:6px 0 0;color:var(--muted);font-size:13px;white-space:pre-line}
+.prompt-wizard-actions>.table-intent-control{margin-left:auto}
 .prompt-wizard-status{display:block;color:var(--muted)}
 .prompt-wizard [hidden]{display:none!important}
 @media(max-width:600px){.prompt-wizard-progress{gap:6px}.prompt-wizard-progress li{font-size:12px;padding:6px}.prompt-wizard-options{padding:6px}}

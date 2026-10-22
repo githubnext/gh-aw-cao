@@ -22,16 +22,24 @@ const fetchJson = async (file) => JSON.parse(await fetchText(file));
 const [manifest, generation, license] = await Promise.all([
   fetchJson('patterns/manifest.json'), fetchJson('patterns/workflow-generation.json'), fetchText('LICENSE')
 ]);
+const outputIds = new Set([
+  ...Object.entries(generation.outputs).filter(([, definition]) => !definition.alias).map(([id]) => id),
+  ...fields.get('outputs').options.filter((option) => !Object.hasOwn(generation.outputs, option.value)).map((option) => option.value)
+]);
 const patterns = [];
 for (let start = 0; start < manifest.archetypes.length; start += 6) {
   patterns.push(...await Promise.all(manifest.archetypes.slice(start, start + 6).map(async (id) => {
     if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error('Invalid upstream archetype identifier.');
     const pattern = await fetchJson(`patterns/archetypes/${id}.json`);
-    if (pattern.id !== id || typeof pattern.label !== 'string' || !Array.isArray(pattern.tips)) {
+    if (pattern.id !== id || typeof pattern.label !== 'string' || !Array.isArray(pattern.tips)
+      || !Array.isArray(pattern.recommended_tools) || pattern.recommended_tools.some((tool) => typeof tool !== 'string')) {
       throw new Error(`Invalid upstream archetype: ${id}`);
     }
+    const unsupported = pattern.recommended_tools.filter((tool) => !outputIds.has(tool));
+    if (unsupported.length) throw new Error(`Declare safe-output choices for ${id}: ${unsupported.join(', ')}`);
     return {
       value: id, label: pattern.label,
+      defaults: { outputs: [...new Set(pattern.recommended_tools)] },
       summary: pattern.description,
       icon: octiconNames.includes(generation.archetypes?.[id]?.icon) ? generation.archetypes[id].icon : 'workflow',
       description: [pattern.description, ...pattern.tips].join('\n'),
@@ -40,14 +48,18 @@ for (let start = 0; start < manifest.archetypes.length; start += 6) {
   })));
 }
 fields.get('pattern').options = [
-  { value: 'custom', label: 'Custom automation', summary: 'Design an automation from your own requirements.', icon: 'sparkle', description: 'Start from your own requirements.' }, ...patterns
+  { value: 'custom', label: 'Custom automation', summary: 'Design an automation from your own requirements.', icon: 'sparkle', description: 'Start from your own requirements.', defaults: { outputs: [] } }, ...patterns
 ];
 for (const [field, definitions] of [['triggers', generation.triggers], ['outputs', generation.outputs], ['extras', generation.extras]]) {
   const authored = new Map((field === 'extras' ? fields.get(field).options : []).map((option) => [option.value, option]));
-  fields.get(field).options = Object.entries(definitions).filter(([, definition]) => !definition.alias).map(([value, context]) => ({
+  const extensions = field === 'outputs' ? fields.get(field).options.filter((option) => !Object.hasOwn(definitions, option.value)) : [];
+  fields.get(field).options = [...Object.entries(definitions).filter(([, definition]) => !definition.alias).map(([value, context]) => ({
     value, label: authored.get(value)?.label ?? value.replaceAll('_', ' ').replaceAll('-', ' '),
-    description: authored.get(value)?.description ?? context.description ?? context.requirement ?? value, context
-  }));
+    description: authored.get(value)?.description ?? context.description ?? context.requirement ?? value,
+    ...(field === 'extras' ? { instructions: context.requirement }
+      : field === 'outputs' ? { instructions: `Use the \`${context.safe_output ?? value}\` safe output to ${context.description}.` } : {}),
+    context
+  })), ...extensions];
 }
 wizard.provenance = {
   repository, revision,

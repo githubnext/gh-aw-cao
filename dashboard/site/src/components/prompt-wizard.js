@@ -1,11 +1,11 @@
 import { h } from '../dom.js';
-import { effect, state } from '../reactive.js';
+import { effect, render, state } from '../reactive.js';
 import { normalizeAction } from '../action-model.js';
 import { octicon } from '../octicons.js';
-import { parsePromptWizard, initialWizardValues, wizardFieldVisible, wizardFieldError, wizardDesign, buildWizardPrompt } from '../prompt-wizard.js';
+import { parsePromptWizard, initialWizardValues, updateWizardValues, wizardFieldVisible, wizardFieldError, wizardReview, buildWizardPrompt } from '../prompt-wizard.js';
 import { createFactoryScope } from './factory-elements.js';
 import { renderPromptPreviewAction } from './data-view.js';
-import { renderLiveRegion } from './ui-primitives.js';
+import { renderDlRow, renderLiveRegion } from './ui-primitives.js';
 import { publishNotification } from '../notification-service.js';
 import { createDebug, diagnosticErrorName } from '../debug.js';
 
@@ -20,14 +20,17 @@ export function renderPromptWizard(context) {
   const active = state(0);
   const error = state('');
   const reviewedPrompt = state('');
-  const reviewJson = state('');
+  const reviewEntries = state(/** @type {ReturnType<typeof wizardReview>} */ ([]));
+  const fieldsById = new Map(wizard.steps.flatMap((step) => step.fields.map((field) => [field.id, field])));
   const prefix = `prompt-wizard-${++nextWizardId}`;
   /** @type {Map<string, { root: HTMLElement, control: HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement|HTMLButtonElement, description: HTMLElement }>} */
   const controls = new Map();
   /** @param {string} id @param {string|string[]} value */
   const update = (id, value) => {
     if (scope.signal.aborted) return;
-    values.set((current) => ({ ...current, [id]: value }));
+    const field = fieldsById.get(id);
+    if (!field) throw new Error('Wizard field is not declared.');
+    values.set((current) => updateWizardValues(field, current, value));
     controls.get(id)?.control.removeAttribute('aria-invalid');
     reviewedPrompt.set('');
     error.set('');
@@ -104,15 +107,15 @@ export function renderPromptWizard(context) {
   const status = renderLiveRegion('output', 'prompt-wizard-status');
   const progress = h('ol', { className: 'prompt-wizard-progress', 'aria-label': 'Wizard progress' },
     ...[...wizard.steps.map((step) => step.title), 'Review'].map((title) => h('li', null, title)));
-  const summary = h('pre', { className: 'prompt-wizard-summary' });
+  const summary = h('dl', { className: 'prompt-wizard-summary' });
+  render(summary, () => reviewEntries.get().map((entry) => renderDlRow(entry.label, entry.value, entry.description)), { signal: scope.signal });
   const preview = renderPromptPreviewAction(normalizeAction({
     level: 'propose', label: wizard.prompt.label, presentation: 'copy-prompt'
   }, { id: `${context.viewId ?? 'wizard'}-generate`, type: 'prompt' }), reviewedPrompt.get);
   const review = h('section', { className: 'prompt-wizard-review', 'aria-label': 'Review your design' },
     h('h3', { tabindex: -1 }, 'Review your design'),
-    h('p', null, 'Use the prompt button to review and copy the generation prompt for your coding agent. No commands are queued, and no automation is installed or activated here.'),
-    h('details', { open: true }, h('summary', null, 'Selected requirements and historical pattern guidance'), summary),
-    preview);
+    h('p', null, 'Confirm the scenario, outputs and capabilities below. A title and file name will be inferred. Generate prompt opens a preview for your coding agent; nothing is installed or activated here.'),
+    summary);
   const validateStep = () => {
     const step = wizard.steps[active.get()];
     for (const field of step?.fields ?? []) {
@@ -149,7 +152,7 @@ export function renderPromptWizard(context) {
       try {
         if (active.get() === wizard.steps.length - 1) {
           reviewedPrompt.set(buildWizardPrompt(wizard, values.get()));
-          reviewJson.set(JSON.stringify(wizardDesign(wizard, values.get()), null, 2));
+          reviewEntries.set(wizardReview(wizard, values.get()));
         }
         active.set(active.get() + 1);
         error.set('');
@@ -164,7 +167,7 @@ export function renderPromptWizard(context) {
   const next = /** @type {HTMLButtonElement} */ (h('button', {
     type: 'button', className: 'cli-action-confirm', onClick: advance
   }, 'Next'));
-  const navigation = h('div', { className: 'prompt-wizard-actions' }, back, next);
+  const navigation = h('div', { className: 'prompt-wizard-actions' }, back, next, preview);
   const root = h('section', { className: 'prompt-wizard', 'aria-label': context.title },
     h('p', null, wizard.intro),
     progress,
@@ -181,9 +184,9 @@ export function renderPromptWizard(context) {
     });
     back.disabled = current === 0;
     next.hidden = current === wizard.steps.length;
+    preview.hidden = current !== wizard.steps.length;
     next.textContent = current === wizard.steps.length - 1 ? 'Review' : 'Next';
     review.hidden = current !== wizard.steps.length;
-    summary.textContent = reviewJson.get();
     status.textContent = error.get() || `Step ${current + 1} of ${wizard.steps.length + 1}: ${wizard.steps[current]?.title ?? 'Review'}`;
     for (const step of wizard.steps) {
       for (const field of step.fields) {
@@ -191,11 +194,17 @@ export function renderPromptWizard(context) {
         if (!item) continue;
         item.root.hidden = !wizardFieldVisible(field, values.get());
         if (field.control === 'select') {
+          if (item.control.value !== values.get()[field.id]) item.control.value = String(values.get()[field.id]);
           item.description.textContent = field.options?.find((option) => option.value === values.get()[field.id])?.description ?? '';
+        } else if (field.control === 'checkboxes') {
+          const selected = values.get()[field.id];
+          for (const input of item.root.querySelectorAll('input')) input.checked = Array.isArray(selected) && selected.includes(input.value);
         } else if (field.control === 'cards') {
           for (const choice of item.root.querySelectorAll('button')) {
             choice.setAttribute('aria-pressed', String(choice.value === values.get()[field.id]));
           }
+        } else if (item.control.value !== values.get()[field.id]) {
+          item.control.value = String(values.get()[field.id]);
         }
       }
     }

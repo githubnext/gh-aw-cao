@@ -45,15 +45,29 @@ for (const width of [390, 1280]) {
     await expect(page.getByLabel('Campaign target repositories (required)')).toBeFocused();
     await page.getByLabel('Per-run scope and limits (optional)').fill('One dispatched target, one issue per worker.');
     await page.getByLabel('Campaign target repositories (required)').fill('acme/one\nacme/two');
-    await page.getByRole('checkbox', { name: 'add comment', exact: false }).check();
+    await expect(page.getByRole('checkbox', { name: 'add comment', exact: false })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'add labels', exact: false })).toBeChecked();
     await page.getByRole('button', { name: 'Review', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Review your design', exact: true })).toBeFocused();
+    const review = page.getByRole('region', { name: 'Review your design', exact: true });
+    await expect(review.locator('pre')).toHaveCount(0);
+    await expect(review.locator('dl')).toContainText('Issue Triage');
+    await expect(review.locator('dl')).toContainText('add comment, add labels');
+    await expect(review).not.toContainText('recommended_tools');
+    await expect(review).not.toContainText('Selected requirements and historical pattern guidance');
+    const generate = page.getByRole('button', { name: 'Generate prompt', exact: true });
+    await expect(page.locator('.prompt-wizard-actions')).toContainText('Generate prompt');
+    const navigation = page.locator('.prompt-wizard-actions');
+    const [generateBox, navigationBox] = await Promise.all([generate.boundingBox(), navigation.boundingBox()]);
+    if (!generateBox || !navigationBox) throw new Error('Review navigation must be visible.');
+    expect(Math.abs(generateBox.x + generateBox.width - navigationBox.x - navigationBox.width)).toBeLessThanOrEqual(2);
     await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Generate prompt prompt preview' });
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('.table-intent-preview')).toContainText('acme/one');
     await expect(dialog.locator('.table-intent-preview')).toContainText('default to review mode');
-    await expect(dialog.locator('.table-intent-preview')).toContainText('"recommended_triggers"');
+    await expect(dialog.locator('.table-intent-preview')).not.toContainText('recommended_triggers');
+    await expect(dialog.locator('.table-intent-preview')).toContainText('Create a Pull Request for the following task:');
     await expect(dialog.getByRole('button', { name: 'Copy prompt' })).toBeVisible();
     const bounds = await dialog.boundingBox();
     expect(bounds?.width).toBeLessThanOrEqual(width);
@@ -130,6 +144,8 @@ test.describe('populated dashboard wizard', () => {
         await testInfo.attach(`Optional scenario refinements (${width}px)`, { path: goalScreenshot, contentType: 'image/png' });
         await page.getByRole('button', { name: 'Next', exact: true }).click();
         await expect(page.getByLabel('Campaign target repositories (required)')).toBeHidden();
+        await expect(page.getByRole('checkbox', { name: 'add comment', exact: false })).toBeChecked();
+        await expect(page.getByRole('checkbox', { name: 'add labels', exact: false })).toBeChecked();
         const scope = page.getByLabel('Per-run scope and limits (optional)');
         const constraints = page.getByLabel('Safety constraints and non-goals (optional)');
         await expect(scope).not.toHaveAttribute('required');
@@ -161,6 +177,13 @@ test.describe('populated dashboard wizard', () => {
         await page.screenshot({ path: behaviorScreenshot, fullPage: true });
         await testInfo.attach(`Optional behavior and bottom navigation (${width}px)`, { path: behaviorScreenshot, contentType: 'image/png' });
         await page.getByRole('button', { name: 'Review', exact: true }).click();
+        const review = page.getByRole('region', { name: 'Review your design', exact: true });
+        await expect(review.locator('pre')).toHaveCount(0);
+        await expect(review.locator('dl')).toContainText('Classify and label new issues');
+        await expect(review.locator('dl')).toContainText('Infer conservative per-run limits');
+        const reviewScreenshot = testInfo.outputPath(`workflow-wizard-review-${width}.png`);
+        await page.screenshot({ path: reviewScreenshot, fullPage: true });
+        await testInfo.attach(`Human-readable review (${width}px)`, { path: reviewScreenshot, contentType: 'image/png' });
         await page.getByRole('button', { name: 'Generate prompt', exact: true }).click();
         expect(commands).toEqual([]);
         await expect(page.getByRole('button', { name: 'Start agent task', exact: true })).toHaveCount(0);
@@ -170,10 +193,17 @@ test.describe('populated dashboard wizard', () => {
         await testInfo.attach(`Workflow wizard prompt (${width}px)`, { path: screenshot, contentType: 'image/png' });
         await page.getByRole('dialog').getByRole('button', { name: 'Copy prompt', exact: true }).click();
         await expect(page.getByRole('dialog')).toContainText('Prompt copied.');
-        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('Classify and label new issues');
-        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('infer them from the selected scenario');
-        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('fixed safety and rollout boundaries below always apply');
-        expect(await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'))).toContain('Infer a concise title and kebab-case workflow file name');
+        const copied = await page.evaluate(() => Reflect.get(window, 'copiedWizardPrompt'));
+        expect(copied).toMatch(/^Create a Pull Request for the following task:\n/);
+        expect(copied).toContain('Classify and label new issues');
+        expect(copied).toContain('infer them from the selected scenario');
+        expect(copied).toContain('fixed safety and rollout boundaries below always apply');
+        expect(copied).toContain('Infer a concise title and kebab-case file name');
+        expect(copied).toContain('`add-comment` safe output');
+        for (const forbidden of ['Historical pattern provenance', 'top_repos', 'anti_patterns', 'recommended_tools', '"config"', 'User design (JSON)']) {
+          expect(copied).not.toContain(forbidden);
+        }
+        expect(copied).not.toMatch(/campaign/i);
         expect(commands).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       } finally {

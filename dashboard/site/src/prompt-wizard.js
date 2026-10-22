@@ -1,11 +1,10 @@
-import { constrainPrompt } from './action-model.js';
 import { isSafeRepositorySlug } from './validator-common.js';
 import octiconNames from './octicon-names.json' with { type: 'json' };
 
 /**
- * @typedef {{ value: string, label: string, description?: string, summary?: string, icon?: string, context?: unknown }} WizardOption
+ * @typedef {{ value: string, label: string, description?: string, summary?: string, instructions?: string, icon?: string, context?: unknown, defaults?: WizardValues }} WizardOption
  * @typedef {{ id: string, label: string, control: 'text'|'textarea'|'select'|'cards'|'checkboxes', required?: boolean,
- *   'advance-on-select'?: boolean,
+ *   'advance-on-select'?: boolean, 'empty-message'?: string,
  *   format?: 'identifier'|'repositories', 'max-length'?: number, placeholder?: string, default?: string|string[],
  *   when?: { field: string, equals: string }, options?: WizardOption[] }} WizardField
  * @typedef {{ id: string, title: string, description?: string, fields: WizardField[] }} WizardStep
@@ -48,7 +47,7 @@ export function parsePromptWizard(value) {
     if (step.description !== undefined) text(step.description, 'step.description');
     if (!Array.isArray(step.fields) || !step.fields.length || step.fields.length > 20) throw new Error('Each wizard step must contain 1 to 20 fields.');
     for (const entry of step.fields) {
-      const field = mapping(entry, ['id', 'label', 'control', 'required', 'advance-on-select', 'format', 'max-length', 'placeholder', 'default', 'when', 'options'], 'wizard field');
+      const field = mapping(entry, ['id', 'label', 'control', 'required', 'advance-on-select', 'empty-message', 'format', 'max-length', 'placeholder', 'default', 'when', 'options'], 'wizard field');
       text(field.id, 'field.id', 80);
       text(field.label, 'field.label', 200);
       if (!/^[a-z][a-z0-9-]*$/.test(field.id) || fields.has(field.id)) throw new Error('Wizard field identifiers must be unique kebab-case.');
@@ -58,6 +57,7 @@ export function parsePromptWizard(value) {
         throw new Error('field.advance-on-select must be a boolean on a cards control.');
       }
       if (field.placeholder !== undefined) text(field.placeholder, 'field.placeholder');
+      if (field['empty-message'] !== undefined) text(field['empty-message'], 'field.empty-message', 1000);
       if (field['max-length'] !== undefined && (!Number.isInteger(field['max-length']) || Number(field['max-length']) < 1 || Number(field['max-length']) > 8000)) {
         throw new Error('field.max-length must be an integer from 1 to 8000.');
       }
@@ -67,13 +67,14 @@ export function parsePromptWizard(value) {
         if (!Array.isArray(field.options) || !field.options.length || field.options.length > 100) throw new Error('Choice fields require 1 to 100 options.');
         const values = new Set();
         for (const entry of field.options) {
-          const option = mapping(entry, ['value', 'label', 'description', 'summary', 'icon', 'context'], 'wizard option');
+          const option = mapping(entry, ['value', 'label', 'description', 'summary', 'instructions', 'icon', 'context', 'defaults'], 'wizard option');
           text(option.value, 'option.value', 100);
           text(option.label, 'option.label', 200);
           if (!/^[a-z][a-z0-9_-]*$/.test(option.value) || values.has(option.value)) throw new Error('Wizard option values must be unique identifiers.');
           values.add(option.value);
           if (option.description !== undefined) text(option.description, 'option.description');
           if (option.summary !== undefined) text(option.summary, 'option.summary', 1000);
+          if (option.instructions !== undefined) text(option.instructions, 'option.instructions');
           if (option.icon !== undefined && !octiconNames.includes(String(option.icon))) throw new Error('option.icon must be a canonical Octicon.');
           if (option.context !== undefined && JSON.stringify(option.context).length > 30_000) throw new Error('Wizard option context is too large.');
         }
@@ -91,6 +92,20 @@ export function parsePromptWizard(value) {
         if (error) throw new Error(`Invalid default: ${error}`);
       }
       fields.set(field.id, parsed);
+    }
+  }
+  for (const field of fields.values()) {
+    for (const option of field.options ?? []) {
+      if (option.defaults === undefined) continue;
+      if (!['select', 'cards'].includes(field.control)) throw new Error('option.defaults requires a single-choice control.');
+      const defaults = mapping(option.defaults, [...fields.keys()], 'option.defaults');
+      if (!Object.keys(defaults).length) throw new Error('option.defaults must name a field to prefill.');
+      for (const [id, value] of Object.entries(defaults)) {
+        const target = fields.get(id);
+        if (!target || id === field.id) throw new Error('option.defaults must reference another declared field.');
+        const error = wizardFieldError({ ...target, required: false }, value);
+        if (error) throw new Error(`Invalid option default: ${error}`);
+      }
     }
   }
   if (wizard.provenance !== undefined) {
@@ -133,6 +148,13 @@ export function initialWizardValues(wizard) {
   ])));
 }
 
+/** @param {WizardField} field @param {WizardValues} values @param {string|string[]} value @returns {WizardValues} */
+export function updateWizardValues(field, values, value) {
+  const defaults = typeof value === 'string' && values[field.id] !== value
+    ? field.options?.find((option) => option.value === value)?.defaults : undefined;
+  return { ...values, ...structuredClone(defaults ?? {}), [field.id]: value };
+}
+
 /** @param {PromptWizard} wizard @param {WizardValues} values */
 export function wizardDesign(wizard, values) {
   return Object.fromEntries(wizard.steps.flatMap((step) => step.fields.flatMap((field) => {
@@ -149,13 +171,41 @@ export function wizardDesign(wizard, values) {
   })));
 }
 
+/** @param {PromptWizard} wizard @param {WizardValues} values @returns {Array<{ label: string, value: string, description: string }>} */
+export function wizardReview(wizard, values) {
+  const design = wizardDesign(wizard, values);
+  return wizard.steps.flatMap((step) => step.fields.flatMap((field) => {
+    const answer = design[field.id];
+    if (!answer) return [];
+    const labels = answer.choices?.map((/** @type {WizardOption} */ option) => option.label).join(', ');
+    const raw = Array.isArray(answer.value) ? answer.value.join(', ') : answer.value.trim();
+    const value = labels || raw || field['empty-message'] || 'Not specified';
+    const description = (answer.choices ?? []).map((/** @type {WizardOption} */ option) => option.summary ?? option.description ?? '')
+      .filter((/** @type {string} */ detail) => detail && detail !== value).join('\n');
+    return [{ label: field.label, value, description }];
+  }));
+}
+
 /** @param {PromptWizard} wizard @param {WizardValues} values */
 export function buildWizardPrompt(wizard, values) {
-  const prompt = constrainPrompt([
+  const design = wizardDesign(wizard, values);
+  const sections = wizard.steps.flatMap((step) => step.fields.flatMap((field) => {
+    const answer = design[field.id];
+    if (!answer || typeof answer.value === 'string' && !answer.value.trim() && !field.required) return [];
+    const title = field.label.replace(/ \(optional\)$/, '');
+    const choices = /** @type {WizardOption[]} */ (answer.choices ?? []);
+    const content = choices.length
+      ? choices.map((option) => [option.label, option.instructions ?? option.summary ?? option.description].filter(Boolean).join('\n')).join('\n\n')
+      : typeof answer.value === 'string' ? answer.value.trim()
+        : answer.value.length ? answer.value.join(', ') : field['empty-message'] ?? 'None selected.';
+    return [`### ${title}\n${content}`];
+  }));
+  const prompt = [
+    'Create a Pull Request for the following task:',
     wizard.prompt.instructions,
-    wizard.provenance ? `Historical pattern provenance:\n${JSON.stringify(wizard.provenance, (key, value) => key === 'license' ? undefined : value, 2)}` : '',
-    `User design (JSON):\n${JSON.stringify(wizardDesign(wizard, values), null, 2)}`
-  ].filter(Boolean).join('\n\n'), 'propose');
+    '## Task requirements',
+    ...sections
+  ].join('\n\n');
   if (prompt.length > 100_000) throw new Error('Generation prompt exceeds the 100,000-character limit. Shorten the design.');
   return prompt;
 }

@@ -7,7 +7,7 @@ vi.mock('../../src/data-processor.js', () => ({
 }));
 import { authoritativeDashboard, authoritativeDashboardSource } from '../authoritative-dashboard.js';
 import contract from '../fixtures/wizard-contract.json' with { type: 'json' };
-import { parsePromptWizard, initialWizardValues, wizardDesign, buildWizardPrompt } from '../../src/prompt-wizard.js';
+import { parsePromptWizard, initialWizardValues, updateWizardValues, wizardDesign, wizardReview, buildWizardPrompt } from '../../src/prompt-wizard.js';
 import { renderPromptWizard } from '../../src/components/prompt-wizard.js';
 import { setDeclaredCliActions } from '../../src/components/cli-actions.js';
 import { validateDashboardDocument } from '../../src/validator.js';
@@ -123,14 +123,14 @@ describe('declarative wizard contract', () => {
   it('preserves explicit choices and bounds Campaign generation without elevating mined recommendations', () => {
     const values = { ...completeValues(), artifact: 'campaign', targets: 'acme/one\nacme/two', pattern: 'issue-triage', outputs: ['add-comment'] };
     const prompt = buildWizardPrompt(wizard, values);
-    expect(prompt).toContain('Proposal only.');
+    expect(prompt).toMatch(/^Create a Pull Request for the following task:\n/);
     expect(prompt).toContain('aw.yml');
     expect(prompt).toContain('default to review mode');
-    expect(prompt).toContain('Explicit selections override recommendations.');
-    expect(prompt).toContain('"targets"');
-    expect(prompt).toContain('"recommended_triggers"');
-    expect(prompt).toContain('"success_rate": 0.57');
-    expect(prompt).toContain(contract.revision);
+    expect(prompt).toContain('Honor the selected safe outputs and capabilities');
+    expect(prompt).toContain('Campaign target repositories');
+    expect(prompt).not.toContain('recommended_triggers');
+    expect(prompt).not.toContain('success_rate');
+    expect(prompt).not.toContain(contract.revision);
     expect(prompt).toContain('gh aw compile');
     expect(prompt).toContain('draft pull request');
     expect(prompt).toContain('Infer a concise title and kebab-case campaign package name');
@@ -138,6 +138,37 @@ describe('declarative wizard contract', () => {
     expect(prompt).not.toContain('MIT License');
     expect(values.outputs).toEqual(['add-comment']);
     expect(wizardDesign(wizard, { ...values, artifact: 'workflow' })).not.toHaveProperty('targets');
+  });
+
+  it('declares precise editable output defaults for every scenario, not broad permission categories', () => {
+    const patterns = wizard.steps[0].fields[0].options ?? [];
+    for (const option of patterns) {
+      const pattern = /** @type {{ pattern?: { recommended_tools: string[] } }} */ (option.context)?.pattern;
+      expect(option.defaults?.outputs).toEqual(pattern?.recommended_tools ?? []);
+    }
+    const field = wizard.steps[0].fields[0];
+    const selected = updateWizardValues(field, completeValues(), 'issue-triage');
+    expect(selected.outputs).toEqual(['add-comment', 'add-labels']);
+    expect(updateWizardValues(field, { ...selected, outputs: [] }, 'issue-triage').outputs).toEqual([]);
+    expect(updateWizardValues(field, selected, 'code-improvement').outputs).toEqual(['create-pull-request']);
+    expect(updateWizardValues(field, selected, 'custom').outputs).toEqual([]);
+  });
+
+  it('describes the review in human terms without showing the mined JSON context', () => {
+    const entries = wizardReview(wizard, {
+      ...completeValues(), pattern: 'issue-triage', outputs: ['add-comment', 'add-labels'],
+      purpose: '', success: '', scope: '', constraints: ''
+    });
+    expect(entries.find((entry) => entry.label === 'Workflow type')).toMatchObject({
+      value: 'Issue Triage', description: 'Classify and label new issues'
+    });
+    expect(entries.find((entry) => entry.label === 'Agent engine')?.value).toBe('GitHub Copilot');
+    expect(entries.find((entry) => entry.label === 'Allowed safe outputs')?.value).toBe('add comment, add labels');
+    expect(entries.find((entry) => entry.label === 'Per-run scope and limits (optional)')?.value).toContain('Infer conservative');
+    expect(JSON.stringify(entries)).not.toContain('recommended_tools');
+    expect(JSON.stringify(entries)).not.toContain('success_rate');
+    expect(wizardReview(wizard, { ...completeValues(), outputs: [] })
+      .find((entry) => entry.label === 'Allowed safe outputs')?.value).toContain('Read-only');
   });
 
   it('explains each optional capability while preserving its upstream tool or safe-output context', () => {
@@ -152,8 +183,8 @@ describe('declarative wizard contract', () => {
     }
     const prompt = buildWizardPrompt(wizard, { ...completeValues(), extras: ['memory', 'charts'] });
     expect(prompt).toContain('Remember across runs');
-    expect(prompt).toContain('"tool": "cache-memory"');
-    expect(prompt).toContain('"safe_output": "upload-assets"');
+    expect(prompt).toContain('cache-memory tool');
+    expect(prompt).toContain('upload-assets safe output');
   });
 
   it('rejects missing, forged, duplicate and oversized answers instead of generating a partial prompt', () => {
@@ -191,6 +222,12 @@ describe('declarative wizard contract', () => {
       (/** @type {any} */ value) => { value.steps[0].fields[0].default = 'missing'; },
       (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].callback = 'script'; },
       (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].icon = 'not-an-icon'; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].instructions = {}; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].defaults = { missing: [] }; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].defaults = { pattern: 'custom' }; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].defaults = { outputs: ['missing'] }; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0].options[0].defaults = { outputs: 'add-comment' }; },
+      (/** @type {any} */ value) => { value.steps[0].fields[0]['empty-message'] = false; },
       (/** @type {any} */ value) => { value.steps[1].fields[0]['advance-on-select'] = true; },
       (/** @type {any} */ value) => { value.provenance.revision = 'main'; }
     ]) {
@@ -212,8 +249,13 @@ describe('wizard interaction and lifecycle', () => {
     if (artifact === 'campaign') input(root, 'Campaign target repositories', 'acme/one');
     button(root, 'Review').click();
     expect(root.querySelector('.prompt-wizard-review')?.hasAttribute('hidden')).toBe(false);
+    expect(root.querySelector('.prompt-wizard-review pre')).toBeNull();
+    expect(root.querySelector('.prompt-wizard-review')?.textContent).not.toContain('Selected requirements and historical pattern guidance');
+    expect(root.querySelector('.prompt-wizard-summary')?.tagName).toBe('DL');
+    expect(root.querySelector('.prompt-wizard-summary')?.textContent).toContain('Triage issues.');
     expect(queue.enqueue).not.toHaveBeenCalled();
     const promptButton = button(root, contract['prompt-label']);
+    expect(promptButton.closest('.prompt-wizard-actions')).not.toBeNull();
     expect(promptButton.getAttribute('data-intent-presentation')).toBe(contract.presentation);
     expect(promptButton.getAttribute('data-action-level')).toBe('propose');
     promptButton.click();
@@ -226,7 +268,7 @@ describe('wizard interaction and lifecycle', () => {
     button(root, 'Copy prompt').click();
     await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0][0]).toContain('Triage issues.');
-    expect(writeText.mock.calls[0][0]).toContain(`"value": "${artifact}"`);
+    expect(writeText.mock.calls[0][0]).toContain(artifact === 'workflow' ? 'Agentic Workflow' : 'Campaign');
     expect(queue.enqueue).not.toHaveBeenCalled();
     expect(queue.attach).not.toHaveBeenCalled();
     button(root, 'Close prompt preview').click();
@@ -236,17 +278,65 @@ describe('wizard interaction and lifecycle', () => {
     expect(root.querySelector('[id$="-purpose"]')).toHaveProperty('value', 'Triage issues.');
   });
 
-  it('requires explicit Campaign targets and never auto-selects recommended outputs or capabilities', () => {
+  it('writes a focused natural-language AW prompt without campaign or historical metadata', () => {
+    const prompt = buildWizardPrompt(wizard, {
+      ...completeValues(), pattern: 'issue-triage', purpose: '', success: '', scope: '', constraints: '',
+      outputs: ['add-comment', 'add-labels'], extras: ['memory']
+    });
+    expect(prompt).toMatch(/^Create a Pull Request for the following task:\n/);
+    expect(prompt).toContain('Issue Triage\nClassify and label new issues');
+    expect(prompt).toContain('`add-comment` safe output');
+    expect(prompt).toContain('cache-memory tool');
+    for (const forbidden of [
+      'Proposal only.', 'Historical pattern provenance', 'top_repos', 'anti_patterns',
+      'recommended_tools', '"config":', 'User design (JSON)', contract.revision, 'gh-cao'
+    ]) expect(prompt).not.toContain(forbidden);
+    expect(prompt).not.toMatch(/campaign/i);
+    expect(prompt).not.toContain('### What should the agent do?');
+    expect(prompt).not.toContain('### Intent and acceptance criteria');
+    const campaign = buildWizardPrompt(wizard, {
+      ...completeValues(), pattern: 'issue-triage', artifact: 'campaign', targets: 'acme/one'
+    });
+    expect(campaign).toContain('aw.yml campaign manifest');
+    expect(campaign).toContain('default to review mode');
+    expect(campaign).toContain('acme/one');
+    expect(campaign).toContain('gh-cao');
+  });
+
+  it('requires Campaign targets and preselects scenario outputs but not optional capabilities', () => {
     const root = mount();
     fillGoal(root, 'campaign', 'issue-triage');
     input(root, 'Per-run scope and limits', 'One dispatched target per worker.');
     button(root, 'Review').click();
     expect(root.textContent).toContain('Campaign target repositories is required.');
-    expect(root.querySelectorAll('.prompt-wizard-options input:checked')).toHaveLength(1);
+    expect(root.querySelectorAll('.prompt-wizard-options input:checked')).toHaveLength(3);
     input(root, 'Campaign target repositories', 'acme/one');
     button(root, 'Review').click();
     button(root, contract['prompt-label']).click();
     expect(root.querySelector('.table-intent-preview')?.textContent).toContain('acme/one');
+  });
+
+  it('retains output edits on the same type and replaces them when a different type is chosen', () => {
+    const root = mount();
+    fillGoal(root, 'workflow', 'issue-triage');
+    const comment = /** @type {HTMLInputElement} */ (root.querySelector('.prompt-wizard-options input[value="add-comment"]'));
+    const labels = /** @type {HTMLInputElement} */ (root.querySelector('.prompt-wizard-options input[value="add-labels"]'));
+    expect(comment.checked).toBe(true);
+    expect(labels.checked).toBe(true);
+    comment.click();
+    labels.click();
+    button(root, 'Back').click();
+    button(root, 'Back').click();
+    button(root, 'Issue Triage').click();
+    button(root, 'Next').click();
+    expect(comment.checked).toBe(false);
+    expect(labels.checked).toBe(false);
+    button(root, 'Back').click();
+    button(root, 'Back').click();
+    button(root, 'Code Improvement').click();
+    button(root, 'Next').click();
+    expect(comment.checked).toBe(false);
+    expect(/** @type {HTMLInputElement} */ (root.querySelector('.prompt-wizard-options input[value="create-pull-request"]')).checked).toBe(true);
   });
 
   it('uses declarative advance-on-select and preserves an explicitly reviewed card choice on Back', () => {

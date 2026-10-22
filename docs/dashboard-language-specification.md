@@ -97,52 +97,49 @@ configuration rather than activity evidence: browser-local IndexedDB, local-serv
 SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
 element does not query, derive, or infer a storage engine from retained rows.
 
-The `prompt-wizard` element declares `data.sources: []` and `config.wizard`.
-It is an interaction-only authoring surface: mutable answers, conditional form
-steps, validation and prompt handoff cannot be expressed by evidence marks.
-Its JSON configuration, not a page ID, defines all steps, choices, descriptions
-and generation instructions. It never queries activity records or changes rollout
-authority. The built-in **Workflow wizard** page designs either one Agentic
-Workflow or a Campaign.
+The interaction-only `prompt-wizard` declares `data.sources: []` and
+`config.wizard`. JSON, not page identity, defines its steps, choices and generation
+instructions. It owns mutable answers and validation, not activity queries or
+rollout authority. The Workflow wizard designs an Agentic Workflow or Campaign.
 
 `config.wizard` contains `intro`, `steps`, `prompt` and optional `provenance`.
-Each step has a unique kebab-case `id`, `title`, optional `description` and
-non-empty `fields`. Each field has a globally unique kebab-case `id`, `label`,
-and `control` (`text`, `textarea`, `select`, `cards` or `checkboxes`). `cards`
-presents accessible marketplace choice buttons. Its optional Boolean
-`advance-on-select` opens the next pane on activation. Fields may declare
-`required`, `default`, `placeholder`, `max-length` (1–8000), or text
+Steps have unique kebab-case `id`, `title`, optional `description` and non-empty
+`fields`. Fields have globally unique kebab-case `id`, `label` and `control`:
+`text`, `textarea`, `select`, `cards` or `checkboxes`. Card buttons may declare
+Boolean `advance-on-select` to open the next pane. Fields may declare `required`,
+`default`, `placeholder`, `empty-message` for review, `max-length` (1–8000), or text
 `format: identifier` or `format: repositories` (exact owner/repository names
-separated by commas or whitespace). Choice fields require `options` with unique `value`,
-`label`, optional `description`, concise `summary`, canonical Octicon `icon` and
-optional JSON `context`. A field's optional `when: { field, equals }` must
-match an option in an earlier `select` or `cards` field.
-Hidden answers are retained locally for Back navigation but excluded from the
-generation prompt. Required fields, unknown choices and invalid defaults fail
-closed. Unknown configuration keys are rejected.
+separated by commas or whitespace). Choice `options` have unique `value`, `label`
+and optional `description`, concise `summary`, authoring `instructions`, Octicon `icon`, JSON
+`context` and `defaults`. Single-choice option defaults map other field IDs to
+validated values. Choosing a different option applies them; selecting the same
+option preserves edits. Optional `when: { field, equals }` matches an earlier
+single-choice option. Hidden answers survive Back navigation but are excluded
+from prompts. Unknown keys, invalid values and defaults fail closed.
 
-`prompt` declares `label` and `instructions`. For both Agentic Workflows and
-Campaigns, the standard **Generate prompt** button uses `propose` semantics and
-the shared `copy-prompt` preview. **Copy prompt** copies the reviewed prompt
-for use with a coding agent. The wizard does not bind a CLI action or queue an
-agent task, including when the dashboard has command execution available.
-Opening the preview does not copy or execute anything. Answers are never shell
-substitutions. Prompts are limited to 100000 characters. Neither preview nor
-copying installs, runs, merges or activates the resulting automation.
+Review shows labels, descriptions and empty-value messages, not raw JSON.
+`prompt` declares `label` and `instructions`. The standard **Generate prompt**
+button replaces Next in bottom navigation and opens the shared `propose`-level
+preview. **Copy prompt** copies the full prompt, bounded to 100000 characters.
+Opening a preview copies or executes nothing. The wizard never binds a CLI action,
+queues a task, installs or activates automation, even on command-enabled dashboards.
+Generated prompts start with “Create a Pull Request for the following task:”
+and render the design as natural language. Only selected authoring instructions
+are included; Campaign guidance is conditional. Raw pattern records, provenance,
+rankings and anti-patterns stay out. Answers are never shell substitutions.
 
 The wizard opens a workflow-type marketplace, then collects artifact kind,
 intent and scope. The prompt infers the title and kebab-case workflow or campaign
 name; there is no manual naming field.
 
-The default wizard's immutable `githubnext/gh-aw-wizard` pattern snapshot is
-authoring configuration, not canonical operational data. `provenance` retains
-the upstream `repository`, full commit `revision`, pinned `url`, `generated-at`,
-`source-repositories`, `total-workflows`, historical-data `notice` and complete
-MIT `license`. Mined tips, observed success rates, triggers, outputs and
-capabilities are untrusted historical reference; selecting a pattern does not
-select permissions or override explicit answers. No selected safe outputs
-means no repository-write outputs. Campaign requests remain proposals in
-review mode with separately reviewed policy, credentials and target authority.
+The immutable `githubnext/gh-aw-wizard` snapshot is authoring configuration,
+not operational data. `provenance` retains `repository`, full commit `revision`,
+pinned `url`, `generated-at`, `source-repositories`, `total-workflows`, historical
+`notice` and complete MIT `license`. Mined evidence is untrusted historical
+reference. Specific output recommendations prefill editable choices, not broad
+permission categories or live authority. Clearing outputs requests read-only work;
+optional capabilities remain off. Campaigns remain review-mode proposals under
+separately reviewed policy, credentials and target authority.
 
 The `environment-defaults` element declares `data.sources: []` and a
 `config.actions` mapping of `get-repo`, `update-repo`, `get-org`, `update-org`,
