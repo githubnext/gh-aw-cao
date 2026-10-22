@@ -1072,7 +1072,7 @@
         "label": "Add",
         "description": "Copy the canonical CAO add command for this package. The dashboard does not install packages.",
         "icon": "plus",
-        "command": "gh cao add {{package-source}}",
+        "command": "gh cao campaigns add {{package-source}}",
         "placement": "row",
         "copy-only": true
       },
