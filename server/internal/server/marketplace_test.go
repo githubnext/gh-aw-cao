@@ -213,3 +213,33 @@ func TestMarketplacePolicyPathDefaultsAndHonorsEnvOverride(t *testing.T) {
 		t.Fatalf("expected the overridden policy path, got: %q", got)
 	}
 }
+
+func TestLocalSQLiteMarketplaceResolvesRegistryWithoutSnapshotPackages(t *testing.T) {
+	withInsecureDefaultTransport(t)
+	githubServer := newFakeMarketplaceGitHubServer(t, "name: Demo\ndescription: Example\nincludes:\n  - demo.md\n")
+	policyPath := filepath.Join(t.TempDir(), "cao.json")
+	policy := `{"version":1,"control-plane":{"marketplace":{"registries":[
+		{"id":"official","repository":"example/packages","ref":"main","api-url":"` + githubServer.URL + `/api/v3"}
+	]}}}`
+	if err := os.WriteFile(policyPath, []byte(policy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(marketplacePolicyPathEnv, policyPath)
+	app, _ := newSQLiteTestApp(t, false)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/api/v1/query",
+		strings.NewReader(`{"sourceNames":["marketplace-directory"],"pagination":{"marketplace-directory":{"limit":25}}}`))
+	request.Header.Set("Content-Type", "application/json")
+	authorize(request)
+	response := httptest.NewRecorder()
+	app.Handler().ServeHTTP(response, request)
+	var result queryResponse
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil || response.Code != http.StatusOK {
+		t.Fatalf("local marketplace query: status=%d body=%s err=%v", response.Code, response.Body.String(), err)
+	}
+	source := result.Sources["marketplace-directory"]
+	if len(source.Rows) != 1 || source.Rows[0]["package-name"] != "Demo" ||
+		source.Rows[0]["package-source"] != "example/packages/demo@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ||
+		source.Metadata["availability"] != "available" {
+		t.Fatalf("local marketplace did not resolve configured registry: %+v", source)
+	}
+}

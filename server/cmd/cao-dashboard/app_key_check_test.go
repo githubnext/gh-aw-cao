@@ -108,3 +108,32 @@ func TestAppKeyCheckHonorsCanceledContext(t *testing.T) {
 		t.Fatalf("canceled check must not read or emit a report: %v", err)
 	}
 }
+
+func TestCheckAppKeyFile(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	path := filepath.Join(t.TempDir(), "key.pem")
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	plain, err := checkAppKeyFile(path, "", "")
+	if err != nil || plain.Bits != 2048 || len(plain.PublicKeySHA256) != 64 || plain.ExpectedKeyChecked || plain.RotationKeyChecked {
+		t.Fatalf("plain check: %+v, %v", plain, err)
+	}
+	pinned, err := checkAppKeyFile(path, plain.PublicKeySHA256, strings.Repeat("0", 64))
+	if err != nil || !pinned.ExpectedKeyChecked || !pinned.RotationKeyChecked {
+		t.Fatalf("pinned check: %+v, %v", pinned, err)
+	}
+	if _, err := checkAppKeyFile(path, strings.Repeat("0", 64), ""); err == nil {
+		t.Fatal("mismatched expected fingerprint must fail")
+	}
+	if _, err := checkAppKeyFile(path, "", plain.PublicKeySHA256); err == nil {
+		t.Fatal("unchanged key must fail rollover check")
+	}
+	if _, err := checkAppKeyFile(filepath.Join(t.TempDir(), "missing.pem"), "", ""); err == nil {
+		t.Fatal("missing file must fail")
+	}
+}

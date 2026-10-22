@@ -215,7 +215,7 @@ test("Setup navigation follows the user journey without duplicate authentication
   const setupGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Setup$/ }).locator("..");
   await expect(setupGroup.getByRole("link")).toHaveText([
     "Quickstart: install and monitor",
-    "Repo Status (optional)",
+    "Daily Repo Status (optional)",
     "Add a campaign (optional)",
     "CAO commands",
     "Authentication",

@@ -1,10 +1,24 @@
 package dashboardquery
 
 import (
+	"fmt"
+	"os"
+	"regexp"
 	"slices"
 	"testing"
 	"unicode/utf16"
 )
+
+func TestDatabaseVersionMatchesCanonicalStorage(t *testing.T) {
+	source, err := os.ReadFile("../../dashboard/site/src/data/storage/indexeddb.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration := regexp.MustCompile(`(?m)^export const DATABASE_VERSION = ([0-9]+);$`).FindSubmatch(source)
+	if len(declaration) != 2 || string(declaration[1]) != fmt.Sprint(DatabaseVersion) {
+		t.Fatalf("Go database version %d must match canonical IndexedDB storage", DatabaseVersion)
+	}
+}
 
 func TestRecordStringOrderMatchesUTF16(t *testing.T) {
 	values := []string{

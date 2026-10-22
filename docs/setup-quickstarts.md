@@ -191,7 +191,7 @@ after Activity collects new runs.
 Monitoring is enough. For automation, [derive the simplest suitable structure](operation-patterns.md)
 from your outcome and scope.
 
-Try the **[Repo Status quickstart](setup/quickstart.md)** for your first optional
+Try the **[Daily Repo Status quickstart](setup/quickstart.md)** for your first optional
 automation: one bounded report in the control repository, without repeating setup.
 Other choices include a [Direct operation](authority-envelopes.md) for supplied
 targets, a [Standalone fleet workflow](configuration.md#standalone-agentic-workflows)

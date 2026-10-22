@@ -77,6 +77,37 @@ model workflows {
 /** Run facts and scalar metrics; nested context, usage, and assessment payloads remain upstream. */
 @runPartition
 model runs {
+  routingAggregateVersion?: int64;
+  routingState?: string;
+  routingSelectedModel?: string;
+  routingSelectedEffort?: string;
+  routingGoal?: string;
+  routingConfiguredMode?: string;
+  routingMode?: string;
+  routingStatus?: string;
+  routingAwfVersion?: string;
+  routingSessionClock?: decimal;
+  routingSelectionCount?: int64;
+  routingFailureCount?: int64;
+  routingDegraded?: boolean;
+  routingConfigurationConflict?: boolean;
+  routingWarnings?: int64;
+  routingAgentResult?: string;
+  routingFlaggedRequests?: int64;
+  routingDeviatedRequests?: int64;
+  routingCompleteAic?: decimal;
+  routingMainAic?: decimal;
+  routingBaselineModel?: string;
+  routingBaselineAic?: decimal;
+  routingBaselineComplete?: boolean;
+  routingFailureCodes?: string;
+  routingDeviationCodes?: string;
+  routingResolutionCodes?: string;
+  routingUpstreamCodes?: string;
+  routingCandidateCoverage?: string;
+  routingTaskType?: string;
+  routingScope?: string;
+  routingComplexity?: string;
   actionMinutes?: decimal;
   admissionReason?: string;
   admissionStatus?: string;

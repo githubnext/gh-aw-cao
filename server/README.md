@@ -38,6 +38,16 @@ From the repository root, `npm run dev` or `npm run dashboard:local` builds
 the dashboard and starts Go `serve` with its verified SQLite cache. The Node
 server is retired; only an internal loopback canvas authoring bridge remains.
 
+Local serving resolves Marketplace through the same read-only registry resolver
+as hosted serving, even when the cached SQLite snapshot has no packages.
+The npm launch commands select this checkout's `.github/workflows/cao.json`;
+set `CAO_MARKETPLACE_POLICY_PATH` to an absolute path to use another policy.
+Provide the credentials named by its registries (for example, `GH_TOKEN`).
+Registry results use the process-local operational cache and never modify the
+SQLite snapshot. Registry failures remain explicit in source availability or
+registry diagnostics; they never trigger synthetic packages or snapshot-inventory
+fallback.
+
 For explicit Pages/IndexedDB testing:
 
 ```sh

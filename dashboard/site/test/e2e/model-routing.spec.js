@@ -6,6 +6,7 @@ import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-ses
 import { normalizedActivityShards } from './normalized-shard.js';
 import { originalSessions, replay, runCacheLine } from '../model-resolution-fixture.js';
 import { writeCanvasArtifact } from './canvas-fixture.js';
+import routingContract from '../fixtures/model-routing-contract.json' with { type: 'json' };
 
 /**
  * Serves a copy of the site with the supplied normalized activity shards.
@@ -120,6 +121,48 @@ async function inTables(page, width, check) {
     });
 
     for (const width of [1280, 390]) {
+      test(`renders the real paired SDK baseline at ${width}px`, async ({ page }, testInfo) => {
+        const fixture = routingContract['observed-sessions'][0];
+        const sessionDocument = parseUnifiedSessionDocument(fixture.records.map((record) => JSON.stringify(record)).join('\n'),
+          'usage/aw_session.jsonl', { runId: fixture.run, attempt: 1 });
+        const timestamp = new Date().toISOString();
+        const shards = normalizedActivityShards(JSON.stringify({
+          schema_version: 5, kind: 'run', run: {
+            run_id: Number(fixture.run), run_attempt: 1, organization: 'github', repository: 'github/gh-aw',
+            workflow_name: 'Smoke Copilot SDK Routed', workflow_path: '.github/workflows/smoke-copilot-sdk-routed.lock.yml',
+            created_at: timestamp, updated_at: timestamp, status: 'completed', conclusion: 'success',
+            cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...sessionDocument }
+          }
+        }));
+        const real = await startRoutingServer(shards, timestamp, 'github/gh-aw');
+        try {
+          await page.setViewportSize({ width, height: 900 });
+          await page.goto(`${real.server.url}/?local-preview=canvas#page-model-routing`);
+          await expect(page.getByRole('dialog', { name: 'Preparing your dashboard' })).toBeHidden();
+          await expectFiveViews(page);
+          const health = page.locator('[data-view-id="routing-health"]');
+          await inTables(page, width, async () => {
+            await expect(health).toContainText('claude-sonnet-5.5');
+            await expect(health).toContainText('11.2%');
+          });
+          await page.getByRole('slider', { name: 'Minimum complete runs per group' }).press('Home');
+          await inTables(page, width, async () => {
+            await expect(page.locator('[data-view-id="routing-cost-trend"]'))
+              .toContainText('Baseline estimate (estimated, main requests): claude-sonnet-5.5');
+          });
+          const screenshot = testInfo.outputPath(`routing-baseline-go-${width}.png`);
+          await page.screenshot({ path: screenshot, fullPage: true });
+          await testInfo.attach(`routing-baseline-go-${width}`, { path: screenshot, contentType: 'image/png' });
+          await inTables(page, width, () => page.locator('[data-view-id="routing-runs"] a[href*="routing-run="]:visible').first().click());
+          await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('claude-sonnet-5.5');
+          await expect(page.locator('[data-view-id="routing-run-cost"]')).toContainText('Baseline estimate (estimated)');
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        } finally {
+          await real.server.close();
+          await rm(real.workspace, { recursive: true, force: true });
+        }
+      });
+
       test(`renders populated routing and drill-down at ${width}px`, async ({ page }, testInfo) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${server.url}/?local-preview=canvas#page-model-routing`);

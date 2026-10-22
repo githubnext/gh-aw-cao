@@ -24,7 +24,7 @@ func addWorkflowCommand(gh ghExecutor) *cobra.Command {
 .github/workflows/cao.json. New entries are review-only and limited to one
 repository. Existing policy settings and repository scope are preserved.
 
-Use a catalog name such as repo-status[@REF], an explicit OWNER/REPO/PATH.md[@REF],
+Use a catalog name such as daily-repo-status[@REF], an explicit OWNER/REPO/PATH.md[@REF],
 a GitHub blob URL, or a local .md file. Catalog names resolve to
 githubnext/gh-cao/.github/workflows/, not the upstream workflows/ shorthand.
 The installed workflow must import shared/control.md with role: standalone
@@ -35,9 +35,9 @@ Interactive additions separately offer commit/push
 and an opt-in first review run after publication. Both default to No.
 Noninteractive and unchanged additions never publish or run.
 For campaign packages use gh cao campaigns add instead.`,
-		Example: `  gh cao add repo-status
-  gh cao add repo-status@v1.2.3
-  gh cao add githubnext/gh-cao/.github/workflows/repo-status.md@main
+		Example: `  gh cao add daily-repo-status
+  gh cao add daily-repo-status@v1.2.3
+  gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
   gh cao add ./my-report.md --force`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -106,8 +106,8 @@ func standaloneWorkflowSpec(input string) (spec, name string, err error) {
 		if !slugPattern.MatchString(name) {
 			return invalid()
 		}
-		if name == "daily-repo-status" {
-			return "", "", errors.New("the CAO workflow is repo-status, not daily-repo-status; use gh cao add repo-status")
+		if name == "repo-status" {
+			name = "daily-repo-status"
 		}
 		spec = catalogRepository + "/.github/workflows/" + name + ".md" + strings.TrimPrefix(input, source)
 	} else {

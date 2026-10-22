@@ -214,7 +214,7 @@ gh cao setup --repository 'my-monalisa-org/*'
 gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
 gh cao setup auth token --help
-gh cao add repo-status
+gh cao add daily-repo-status
 gh cao campaigns add githubnext/gh-cao/dependabot
 gh cao repos add acme/example-service
 gh cao campaigns mode preview dependabot
@@ -263,17 +263,18 @@ There is no `gh cao run`: workflow execution still belongs to gh-aw.
 ### Add a standalone workflow
 
 ```bash
-gh cao add repo-status
-gh cao add repo-status@FULL_COMMIT_SHA
-gh cao add githubnext/gh-cao/.github/workflows/repo-status.md@main
-gh cao add https://github.com/githubnext/gh-cao/blob/main/.github/workflows/repo-status.md
+gh cao add daily-repo-status
+gh cao add daily-repo-status@FULL_COMMIT_SHA
+gh cao add githubnext/gh-cao/.github/workflows/daily-repo-status.md@main
+gh cao add https://github.com/githubnext/gh-cao/blob/main/.github/workflows/daily-repo-status.md
 gh cao add ./my-report.md --force
 ```
 
-Catalog names (including `githubnext/gh-cao/repo-status`) resolve to CAO's
+Catalog names (including `githubnext/gh-cao/daily-repo-status`) resolve to CAO's
 `.github/workflows/` directory, not gh-aw's implicit `workflows/` directory.
-The workflow is `repo-status`, not `daily-repo-status`. Explicit `.md` sources
-are passed to gh-aw; campaign packages still use `gh cao campaigns add`.
+The former catalog name `repo-status` is a backward-compatible alias for
+`daily-repo-status`. Explicit `.md` sources are passed to gh-aw; campaign
+packages still use `gh cao campaigns add`.
 Custom install directories, renames and gh-aw publication flags are not accepted:
 the source must retain its exact standalone CAO identity.
 
@@ -305,7 +306,9 @@ activated run's identity; missing identity requires manual inspection, not a ret
 
 This command requires an extension release containing it; merging source does
 not update an already installed binary. Review and publish source, lock and
-policy together. See the [Repo Status quickstart](setup/quickstart.md).
+policy together. Daily Repo Status explicitly selects `gpt-5.3-codex`; override
+it by changing `model:` in the installed Markdown source and recompiling the
+lockfile. See the [Daily Repo Status quickstart](setup/quickstart.md).
 
 Campaign installation fetches only the installed package's full `resolvedCommit`
 SHA from the official catalog, or copies only Git-tracked campaign files from a

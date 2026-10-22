@@ -4,6 +4,7 @@ import { mergeCanonicalRun, pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { compactRoutingRuns } from './model-routing.js';
 
 const debugNormalize = createDebug('normalize:index');
 
@@ -227,6 +228,7 @@ export function normalize(observations, options = {}) {
   }
   // Run-backed copies are curated after all Run observations have converged.
   batch.audits = curateBatchAudits({ ...batch, runs: [] });
+  compactRoutingRuns(batch);
   const entityCount = Object.values(batch).reduce((total, records) => total + records.length, 0);
   debugNormalize({
     event: 'normalize-complete',

@@ -372,6 +372,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
 };
 
 export const TABLE_VALUES = [
+  'routing-aggregates',
   'organizations',
   'campaigns',
   'repositories',
@@ -462,6 +463,17 @@ export const TABLE_VALUES = [
 ];
 
 export const TABLE_FIELDS = {
+  'routing-aggregates': [
+    'routing-aggregate-version', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-link', 'engine',
+    'routing-run-key', 'observed-at', 'pick', 'unknown-pick-model', 'routing-dashboard-link',
+    'paired', 'paired-main-aic', 'paired-baseline-aic', 'routing-state', 'pick-model', 'pick-effort',
+    'routing-goal', 'routing-configured-mode', 'routing-mode', 'harness-status', 'routing-awf-version',
+    'run-clock', 'selection-count', 'failure-count', 'routing-degraded', 'configuration-conflict',
+    'warnings', 'agent-result', 'flagged-requests', 'deviated-requests', 'complete-aic', 'main-aic',
+    'baseline-model', 'baseline-aic', 'baseline-complete', 'routing-failure-codes', 'routing-deviation-codes',
+    'routing-resolution-codes', 'routing-upstream-codes', 'candidate-coverage',
+    'routing-task-type', 'routing-scope', 'routing-complexity'
+  ],
   'marketplace-packages': ['id', 'registry-id', 'registry-name', 'registry-precedence', 'package-name', 'package-description', 'publisher', 'repository', 'repository-link', 'path', 'package-ref', 'resolved-commit', 'package-version', 'package-icon', 'package-artwork', 'package-readme', 'package-readme-path', 'package-source', 'add-command', 'stars', 'forks'],
   organizations: ['organization', 'organization-name', 'observed-at', 'organization-link'],
   campaigns: ['id', 'campaign', 'campaign-name', 'campaign-description', 'campaign-icon', 'campaign-mode', 'campaign-enabled', 'campaign-registration', 'campaign-max-repositories', 'campaign-rollout-percent', 'campaign-monthly-ai-credit-budget', 'campaign-aic-allowance', 'campaign-worker-count', 'campaign-inventory-warnings', 'campaign-min-version', 'campaign-version', 'campaign-current-version', 'campaign-update-state', 'campaign-experimental', 'campaign-readme-path', 'campaign-readme', 'observed-at', 'campaign-link'],

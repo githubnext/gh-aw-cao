@@ -88,11 +88,14 @@ revision, or lock record) before it can report maintenance state.
 
 ## Run-owned records
 
-Model routing uses typed Audit facts projected from `usage/aw_session.jsonl`,
-not a parallel telemetry table. The Model routing page resolves proxy-first
-state, per-phase accounting, sub-agent attribution and cost completeness with
-Dashboard Language queries. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 33 / IndexedDB version 43 rebuild older
+Model routing uses one compact aggregate on each canonical Run, derived at
+ingestion from `usage/aw_session.jsonl` with the shared Dashboard Language
+queries. The five overview views read those aggregates, not per-request rows.
+Run-scoped Audit facts remain for request, attribution and resolution drill-downs;
+inventory and generic proxy events are discarded. Complete paired main-request
+costs can be compared to a named, explicitly estimated baseline, separately from
+total accounting. Missing costs remain unknown; partial runs do not
+enter cost quantiles. Browser schema 34 / IndexedDB version 44 rebuild older
 projections, and hosted PostgreSQL requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
@@ -116,8 +119,8 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 33. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 43. Its canonical stores are
+The canonical model is version 34. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,

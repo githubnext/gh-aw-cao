@@ -1,0 +1,718 @@
+[
+  {
+    "name": "routing-candidate-coverage",
+    "from": "routing-selections",
+    "compute": [
+      { "as": "eligible-known", "function": "greater-than", "args": [{ "field": "eligibleChoices" }, { "value": -1 }] },
+      { "as": "overlap-known", "function": "greater-than", "args": [{ "field": "catalogueOverlap" }, { "value": -1 }] },
+      { "as": "unranked-choices", "function": "greater-than", "args": [{ "field": "eligibleChoices" }, { "field": "catalogueOverlap" }] },
+      { "as": "known-overlap", "function": "if", "args": [{ "field": "overlap-known" }, { "field": "unranked-choices" }, { "value": false }] },
+      { "as": "coverage-problem", "function": "if", "args": [{ "field": "eligible-known" }, { "field": "known-overlap" }, { "value": false }] },
+      { "as": "coverage-label", "function": "concat", "args": [{ "field": "catalogueOverlap" }, { "value": "/" }, { "field": "eligibleChoices" }] },
+      { "as": "candidate-coverage", "function": "if", "args": [{ "field": "coverage-problem" }, { "field": "coverage-label" }, { "value": null }] }
+    ]
+  },
+  {
+    "name": "routing-ingestion-failure-candidates",
+    "subject": "Read routing failures, upstream errors, steering and exit 78 evidence.",
+    "objective": "Keep execution failures separate from the routing selection state.",
+    "acceptance": "A failure after selection never rewrites selected state; free-form error and steering text are absent.",
+    "from": "routing-events",
+    "compute": [
+      {
+        "as": "failure-event",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "event-type"
+          },
+          {
+            "value": "firewall.steering"
+          },
+          {
+            "value": "firewall.upstream_error"
+          },
+          {
+            "value": "subagent.failed"
+          },
+          {
+            "value": "subagent.model_unavailable"
+          },
+          {
+            "value": "model_endpoint.mismatch"
+          }
+        ]
+      },
+      {
+        "as": "upstream-error",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "name"
+          },
+          {
+            "value": "UPSTREAM_ERROR_RESPONSE"
+          }
+        ]
+      },
+      {
+        "as": "exit-78",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "exit-code"
+          },
+          {
+            "value": 78
+          }
+        ]
+      },
+      {
+        "as": "failure-evidence",
+        "function": "if",
+        "args": [
+          {
+            "field": "failure-event"
+          },
+          {
+            "value": true
+          },
+          {
+            "field": "proxy-failure"
+          }
+        ]
+      },
+      {
+        "as": "upstream-evidence",
+        "function": "if",
+        "args": [
+          {
+            "field": "upstream-error"
+          },
+          {
+            "value": true
+          },
+          {
+            "field": "failure-evidence"
+          }
+        ]
+      },
+      {
+        "as": "failure-row",
+        "function": "if",
+        "args": [
+          {
+            "field": "exit-78"
+          },
+          {
+            "value": true
+          },
+          {
+            "field": "upstream-evidence"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "routing-ingestion-failures",
+    "subject": "Show recorded failure and steering events.",
+    "objective": "Retain failure evidence independently of selected state.",
+    "acceptance": "Only explicit identifiers and counters are shown.",
+    "from": "routing-ingestion-failure-candidates",
+    "filter": {
+      "predicates": [
+        {
+          "field": "failure-row",
+          "equals": true
+        }
+      ]
+    },
+    "order-by": [
+      {
+        "field": "event-timestamp",
+        "direction": "desc"
+      }
+    ]
+  },
+  {
+    "name": "routing-ingestion-resolution-failure-records",
+    "from": "routing-resolutions",
+    "subject": "Retain failed configured-model resolutions with their runs.",
+    "objective": "Link each failed resolution to its contributing run.",
+    "acceptance": "Failed resolved models stay unknown; causes are never inferred.",
+    "filter": {
+      "predicates": [
+        {
+          "field": "resolution-status",
+          "equals": "failed"
+        }
+      ]
+    },
+    "order-by": [
+      {
+        "field": "run-clock",
+        "direction": "desc"
+      },
+      {
+        "field": "run",
+        "direction": "desc"
+      }
+    ]
+  },
+  {
+    "name": "routing-ingestion-pick-adherence",
+    "from": "routing-deviations",
+    "subject": "Count agent-phase requests with a routed flag and those that deviated, per run.",
+    "objective": "Decide whether each run followed the proxy pick without guessing for runs that lack request evidence.",
+    "acceptance": "Only agent-phase requests flagged as_selected or deviated contribute; runs without such requests have no row and stay unknown.",
+    "filter": {
+      "predicates": [
+        {
+          "field": "phase",
+          "equals": "agent"
+        },
+        {
+          "field": "routing-routed",
+          "in": [
+            "as_selected",
+            "deviated"
+          ]
+        }
+      ]
+    },
+    "aggregate": {
+      "by": [
+        "routing-run-key"
+      ],
+      "values": [
+        {
+          "field": "event",
+          "as": "flagged-requests",
+          "reducer": "count"
+        },
+        {
+          "field": "event",
+          "as": "deviated-requests",
+          "reducer": "count",
+          "filter": {
+            "predicates": [
+              {
+                "field": "routing-routed",
+                "equals": "deviated"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-event-failure-problems",
+    "from": "routing-ingestion-failures",
+    "subject": "Summarize recorded routing failures per run.",
+    "objective": "Give the Problems view one routing-failure row per run.",
+    "acceptance": "Causes are the distinct recorded codes, or the event type when an event records no code.",
+    "compute": [
+      {
+        "as": "is-upstream",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "event-type"
+          },
+          {
+            "value": "firewall.upstream_error"
+          }
+        ]
+      },
+      {
+        "as": "problem-kind",
+        "function": "if",
+        "args": [
+          {
+            "field": "is-upstream"
+          },
+          {
+            "value": "upstream error"
+          },
+          {
+            "value": "routing failure"
+          }
+        ]
+      },
+      {
+        "as": "missing-code-label",
+        "function": "if",
+        "args": [{ "field": "is-upstream" }, { "value": "unknown" }, { "field": "event-type" }]
+      },
+      {
+        "as": "problem-cause-item",
+        "function": "coalesce",
+        "args": [
+          {
+            "field": "code"
+          },
+          {
+            "field": "missing-code-label"
+          }
+        ]
+      }
+    ],
+    "aggregate": {
+      "by": [
+        "routing-run-key",
+        "problem-kind"
+      ],
+      "values": [
+        {
+          "field": "problem-cause-item",
+          "as": "problem-cause",
+          "reducer": "distinct-list"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-event-deviation-problems",
+    "from": "routing-deviations",
+    "subject": "Summarize agent-phase requests that deviated from the pick per run.",
+    "objective": "Give the Problems view one deviation row per run.",
+    "acceptance": "Causes are the distinct deviated axes, or deviated when a request records no axes.",
+    "filter": {
+      "predicates": [
+        {
+          "field": "phase",
+          "equals": "agent"
+        },
+        {
+          "field": "routing-routed",
+          "equals": "deviated"
+        }
+      ]
+    },
+    "compute": [
+      {
+        "as": "problem-kind",
+        "function": "literal",
+        "args": [
+          {
+            "value": "deviation"
+          }
+        ]
+      },
+      {
+        "as": "problem-cause-item",
+        "function": "coalesce",
+        "args": [
+          {
+            "field": "routing-deviations"
+          },
+          {
+            "value": "deviated"
+          }
+        ]
+      }
+    ],
+    "aggregate": {
+      "by": [
+        "routing-run-key",
+        "problem-kind"
+      ],
+      "values": [
+        {
+          "field": "problem-cause-item",
+          "as": "problem-cause",
+          "reducer": "distinct-list"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-event-resolution-problems",
+    "from": "routing-ingestion-resolution-failure-records",
+    "subject": "Summarize failed configured-model resolutions per run.",
+    "objective": "Give the Problems view one resolution-failure row per run.",
+    "acceptance": "Causes are the distinct recorded resolution causes; roles are records, not runs.",
+    "compute": [
+      {
+        "as": "problem-kind",
+        "function": "literal",
+        "args": [
+          {
+            "value": "resolution failure"
+          }
+        ]
+      }
+    ],
+    "aggregate": {
+      "by": [
+        "routing-run-key",
+        "problem-kind"
+      ],
+      "values": [
+        {
+          "field": "resolution-cause",
+          "as": "problem-cause",
+          "reducer": "distinct-list"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-baseline-main-responses",
+    "from": "routing-exact-accounting",
+    "subject": "Read the as-selected proxy requests covered by a complete T-UAS-081 estimate.",
+    "objective": "Pair the producer's main-request population without treating unknown purpose as main-agent traffic in general accounting.",
+    "acceptance": "A complete producer estimate attests that as-selected requests do not match declared sub-agents; the request count and every observed AIC must also match.",
+    "filter": { "predicates": [
+      { "field": "phase", "equals": "agent" },
+      { "field": "request-routed", "equals": "as_selected" },
+      { "field": "routing-purpose", "in": [null, "agent"] },
+      { "field": "no-exact-owner", "equals": true }
+    ] },
+    "window": [{ "operation": "row-number", "field": "source-sequence", "as": "baseline-response-position",
+      "groupby": ["routing-run-key", "correlation-id"],
+      "order-by": [{ "field": "source-sequence", "direction": "desc" }] }]
+  },
+  {
+    "name": "routing-main-cost",
+    "from": "routing-baseline-main-responses",
+    "subject": "Match complete main-agent responses to the baseline request population.",
+    "objective": "Never compare classifier or sub-agent costs to main-agent-only estimates.",
+    "acceptance": "Every main response must have known AIC and match the producer's main-request count.",
+    "filter": {
+      "predicates": [
+        {
+          "field": "baseline-response-position",
+          "equals": 1
+        }
+      ]
+    },
+    "aggregate": {
+      "by": [
+        "routing-run-key"
+      ],
+      "values": [
+        {
+          "field": "event",
+          "as": "main-responses",
+          "reducer": "count"
+        },
+        {
+          "field": "aic",
+          "as": "known-main-responses",
+          "reducer": "count"
+        },
+        {
+          "field": "aic",
+          "as": "recorded-main-aic",
+          "reducer": "sum"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-baseline-estimates",
+    "from": "routing-session-events",
+    "subject": "Read the producer's counterfactual baseline estimate.",
+    "objective": "Keep incomplete or absent estimates out of paired comparisons.",
+    "acceptance": "Baseline evidence is never repriced or inferred by the dashboard.",
+    "filter": {
+      "predicates": [
+        {
+          "field": "event-type",
+          "equals": "model.baseline_estimate"
+        }
+      ]
+    },
+    "aggregate": {
+      "by": [
+        "routing-run-key"
+      ],
+      "values": [
+        {
+          "field": "routingBaselineModel",
+          "as": "baseline-model",
+          "reducer": "unique"
+        },
+        {
+          "field": "routingBaselineComplete",
+          "as": "baseline-complete",
+          "reducer": "unique"
+        },
+        {
+          "field": "routingBaselineMainRequests",
+          "as": "baseline-main-requests",
+          "reducer": "unique"
+        },
+        {
+          "field": "aic",
+          "as": "baseline-aic",
+          "reducer": "unique"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-generic-failure-codes",
+    "from": "routing-event-failure-problems",
+    "filter": {
+      "predicates": [
+        {
+          "field": "problem-kind",
+          "equals": "routing failure"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-upstream-failure-codes",
+    "from": "routing-event-failure-problems",
+    "filter": {
+      "predicates": [
+        {
+          "field": "problem-kind",
+          "equals": "upstream error"
+        }
+      ]
+    }
+  },
+  {
+    "name": "routing-ingestion-costs",
+    "from": "routing-cost-runs",
+    "subject": "Compact each session into its owning Run at ingestion.",
+    "objective": "Keep overview work proportional to runs rather than model requests.",
+    "acceptance": "Accounting, attribution and problem codes use the shared declarative definitions, never JavaScript query callbacks.",
+    "joins": [
+      {
+        "source": "routing-main-cost",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "main-responses",
+            "as": "main-responses"
+          },
+          {
+            "field": "known-main-responses",
+            "as": "known-main-responses"
+          },
+          {
+            "field": "recorded-main-aic",
+            "as": "recorded-main-aic"
+          }
+        ]
+      },
+      {
+        "source": "routing-baseline-estimates",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "baseline-model",
+            "as": "baseline-model"
+          },
+          {
+            "field": "baseline-complete",
+            "as": "baseline-complete"
+          },
+          {
+            "field": "baseline-main-requests",
+            "as": "baseline-main-requests"
+          },
+          {
+            "field": "baseline-aic",
+            "as": "baseline-aic"
+          }
+        ]
+      },
+      {
+        "source": "routing-ingestion-pick-adherence",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "flagged-requests",
+            "as": "flagged-requests"
+          },
+          {
+            "field": "deviated-requests",
+            "as": "deviated-requests"
+          }
+        ]
+      },
+      {
+        "source": "routing-generic-failure-codes",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "problem-cause",
+            "as": "routing-failure-codes"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "routing-ingestion-aggregate",
+    "from": "routing-ingestion-costs",
+    "subject": "Retain one routing decision record per run.",
+    "objective": "Let workflow owners compare costs and act on recorded problems.",
+    "acceptance": "Problem kinds keep distinct identifier-only codes and missing costs remain unknown.",
+    "joins": [
+      { "source": "routing-candidate-coverage", "type": "left",
+        "on": [{ "left": "routing-run-key", "right": "routing-run-key" }],
+        "fields": [{ "field": "candidate-coverage", "as": "candidate-coverage" }] },
+      {
+        "source": "routing-upstream-failure-codes",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "problem-cause",
+            "as": "routing-upstream-codes"
+          }
+        ]
+      },
+      {
+        "source": "routing-event-deviation-problems",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "problem-cause",
+            "as": "routing-deviation-codes"
+          }
+        ]
+      },
+      {
+        "source": "routing-event-resolution-problems",
+        "type": "left",
+        "on": [
+          {
+            "left": "routing-run-key",
+            "right": "routing-run-key"
+          }
+        ],
+        "fields": [
+          {
+            "field": "problem-cause",
+            "as": "routing-resolution-codes"
+          }
+        ]
+      }
+    ],
+    "compute": [
+      {
+        "as": "known-main-count",
+        "function": "difference",
+        "args": [
+          {
+            "field": "main-responses"
+          },
+          {
+            "field": "known-main-responses"
+          }
+        ]
+      },
+      {
+        "as": "known-main-cost",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "known-main-count"
+          },
+          {
+            "value": 0
+          }
+        ]
+      },
+      {
+        "as": "matched-main-count",
+        "function": "difference",
+        "args": [
+          {
+            "field": "main-responses"
+          },
+          {
+            "field": "baseline-main-requests"
+          }
+        ]
+      },
+      {
+        "as": "matching-main-cost",
+        "function": "equals-any",
+        "args": [
+          {
+            "field": "matched-main-count"
+          },
+          {
+            "value": 0
+          }
+        ]
+      },
+      {
+        "as": "complete-main-cost",
+        "function": "if",
+        "args": [
+          {
+            "field": "matching-main-cost"
+          },
+          {
+            "field": "known-main-cost"
+          },
+          {
+            "value": false
+          }
+        ]
+      },
+      {
+        "as": "main-aic",
+        "function": "if",
+        "args": [
+          {
+            "field": "complete-main-cost"
+          },
+          {
+            "field": "recorded-main-aic"
+          },
+          {
+            "value": null
+          }
+        ]
+      }
+    ]
+  }
+]

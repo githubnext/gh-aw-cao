@@ -6,7 +6,8 @@ import { startCanvasServer } from "../../dashboard/canvas-server.mjs";
 test("ordinary dashboard development uses Go, not the canvas server", async () => {
   const root = JSON.parse(await readFile(new URL("../../package.json", import.meta.url)));
   const site = JSON.parse(await readFile(new URL("../../dashboard/site/package.json", import.meta.url)));
-  assert.equal(root.scripts["dashboard:local"], "go -C server run ./cmd/cao-dashboard serve");
+  assert.equal(root.scripts["dashboard:local"],
+    'CAO_MARKETPLACE_POLICY_PATH="${CAO_MARKETPLACE_POLICY_PATH:-$PWD/.github/workflows/cao.json}" go -C server run ./cmd/cao-dashboard serve');
   assert.equal(root.scripts.dev, "npm run dashboard:local --");
   assert.equal(site.scripts.dev, "npm --prefix ../.. run dev --");
   assert.equal(root.scripts["dashboard:server:serve"], root.scripts["dashboard:local"]);

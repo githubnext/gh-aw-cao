@@ -7,7 +7,7 @@ import { parse } from "yaml";
 import { effectivePolicy } from "../../.github/workflows/shared/policy.mjs";
 import { controlPolicy, root, workflow } from "./workflow-contract.helpers.mjs";
 
-const source = workflow("repo-status.md");
+const source = workflow("daily-repo-status.md");
 const config = (source) => parse(/^---\n([\s\S]*?)\n---/.exec(source)[1]);
 const report = config(source);
 
@@ -31,19 +31,19 @@ function executeStep(name, { github, files = new Map(), environment = {} }) {
   }).then(() => files);
 }
 
-test("Repo Status is standalone and registered without campaign packaging or activation", () => {
+test("Daily Repo Status is standalone and registered without campaign packaging or activation", () => {
   assert.equal(existsSync(join(root, "repo-status/aw.yml")), false);
   assert.equal(existsSync(join(root, "repo-status/cao.json")), false);
   assert.equal(existsSync(join(root, ".github/workflows/repo-status-report.md")), false);
   const rootManifest = parse(readFileSync(join(root, "aw.yml"), "utf8"));
   assert.equal(rootManifest.includes.includes("repo-status/aw.yml"), false);
   assert.equal(controlPolicy["control-plane"].campaigns["repo-status"], undefined);
-  assert.deepEqual(controlPolicy["control-plane"].workflows["repo-status"], {
+  assert.deepEqual(controlPolicy["control-plane"].workflows["daily-repo-status"], {
     enabled: false, mode: "review", "max-mode": "review", "max-repositories": 1,
   });
 });
 
-test("Repo Status preserves single-target standalone execution and shared credential/admission boundaries", () => {
+test("Daily Repo Status preserves single-target standalone execution and shared credential/admission boundaries", () => {
   assert.match(source, /^if: needs\.pre_activation\.outputs\.cao_authorized == 'true'$/m);
   assert.match(source, /cao_precompute\.outputs\.authorized != 'false'/);
   assert.equal(report.strict, true);
@@ -51,14 +51,14 @@ test("Repo Status preserves single-target standalone execution and shared creden
   assert.equal(report.permissions["copilot-requests"], "write");
   const control = report.imports.find(entry => entry.uses === "shared/control.md");
   assert.equal(control.with.role, "standalone");
-  assert.equal(control.with.workflow, "repo-status");
+  assert.equal(control.with.workflow, "daily-repo-status");
   assert.equal(control.with.campaign, undefined);
   assert.equal(control.with.worker, undefined);
   for (const [permission, access] of Object.entries(report.permissions)) {
     if (access !== "read") continue;
     assert.equal(control.with[`read_${permission.replaceAll("-", "_")}`], "read", permission);
   }
-  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/repo-status\.md\}\}/);
+  assert.match(source, /\{\{#runtime-import\? \.github\/cao\/daily-repo-status\.md\}\}/);
   assert.equal(report.on.schedule, undefined);
   assert.equal(report.on.workflow_dispatch.inputs.target_repo.required, true);
   assert.deepEqual(report.on.workflow_dispatch.inputs.safe_output_mode, {
@@ -79,14 +79,14 @@ test("Repo Status preserves single-target standalone execution and shared creden
 
 test("standalone target guard accepts only the admitted target, mode and output route", async () => {
   const path = "/tmp/gh-aw/agent/control-precompute.json";
-  const targetPath = "/tmp/gh-aw/agent/repo-status/target.json";
+  const targetPath = "/tmp/gh-aw/agent/daily-repo-status/target.json";
   const environment = {
     TARGET_REPO: "acme/target", REQUESTED_MODE: "review",
     REVIEW_OUTPUT_REPO: "acme/control", OUTPUT_REPOSITORY: "acme/control",
   };
   const target = { full_name: "acme/target", safe_output_mode: "review", safe_output_repo: "acme/control" };
   const admitted = {
-    authorized: true, control_role: "standalone", workflow: "repo-status",
+    authorized: true, control_role: "standalone", workflow: "daily-repo-status",
     effective_max_repos: 1, candidate_repositories: [target],
   };
   const execute = (precompute, env = environment) => executeStep("Validate the standalone report target", {
@@ -122,7 +122,7 @@ test("standalone target guard accepts only the admitted target, mode and output 
 });
 
 test("compiled status outputs enforce destination routing, deduplication and guarded body-only refresh", () => {
-  const compiled = parse(workflow("repo-status.lock.yml"));
+  const compiled = parse(workflow("daily-repo-status.lock.yml"));
   const handler = compiled.jobs.safe_outputs.steps.find(step => step.env?.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG);
   assert.ok(handler);
   const outputs = JSON.parse(handler.env.GH_AW_SAFE_OUTPUTS_HANDLER_CONFIG);
@@ -167,7 +167,7 @@ test("report windows use the original run time across midnight, leap days and ye
       return { data: { created_at: createdAt } };
     } } } };
     const files = await executeStep("Fix the daily reporting window", { github });
-    const window = JSON.parse(files.get("/tmp/gh-aw/agent/repo-status/window.json"));
+    const window = JSON.parse(files.get("/tmp/gh-aw/agent/daily-repo-status/window.json"));
     assert.deepEqual(window, { date: start.slice(0, 10), start, end, observed_at: createdAt });
   }
   await assert.rejects(executeStep("Fix the daily reporting window", {
@@ -176,8 +176,8 @@ test("report windows use the original run time across midnight, leap days and ye
 });
 
 test("report lookups are destination-bound, include closed duplicates and fail closed on missing access or truncation", async () => {
-  const windowPath = "/tmp/gh-aw/agent/repo-status/window.json";
-  const reportPath = "/tmp/gh-aw/agent/repo-status/reports.json";
+  const windowPath = "/tmp/gh-aw/agent/daily-repo-status/window.json";
+  const reportPath = "/tmp/gh-aw/agent/daily-repo-status/reports.json";
   const files = () => new Map([[windowPath, JSON.stringify({ start: "2026-10-20T00:00:00.000Z" })]]);
   const calls = [];
   const result = await executeStep("Read existing owned reports", {
@@ -225,7 +225,7 @@ test("report lookups are destination-bound, include closed duplicates and fail c
 
 test("Setup quickstart is discoverable, review-first and honest about the missing recording and operational value", () => {
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
-  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart: install and monitor", link: "\/setup-quickstarts\/"[\s\S]*label: "Repo Status \(optional\)", link: "\/setup\/quickstart\/"/);
+  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart: install and monitor", link: "\/setup-quickstarts\/"[\s\S]*label: "Daily Repo Status \(optional\)", link: "\/setup\/quickstart\/"/);
   assert.match(guide, /CAO recording not yet available/);
   assert.match(guide, /\*\*Video TODO:\*\*/);
   assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
@@ -250,14 +250,14 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   }
   assert.match(guide, /## Continue learning/);
   assert.doesNotMatch(guide, /<video|<iframe|youtube\.com|youtu\.be|\.mp4/);
-  assert.match(guide, /gh cao add repo-status/);
+  assert.match(guide, /gh cao add daily-repo-status/);
   assert.match(guide, /No manual registration is needed/);
   assert.match(guide, /control-plane\.workflows/);
   assert.doesNotMatch(guide, /gh cao campaigns add|gh cao campaigns mode|gh workflow enable/);
   assert.match(guide, /manual-only/);
   const registration = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(guide)[1]);
   assert.deepEqual(registration, {
-    "repo-status": { mode: "review", "max-mode": "review", "max-repositories": 1 },
+    "daily-repo-status": { mode: "review", "max-mode": "review", "max-repositories": 1 },
   });
   const resolved = effectivePolicy({
     "control-plane": {
@@ -265,7 +265,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
       workflows: registration,
     },
   }, {
-    role: "standalone", workflowName: "repo-status",
+    role: "standalone", workflowName: "daily-repo-status",
     controlRepository: "acme/control", targetRepository: "acme/target",
   });
   assert.equal(resolved.authorized, true);
@@ -280,6 +280,10 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.match(guide, /--raw-field max_repos="1"/);
   assert.match(guide, /gh issue list --repo CONTROL_OWNER\/CONTROL_REPOSITORY/);
   assert.match(guide, /Operational value is not measurable yet/);
+  assert.equal(report.model, "gpt-5.3-codex");
+  assert.equal(report.name, "Daily Repo Status");
+  assert.equal(report["tracker-id"], "daily-repo-status");
+  assert.match(report["run-name"], /^Daily Repo Status/);
   assert.match(source, /ae8d551f07c7ed7619f8c58c7bb4c3ac89395d38\/workflows\/repo-status\.md/);
   assert.match(source, /Copyright \(c\) 2025 GitHub/);
   assert.match(source, /The above copyright notice and this permission notice shall be included in all/);

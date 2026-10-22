@@ -49,6 +49,7 @@ const TYPES = new Set([
  */
 export function routingMetadata(type, data) {
   if (!TYPES.has(type)) return null;
+  if (type === 'model.inventory' || type === 'firewall.event') return [];
   const routing = type === 'workflow.info' ? object(field(data, 'modelRouting')) : data;
   const objective = object(routing.objective);
   const labels = object(routing.labels);
@@ -120,6 +121,18 @@ export function routingMetadata(type, data) {
     cacheWriteTokens: numeric(field(usage, 'cacheCreationInputTokens') ?? field(usage, 'cacheWriteTokens')),
     reasoningTokens: numeric(field(usage, 'reasoningOutputTokens'))
   };
+  // Ingestion-only facts: compactRoutingRuns consumes these before persistence.
+  if (type === 'model.baseline_estimate') {
+    fields.routingBaselineModel = identifier(field(data, 'baselineModel'));
+    fields.routingBaselineComplete = typeof data.complete === 'boolean' ? data.complete : undefined;
+    fields.routingBaselineMainRequests = numeric(field(data, 'mainRequests'));
+  }
+  if (type === 'firewall.model_routing' && data.stage === 'selection') {
+    for (const name of ['eligibleChoices', 'catalogueOverlap']) {
+      const value = field(data, name);
+      if (Number.isSafeInteger(value) && Number(value) >= 0) fields[name] = value;
+    }
+  }
   if (Array.isArray(data.deviations)) {
     fields.routingDeviations = data.deviations.map(identifier).filter(Boolean).join('/');
   }
@@ -152,21 +165,6 @@ export function routingMetadata(type, data) {
       ...(Array.isArray(field(data, 'absentComponents')) ? /** @type {unknown[]} */ (field(data, 'absentComponents')) : [])
         .map((component, index) => ({ key: `absent:${index}`, fields: clean({ component: identifier(component), status: 'absent' }) }))
     ];
-  }
-  if (type === 'model.inventory') {
-    return (Array.isArray(data.endpoints) ? data.endpoints : []).flatMap((candidate, index) => {
-      const endpoint = object(candidate);
-      const common = { provider: identifier(endpoint.provider),
-        routingInventoryComplete: typeof field(data, 'modelsFetchComplete') === 'boolean'
-          ? field(data, 'modelsFetchComplete') : undefined };
-      return [
-        { key: `endpoint:${index}`, fields: clean({ ...common, status: 'inventory-endpoint',
-          totalEvents: Array.isArray(endpoint.models) ? endpoint.models.length : undefined }) },
-        ...(Array.isArray(endpoint.models) ? endpoint.models : []).map((entry, offset) => ({
-          key: `${index}:${offset}`, fields: clean({ ...common, model: model(entry), status: 'available' })
-        }))
-      ];
-    });
   }
   return [{ fields: clean(fields) }];
 }
