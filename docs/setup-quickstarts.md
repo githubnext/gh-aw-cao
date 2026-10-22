@@ -3,22 +3,20 @@ title: Set Up CAO
 description: Set up CAO, monitor one repository, and explore your dashboard before adding automation.
 ---
 
-Monitor one repository's existing GitHub Agentic Workflow runs, costs, and
-outcomes where evidenced.
+Monitor existing GitHub Agentic Workflow evidence in one repository.
 
 **Estimated time: 15 minutes**; approval and deployment vary.
 
 **Monitoring only:** no campaign installation or new agentic work.
 
-:::note[Video TODO]
-**CAO setup walkthrough — recording not yet available.** Video TODO: demonstrate
-install → connect → dashboard. Follow the written steps below.
-:::
+This is one monitoring path. For private targets, PATs, enterprise hosts, and
+other topologies, see [setup combinations](setup-compatibility.md).
 
 ## Prerequisites
 
-- **Tools:** Git, Bash, curl, Node.js 24+, and
-  [GitHub CLI](https://cli.github.com) 2.68+ on Linux, macOS, or Windows (Git Bash).
+- **Tools:** Git and [GitHub CLI](https://cli.github.com) 2.68+.
+  The installer alternative also needs Bash, curl, and Node.js 24+
+  (Git Bash on Windows).
 - **Logged in to GitHub CLI:** verify with `gh auth status` and run
   `gh auth login` if needed.
 - **One repository to monitor:** choose its exact `OWNER/REPOSITORY`.
@@ -31,6 +29,35 @@ allowing a public dashboard. This walkthrough uses **GitHub Pages**, not the
 separate [hosted server deployment](deployment.md).
 
 ## Step 1 - Install CAO
+
+### Extension-first quickstart
+
+The short GitHub.com walkthrough starts with the native CLI extension:
+
+```bash
+gh extension install githubnext/gh-cao
+gh cao --version
+```
+
+Create or clone a clean default-branch control checkout, then continue to Step 2.
+Native setup prepares missing runtime, policy, and gh-aw without a separate
+installer or local Node.js.
+
+<details>
+<summary>Match the recorded public-only example.</summary>
+
+The recorded example creates a **public** control repository with
+`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
+at **Repositories**, reviews the exact names, accepts public Pages, and approves
+the separate commit-and-push prompt. Use that visibility only when every target
+and all evidence may be public. An interactive wildcard that includes a private
+or internal target is rejected for a public control repository, not silently
+trimmed. Prefer an exact repository for your first setup.
+
+</details>
+
+<details>
+<summary>Installer alternative (Node.js 24+).</summary>
 
 The root installer installs **gh-aw**, the **`gh cao` GitHub CLI extension**,
 and the baseline monitoring runtime and policy.
@@ -89,6 +116,8 @@ Use `--setup` to open guided configuration immediately.
 Runtime artifact/provenance access is unchanged;
 see [installer details](cao-cli.md#control-plane-installer).
 
+</details>
+
 <span id="guided-setup-instead"></span>
 
 ## Step 2 - Connect one repository
@@ -99,12 +128,12 @@ In an **interactive terminal** at the **control repository's root**:
 gh cao setup
 ```
 
-Setup reuses the installed runtime and policy and configures scope,
+Setup prepares or reuses runtime and policy, then configures scope,
 authentication, and Pages. No separate `init` is needed.
-See [details](cao-cli.md#guided-runtime-preparation).
 
-1. At **Repositories**, enter your exact `OWNER/REPOSITORY`,
-   not an organization wildcard. The control repository stays included.
+1. At **Repositories**, enter your exact `OWNER/REPOSITORY`.
+   The control stays included. Comma-separated entries and `OWNER/*` also work:
+   review the exact expanded names. Future repositories are not enrolled.
 2. Choose **Authentication** only if prompted. Confirmed public targets
    automatically use `public-only` with Actions' `GITHUB_TOKEN`, no App/PAT,
    even when the control repository is private. Private/internal remote targets require credentials;

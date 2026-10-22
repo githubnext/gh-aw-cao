@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func testSetupGitHubApp(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string) {
+func testSetupGitHubApp(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string, host string) {
 	t.Helper()
 	t.Run("native GitHub App setup", func(t *testing.T) {
 		for _, test := range []struct {
@@ -49,7 +49,12 @@ func testSetupGitHubApp(t *testing.T, ctx context.Context, root, catalog, binary
 			{name: "repository identity lookup fails closed", authError: true, failure: "Bad credentials"},
 		} {
 			t.Run(test.name, func(t *testing.T) {
-				f := newSetupFixture(t, ctx, root, catalog, binary, runtimeFiles)
+				f := newSetupFixture(t, ctx, root, catalog, binary, runtimeFiles, host)
+				if host != "github.com" {
+					for _, repo := range f.api.Repositories {
+						repo.Private = true
+					}
+				}
 				setupGitHubAppNativePath(t, f)
 				f.env = append(f.env, "GITHUB_REPOSITORY=unrelated/ambient")
 				f.authError = test.authError
@@ -108,7 +113,7 @@ func testSetupGitHubApp(t *testing.T, ctx context.Context, root, catalog, binary
 					setupAssertJSON(t, result["installationTargets"], map[string]any{
 						"read": readTargets, "write": []map[string]any{{"owner": "platform", "repositories": writeTargets}},
 					})
-					setupAssertGitHubAppPlans(t, result, test.existing, test.readName, test.writeName)
+					setupAssertGitHubAppPlans(t, result, test.existing, test.readName, test.writeName, host)
 					if attempt > 0 && !bytes.Equal(previous, stdout.Bytes()) {
 						t.Fatal("repeated App preview changed the reviewed plan")
 					}
@@ -162,7 +167,7 @@ func setupGitHubAppNativePath(t *testing.T, f *setupFixture) {
 	}
 }
 
-func setupAssertGitHubAppPlans(t *testing.T, result map[string]any, existing bool, readName, writeName string) {
+func setupAssertGitHubAppPlans(t *testing.T, result map[string]any, existing bool, readName, writeName, host string) {
 	t.Helper()
 	apps, ok := result["apps"].([]any)
 	if !ok || len(apps) != 2 {
@@ -193,9 +198,9 @@ func setupAssertGitHubAppPlans(t *testing.T, result map[string]any, existing boo
 			}
 			manifest := app["manifest"].(map[string]any)
 			for key, expected := range map[string]any{
-				"name": name, "url": "https://github.com/platform/control", "redirect_url": "http://127.0.0.1:0/callback",
+				"name": name, "url": "https://" + host + "/platform/control", "redirect_url": "http://127.0.0.1:0/callback",
 				"public": false, "request_oauth_on_install": false, "default_events": []any{},
-				"hook_attributes": map[string]any{"url": "https://github.com/platform/control", "active": false},
+				"hook_attributes": map[string]any{"url": "https://" + host + "/platform/control", "active": false},
 			} {
 				setupAssertJSON(t, manifest[key], expected)
 			}

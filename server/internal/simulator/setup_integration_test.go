@@ -37,7 +37,7 @@ func TestCAOSetupIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Minute)
 	defer cancel()
 	binary := filepath.Join(root, "gh-cao")
 	bootstrapRun(t, ctx, catalog, nil, "go", "build", "-mod=readonly", "-o", binary, "./cmd/gh-cao")
@@ -198,7 +198,12 @@ func TestCAOSetupIntegration(t *testing.T) {
 		})
 	}
 	testSetupOptions(t, ctx, root, catalog, binary, runtimeFiles)
-	testSetupGitHubApp(t, ctx, root, catalog, binary, runtimeFiles)
+	for _, host := range []string{"github.com", "octocorp.ghe.com"} {
+		t.Run("App preview host/"+host, func(t *testing.T) {
+			testSetupGitHubApp(t, ctx, root, catalog, binary, runtimeFiles, host)
+		})
+	}
+	testSetupTopology(t, ctx, root, catalog, binary, runtimeFiles)
 }
 
 type setupFixture struct {
@@ -210,12 +215,18 @@ type setupFixture struct {
 	authError         bool
 	expectedVariables map[string]string
 	authModeWrites    int
+	handle            func(http.ResponseWriter, *http.Request) bool
 }
 
-func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string) *setupFixture {
+func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string, hosts ...string) *setupFixture {
 	t.Helper()
 	directory := t.TempDir()
 	f := &setupFixture{root: directory, checkout: filepath.Join(directory, "checkout"), api: NewBootstrapAPI("v0.0.1", nil), expectedVariables: map[string]string{}}
+	host := "github.com"
+	if len(hosts) > 0 {
+		host = hosts[0]
+		f.api.ServerURL = "https://" + host
+	}
 	for _, name := range []string{"platform/control", "platform/zeta", "platform/alpha", "platform/secret", "other/app"} {
 		owner, repo, _ := strings.Cut(name, "/")
 		if _, err := f.api.create(owner, repo, repo == "secret"); err != nil {
@@ -223,6 +234,14 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 		}
 	}
 	proxy, ca := bootstrapProxy(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if host != "github.com" && r.Host != host && r.Host != "api."+host {
+			t.Errorf("enterprise setup used another GitHub host: %s", r.Host)
+			http.Error(w, "wrong GitHub host", http.StatusForbidden)
+			return
+		}
+		if f.handle != nil && f.handle(w, r) {
+			return
+		}
 		if f.authError && (r.URL.Path == "/user" || r.URL.Path == "/graphql") {
 			f.api.mu.Lock()
 			f.api.Requests = append(f.api.Requests, r.Method+" "+r.URL.Path)
@@ -242,8 +261,18 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 			return
 		}
 		f.api.ServeHTTP(w, r)
-	}))
+	}), host, "api."+host)
 	f.env = append(bootstrapEnvironment(t, directory, proxy, ca), "TMPDIR="+root) //nolint:contextcheck // Shared environment helper uses this test's own lifetime.
+	if host != "github.com" {
+		for i, item := range f.env {
+			if item == "GH_HOST=github.com" {
+				f.env[i] = "GH_HOST=" + host
+			}
+			if strings.HasPrefix(item, "GH_TOKEN=") {
+				f.env[i] = strings.Replace(item, "GH_TOKEN=", "GH_ENTERPRISE_TOKEN=", 1)
+			}
+		}
+	}
 	bootstrapInstallAW(t, f.env)
 	for _, item := range f.env {
 		if data, ok := strings.CutPrefix(item, "XDG_DATA_HOME="); ok {
@@ -257,7 +286,7 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 		}
 	}
 	bootstrapRun(t, ctx, directory, f.env, "git", "init", "--quiet", "--initial-branch=main", f.checkout)
-	bootstrapRun(t, ctx, f.checkout, f.env, "git", "remote", "add", "origin", "https://github.com/platform/control.git")
+	bootstrapRun(t, ctx, f.checkout, f.env, "git", "remote", "add", "origin", "https://"+host+"/platform/control.git")
 	for _, name := range runtimeFiles {
 		setupWrite(t, filepath.Join(f.checkout, name), setupRead(t, filepath.Join(catalog, name)))
 	}
