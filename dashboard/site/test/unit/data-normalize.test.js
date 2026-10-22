@@ -46,7 +46,7 @@ describe('canonical normalization', () => {
         repository: 'octo/packages',
         path: 'demo',
         source: 'octo/packages/demo@abc',
-        addCommand: 'gh cao campaigns add octo/packages/demo@abc'
+        addCommand: 'gh cao add octo/packages/demo@abc'
       }
     )]);
 

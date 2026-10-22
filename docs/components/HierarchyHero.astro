@@ -6,6 +6,8 @@ import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
 import HeroWorkflowSnippet from "./HeroWorkflowSnippet.astro";
 import HeroControlDiagram from "./HeroControlDiagram.astro";
+import HeroEvidenceStory from "./HeroEvidenceStory.astro";
+import HeroDecisionLoop from "./HeroDecisionLoop.astro";
 import dashboardMobileOverview from "../assets/product/cao-dashboard-mobile-overview.png";
 import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile-overview-light.png";
 ---
@@ -64,6 +66,18 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
     </figcaption>
     <WorkflowEcosystem />
   </figure>
+</section>
+
+<section class="product-story evidence-story" aria-labelledby="evidence-title" data-reveal data-slideshow-slide>
+  <div class="product-story-copy">
+    <p class="section-eyebrow">From visibility to investigation</p>
+    <h2 id="evidence-title">Connected evidence. <br />Focused attention.</h2>
+    <p>
+      Bring runs, costs, and outcomes together across repositories. Surface patterns across campaigns
+      so humans and agents can investigate from the same evidence.
+    </p>
+  </div>
+  <HeroEvidenceStory />
 </section>
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal data-slideshow-slide>
@@ -135,6 +149,17 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
     </picture>
     <figcaption>Dashboard maintenance: Upgrade one repository or Upgrade all. Unknown version evidence stays explicit.</figcaption>
   </figure>
+</section>
+<section class="product-story decision-story" aria-labelledby="decision-title" data-reveal data-slideshow-slide>
+  <div class="product-story-copy">
+    <p class="section-eyebrow">Evidence before expansion</p>
+    <h2 id="decision-title">Use evidence to decide what scales.</h2>
+    <p>
+      Review outcomes, reliability, and cost. Refine what needs work, expand what earns confidence,
+      and pause what does not.
+    </p>
+  </div>
+  <HeroDecisionLoop />
 </section>
 <section class="product-story snippet-story webhook-story" aria-labelledby="webhook-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">

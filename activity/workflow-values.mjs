@@ -9,13 +9,15 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadPolicyFile } from '../.github/workflows/shared/policy.mjs';
 import { validateOperationalValueEvidence } from '../dashboard/site/src/data/model/operational-value-evidence.js';
+import { assertValueHistory } from './workflow-value-history.mjs';
+
+export { assertValueHistory } from './workflow-value-history.mjs';
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_BATCH_BYTES = 32 * 1024 * 1024;
 const DAY = 86400000;
 const modulePath = new URL(import.meta.url);
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
-const json = (value) => JSON.stringify(value, Object.keys(value).sort());
 
 export async function confinedCollector(root, collector) {
   if (typeof collector !== 'string' || !/^[A-Za-z0-9._/-]+\.mjs$/.test(collector)
@@ -44,37 +46,6 @@ export function workflowValueRegistrations(document, repositories) {
     && enrolled.some((repository) => same(repository, entry.repository))
     && (!scope['allowed-repositories'] || scope['allowed-repositories'].some((repository) => same(repository, entry.repository)))
     && (!scope['allowed-owners'] || scope['allowed-owners'].some((owner) => same(owner, entry.repository.split('/')[0]))));
-}
-
-export function assertValueHistory(previous, packet) {
-  if (!previous) return;
-  if (previous.id !== packet.id || previous.contractDigest !== packet.contractDigest
-    || Date.parse(packet.observedAt) <= Date.parse(previous.observedAt)
-    || Date.parse(packet.windowStart) > Date.parse(previous.windowStart)
-    || Date.parse(packet.windowEnd) < Date.parse(previous.windowEnd)) throw new Error('Frozen contract, capture or history conflict');
-  const key = (fact) => JSON.stringify([fact['fact-kind'], fact['parent-id'] ?? '', fact['fact-id']]);
-  const incoming = new Map(packet.facts.map((fact) => [key(fact), fact]));
-  for (const old of previous.facts) {
-    const kind = old['fact-kind'];
-    if (!['contract', 'implementation', 'snapshot', 'snapshot-item', 'output'].includes(kind)
-      && !kind.startsWith('implementation-')) continue;
-    const next = incoming.get(key(old));
-    if (!next) throw new Error('Accepted evidence history was removed');
-    const left = { ...old }, right = { ...next };
-    if (kind === 'contract') {
-      for (const field of ['outputs-available', 'repository-state-available', 'checks-available']) {
-        if (old[field] === true && next[field] !== true) throw new Error('Evidence availability was revoked');
-        delete left[field]; delete right[field];
-      }
-      delete left['output-coverage']; delete right['output-coverage'];
-    }
-    if (kind === 'output' || kind === 'implementation') {
-      if (old.origin !== next.origin && !(old.origin === 'corroborated' && next.origin === 'receipt-verified')) throw new Error('Accepted origin changed');
-      delete left.origin; delete right.origin;
-    }
-    if (kind === 'output') { delete left.state; delete right.state; }
-    if (json(left) !== json(right)) throw new Error('Immutable accepted evidence changed');
-  }
 }
 
 export async function collectWorkflowValue(request) {
@@ -119,7 +90,8 @@ export async function collectWorkflowValue(request) {
     const packet = validateOperationalValueEvidence(envelope.operational_value_evidence);
     const contract = packet.facts.find((fact) => fact['fact-kind'] === 'contract');
     if (!same(packet.repository, repository) || packet.workflow !== workflow
-      || Date.parse(packet.observedAt) > Date.parse(request.observedAt)
+      || Date.parse(packet.observedAt) > Date.now()
+      || Date.parse(packet.windowEnd) > Date.parse(request.observedAt)
       || contract['cadence-days'] !== cadence) throw new Error('Collector evidence identity or frozen cadence mismatch');
     const coverage = packet.facts.filter((fact) => fact['fact-kind'] === 'coverage');
     if (coverage.some((fact) => fact['coverage-status'] !== 'complete')) throw new Error('Collection incomplete; retaining last accepted evidence');
@@ -208,7 +180,7 @@ export async function runWorkflowValues(options) {
       observedAt: options.observedAt ?? new Date().toISOString(), database: options.database,
       workspace: path.resolve(options.workspace, identity),
     };
-    const child = await executeCollector(request, options.timeout ?? 120000);
+    const child = await executeCollector(request, options.timeout ?? 600000);
     try {
       for (const entry of await readdir(request.workspace)) {
         if (entry.startsWith('.scratch-')) await rm(path.join(request.workspace, entry), { recursive: true, force: true });

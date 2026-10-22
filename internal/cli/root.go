@@ -62,9 +62,9 @@ Help, version, and catalog discovery work offline.`,
 		doctorCommand(ghVersion, gh),
 	)
 	addPolicyCommands(root, gh)
-	root.AddCommand(addWorkflowCommand(gh))
+	root.AddCommand(addCommand(gh))
 	root.AddCommand(admissionCommands(gh))
-	root.AddCommand(repositoryCommands(runtime))
+	root.AddCommand(repositoryCommands(gh))
 	addOperatorCommands(root, runtime, gh)
 	root.AddCommand(deployCommand(defaultDeployAzureDeps()))
 	root.AddCommand(evidenceCommand(defaultEvidenceDeps(version)))

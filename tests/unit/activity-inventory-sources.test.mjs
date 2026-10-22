@@ -470,7 +470,7 @@ test("publishes normalized marketplace packages and registry-level health", () =
     readme: "# Demo\n\nMarketplace package documentation.\n",
     "readme-path": "demo/README.md",
     source: `acme/packages/demo@${"a".repeat(40)}`,
-    "add-command": `gh cao campaigns add acme/packages/demo@${"a".repeat(40)}`,
+    "add-command": `gh cao add acme/packages/demo@${"a".repeat(40)}`,
   };
   const sources = buildInventoryDashboardSources({
     repository: "acme/control",

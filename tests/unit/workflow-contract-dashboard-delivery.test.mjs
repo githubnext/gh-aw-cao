@@ -186,6 +186,11 @@ test("dashboard CI runs the campaign quality gates", () => {
   assert.match(playwrightIntegration.block, /hashFiles\('dashboard\/site\/package-lock\.json'\)/);
   assert.match(playwrightIntegration.block, /npx playwright install --with-deps chromium/);
   assert.match(playwrightIntegration.block, /run: npm run test:e2e/);
+  assert.match(playwrightIntegration.block, /go-version-file: server\/go\.mod/);
+  assert.match(playwrightIntegration.block, /go -C \.\.\/\.\.\/server build -o "\$RUNNER_TEMP\/cao-dashboard" \.\/cmd\/cao-dashboard/);
+  assert.match(playwrightIntegration.block, /echo "CAO_DASHBOARD_EXECUTABLE=\$RUNNER_TEMP\/cao-dashboard" >> "\$GITHUB_ENV"/);
+  assert.ok(playwrightIntegration.block.indexOf("go -C ../../server build")
+    < playwrightIntegration.block.indexOf("run: npm run test:e2e"));
   assert.doesNotMatch(playwrightIntegration.block, /run: npm (?:run (?:typecheck|lint)|test)$/m);
   assert.match(lighthousePerformance.block, /npm run test:performance/);
   assert.doesNotMatch(lighthousePerformance.block, /continue-on-error:\s*true/);

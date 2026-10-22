@@ -43,7 +43,6 @@ export const USAGE = `Usage:
   cao setup-auth enterprise-app --repo OWNER/REPO --read-client-id ID --write-client-id ID [--write-repository OWNER/REPO...] [--policy PATH] [--dry-run]
   cao setup-auth token --repo OWNER/REPO [--write-repository OWNER/REPO...] [--policy PATH] [--expires-in DAYS] [--dry-run] [--no-open] [--keep-existing|--replace-existing]
   cao add CAMPAIGN [GH_AW_ADD_OPTIONS...]
-  cao add --repository OWNER/REPO
   cao update [--campaign SLUG] [--pre-releases] [GH_AW_UPDATE_OPTIONS...]
   cao update (main|master|latest|COMMIT_SHA) [--campaign SLUG] [GH_AW_ADD_OPTIONS...]
   cao upgrade-gh-aw VERSION

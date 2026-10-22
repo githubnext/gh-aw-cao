@@ -129,8 +129,16 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: dashboard/site/package-lock.json
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
       - name: Install dependencies
         run: npm ci
+      - name: Build canvas Go host outside browser test deadlines
+        run: |
+          go -C ../../server build -o "$RUNNER_TEMP/cao-dashboard" ./cmd/cao-dashboard
+          echo "CAO_DASHBOARD_EXECUTABLE=$RUNNER_TEMP/cao-dashboard" >> "$GITHUB_ENV"
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

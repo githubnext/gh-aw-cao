@@ -3,11 +3,17 @@
 Load this reference only to inspect installer behavior, runtime layout, source
 versus generated files, or steering files.
 
-The primary operator path is the root `install-gh-cao.sh` from an existing control
-checkout, then `gh cao setup` (or the installer's `--setup` flag).
-The installer requires Bash, curl, and Node.js 24+ and invokes the upstream
-`github/gh-aw` installer for gh-aw. Public tool discovery and downloads are
-anonymous, without changing stored GitHub credentials. Native setup also prepares missing
+The primary operator path is `gh extension install githubnext/gh-cao`, then
+`gh cao setup` from an existing control checkout.
+
+> [!TIP]
+> If GitHub CLI extension installation fails because of SAML token authorization,
+> use `curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
+> The fallback requires Bash, curl, and Node.js 24+ and invokes the upstream
+> `github/gh-aw` installer for gh-aw. Public tool downloads are anonymous without
+> changing stored GitHub credentials.
+
+Native setup prepares missing
 runtime through gh-aw in an isolated checkout and verifies the selected stable
 release's exact-SHA attested archive and file inventory before preflighting
 local destinations. It adds missing files without replacing existing content,

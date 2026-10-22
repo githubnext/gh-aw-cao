@@ -28,9 +28,11 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 		"$runs": {Rows: []model.Row{
 			{"id": "covered", "workflowId": "workflow", "repositoryId": "repository", "owner": "github",
 				"repository": "gh-aw", "githubRunId": "990000003", "attempt": 1,
-				"workflowPath": ".github/workflows/smoke-pi-sub-agents.md"},
+				"workflowPath":            ".github/workflows/smoke-pi-sub-agents.md",
+				"routingAggregateVersion": 1, "routingState": "unknown", "routingResolutionCodes": "model_unavailable"},
 			{"id": "routed", "workflowId": "workflow", "repositoryId": "repository", "owner": "github",
-				"repository": "gh-aw", "githubRunId": "39091105929", "attempt": 1},
+				"repository": "gh-aw", "githubRunId": "39091105929", "attempt": 1,
+				"routingAggregateVersion": 1, "routingState": "selected"},
 		}},
 		"$audits": {Rows: []model.Row{
 			audit("covered-format", "covered", 0, model.Row{"type": "session.format", "status": "1", "phase": "conclusion"}),
@@ -53,7 +55,7 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 	if err := bindDashboardSQLCorpusInputs(definitions, parameters); err != nil {
 		t.Fatal(err)
 	}
-	names := []string{"routing-resolutions", "routing-resolution-failure-records", "routing-problems"}
+	names := []string{"routing-resolutions", "routing-resolution-problems", "routing-problems"}
 	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, reader postgresx.NativeReader) error {
 		sources, metrics, err := reader.ExecuteSQLPlan(ctx, definitions, names)
 		if err != nil {
@@ -80,10 +82,10 @@ func TestModelResolutionContractUsesPostgres(t *testing.T) {
 			exact["resolution-cause"] != nil || exact["configured-to-resolved"] != "copilot/gpt-5-mini → gpt-5-mini" {
 			t.Errorf("exact resolution = %#v", exact)
 		}
-		failures := sources["routing-resolution-failure-records"].Rows
-		if len(failures) != 1 || failures[0]["run"] != "990000003" || failures[0]["resolution-cause"] != "model_unavailable" ||
-			failures[0]["configured-model"] != "copilot/gpt-5.3" || failures[0]["full-repository"] != "github/gh-aw" {
-			t.Errorf("routing-resolution-failure-records = %#v", failures)
+		failures := sources["routing-resolution-problems"].Rows
+		if len(failures) != 1 || failures[0]["routing-run-key"] != "github/gh-aw:990000003" ||
+			failures[0]["problem-kind"] != "resolution failure" || failures[0]["problem-cause"] != "model_unavailable" {
+			t.Errorf("routing-resolution-problems = %#v", failures)
 		}
 		problems := sources["routing-problems"].Rows
 		if len(problems) != 1 || problems[0]["run"] != "990000003" || problems[0]["problem-kind"] != "resolution failure" ||

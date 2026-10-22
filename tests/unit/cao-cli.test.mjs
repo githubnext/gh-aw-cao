@@ -21,7 +21,6 @@ test("preserves CAO public exports from their focused implementation modules", a
     "cli/activity-stats": ["activityWorkflowStats"],
     "cli/authentication": ["fineGrainedTokenSetups", "setupCaoAuthentication"],
     "cli/campaigns": ["addCaoCampaign", "updateCaoCampaigns", "setCaoCampaignMode", "setCaoCampaignWorkflowsEnabled"],
-    "cli/repositories": ["addCaoRepository"],
     "cli/dashboard": ["discoverWorkflows", "pruneDashboardFile", "analyzeDashboardComplexityFile"],
     "cli/download": ["downloadDeployedDashboardData"],
     "cli/gh-aw": ["ensureGhAwMinimumVersion", "upgradeGhAw"],

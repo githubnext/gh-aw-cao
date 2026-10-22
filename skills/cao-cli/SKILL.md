@@ -24,7 +24,7 @@ Inside an agentic workflow, use the installed JavaScript runtime under
 below; do not build or install the extension when the runtime or cache is absent.
 
 1. Identify the task before running a command:
-   - control-plane setup or campaign lifecycle: use the compiled `gh cao` extension;
+   - control-plane setup, standalone workflow installation, repository enrollment, or campaign lifecycle: use the compiled `gh cao` extension;
    - activity analysis with shell access: use `gh cao`;
    - activity analysis without shell access: use `cao_catalog`, then `cao_query`;
    - an agentic workflow with the Activity cache: follow
@@ -47,7 +47,10 @@ below; do not build or install the extension when the runtime or cache is absent
 
 | Task | Route |
 | --- | --- |
-| Initialize or update a control repository | `gh cao init`, `campaigns add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
+| Initialize or update a control repository | `gh cao init`, `add`, `update`, or `setup`; see [CAO Commands](https://github.com/githubnext/gh-cao/blob/main/docs/cao-cli.md) |
+| Install and register one standalone workflow | `gh cao add WORKFLOW [--force] [--engine ENGINE]` |
+| Install a campaign package | `gh cao add CAMPAIGN` |
+| Enroll one exact repository in review mode | `gh cao repos add OWNER/REPO` |
 | Download published Activity | `gh cao download [--url URL]` |
 | Audit source coverage | `node activity/cao.mjs audit-jsonl` |
 | Discover reviewed dashboard queries | `gh cao pages`, `gh cao queries`, `gh cao query-info QUERY_ID` |

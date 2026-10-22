@@ -210,7 +210,7 @@ describe('dashboard source ingestion queries', () => {
           ref: 'main',
           'resolved-commit': 'a'.repeat(40),
           source: `example/packages/demo@${'a'.repeat(40)}`,
-          'add-command': `gh cao campaigns add example/packages/demo@${'a'.repeat(40)}`,
+          'add-command': `gh cao add example/packages/demo@${'a'.repeat(40)}`,
           'observed-at': '2026-09-09T04:00:00Z'
         }],
         metadata
