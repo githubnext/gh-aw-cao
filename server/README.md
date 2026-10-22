@@ -2328,17 +2328,21 @@ locally source-built images.
 
 #### Owner-selected release evidence collection
 
-From a reviewed checkout, collect a bounded, machine-readable record without
+Use the native Go extension to collect a bounded, machine-readable record without
 publishing, promoting, deploying, or changing workflow authority:
 
 ```sh
-node scripts/collect-release-evidence.mjs \
-  --repository githubnext/gh-cao \
+gh cao evidence release \
+  --repo githubnext/gh-cao \
   --revision FULL_40_CHARACTER_SOURCE_SHA \
   --image ghcr.io/githubnext/gh-cao/cao-server@sha256:EXACT_64_CHARACTER_DIGEST \
   --package-run PACKAGE_RUN_ID \
   --output /secure/evidence/release-evidence.json
 ```
+
+The `gh cao evidence` group hosts operator evidence collection. No Node.js,
+repository-local scripts or checkout are required. Use a release containing this
+command; merging source does not update an already installed extension.
 
 Use the existing package workflow run ID and immutable published image digest,
 not a tag. Optional `--promotion-run RUN_ID` collects references from the existing
@@ -2364,7 +2368,7 @@ The normalized receipt includes the verification command and raw receipt hash,
 but does not retain raw attestation bundles or assert builder isolation.
 
 The collector currently targets GitHub.com and GHCR. Schema version 1
-(`kind: cao.release.evidence`) records the collector script hash, Node/GitHub CLI
+(`kind: cao.release.evidence`) records the collector binary hash, extension/Go/GitHub CLI
 versions and collection time, and always reports `incomplete`.
 Run/job/check references are attempt-scoped; artifacts and approval history are
 run-scoped with **unknown** attempt binding. Approval records do not establish
@@ -2373,7 +2377,10 @@ optional API evidence is explicitly unknown; invalid selected run identities or
 deployment receipts fail collection. API reads stop after five 100-record pages,
 marking bounded inventories incomplete; responses are limited to 2 MiB with a
 60-second command timeout, local receipts to 1 MiB, and step lists to 100.
-The new output is owner-readable and never overwrites an existing file.
+The complete operation has a 30-minute deadline and honors cancellation.
+The new output uses mode `0600` where supported and never overwrites an existing
+file. Operators must restrict destination-directory ACLs, especially on Windows
+where POSIX mode bits do not enforce private access.
 
 This is collection-time evidence, not a governance decision, production acceptance,
 proof of running image measurements, independent retention, or Type 2 operating
