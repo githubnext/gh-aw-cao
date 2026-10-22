@@ -1,9 +1,9 @@
 ---
-title: Repo Status quickstart
-description: Run a standalone Repo Status workflow against an explicitly scoped repository and review your first daily report in CAO.
+title: Daily Repo Status quickstart
+description: Run a standalone Daily Repo Status workflow against an explicitly scoped repository and review your first daily report in CAO.
 ---
 
-Get your first **Repo Status** report with CAO: add one standalone workflow to
+Get your first **Daily Repo Status** report with CAO: add one standalone workflow to
 your control repository, select one target, and review yesterday's activity
 without writing to the target. By the end of this guide, you will have requested
 one bounded review and know where to find its report or no-op explanation.
@@ -13,7 +13,7 @@ review, and workflow execution time. No campaign, orchestrator or worker
 dispatch is required.
 
 :::note[CAO recording not yet available]
-**Video TODO:** record adding Repo Status, requesting one review-mode run, and
+**Video TODO:** record adding Daily Repo Status, requesting one review-mode run, and
 opening its report in the control repository. There is no video to play yet;
 follow the written steps below.
 :::
@@ -25,39 +25,43 @@ follow the written steps below.
 - **A configured CAO control repository.** Complete [Set Up CAO](../setup-quickstarts.md)
   first: install the extension and runtime, connect one repository, and publish
   your dashboard. Return here for optional automation; monitoring alone does
-  not run Repo Status. Reuse your setup and start from a clean checkout of
+  not run Daily Repo Status. Reuse your setup and start from a clean checkout of
   the control repository's default branch.
 - **One target repository.** Keep exact scope for
   `TARGET_OWNER/TARGET_REPOSITORY` and the control repository, not organization
   wildcards. Use a private control repository for private or internal evidence:
   reports inherit its visibility, and private Pages access is a separate setting.
-- **Repository credentials.** Repo Status needs target Contents, Issues,
+- **Repository credentials.** Daily Repo Status needs target Contents, Issues,
   Pull requests and Actions **read**, plus Issues **write** in the control
   repository for report safe outputs. It does not need cross-repository dispatch
   permissions. See [Authentication](../authentication.md); public visibility
   does not make every API readable with the control repository's token.
-- **Model access.** This workflow uses Copilot and needs its model authentication
-  and AI credits, separately from repository credentials. Review the workflow's
-  data handling, permitted integrations, and access to logs and artifacts before
-  its first run.
+- **Model access.** This workflow explicitly selects `gpt-5.3-codex` for Copilot
+  and needs model authentication and AI credits, separately from repository
+  credentials. If a control repository needs another available model, change the
+  installed Markdown workflow's `model:` value and recompile its lockfile; review
+  and publish both files together. Review the workflow's data handling, permitted
+  integrations, and access to logs and artifacts before its first run.
 
 <span id="step-2---add-and-review-the-sample-workflow"></span>
 
 ## Step 1 - Add and review the sample workflow
 
-From your control repository's checkout, install the CAO Repo Status workflow:
+From your control repository's checkout, install the CAO Daily Repo Status workflow:
 
 ```bash
-gh cao add repo-status
+gh cao add daily-repo-status
 ```
 
 This installs the CAO-adapted workflow, not the unmodified upstream workflow.
 It reuses the shared runtime installed by CAO setup and delegates installation
 and compilation to `gh aw add`. To pin a reviewed revision, use
-`gh cao add repo-status@FULL_COMMIT_SHA`. The explicit source is
-`githubnext/gh-cao/.github/workflows/repo-status.md`, not
+`gh cao add daily-repo-status@FULL_COMMIT_SHA`. The explicit source is
+`githubnext/gh-cao/.github/workflows/daily-repo-status.md`, not
 `githubnext/gh-cao/daily-repo-status`: gh-aw's short source form searches
 `workflows/`, whereas CAO maintains this workflow under `.github/workflows/`.
+The former catalog name `repo-status` remains an installer alias for existing
+automation and resolves to the canonical `daily-repo-status` identity.
 Use a released extension containing `add`; upgrade with
 `gh extension upgrade gh-cao` if the command is unavailable.
 
@@ -69,7 +73,7 @@ not `control-plane.campaigns`. No manual registration is needed:
 
 ```json
 {
-  "repo-status": {
+  "daily-repo-status": {
     "mode": "review",
     "max-mode": "review",
     "max-repositories": 1
@@ -118,7 +122,7 @@ Noninteractive/CI invocations never publish or run. An unchanged repeated add
 does not prompt again. If you decline either step, use the manual steps below.
 
 ```bash
-gh aw compile .github/workflows/repo-status.md --schedule-seed githubnext/gh-cao
+gh aw compile .github/workflows/daily-repo-status.md --schedule-seed githubnext/gh-cao
 gh cao doctor
 git status --short
 git diff -- .github
@@ -141,7 +145,7 @@ Replace all coordinates and `main` with your control repository's actual
 default branch. Run this from its checkout:
 
 ```bash
-gh aw run .github/workflows/repo-status.md --ref main \
+gh aw run .github/workflows/daily-repo-status.md --ref main \
   --raw-field target_repo="TARGET_OWNER/TARGET_REPOSITORY" \
   --raw-field safe_output_repo="CONTROL_OWNER/CONTROL_REPOSITORY" \
   --raw-field max_repos="1" \
@@ -159,7 +163,7 @@ is not expected consumption.
 
 ## Step 3 - Wait for the run and inspect its result
 
-Open the control repository's **Actions** tab and follow **Repo Status**.
+Open the control repository's **Actions** tab and follow **Daily Repo Status**.
 Allow time for model execution and output checks; the workflow has a
 20-minute timeout. Dispatching again requests new work, not a status check.
 If the run fails, open its step logs before retrying.

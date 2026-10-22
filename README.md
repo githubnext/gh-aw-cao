@@ -73,8 +73,8 @@ non-public evidence; a private repository does not guarantee a private dashboard
 **Optional, later:** describe the outcome and scope using
 [From Outcome to Execution](docs/operation-patterns.md), browse the
 [campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-or try one standalone report with the [Repo Status quickstart](docs/setup/quickstart.md).
-From a configured control checkout, `gh cao add repo-status` installs the workflow
+or try one standalone report with the [Daily Repo Status quickstart](docs/setup/quickstart.md).
+From a configured control checkout, `gh cao add daily-repo-status` installs the workflow
 and registers it in `cao.json` with review-only, one-repository limits. Interactive
 commit/push and first-run prompts are separate opt-ins; campaign packages still
 use `gh cao campaigns add`.
