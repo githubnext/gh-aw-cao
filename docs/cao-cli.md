@@ -203,7 +203,7 @@ to invoke it as `gh cao`.
 | Policy and workflow controls | `init`, `campaigns mode`, `campaigns enable`, `campaigns disable` | Native Go; no Node runtime required. |
 | Standalone workflow installation | `add WORKFLOW [--force] [--engine ENGINE]` | gh-aw installs and compiles; CAO registers the standalone workflow in policy. Interactive publication and first run require separate default-No approvals. |
 | Campaign installation | `campaigns add CAMPAIGN [GH_AW_ADD_OPTIONS...]` | Native Go; gh-aw owns installation records and workflow generation, Go materializes campaign resources and merges policy. No Node runtime required. |
-| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|token` | Native Go, preserving separate read/write credentials and explicit repository scope. |
+| Onboarding and authentication | `setup`, `setup auth github-app\|enterprise-app\|hosted-cli\|token` | Native Go, preserving separate read/write and hosted-executor credentials and explicit repository scope. |
 | Lifecycle | `repos add OWNER/REPO`, `update`, `upgrade-gh-aw` | Native Go; gh-aw still owns workflow generation and campaign installation records. |
 | Read-only analysis | `download`, `pages`, `queries`, `query-info`, `prompt`, `query`, `gh runs\|issues\|prs`, `computation intelligence\|runtime-health`, `mcp` | Native Go with pure-Go SQLite access and declarative Dashboard Language evaluation. |
 | Workflow value | `value publish`, `value enable`, `value disable` | Publish prepared evidence to a hosted dashboard, or edit reviewed local policy for recurring collection of one workflow. |
@@ -211,7 +211,7 @@ to invoke it as `gh cao`.
 | Installation diagnostics | `doctor`, `version` | Native Go. `doctor` checks GitHub CLI, gh-aw, authentication, and basic local policy structure and compiler pin. |
 | Actions pipeline and maintainer tools | `discover-workflows`, `ingest`, `ingest-jsonl`, `audit-jsonl`, `compact-jsonl`, `recycle-cache`, `issue-status`, `hash-payloads`, `activity-stats`, `validate-activity-data`, `operational-value`, `cluster-problems`, `dashboard-complexity`, `prune-dashboard` | Invoke with `node activity/cao.mjs <command>`; not migrated to the extension. |
 | Control-plane validation | `cao-validate.yml` | Actions-only JavaScript runtime; no Go or shell-wrapper command. |
-| Node-only administration | `node activity/cao.mjs repair-database`, `node activity/cao.mjs setup-auth hosted-cli` | Mutating SQLite repair/retention and dedicated hosted-executor App creation; neither has an equivalent Go command. |
+| Node-only administration | `node activity/cao.mjs repair-database` | Mutating SQLite repair/retention; no equivalent Go command. |
 
 The extension is **entirely Go** and does not execute Node.js, npm, or installed
 JavaScript modules. Its default reviewed dashboard catalog, canonical source
@@ -232,6 +232,7 @@ gh cao setup
 gh cao setup --repository 'my-monalisa-org/*'
 gh cao setup auth github-app --help
 gh cao setup auth enterprise-app --help
+gh cao setup auth hosted-cli --help
 gh cao setup auth token --help
 gh cao add daily-repo-status
 gh cao campaigns add githubnext/gh-cao/dependabot
@@ -271,8 +272,31 @@ dashboard; exact private/internal inputs fail. It enables no agent execution or
 campaigns. Review and publish the resulting exact policy. Public evidence is
 marked partial when logs/artifacts or authenticated enrichments cannot be
 guaranteed; it is not reported as complete zero activity.
-The dedicated hosted-executor App profile remains Node-only:
-`node activity/cao.mjs setup-auth hosted-cli`.
+The dedicated hosted-executor App profile also runs natively, without a Node
+runtime or installed control checkout:
+
+```bash
+gh cao setup auth hosted-cli --repo OWNER/CONTROL \
+  --target-repository OWNER/TARGET --private-key-out /secure/bootstrap.pem
+```
+
+It creates a separate private App with exactly actions, contents, pull requests,
+and workflows write plus metadata read. Targets are explicit same-owner
+repositories, never inferred from policy. GitHub's browser flow requires creation
+and installation approval with **Only select repositories**; repository-admin
+additions to an approved installation fall back to browser approval when denied.
+`--app-name`, repeatable `--target-repository`, `--no-open`, and `--dry-run` are
+supported. Dry-run prints the manifest, targets, and executor environment names
+without contacting GitHub or requiring a key destination.
+
+The private key is written to a new mode-`0600` temporary bootstrap file, never
+overwritten or printed. Import it into the `execute-cli` deployment's secret
+manager, then securely remove the file. A failed post-creation verification keeps
+the downloaded key for recovery but does not print success configuration.
+Keep it separate from dashboard login and Actions read/write credentials.
+Setup does not change policy, Actions secrets, authentication mode, or enable
+hosted execution. The retired Node profile fails before any side effects and
+directs operators to `gh cao setup auth hosted-cli`; it does not wrap Go.
 The runtime JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. `campaigns add` and `update` retain
 gh-aw option passthrough. JSON output, repeatable query parameters, stdin queries, interactive
@@ -467,7 +491,7 @@ gh aw run dependabot --ref main \
 | `gh cao setup admission --enterprise SLUG --url HTTPS_URL [--dry-run]` | Enumerate enterprise organizations and configure their organization variables, with enterprise read and per-organization Variables write access. |
 | `gh cao setup auth github-app ...` | Configure organization-owned read and write Apps. |
 | `gh cao setup auth enterprise-app ...` | Configure existing enterprise-owned Apps with policy-derived read scope and explicit `--write-repository` output scope. |
-| `node activity/cao.mjs setup-auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
+| `gh cao setup auth hosted-cli ...` | Create the dedicated least-privilege App that the dashboard server's optional `execute-cli` worker uses for single-use, repository-scoped command tokens. |
 | `gh cao setup auth token ...` | Configure explicitly consented owner-scoped fine-grained PAT pairs when an App is unavailable. |
 | `gh cao campaigns add OWNER/REPO/CAMPAIGN` | Install one campaign and merge its declared workers into policy without broadening rollout or enabling live mode. |
 | `gh cao repos add OWNER/REPO` | Verify GitHub CLI read access and stage one exact repository in local control-plane policy, with review-mode overrides for existing campaigns. |

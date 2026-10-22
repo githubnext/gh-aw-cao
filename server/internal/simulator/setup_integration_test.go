@@ -210,6 +210,7 @@ type setupFixture struct {
 	authError         bool
 	expectedVariables map[string]string
 	authModeWrites    int
+	githubApp         http.Handler
 }
 
 func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary string, runtimeFiles []string) *setupFixture {
@@ -223,6 +224,10 @@ func newSetupFixture(t *testing.T, ctx context.Context, root, catalog, binary st
 		}
 	}
 	proxy, ca := bootstrapProxy(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if f.githubApp != nil {
+			f.githubApp.ServeHTTP(w, r)
+			return
+		}
 		if f.authError && (r.URL.Path == "/user" || r.URL.Path == "/graphql") {
 			f.api.mu.Lock()
 			f.api.Requests = append(f.api.Requests, r.Method+" "+r.URL.Path)

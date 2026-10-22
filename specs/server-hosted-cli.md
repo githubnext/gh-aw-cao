@@ -281,7 +281,7 @@ deployment, migration, or rollout by itself.
 1. The executor MUST authenticate as the hosted CLI GitHub App, configured
    with `CAO_HOSTED_CLI_APP_ID` and `CAO_HOSTED_CLI_PRIVATE_KEY` or its
    `_FILE` or `_BASE64` variant. The App SHOULD be created with
-   `cao setup-auth hosted-cli`, which requests only actions, contents,
+   native Go `gh cao setup auth hosted-cli`, which requests only actions, contents,
    pull requests, and workflows write, plus metadata read.
    Operators MUST store the App private key in the executor deployment's
    managed secret store and expose it only to `execute-cli`, preferably through
@@ -289,6 +289,10 @@ deployment, migration, or rollout by itself.
    is temporary bootstrap material, not durable secret storage; operators
    MUST import it into the vault and remove the local copy. The key MUST NOT
    be configured on the `serve-hosted` process.
+   Setup MUST preserve explicit same-owner repository scope, browser approval,
+   and selected-repository verification without changing rollout policy or
+   enabling hosted execution. Existing key files MUST NOT be overwritten.
+   The retired Node `setup-auth hosted-cli` profile MUST fail before side effects.
 2. Each command MUST use an installation token minted for exactly its target
    repository, with the narrowest permissions its plan requires.
 3. The broker MUST verify the grant GitHub returns. If the response omits the
@@ -872,8 +876,13 @@ workload termination in this model.
 - `server/internal/hostedcli/telemetry_test.go`: command and token spans and
   metrics exist, the subprocess receives a valid `TRACEPARENT`, and no span
   carries a token or actor.
-- `tests/unit/setup-hosted-cli-app.test.mjs`: least-privilege App manifest and
-  helper safety.
+- `internal/cli/setup_hosted_cli_test.go`: native least-privilege App setup,
+  browser approval, explicit installation scope, credential storage and failures.
+- `server/internal/simulator/setup_hosted_cli_integration_test.go`: installed
+  extension without Node, real gh and App JWTs, manifest/browser approval, selected
+  repository additions and failures through the isolated GitHub simulator.
+- `tests/integration/cao-runtime-installation.test.mjs`: installed runtime rejects
+  the retired Node profile while retaining Actions credential inspection.
 
 ## 10. Security considerations
 

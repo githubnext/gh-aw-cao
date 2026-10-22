@@ -1963,7 +1963,7 @@ enable them, run the web server with both `--experimental` and
 PostgreSQL operational store and OAuth. Then run a separate executor:
 
 ```bash
-node activity/cao.mjs setup-auth hosted-cli --repo OWNER/CONTROL \
+gh cao setup auth hosted-cli --repo OWNER/CONTROL \
   --target-repository OWNER/TARGET --private-key-out ./hosted-cli.pem
 cao-dashboard serve-hosted --experimental --hosted-cli-actions ...
 cao-dashboard execute-cli --max-pooled-tokens 8
@@ -2068,7 +2068,11 @@ or promise exactly-once effects. Idempotent updates may overlap within the
 configured concurrency limit; workflow dispatch does not inherit that
 idempotency assumption.
 
-`setup-auth hosted-cli` writes the downloaded key to a temporary local
+`gh cao setup auth hosted-cli` runs natively in Go without Node.js or an installed
+control checkout. It preserves explicit same-owner targets, GitHub browser approval,
+and selected-repository installation verification. It does not activate hosted
+execution or change rollout policy. `--dry-run` previews the manifest offline;
+`--no-open` prints browser URLs. The command writes the downloaded key to a temporary local
 bootstrap file; that file is not a vault. Import it directly into the secret
 manager used by the `execute-cli` deployment, then securely remove the local
 copy. At runtime, expose the secret only to the executor, preferably as a

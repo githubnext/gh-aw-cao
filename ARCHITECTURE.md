@@ -1065,9 +1065,21 @@ only the exact current control repository. Initialization refuses
 replacement, preview maps to review, and campaign declarations are fully checked
 before workflow enablement/disablement. The extension groups guided setup at
 `gh cao setup` and independent credential profiles under
-`gh cao setup auth github-app|enterprise-app|token`, with no root-level
+`gh cao setup auth github-app|enterprise-app|hosted-cli|token`, with no root-level
 `setup-auth` command. Native authentication preserves the `setup-auth` result
 contract, options, credential prompts, consent, and read/write scope boundaries.
+Dedicated hosted-executor App setup also runs natively in Go, using the shared
+manifest callback and App-authenticated installation helpers. It requests exactly
+actions, contents, pull requests and workflows write plus metadata read, requires
+explicit same-owner repositories and browser approval, rejects all-repository
+installations and verifies every requested target. Its private key is written
+exclusively to a new mode-0600 temporary bootstrap file for import into the executor's
+secret manager, never printed or passed in arguments. Hosted credentials remain
+separate from dashboard login and Actions read/write credentials. Setup never
+changes policy, authentication mode or hosted-feature gates. The retired Node
+profile fails before side effects; unreferenced Node App-creation administration is
+removed while Actions credential profiles and inspection remain in
+`.github/workflows/shared/github-apps.mjs`.
 Repository enrollment (`gh cao repos add OWNER/REPO`),
 updates, onboarding, downloads, computations, and all evidence commands
 run entirely in Go. No production command invokes Node.js, npm, or JavaScript
@@ -1087,8 +1099,8 @@ and nonzero status for failed or skipped checks. Authentication may contact
 GitHub; raw authentication output and subprocess errors are never reported.
 Doctor does not replace production policy/workflow validation, grant authority,
 or invoke the Node snapshot-repair command. Actions and Node-only tools invoke
-`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`
-and the unmigrated `setup-auth hosted-cli` profile. There is no shell launcher.
+`node activity/cao.mjs <command>` explicitly, including SQLite snapshot `repair-database`.
+There is no shell launcher.
 Internal Node implementations remain available for Actions and parity tests,
 not as an alternative operator surface.
 Root runtime upgrades remove only
