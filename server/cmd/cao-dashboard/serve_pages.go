@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -90,7 +91,7 @@ func newPagesHandler(directory, basePath string) (*os.Root, *pagesHandler, error
 	}
 	if err != nil {
 		_ = root.Close()
-		return nil, nil, fmt.Errorf("Pages directory requires a readable built index.html: %w", err)
+		return nil, nil, fmt.Errorf("pages directory requires a readable built index.html: %w", err)
 	}
 	return root, &pagesHandler{root: root, basePath: basePath}, nil
 }
@@ -102,9 +103,7 @@ func (h *pagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.basePath != "/" && r.URL.Path == strings.TrimSuffix(h.basePath, "/") {
-		target := *r.URL
-		target.Path += "/"
-		target.RawPath = ""
+		target := url.URL{Path: h.basePath, RawQuery: r.URL.RawQuery}
 		http.Redirect(w, r, target.String(), http.StatusMovedPermanently)
 		return
 	}
@@ -151,9 +150,7 @@ func (h *pagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !strings.HasSuffix(r.URL.Path, "/") {
-			target := *r.URL
-			target.Path += "/"
-			target.RawPath = ""
+			target := url.URL{Path: h.basePath + name + "/", RawQuery: r.URL.RawQuery}
 			http.Redirect(w, r, target.String(), http.StatusMovedPermanently)
 			return
 		}

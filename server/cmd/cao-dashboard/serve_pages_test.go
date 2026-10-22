@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,7 +63,7 @@ func TestServePagesFilesUnchanged(t *testing.T) {
 			handler := testPagesHandler(t, directory, basePath)
 			for name, body := range files {
 				for _, method := range []string{http.MethodGet, http.MethodHead} {
-					request := httptest.NewRequest(method, basePath+name, nil)
+					request := httptest.NewRequestWithContext(t.Context(), method, basePath+name, nil)
 					response := httptest.NewRecorder()
 					handler.ServeHTTP(response, request)
 					if response.Code != http.StatusOK {
@@ -93,7 +94,7 @@ func TestServePagesFilesUnchanged(t *testing.T) {
 				}
 			}
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, basePath, nil))
+			handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, basePath, nil))
 			if response.Body.String() != files["index.html"] {
 				t.Fatal("index was rewritten or not served")
 			}
@@ -129,7 +130,7 @@ func TestServePagesBoundaries(t *testing.T) {
 			"%00index.html", "api/auth/session", "api/query", "assets/app.js/",
 		} {
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, basePath+suffix, nil))
+			handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, basePath+suffix, nil))
 			if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "outside secret") {
 				t.Errorf("%s%s: status %d, body %q", basePath, suffix, response.Code, response.Body.String())
 			}
@@ -139,22 +140,49 @@ func TestServePagesBoundaries(t *testing.T) {
 				continue
 			}
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, target, nil))
+			handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, target, nil))
 			want := strings.Split(target, "?")[0] + "/?query=1"
 			if response.Code != http.StatusMovedPermanently || response.Header().Get("Location") != want {
 				t.Errorf("%s: status %d, redirect %q, want %q", target, response.Code, response.Header().Get("Location"), want)
 			}
 		}
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, basePath, nil))
+		handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodPost, basePath, nil))
 		if response.Code != http.StatusMethodNotAllowed || response.Header().Get("Allow") != "GET, HEAD" {
 			t.Fatal("POST not rejected")
 		}
 		if basePath != "/" {
 			response = httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/index.html", nil))
+			handler.ServeHTTP(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/index.html", nil))
 			if response.Code != http.StatusNotFound {
 				t.Fatal("served outside base path")
+			}
+		}
+	}
+}
+
+func TestServePagesRedirectsStayOnOrigin(t *testing.T) {
+	directory, _ := pagesFixture(t)
+	query := "next=https%3A%2F%2Felsewhere.invalid%2F&escaped=%252f"
+	for _, basePath := range []string{"/", "/repository/"} {
+		handler := testPagesHandler(t, directory, basePath)
+		for _, requestPath := range []string{basePath + "nested", strings.TrimSuffix(basePath, "/")} {
+			if requestPath == "" {
+				continue
+			}
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				request := httptest.NewRequestWithContext(t.Context(), method, "https://elsewhere.invalid"+requestPath+"?"+query, nil)
+				response := httptest.NewRecorder()
+				handler.ServeHTTP(response, request)
+				location := response.Header().Get("Location")
+				target, err := url.Parse(location)
+				if err != nil || target.IsAbs() || target.Host != "" || strings.HasPrefix(location, "//") {
+					t.Fatalf("%s %s: unsafe redirect %q, error %v", method, requestPath, location, err)
+				}
+				want := requestPath + "/?" + query
+				if response.Code != http.StatusMovedPermanently || location != want {
+					t.Errorf("%s %s: status %d, redirect %q, want %q", method, requestPath, response.Code, location, want)
+				}
 			}
 		}
 	}
@@ -163,14 +191,14 @@ func TestServePagesBoundaries(t *testing.T) {
 func TestServePagesRangeAndConditional(t *testing.T) {
 	directory, files := pagesFixture(t)
 	handler := testPagesHandler(t, directory, "/")
-	request := httptest.NewRequest(http.MethodGet, "/data/activity.sqlite", nil)
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/data/activity.sqlite", nil)
 	request.Header.Set("Range", "bytes=0-5")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusPartialContent || response.Body.String() != files["data/activity.sqlite"][:6] {
 		t.Fatal("SQLite partial download failed")
 	}
-	request = httptest.NewRequest(http.MethodGet, "/data/activity.sqlite", nil)
+	request = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/data/activity.sqlite", nil)
 	request.Header.Set("If-Modified-Since", response.Header().Get("Last-Modified"))
 	response = httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
@@ -198,7 +226,7 @@ func TestServePagesValidation(t *testing.T) {
 			t.Errorf("accepted %q", address)
 		}
 	}
-	for _, basePath := range []string{"", "repo", "//repo/", "/repo/../other", "/repo//", "/repo?x", "/repo#x", "/%2e/", `/repo\other`, "/repo\n", "/repo other"} {
+	for _, basePath := range []string{"", "repo", "//repo/", "/repo/../other", "/repo//", "/repo?x", "/repo#x", "/%2e/", `/repo\child`, "/repo\n", "/repo other"} {
 		if root, _, err := newPagesHandler(directory, basePath); err == nil {
 			_ = root.Close()
 			t.Errorf("accepted base path %q", basePath)
