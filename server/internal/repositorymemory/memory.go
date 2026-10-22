@@ -23,6 +23,8 @@ const (
 	MaxFileSize  = 1024 * 1024
 	MaxNesting   = 10
 	MaxTotalSize = 64 * 1024 * 1024
+	// MaxManifestSize bounds metadata independently of admitted file content.
+	MaxManifestSize = 8 * 1024 * 1024
 
 	ManifestSource = "$repositoryMemoryManifest"
 	FilesSource    = "$repositoryMemoryFiles"
@@ -118,10 +120,13 @@ func Load(directory string) (snapshot Snapshot, returnErr error) {
 	case err != nil:
 		return Snapshot{}, fmt.Errorf("read repository-memory manifest: %w", err)
 	default:
-		content, err = io.ReadAll(manifestFile)
+		content, err = io.ReadAll(io.LimitReader(manifestFile, MaxManifestSize+1))
 		closeErr := manifestFile.Close()
 		if err != nil || closeErr != nil {
 			return Snapshot{}, errors.New("read repository-memory manifest: unavailable")
+		}
+		if len(content) > MaxManifestSize {
+			return Snapshot{}, errors.New("repository-memory manifest exceeds size limit")
 		}
 	}
 	var manifest Manifest

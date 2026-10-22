@@ -55,6 +55,32 @@ cache is missing; existing invalid or unreadable caches fail closed without an
 automatic repair download. `--download-sqlite` explicitly refreshes the cache
 before opening it read-only and does not relax the local security boundary.
 
+## Repository metadata input limits
+
+Local repository-memory manifests are limited to 8 MiB before JSON decoding,
+independently of the existing 400-files-per-campaign, 1 MiB-per-file and 64 MiB
+aggregate content limits. The metadata budget leaves room for many campaigns
+without treating file-content limits as a bound on manifest size.
+
+The Go marketplace resolver limits each generic GitHub JSON response (commit,
+recursive tree, blob and installation-token exchange) to 16 MiB before decoding.
+This allows large tree metadata and base64-wrapped 256 KiB manifests/READMEs
+without permitting unbounded responses. Public repository signals retain their
+separate 64 KiB limit.
+
+Both readers consume at most their limit plus one byte and reject oversized
+input, including a valid JSON prefix followed by excess whitespace. The
+marketplace checks actual response bytes rather than trusting Content-Length;
+complete JSON validation also rejects trailing documents or garbage. Read
+errors and request cancellation remain failures. Optional README failures keep
+the existing logged, empty-content behavior; required registry responses fail
+that registry with credential-free diagnostics.
+
+These are per-input byte bounds, not process-heap, concurrency, filesystem I/O
+deadline or deployment capacity guarantees. Decoded structures and subsequent
+normalization require additional memory. Deployed workload suitability and
+operating effectiveness still require operator evidence.
+
 ## Host-neutral hosted profile
 
 Hosted mode rejects local bearer capabilities and requires GitHub OAuth,

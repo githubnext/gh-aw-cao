@@ -79,6 +79,9 @@ func githubRequest(ctx context.Context, opts Options, method, requestURL, token 
 	return response, nil
 }
 
+// Allow large recursive trees as well as base64-wrapped 256 KiB package blobs.
+const maxGitHubJSONBytes = 16 * 1024 * 1024
+
 func githubJSON(ctx context.Context, opts Options, method, requestURL, token string) (map[string]any, error) {
 	response, err := githubRequest(ctx, opts, method, requestURL, token)
 	if err != nil {
@@ -87,8 +90,15 @@ func githubJSON(ctx context.Context, opts Options, method, requestURL, token str
 	defer func() {
 		_ = response.Body.Close()
 	}()
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxGitHubJSONBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read GitHub API response: %w", err)
+	}
+	if len(body) > maxGitHubJSONBytes {
+		return nil, fmt.Errorf("GitHub API response exceeds size limit")
+	}
 	var payload map[string]any
-	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, fmt.Errorf("decode GitHub API response: %w", err)
 	}
 	return payload, nil

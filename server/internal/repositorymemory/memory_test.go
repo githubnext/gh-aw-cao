@@ -22,6 +22,51 @@ func TestLoadMissingManifest(t *testing.T) {
 	}
 }
 
+func TestLoadManifestByteLimit(t *testing.T) {
+	const valid = `{"version":1,"campaigns":[]}`
+	for _, test := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "below limit", body: valid + strings.Repeat(" ", MaxManifestSize-1-len(valid))},
+		{name: "exact limit", body: valid + strings.Repeat(" ", MaxManifestSize-len(valid))},
+		{name: "one byte over", body: valid + strings.Repeat(" ", MaxManifestSize+1-len(valid)), want: "exceeds size limit"},
+		{name: "oversized malformed", body: strings.Repeat("{", MaxManifestSize+1), want: "exceeds size limit"},
+		{name: "malformed", body: `{"version":`, want: "parse repository-memory manifest"},
+		{name: "trailing JSON", body: valid + `{}`, want: "parse repository-memory manifest"},
+		{name: "invalid version", body: `{"version":2,"campaigns":[]}`, want: "manifest is invalid"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			memoryRoot := filepath.Join(root, "memory")
+			if err := os.Mkdir(memoryRoot, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(memoryRoot, "manifest.json"), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			snapshot, err := Load(root)
+			if test.want != "" {
+				if err == nil || !strings.Contains(err.Error(), test.want) {
+					t.Fatalf("error = %v, want substring %q", err, test.want)
+				}
+				if snapshot.Manifest != nil || snapshot.Files != nil || snapshot.Revision != "" {
+					t.Fatal("rejected manifest returned a partial snapshot")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			manifest := decodeManifest(t, snapshot.Manifest)
+			if manifest.Version != 1 || len(manifest.Campaigns) != 0 {
+				t.Fatal("unexpected manifest at byte boundary")
+			}
+		})
+	}
+}
+
 func TestLoadValidMemory(t *testing.T) {
 	root := t.TempDir()
 	content := []byte("# Memory\n")
