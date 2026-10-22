@@ -77,6 +77,24 @@ Already bare names and other icon values are preserved; an omitted or empty
 icon defaults to `workflow`.
 
 Registry failures are isolated and reported as credential-free diagnostics.
+The Go resolver defaults ordinary GitHub JSON responses to a 512 KiB bound before
+decoding, reading at most one additional byte to detect overflow. This budget
+allows base64-wrapped package blobs; manifest and README content limits remain
+256 KiB. Only recursive repository-tree discovery has a larger, separate 8 MiB
+ceiling to accommodate paths across the entire registry repository. Artwork
+fields are references, not image downloads through the JSON reader.
+The centralized defaults in `server/internal/inputlimits/limits.go` can be
+overridden with `CAO_MARKETPLACE_JSON_MAX_BYTES` and
+`CAO_MARKETPLACE_TREE_JSON_MAX_BYTES`. Values must be positive decimal byte
+counts below the platform integer maximum, reserving one byte for overflow
+detection. An unset override uses its default; an invalid or empty override
+fails before the corresponding HTTP request, without silently falling back.
+Oversized, unreadable or malformed responses fail the affected registry, except
+optional README/documentation failures, which retain their logged empty-content
+behavior. JSON responses must contain a single complete document; trailing
+whitespace counts toward the byte
+limit, and trailing documents or garbage are rejected. Request cancellation
+is preserved. Repository-signal responses retain their separate 64 KiB bound.
 Repository lookup failures do not hide usable packages. Private repository
 counts and token-derived details are never published, even to authenticated
 dashboard clients. The marketplace displays the package table as a declarative

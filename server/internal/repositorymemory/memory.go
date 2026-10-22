@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/githubnext/gh-cao/server/internal/inputlimits"
 	"github.com/githubnext/gh-cao/server/internal/logger"
 )
 
@@ -99,6 +100,10 @@ func ValidPath(value string) bool {
 }
 
 func Load(directory string) (snapshot Snapshot, returnErr error) {
+	manifestLimit, err := inputlimits.RepositoryMemoryManifest.Resolve(os.LookupEnv)
+	if err != nil {
+		return Snapshot{}, err
+	}
 	root, err := os.OpenRoot(directory)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("open repository-memory root: %w", err)
@@ -118,10 +123,13 @@ func Load(directory string) (snapshot Snapshot, returnErr error) {
 	case err != nil:
 		return Snapshot{}, fmt.Errorf("read repository-memory manifest: %w", err)
 	default:
-		content, err = io.ReadAll(manifestFile)
+		content, err = io.ReadAll(io.LimitReader(manifestFile, manifestLimit+1))
 		closeErr := manifestFile.Close()
 		if err != nil || closeErr != nil {
 			return Snapshot{}, errors.New("read repository-memory manifest: unavailable")
+		}
+		if int64(len(content)) > manifestLimit {
+			return Snapshot{}, errors.New("repository-memory manifest exceeds size limit")
 		}
 	}
 	var manifest Manifest

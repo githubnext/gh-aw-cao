@@ -55,6 +55,52 @@ cache is missing; existing invalid or unreadable caches fail closed without an
 automatic repair download. `--download-sqlite` explicitly refreshes the cache
 before opening it read-only and does not relax the local security boundary.
 
+## Repository metadata input limits
+
+Local repository-memory manifests default to a 2 MiB limit before JSON decoding,
+independently of the existing 400-files-per-campaign, 1 MiB-per-file and 64 MiB
+aggregate content limits. The metadata budget leaves room for many campaigns
+without treating file-content limits as a bound on manifest size.
+
+The Go marketplace resolver defaults ordinary GitHub JSON responses (commit,
+blob and installation-token exchange) to a 512 KiB limit before decoding.
+This allows base64 wrapping and metadata around 256 KiB manifests/READMEs
+without granting individual packages a multi-megabyte response budget.
+Recursive repository-tree discovery defaults to a separate 8 MiB ceiling
+because it lists paths across the entire repository, not just one package.
+Artwork fields are references, not image downloads through this JSON reader.
+Public repository signals retain their separate 64 KiB limit.
+
+These three metadata-read budgets are centralized in
+`internal/inputlimits/limits.go` and can be overridden independently:
+
+| Environment variable | Default | Input |
+| --- | --- | --- |
+| `CAO_REPOSITORY_MEMORY_MANIFEST_MAX_BYTES` | 2097152 (2 MiB) | Local repository-memory manifest |
+| `CAO_MARKETPLACE_JSON_MAX_BYTES` | 524288 (512 KiB) | Ordinary marketplace GitHub JSON |
+| `CAO_MARKETPLACE_TREE_JSON_MAX_BYTES` | 8388608 (8 MiB) | Recursive marketplace GitHub tree |
+
+Overrides are positive decimal byte counts below the platform integer maximum,
+leaving room for the overflow-detection byte. Unset variables use the defaults;
+empty, zero, negative, malformed or overflowing values fail explicitly before
+the relevant file is opened or HTTP request is issued. Overrides are resolved
+when the input is read, not cached at package initialization. Raising a budget
+is an operator-controlled capacity tradeoff, not evidence of workload safety.
+Existing file-content, package-content and repository-signal limits are unchanged.
+
+Both readers consume at most their limit plus one byte and reject oversized
+input, including a valid JSON prefix followed by excess whitespace. The
+marketplace checks actual response bytes rather than trusting Content-Length;
+complete JSON validation also rejects trailing documents or garbage. Read
+errors and request cancellation remain failures. Optional README failures keep
+the existing logged, empty-content behavior; required registry responses fail
+that registry with credential-free diagnostics.
+
+These are per-input byte bounds, not process-heap, concurrency, filesystem I/O
+deadline or deployment capacity guarantees. Decoded structures and subsequent
+normalization require additional memory. Deployed workload suitability and
+operating effectiveness still require operator evidence.
+
 ## Host-neutral hosted profile
 
 Hosted mode rejects local bearer capabilities and requires GitHub OAuth,
