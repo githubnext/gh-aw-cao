@@ -17,11 +17,17 @@ func TestBoundedGHHelper(t *testing.T) {
 	}
 	switch mode {
 	case "success":
-		fmt.Fprint(os.Stdout, "test")
+		if _, err := fmt.Fprint(os.Stdout, "test"); err != nil {
+			t.Fatal(err)
+		}
 	case "overflow":
-		fmt.Fprint(os.Stdout, strings.Repeat("x", 4096))
+		if _, err := fmt.Fprint(os.Stdout, strings.Repeat("x", 4096)); err != nil {
+			t.Fatal(err)
+		}
 	case "failure":
-		fmt.Fprint(os.Stderr, "credential-value-that-must-not-appear")
+		if _, err := fmt.Fprint(os.Stderr, "credential-value-that-must-not-appear"); err != nil {
+			t.Fatal(err)
+		}
 		os.Exit(1)
 	case "cancel":
 		time.Sleep(time.Minute)
