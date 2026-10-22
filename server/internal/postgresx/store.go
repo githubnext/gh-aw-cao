@@ -57,6 +57,8 @@ type readTransaction struct {
 	tx    *sql.Tx
 }
 
+const readTransactionTimeout = 60 * time.Second
+
 func New(ctx context.Context, dsn string, namespaces ...string) (*Store, error) {
 	if len(namespaces) > 1 {
 		return nil, errors.New("postgres store accepts at most one namespace")
@@ -315,13 +317,21 @@ func (r *readTransaction) State(ctx context.Context) (State, error) {
 }
 
 func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context, NativeReader) error) error {
+	ctx, cancel := context.WithTimeout(ctx, readTransactionTimeout)
+	defer cancel()
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true, Isolation: sql.LevelRepeatableRead})
 	if err != nil {
 		return fmt.Errorf("begin postgres read: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, "SET LOCAL statement_timeout = '60s'"); err != nil {
-		return err
+	deadline, _ := ctx.Deadline()
+	// pg_settings reports these timeouts in milliseconds. Zero means unlimited;
+	// retain any stricter role/session ceiling, including while waiting on locks.
+	if _, err := tx.ExecContext(ctx, `SELECT set_config(name,
+		LEAST(NULLIF(setting::bigint,0),$1::bigint)::text,true)
+		FROM pg_settings WHERE name IN ('statement_timeout','lock_timeout','idle_in_transaction_session_timeout')`,
+		max(1, time.Until(deadline).Milliseconds())); err != nil {
+		return fmt.Errorf("configure postgres read limits: %w", err)
 	}
 	// JIT compilation of wide dashboard plans can consume the entire read budget.
 	if _, err := tx.ExecContext(ctx, "SET LOCAL jit = off"); err != nil {

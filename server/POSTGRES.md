@@ -67,6 +67,66 @@ storage. SQLite has **no database principal/role isolation**: any file writer
 can bypass triggers, change the schema, or invoke retention. These tests do not
 replace the real PostgreSQL privilege tests below.
 
+## Canonical query resource bounds
+
+Canonical reads use a read-only, repeatable-read transaction. Its 60-second
+context deadline starts **before connection-pool admission** and covers setup,
+metadata, SQL resource statistics, output reads, and commit. A shorter caller
+deadline wins. Transaction-local `statement_timeout`, `lock_timeout`, and
+`idle_in_transaction_session_timeout` are clamped to the remaining deadline;
+any stricter nonzero operator role/session ceiling is preserved. Setup errors
+abort the read rather than executing without these settings. Commit/rollback
+restores the pooled session settings. Client cancellation requires cooperating
+driver/database behavior; this is not a hard CPU-instruction or I/O-byte quota.
+
+JIT and nested-loop planner preferences remain disabled locally as before.
+Each canonical store's pool admits at most four connections (including writes
+and maintenance), not four per user. Pool wait is deadline-bounded, not an
+independent fleet-wide admission queue. Replicas, other stores/pools, parallel
+query workers, and other database clients are outside that concurrency bound.
+HTTP identity/edge rate limits remain separate controls, not a database
+concurrency or memory quota.
+
+Logical input/intermediate rows, estimated bytes, operations and output budgets
+are checked using SQL statistics **after that SQL executes**. They do not cap
+physical scan bytes, database working memory, temporary disk, total provider
+cost, or server-wide resource use. A small result can require a large scan/sort.
+The application does not widen or configure `work_mem`, `hash_mem_multiplier`,
+`temp_file_limit` or parallel-worker ceilings. In particular, `work_mem` applies
+per operation/worker, not per request; `temp_file_limit` is per PostgreSQL process
+and excludes explicit temporary tables. Effective role/provider ceilings,
+capacity, replica count and cancellation behavior require operator evidence.
+Do not grant privileged database settings to runtime solely to run these tests.
+
+Reproduce bounded synthetic cancellation/spill measurements against an **owned,
+disposable local PostgreSQL** database, never production or a shared deployment:
+
+```sh
+go -C server test ./internal/postgresx \
+  -run 'TestReadTransaction(ResourceCeilings|PhysicalCancellation|PhysicalSpillMeasurement|PlannerSettingsAreLocal)$' \
+  -count=1 -v
+```
+
+Inject `POSTGRES_URL` separately using a private Unix socket or loopback endpoint.
+The existing test fixture creates and removes an isolated schema and requires
+bootstrap/partition privileges; the temporary-file rejection subtest additionally
+requires permission to set `temp_file_limit`. Without `POSTGRES_URL`, these
+service-backed tests explicitly skip; without that setting privilege, only the
+temporary-file rejection subtest skips. Tests report elapsed cancellation time
+for a 50ms statement ceiling, 50ms pool wait and statistics lock wait, plus a
+100ms caller deadline. A 20,000-row generated sort under operator-selected
+64kB `work_mem` reports `EXPLAIN (ANALYZE, BUFFERS)` temporary blocks, sort disk
+space (PostgreSQL reports kB), and execution milliseconds; a 64kB operator
+`temp_file_limit` must reject that spill with SQLSTATE `53400`. Values vary by
+PostgreSQL version and host; this is a bounded reproduction, not a fleet capacity
+benchmark or production operating-effectiveness evidence.
+
+For representative workload regression measurements, the existing
+`npm run test:performance:dashboard-query-cost-postgres` uses production
+ingestion/query execution against a local database and downloaded artifacts.
+Its wall time and logical Go metrics complement, but do not replace, physical
+database/provider measurements. No deployed settings or rollout are changed.
+
 ## Authorities
 
 Use a dedicated database/schema and fresh roles with no inherited privileged

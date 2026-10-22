@@ -52,7 +52,7 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 	if err != nil {
 		return nil, model.Metrics{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, readTransactionTimeout)
 	defer cancel()
 	metadata := map[string]model.Metadata{}
 	retrievedAt := time.Now().UTC().Format(time.RFC3339Nano)
