@@ -163,7 +163,7 @@ changes, risk acceptance, exclusions or control closure.
 | DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Implementation/validation pending final report |
 | OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Implementation pending |
 | OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Draft [#19423](https://github.com/githubnext/gh-cao/pull/19423); proposal received |
-| IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Offline rollover preflight selected; supported managed-signing deployment contract remains a separate decision |
+| IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424); offline rollover preflight proposed, not managed signing |
 
 The metadata proposal is commit
 `7f22e61b5f81b8891b2be01023b486d25cc73cf2`, based on
@@ -243,6 +243,51 @@ metadata/checksums, SBOM, signed bundles/verifier evidence, verify archive
 access/expiry, and supply deployed measurements, enforced approvals/checks,
 scan-exception dispositions, rollback and period records. Operating
 effectiveness is **not-assessed**; no finding is closed.
+
+#### Offline App key rollover preflight proposal
+
+Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424), commit
+`eb1d079ad24c62402692b9bfea2263c831e96b15`, starts from the same
+`4beb309dd0e415e7bb82e156cdc463d6c21fb55f` descendant baseline.
+Coordinator verified open/draft/head/base identity. This is an offline
+operator aid, not a change to runtime signing, key custody or deployed roles.
+
+At the proposal SHA, `server/internal/githubapp/key_check.go:13-98` and
+`server/cmd/cao-dashboard/app_key_check.go:14-73` implement explicit
+`cao-dashboard app-key-check --key-file`: bounded regular-file RSA PKCS#1/
+PKCS#8 consistency/size checks, exact SHA-256 SPKI public-fingerprint pinning,
+unchanged-key rollover rejection, public-only output and sanitized failures.
+The narrow preflight claim is **design-supported**, working CC6.1/CC6.7.
+It cannot establish GitHub registration, remote key retirement or invalidation
+of previously issued installation tokens.
+
+Managed signing is deliberately **not implemented**. Existing Azure contracts
+deliver Key Vault secrets as PEM and current App/gateway transports construct
+startup-loaded PEM signers. The dependency's `WithSigner` seam has no request
+context and supplies no provider key/version/identity/deployment contract.
+Operator decisions are still needed for threat model/provider, import
+feasibility of a GitHub-registered key, immutable version/public-key/RS256
+binding, isolated signing grants, bounded cancellation and no-fallback
+recovery. A signer abstraction alone would not establish these boundaries.
+
+Session-reported race tests across githubapp, dashboard command, hostedcli and
+gateway command passed 1,317 test/subtest events with 12 skips: deployed-data
+benchmarks, PostgreSQL serving/recovery, Apple-native and real Docker egress.
+New synthetic parser/command/rollover tests did not skip; they covered
+overlap, simulated old-key denial/replacement, provider denial/unavailability,
+invalid keys/pins, bounds and sanitized errors. Final scoped lint reported
+zero issues; fmt/vet/focused race and seeded 73-workflow compilation passed.
+Coordinator did not rerun those tests. Report:
+`/Users/peli/.copilot/session-state/baaf0260-80d5-48ed-86e4-fd85e0eb9584/files/app-key-custody-report.md`.
+
+EXEC-05/OPS-07 and related IAM-006 requests remain **evidence-needed** and
+**open**; only the preflight implementation is authorized
+`remediate` / `in-progress`. Required evidence still includes approved
+versions/fingerprints, actual process/mount/App reach, replica drain/restart,
+fresh mint/old-key-denial and issued-token cleanup, approvals and period
+records. No KMS/provider call, key rotation/revocation, production or
+permission change occurred. Operating effectiveness is **not-assessed**;
+managed-signing decisions remain pending and no finding is closed.
 
 ## Assessment boundary and current status
 

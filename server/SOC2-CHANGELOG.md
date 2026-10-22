@@ -566,3 +566,27 @@ Dates are UTC. Corrections are new events; original observations remain.
   measurement, approval independence, enforced governance, scan-exception
   disposition or period proof. No runtime/control closure, deployment,
   permissions, retention, risk acceptance or compliance assertion.
+
+## 2026-10-22 - SOC2-LOG-025 - Offline App key preflight proposal received
+
+- Type: bounded hardening report; RFC-035 record schema version 1.
+- Proposal source: `eb1d079ad24c62402692b9bfea2263c831e96b15`, base
+  `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`. Coordinator verified
+  [#19424](https://github.com/githubnext/gh-cao/pull/19424) open/draft/head/base.
+- Related requests: EXEC-05 / OPS-07 and IAM-006 key lifecycle evidence.
+  Authorized fallback implements bounded offline RSA key consistency,
+  public-fingerprint pinning and changed-key preflight. Runtime signing
+  and deployed custody are unchanged.
+- Managed signing remains unimplemented: provider/import/version/RS256,
+  identity/grant/deployment and context-bounded no-fallback integration
+  need explicit design decisions; a dependency signer seam is insufficient.
+- Session-reported validation: 1,317 race test/subtest passes, 12 platform/
+  database/deployed-data skips; scoped lint zero issues, fmt/vet/focused race
+  and 73-workflow compilation passed. No real GitHub/KMS/production test;
+  coordinator did not rerun runtime tests.
+- Disposition: narrow preflight design-supported at proposal SHA; source
+  remediation slice in-progress, not merged/deployed. Broader custody,
+  retirement/token-cleanup and period evidence remains needed/open;
+  managed-signing decisions pending. Two other final reports remain pending.
+- No risk acceptance, exclusion, finding closure, provider/key/permission
+  action or operating-effectiveness/compliance assertion.
