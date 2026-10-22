@@ -1220,10 +1220,16 @@ resolving explicit skill declarations, so that directory contains only the
 seven skills intended for control repositories and a contract test locks its
 exact inventory.
 Operational campaign manifests contain only their owned workflows and catalog
-resources; they do not import the root catalog package. `cao add` is the
+resources; they do not import the root catalog package. `gh cao campaigns add` is the
 supported lifecycle boundary after control-plane installation and materializes
 the selected campaign's canonical runtime without reinstalling control-plane or
 Agent Plugin resources.
+
+`gh cao add WORKFLOW` is the first-class standalone workflow installation command.
+It delegates installation and compilation to gh-aw, verifies the exact standalone
+identity and CAO admission gate, and registers new workflows in review mode without
+widening existing policy. Repository enrollment is separate: `gh cao repos add
+OWNER/REPO` verifies one exact repository and stages review-safe policy.
 
 `npm run test:runtime-install` builds the actual producer archive and validates
 its installation commit from a fresh
