@@ -1166,7 +1166,8 @@
       {
         "pages": [
           "overview",
-          "marketplace"
+          "marketplace",
+          "wizard"
         ]
       },
       {
@@ -1218,6 +1219,7 @@
     ]
   },
   "fragments": [
+    "dashboard-fragments/wizard.json",
     "dashboard-fragments/commands.json",
     "dashboard-fragments/governance.json",
     "dashboard-fragments/shared-events.json",

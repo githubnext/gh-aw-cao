@@ -97,6 +97,48 @@ configuration rather than activity evidence: browser-local IndexedDB, local-serv
 SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
 element does not query, derive, or infer a storage engine from retained rows.
 
+The `prompt-wizard` element declares `data.sources: []` and `config.wizard`.
+It is an interaction-only authoring surface: mutable answers, conditional form
+steps, validation and prompt handoff cannot be expressed by evidence marks.
+Its JSON configuration, not a page ID, defines all steps, choices, descriptions
+and generation instructions. It never queries activity records or changes rollout
+authority. The built-in **Workflow wizard** page designs either one Agentic
+Workflow or a Campaign.
+
+`config.wizard` contains `intro`, `steps`, `prompt` and optional `provenance`.
+Each step has a unique kebab-case `id`, `title`, optional `description` and
+non-empty `fields`. Each field has a globally unique kebab-case `id`, `label`,
+and `control` (`text`, `textarea`, `select` or `checkboxes`). It may declare
+`required`, `default`, `placeholder`, `max-length` (1–8000), or text
+`format: identifier` or `format: repositories` (exact owner/repository names
+separated by commas or whitespace). Choice fields require `options` with unique `value`,
+`label`, optional `description` and optional JSON `context`. A field's optional
+`when: { field, equals }` must match an option in an earlier select field.
+Hidden answers are retained locally for Back navigation but excluded from the
+generation prompt. Required fields, unknown choices and invalid defaults fail
+closed. Unknown configuration keys are rejected.
+
+`prompt` declares `label`, `instructions` and `action`, referencing a
+`propose`-level, row-placed `gh agent-task create --from-file -` CLI action
+without optional arguments. Opening the complete prompt preview does not launch
+generation. Explicit **Start agent task** approval hands the reviewed prompt
+through stdin to the existing command queue in the configured authoring
+repository. When execution is unavailable, **Copy prompt** provides the same
+prompt for an external agent. Answers are never shell substitutions. Prompts
+are limited to the command transport's 100000-character input bound. Neither
+preview nor generation installs, runs, merges or activates the resulting
+automation.
+
+The default wizard's immutable `githubnext/gh-aw-wizard` pattern snapshot is
+authoring configuration, not canonical operational data. `provenance` retains
+the upstream `repository`, full commit `revision`, pinned `url`, `generated-at`,
+`source-repositories`, `total-workflows`, historical-data `notice` and complete
+MIT `license`. Mined tips, observed success rates, triggers, outputs and
+capabilities are untrusted historical reference; selecting a pattern does not
+select permissions or override explicit answers. No selected safe outputs
+means no repository-write outputs. Campaign requests remain proposals in
+review mode with separately reviewed policy, credentials and target authority.
+
 The `environment-defaults` element declares `data.sources: []` and a
 `config.actions` mapping of `get-repo`, `update-repo`, `get-org`, `update-org`,
 `get-ent`, and `update-ent` to matching view-placed `gh aw env` CLI actions.
@@ -510,7 +552,7 @@ Published dashboards **MUST NOT** request these providers.
   have no observed operational provenance and **MUST NOT** be represented as
   measured activity.
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor`, `command-terminal`, `environment-defaults` and `prompt-wizard` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -1837,7 +1879,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 ### 11.4 Normative Custom-View Requirements
 
 - **DLS-VIEW-001:** A custom page **MUST** contain `id`, `kind: custom`, and a non-empty `views` sequence; an omitted title **MUST** default from its page ID.
-- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare empty `data.sources`.
+- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor`, `command-terminal`, `environment-defaults` and `prompt-wizard` elements and deployment-only `storage-info` element **MAY** declare empty `data.sources`.
 - **DLS-VIEW-003:** `metric` **MUST** encode exactly one `value` field and **MAY** encode `href`; it **MUST NOT** encode chart or table channels.
 - **DLS-VIEW-004:** `table` **MUST** encode non-empty `columns` and **MAY** encode `href`; it **MUST NOT** encode `value`, `x`, `y`, or `color`.
 - **DLS-VIEW-004b:** A table **MAY** declare `data.partial-source` as a distinct, previously declared query to render an initial inventory projection on the static data-worker backend. The partial query **MUST** preserve the final query's row identities and link fields without implying that absent computed values are zero or complete. Its metadata **MUST** mark `projection-state: pending` separately from evidence completeness; absent computed cells **MUST** render as pending, not zero. The worker **MUST** publish it before evaluating the complete query, then replace it with the complete view projection at the same data revision; a canceled or superseded subscription **MUST NOT** publish stale rows. Interactive filters, search, or ordering that depend on deferred fields **MUST** wait for the complete query. Hosted backends **MAY** return only the complete result.

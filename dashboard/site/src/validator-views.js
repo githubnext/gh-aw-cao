@@ -4,6 +4,7 @@ import { CALLOUT_KEYS, ERROR_CODES, FIELD_DEFINITION_KEYS, LINK_FIELD_NAMES, FAC
 import { OUTCOME_DETAIL_SECTION_BODY_VALUES, CAMPAIGN_ROUTE_BODY_VALUES, WORKFLOW_ROUTE_BODY_VALUES } from './components/route-body-specification.js';
 import { cliActionTemplateFields } from './cli-action-template.js';
 import { environmentDefaultsCommand } from './environment-defaults.js';
+import { parsePromptWizard } from './prompt-wizard.js';
 import { validateViewFilterBar as validateViewFilterBarContract } from './view-filter-validator.js';
 import { validateSource, sourceFieldNames, validateSourceSequence, validateSemanticFieldLiterals, validateContext, validateDatasetMetadata } from './validator-queries.js';
 import { validateEncoding } from './validator-encoding.js';
@@ -398,6 +399,23 @@ export function validateView(view, viewNode, path, viewIds, errors) {
   if (view.element === 'environment-defaults' && view.config === undefined) {
     errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
       'environment-defaults requires config.actions with scoped CLI action references.', `${path}.config`));
+  }
+  if (view.element === 'prompt-wizard' || isPlainObject(view.config) && view.config.wizard !== undefined) {
+    try {
+      if (view.element !== 'prompt-wizard') throw new Error('config.wizard is supported only on prompt-wizard.');
+      const wizard = parsePromptWizard(isPlainObject(view.config) ? view.config.wizard : undefined);
+      const action = state.declaredCliActions.get(wizard.prompt.action);
+      if (action?.command !== 'gh agent-task create --from-file -' || action.level !== 'propose'
+        || action.placement !== 'row' || action['copy-only'] === true || action.arguments !== undefined) {
+        throw new Error('Wizard generation must reference a propose-level row action for gh agent-task create --from-file -.');
+      }
+      if (!isPlainObject(view.data) || !Array.isArray(view.data.sources) || view.data.sources.length) {
+        throw new Error('prompt-wizard is interaction-only and requires data.sources: [].');
+      }
+    } catch (error) {
+      errors.push(createError(ERROR_CODES.missingOrInvalidRequiredField,
+        error instanceof Error ? error.message : 'Invalid prompt-wizard configuration.', `${path}.config.wizard`));
+    }
   }
   if (view.config !== undefined) {
     if (!isPlainObject(view.config)) {
@@ -876,7 +894,7 @@ export function validateView(view, viewNode, path, viewIds, errors) {
       ));
     }
     if (view.mark === 'element') {
-      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info', 'environment-defaults'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
+      if (!(typeof view.element === 'string' && ['query-editor', 'command-terminal', 'storage-info', 'environment-defaults', 'prompt-wizard'].includes(view.element) && Array.isArray(view.data.sources) && view.data.sources.length === 0)) {
         validateSourceSequence(view.data.sources, `${path}.data.sources`, errors);
       }
       if (view.data.source !== undefined) {

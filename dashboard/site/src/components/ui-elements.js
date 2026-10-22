@@ -35,7 +35,7 @@ const debugUiElements = createDebug('ui-elements');
  *   viewId?: string,
  *   viewIndex?: number,
  *   sourcesSubscribed?: boolean,
- *   elementConfig?: { actions?: Record<string, string>, body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'data-status'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
+ *   elementConfig?: { wizard?: import('../prompt-wizard.js').PromptWizard, actions?: Record<string, string>, body?: string, sections?: string[], stations?: string[], section?: string, labels?: Record<string, unknown>, animate?: string, 'browser-first-load'?: boolean, 'data-status'?: boolean, 'view-all-page'?: string, 'view-all-label'?: string, 'label-field'?: string, 'label-badge-field'?: string, 'link-field'?: string, 'icon-field'?: string, 'fallback-icon'?: string, 'indicator-field'?: string, 'indicator-label-field'?: string, 'empty-message'?: string, 'measure-source'?: 'operational-value'|'operational-grader', 'content-field'?: string, 'path-field'?: string, 'base-link-field'?: string },
  *   headingTag: 'h2'|'h3'|'h4'
  * }} ElementRenderContext
  */
@@ -90,7 +90,8 @@ const EMPTY_AWARE_ELEMENTS = new Set([
   'workflow-value-snapshot',
   'command-terminal',
   'storage-info',
-  'environment-defaults'
+  'environment-defaults',
+  'prompt-wizard'
 ]);
 const UNAVAILABLE_AWARE_ELEMENTS = new Set(['configuration-policy', 'problem-detail', 'campaign-route', 'workflow-value-report', 'workflow-value-snapshot']);
 
@@ -115,6 +116,10 @@ function lazyElementRenderer(importModule, render) {
 
 /** @type {Map<string, (context: ElementRenderContext, signal?: AbortSignal) => Promise<HTMLElement | null>>} */
 const LAZY_ELEMENT_RENDERERS = new Map([
+  ['prompt-wizard-lazy', lazyElementRenderer(
+    () => import('./prompt-wizard.js'),
+    ({ renderPromptWizard }, context) => renderPromptWizard(context)
+  )],
   ['workflow-value-report-lazy', lazyElementRenderer(
     () => import('./workflow-value-report.js'),
     ({ renderWorkflowValueReport }, context) => renderWorkflowValueReport(context)

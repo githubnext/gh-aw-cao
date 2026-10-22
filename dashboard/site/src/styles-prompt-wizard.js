@@ -1,0 +1,28 @@
+export const promptWizardStyles = `
+.prompt-wizard{max-width:960px;margin:0 auto;min-width:0}
+.prompt-wizard-progress{display:flex;gap:12px;list-style-position:inside;padding:0;margin:24px 0;flex-wrap:wrap}
+.prompt-wizard-progress li{padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--muted)}
+.prompt-wizard-progress [aria-current="step"]{color:var(--accent);border-color:var(--accent);font-weight:600}
+.prompt-wizard-step{border:0;padding:0;min-width:0;margin:0}
+.prompt-wizard-step>legend{font-size:20px;font-weight:600;padding:0}
+.prompt-wizard-field{margin:20px 0;min-width:0}
+.prompt-wizard-field>label,.prompt-wizard-field>legend{display:block;font-weight:600;margin-bottom:8px}
+.prompt-wizard-field :is(input[type="text"],textarea,select){box-sizing:border-box;width:100%;min-height:44px;padding:8px 12px;font:inherit;color:var(--fg);background:var(--canvas);border:1px solid var(--border);border-radius:6px}
+.prompt-wizard :is(input,textarea,select,button):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.prompt-wizard-field textarea{resize:vertical}
+.prompt-wizard-help{white-space:pre-line;color:var(--muted);font-size:13px}
+.prompt-wizard-help:empty{display:none}
+.prompt-wizard-options{padding:12px;border:1px solid var(--border);border-radius:6px}
+.prompt-wizard-options>.prompt-wizard-choice{display:flex;gap:12px;align-items:flex-start;padding:10px;margin:0;font-weight:400;min-height:44px;cursor:pointer}
+.prompt-wizard-choice input{margin-top:4px;flex:none}
+.prompt-wizard-choice small{display:block;color:var(--muted)}
+.prompt-wizard-actions{display:flex;justify-content:space-between;gap:12px;margin:20px 0}
+.prompt-wizard :is(button,.table-intent-button){min-height:44px}
+.prompt-wizard-summary{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:16px;background:var(--canvas-subtle);border:1px solid var(--border);border-radius:6px;max-height:480px;overflow:auto}
+.prompt-wizard-review>.table-intent-control{display:block;margin:20px 0}
+.prompt-wizard-status{display:block;color:var(--muted)}
+.prompt-wizard-provenance{border-top:1px solid var(--border);margin-top:24px;padding-top:16px;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.prompt-wizard-provenance pre{white-space:pre-wrap}
+.prompt-wizard [hidden]{display:none!important}
+@media(max-width:600px){.prompt-wizard-progress{gap:6px}.prompt-wizard-progress li{font-size:12px;padding:6px}.prompt-wizard-options{padding:6px}}
+`;

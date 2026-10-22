@@ -20,6 +20,43 @@ main-thread JavaScript data derivation.
 
 ## What you can ask
 
+### Design an Agentic Workflow or Campaign
+
+Open **Workflow wizard** (`#page-wizard`) to design a generation prompt. Choose
+a mined pattern or start from a custom goal, record intent and acceptance
+criteria, then select explicit triggers, per-run limits, safe outputs and
+optional capabilities. Campaigns also require proposed target repositories.
+Pattern recommendations do not automatically enable permissions.
+
+Choose **Review design**, then **Review generation prompt**. In an authorized
+command-enabled dashboard, **Start agent task** launches
+`gh agent-task create --from-file -` with the reviewed prompt in the configured
+authoring repository. Otherwise, use **Copy prompt** with your coding agent.
+Generation requests a draft pull request, not installation or live activation.
+Draft answers are page-local memory; leaving the page discards them. Never
+enter secrets.
+
+The page's steps, conditional fields, choices and generation instructions live
+in `dashboard/site/dashboard-fragments/wizard.json`. They use the reusable
+`prompt-wizard` element rather than view-specific JavaScript. Its pattern
+choices and generation guidance reuse the MIT-licensed dataset mined in
+[`githubnext/gh-aw-wizard`](https://github.com/githubnext/gh-aw-wizard). The
+footer identifies the immutable revision and mining date; historical rates
+and tips are reference material, not efficacy claims.
+
+To refresh the dataset, review an upstream commit, then run:
+
+```sh
+node dashboard/site/scripts/update-wizard-patterns.mjs FULL_UPSTREAM_COMMIT_SHA
+```
+
+The importer uses `gh api`, retains the upstream license and provenance, and
+updates only pattern/trigger/output/capability choices in the JSON document.
+It does not fetch remote data at page runtime. Review the generated diff and
+run dashboard validation and the focused wizard tests before publishing.
+
+### Explore operational evidence
+
 Start with a declared source such as repositories, workflows, runs, domains,
 tools, audits, issues, usage, outcomes, or findings. Then combine only the operations the view
 needs:

@@ -1,0 +1,13 @@
+{
+  "page": "wizard",
+  "view": "workflow-design",
+  "element": "prompt-wizard",
+  "sources": [],
+  "action": "create-agent-task",
+  "command": "gh agent-task create --from-file -",
+  "upstream": "githubnext/gh-aw-wizard",
+  "revision": "2e1f1d62adcbfa68fd6abab65eb9372af50a8ba5",
+  "pattern-count": 34,
+  "steps": ["goal", "behavior"],
+  "fields": ["artifact", "name", "pattern", "purpose", "success", "scope", "targets", "triggers", "trigger-details", "outputs", "extras", "engine", "constraints"]
+}
