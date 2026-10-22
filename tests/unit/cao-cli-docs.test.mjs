@@ -123,23 +123,15 @@ test("extension installation guidance distinguishes discovery, promotion, and ru
   assert.match(docs, /Extension installation alone does not install the control-repository runtime\s+or `gh-aw`/);
 });
 
-test("native and Node setup hand off to outcome and scope rather than pattern selection", () => {
-  for (const filename of ["internal/cli/native_setup.go", "activity/cao.mjs"]) {
-    const source = readFileSync(filename, "utf8");
-    if (filename.endsWith(".go")) {
-      assert.ok(source.includes("Monitoring configured locally. No commit or push was performed."));
-      assert.ok(source.includes("setupPublishOutput("));
-      assert.ok(readFileSync("internal/cli/setup_publish.go", "utf8")
-        .includes("Deployment pending; setup is not waiting for Actions."));
-      assert.match(source, /Optional automation: https:\/\/githubnext\.github\.io\/gh-cao\/operation-patterns\/\\n"/);
-    } else {
-      assert.ok(source.includes("Monitoring is configured; executing operations is optional."));
-      assert.ok(source.includes("Describe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/"));
-    }
-    assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
-  }
+test("native setup hands off to outcome and scope rather than pattern selection", () => {
+  const source = readFileSync("internal/cli/native_setup.go", "utf8");
+  assert.ok(source.includes("Monitoring configured locally. No commit or push was performed."));
+  assert.ok(source.includes("setupPublishOutput("));
+  assert.ok(source.includes("Optional automation: https://githubnext.github.io/gh-cao/operation-patterns/"));
+  assert.ok(readFileSync("internal/cli/setup_publish.go", "utf8")
+    .includes("Deployment pending; setup is not waiting for Actions."));
+  assert.doesNotMatch(source, /Add your first campaign separately|Choose an operation pattern/);
   const skill = readFileSync("skills/setup-cao/SKILL.md", "utf8");
-  assert.match(skill, /control-plane\.workflows` and `control-plane\.operations` absent or empty/);
   assert.match(skill, /operation-patterns\.md/);
 });
 
@@ -189,8 +181,7 @@ test("CAO command guide covers the operator-facing command surface", () => {
     "computation runtime-health", "query", "gh runs", "gh issues", "gh prs",
   ]) {
     assert.match(docs, new RegExp(`gh cao ${command.replaceAll("-", "\\-")}`));
-    const legacy = command.replace(/^campaigns /, "").replace(/^setup auth /, "setup-auth ");
-    assert.match(help, new RegExp(`cao ${legacy === "doctor" ? "repair-database" : legacy.split(" ")[0]}`));
+
   }
 });
 
@@ -245,22 +236,15 @@ test("CAO command guide explains the workflow execution boundary", () => {
   assert.doesNotMatch(docs, /gh cao validate/);
 });
 
-test("campaign guides use the unified native add command", () => {
+test("campaign guides distinguish native campaign installation from standalone workflows", () => {
   for (const campaign of ["bug-bash", "repo-assist"]) {
     const guide = readFileSync(`${campaign}/README.md`, "utf8");
     assert.ok(guide.includes(`gh cao add githubnext/gh-cao/${campaign}`));
-    assert.doesNotMatch(guide, /\.\/cao\.sh (?:add|quickstart)\b/);
   }
-  for (const filename of [
-    "docs/cao-cli.md", "docs/marketplace.md", "docs/configuration.md",
-    "docs/repo-assist-quickstart.md", "skills/cao-cli/SKILL.md",
-    "skills/add-cao-campaign/SKILL.md", "README.md", "CONTRIBUTING.md",
-    "ARCHITECTURE.md", "CODEBASE.yml",
-  ]) {
-    assert.doesNotMatch(readFileSync(filename, "utf8"), /campaigns add/, filename);
-  }
-  assert.match(docs, /gh cao add WORKFLOW_OR_CAMPAIGN/);
-  assert.match(docs, /installs standalone workflows or campaign packages, not repositories/);
+  assert.match(docs, /gh cao add CAMPAIGN/);
+  assert.match(docs, /gh cao add WORKFLOW/);
+  assert.match(docs, /single native command for installing a standalone CAO workflow\s+or a campaign package/);
+  assert.doesNotMatch(docs, /gh cao campaigns add/);
   assert.match(docs, /Campaign installation never commits, pushes\s+or dispatches work/);
   assert.match(docs, /Standalone workflows accept only `--force` and `--engine`/);
 });

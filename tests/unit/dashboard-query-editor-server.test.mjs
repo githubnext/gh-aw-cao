@@ -14,7 +14,7 @@ async function preview(t, options = {}) {
   const root = await mkdtemp(join(tmpdir(), "cao-query-editor-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, "site"));
-  await writeFile(join(root, "site", "index.html"), "<!doctype html><body>CAO preview</body>");
+  await writeFile(join(root, "site", "index.html"), "<!doctype html><html><head></head><body>CAO preview</body></html>");
   await writeFile(join(root, "site", "dashboard.json"), dashboardDocument);
   const server = await startCanvasServer({
     siteRoot: join(root, "site"), catalogRoot: null, workingDirectory: root, port: 0,
@@ -29,6 +29,42 @@ async function preview(t, options = {}) {
 
 const requestOptions = (server, payload = intent, origin = new URL(server.url).origin) => ({
   method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify(payload),
+});
+
+test("Copilot session handoff is capability-scoped, same-origin, bounded and single-flight", async (t) => {
+  const normal = await preview(t);
+  assert.equal((await fetch(`${normal.url}/__copilot_session`, requestOptions(normal, { prompt: "Task" }))).status, 404);
+  assert.doesNotMatch(await (await fetch(normal.url)).text(), /dashboard-copilot-session/);
+  let submitted;
+  let finish;
+  const server = await preview(t, {
+    startSession: async (prompt) => {
+      submitted = prompt;
+      await new Promise((resolve) => { finish = resolve; });
+    },
+  });
+  const endpoint = `${server.url}/__copilot_session`;
+  assert.match(await (await fetch(server.url)).text(), /name="dashboard-copilot-session"/);
+  assert.equal((await fetch(endpoint)).status, 405);
+  assert.equal((await fetch(endpoint, requestOptions(server, { prompt: "Task" }, "https://untrusted.test"))).status, 403);
+  assert.equal((await fetch(endpoint, { method: "POST", body: "{}" })).status, 403);
+  for (const body of [{ prompt: "" }, { prompt: " " }, { prompt: "Task", command: "extra" }, { prompt: "x".repeat(100001) }]) {
+    assert.equal((await fetch(endpoint, requestOptions(server, body))).status, 400);
+  }
+  assert.equal((await fetch(`${new URL(server.url).origin}/__copilot_session`, requestOptions(server, { prompt: "Task" }))).status, 404);
+  const pending = fetch(endpoint, requestOptions(server, { prompt: "Create a Pull Request." }));
+  while (!submitted) await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(submitted, "Create a Pull Request.");
+  assert.equal((await fetch(endpoint, requestOptions(server, { prompt: "Duplicate" }))).status, 409);
+  finish();
+  assert.deepEqual(await (await pending).json(), { ok: true });
+});
+
+test("Copilot session failures are explicit and never disclose prompt content", async (t) => {
+  const server = await preview(t, { startSession: async () => { throw new Error("private prompt"); } });
+  const response = await fetch(`${server.url}/__copilot_session`, requestOptions(server, { prompt: "Task" }));
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).error, /Could not start/);
 });
 
 test("query editor is injected only when the canvas host supplies a query generator", async (t) => {

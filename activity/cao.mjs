@@ -1,15 +1,8 @@
 #!/usr/bin/env node
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { formatSetupAuthenticationSummary } from './authentication.mjs';
 import { runCli } from './cli/run.mjs';
 
-export { setupCaoControlPlane } from './setup.mjs';
-export { formatSetupAuthenticationSummary } from './authentication.mjs';
-export { initializeCaoPolicy } from './cli/policy.mjs';
-export { ensureGhAwMinimumVersion, upgradeGhAw } from './cli/gh-aw.mjs';
-export { fineGrainedTokenSetups, setupCaoAuthentication } from './cli/authentication.mjs';
-export { addCaoCampaign, updateCaoCampaigns, setCaoCampaignMode, setCaoCampaignWorkflowsEnabled } from './cli/campaigns.mjs';
 export { compactJsonlShards } from './cli/jsonl.mjs';
 export { downloadDeployedDashboardData } from './cli/download.mjs';
 export { ingestGhAwLogDirectory } from './cli/ingestion.mjs';
@@ -38,18 +31,6 @@ async function main() {
     if (typeof output === 'object' && output?.command === 'validate') {
       process.stdout.write(`${output.output}\n`);
       process.exitCode = output.exitCode;
-      return;
-    }
-    if (typeof output === 'object'
-      && output?.command === 'setup-auth'
-      && !arguments_.includes('--dry-run')) {
-      process.stdout.write(`${formatSetupAuthenticationSummary(output)}\n`);
-      return;
-    }
-    if (typeof output === 'object' && output?.command === 'setup' && !arguments_.includes('--json')) {
-      if (!output.cancelled) {
-        process.stdout.write('Next: gh cao doctor\nThen review git diff and git status, commit, and push the installed files.\nCheck the CAO validation workflow in Actions after publishing.\nMonitoring is configured; executing operations is optional.\nDescribe the outcome, target scope, and execution requirements: https://githubnext.github.io/gh-cao/operation-patterns/\n');
-      }
       return;
     }
     process.stdout.write(`${typeof output === 'string' ? output : JSON.stringify(output, null, 2)}\n`);

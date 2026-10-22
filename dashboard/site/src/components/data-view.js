@@ -21,6 +21,7 @@ import { clearTimeWindowFilter, isTimeWindowFilterActive } from './filter-bar.js
 import { processScatterPoints } from '../data-processor.js';
 import { MAX_RENDERED_SCATTER_POINTS } from '../scatter-clustering.js';
 import { createPromptCliActionControl, renderDeclaredCliAction, renderRowCliAction } from './cli-actions.js';
+import { createPromptSessionControl } from './prompt-session.js';
 import { effect, onCleanup, state } from '../reactive.js';
 import { createFactoryScope } from './factory-elements.js';
 import { createDebug } from '../debug.js';
@@ -1748,8 +1749,9 @@ export function renderIntentAction(action, row) {
  * @param {string | undefined} [actionId]
  * @param {string} [iconName]
  * @param {string} [presentation]
+ * @param {() => boolean} [beforeOpen]
  */
-export function renderPromptPreviewAction(action, getContent, actionId, iconName, presentation) {
+export function renderPromptPreviewAction(action, getContent, actionId, iconName, presentation, beforeOpen) {
   if (typeof action === 'string') action = normalizeAction({
     label: action, actionId, icon: iconName, presentation
   }, { id: action, type: 'prompt' });
@@ -1776,7 +1778,10 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
   effect(() => {
     preview.textContent = content.get();
   }, { signal: scope.signal });
-  const copyControl = createCopyControl({
+  const promptCliAction = typeof action.actionId === 'string'
+    ? createPromptCliActionControl(action.actionId, content.get, { level: action.level, label })
+    : null;
+  const activeControl = promptCliAction ?? createPromptSessionControl(content.get) ?? createCopyControl({
     getContent: content.get,
     label: 'Copy prompt',
     buttonClassName: 'table-intent-copy-button',
@@ -1785,10 +1790,6 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
     failureText: 'Could not copy prompt.',
     trackState: true
   });
-  const promptCliAction = typeof action.actionId === 'string'
-    ? createPromptCliActionControl(action.actionId, content.get, { level: action.level, label })
-    : null;
-  const activeControl = promptCliAction ?? copyControl;
   dialog.append(
     h(
       'header',
@@ -1825,7 +1826,7 @@ export function renderPromptPreviewAction(action, getContent, actionId, iconName
       'data-intent-presentation': action.presentation ?? 'semantic-prompt',
       'data-action-level': action.level,
       onClick: () => {
-        if (scope.signal.aborted) return;
+        if (scope.signal.aborted || (beforeOpen && !beforeOpen())) return;
         activeControl.reset();
         opened.set(true);
         openPreview();

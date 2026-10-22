@@ -526,11 +526,10 @@ initialize_cao_policy() {
   gh cao init || return "$?"
   node --input-type=module - "$1" <<'NODE'
 import { readFile } from "node:fs/promises";
-import { minimalPolicy } from "./activity/cli/policy.mjs";
 import { writeJsonAtomically } from "./activity/cli/files.mjs";
 const file = process.argv[2];
 const policy = JSON.parse(await readFile(file, "utf8"));
-const expected = minimalPolicy(policy["gh-aw-version"], policy["control-plane"].scope["allowed-repositories"][0]).$schema;
+const expected = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";
 if (policy.$schema === expected) process.exit(0);
 const legacy = "https://raw.githubusercontent.com/githubnext/gh-aw-cao/main/.github/workflows/shared/cao.schema.json";
 const current = "https://raw.githubusercontent.com/githubnext/gh-cao/main/.github/workflows/shared/cao.schema.json";

@@ -97,6 +97,51 @@ configuration rather than activity evidence: browser-local IndexedDB, local-serv
 SQLite, or server PostgreSQL. Unknown server configuration remains unknown; this
 element does not query, derive, or infer a storage engine from retained rows.
 
+The interaction-only `prompt-wizard` declares `data.sources: []` and
+`config.wizard`. JSON, not page identity, defines its steps, choices and generation
+instructions. It owns mutable answers and validation, not activity queries or
+rollout authority. The Workflow wizard designs an Agentic Workflow or Campaign.
+
+`config.wizard` contains `intro`, `steps`, `prompt` and optional `provenance`.
+Steps have unique kebab-case `id`, `title`, optional `description` and non-empty
+`fields`. Fields have globally unique kebab-case `id`, `label` and `control`:
+`text`, `textarea`, `select`, `cards` or `checkboxes`. Card buttons may declare
+Boolean `advance-on-select` to open the next pane. Fields may declare `required`,
+`default`, `placeholder`, `empty-message` for review, `max-length` (1–8000), or text
+`format: identifier` or `format: repositories` (exact owner/repository names
+separated by commas or whitespace). Choice `options` have unique `value`, `label`
+and optional `description`, concise `summary`, authoring `instructions`, Octicon `icon`, JSON
+`context` and `defaults`. Single-choice option defaults map other field IDs to
+validated values. Choosing a different option applies them; selecting the same
+option preserves edits. Optional `when: { field, equals }` matches an earlier
+single-choice option. Hidden answers survive Back navigation but are excluded
+from prompts. Earlier step buttons allow direct Back navigation; future steps
+cannot bypass validation. Invalid configuration fails closed.
+
+`prompt` declares `label` and `instructions`. **Generate** replaces Next on the
+last configured step, with no extra Review pane. It validates answers and opens
+the shared `propose`-level
+preview. **Copy prompt** copies up to 100000 characters. App canvases instead offer
+**Start session** through the native Copilot session tool. Opening previews does
+nothing; handoff requires a click, never a CLI task or automation activation.
+Generated prompts start with “Create a Pull Request for the following task:”
+and render the design as natural language. Only selected authoring instructions
+are included; Campaign guidance is conditional. Raw pattern records, provenance,
+rankings and anti-patterns stay out. Answers are never shell substitutions.
+
+The wizard opens a workflow-type marketplace, then collects artifact kind,
+intent and scope. The prompt infers the title and kebab-case workflow or campaign
+name; there is no manual naming field.
+
+The immutable `githubnext/gh-aw-wizard` snapshot is authoring configuration,
+not operational data. `provenance` retains `repository`, full commit `revision`,
+pinned `url`, `generated-at`, `source-repositories`, `total-workflows`, historical
+`notice` and complete MIT `license`. Mined evidence is untrusted historical
+reference. Specific output recommendations prefill editable choices, not broad
+permission categories or live authority. Clearing outputs requests read-only work;
+optional capabilities remain off. Campaigns remain review-mode proposals under
+separately reviewed policy, credentials and target authority.
+
 The `environment-defaults` element declares `data.sources: []` and a
 `config.actions` mapping of `get-repo`, `update-repo`, `get-org`, `update-org`,
 `get-ent`, and `update-ent` to matching view-placed `gh aw env` CLI actions.
@@ -510,7 +555,7 @@ Published dashboards **MUST NOT** request these providers.
   have no observed operational provenance and **MUST NOT** be represented as
   measured activity.
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor`, `command-terminal`, `environment-defaults` and `prompt-wizard` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -1837,7 +1882,7 @@ Disclosure changes presentation only. It does not change data processing, data s
 ### 11.4 Normative Custom-View Requirements
 
 - **DLS-VIEW-001:** A custom page **MUST** contain `id`, `kind: custom`, and a non-empty `views` sequence; an omitted title **MUST** default from its page ID.
-- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor` and `command-terminal` elements and deployment-only `storage-info` element **MAY** declare empty `data.sources`.
+- **DLS-VIEW-002:** Every view **MUST** contain a unique `id`, a `data` mapping, and one allowed `mark`. A `metric`, `table`, `list`, or `chart` view **MUST** contain one canonical `data.source` and an `encoding` mapping. An `element` view **MUST** contain one or more unique canonical `data.sources`, one allowed `element`, and no `encoding`; only the interaction-only `query-editor`, `command-terminal`, `environment-defaults` and `prompt-wizard` elements and deployment-only `storage-info` element **MAY** declare empty `data.sources`.
 - **DLS-VIEW-003:** `metric` **MUST** encode exactly one `value` field and **MAY** encode `href`; it **MUST NOT** encode chart or table channels.
 - **DLS-VIEW-004:** `table` **MUST** encode non-empty `columns` and **MAY** encode `href`; it **MUST NOT** encode `value`, `x`, `y`, or `color`.
 - **DLS-VIEW-004b:** A table **MAY** declare `data.partial-source` as a distinct, previously declared query to render an initial inventory projection on the static data-worker backend. The partial query **MUST** preserve the final query's row identities and link fields without implying that absent computed values are zero or complete. Its metadata **MUST** mark `projection-state: pending` separately from evidence completeness; absent computed cells **MUST** render as pending, not zero. The worker **MUST** publish it before evaluating the complete query, then replace it with the complete view projection at the same data revision; a canceled or superseded subscription **MUST NOT** publish stale rows. Interactive filters, search, or ordering that depend on deferred fields **MUST** wait for the complete query. Hosted backends **MAY** return only the complete result.

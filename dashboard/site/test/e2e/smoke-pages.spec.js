@@ -1143,6 +1143,7 @@ test('clean navigation preserves the Overview decision hierarchy across desktop 
   await expect(experimentalSection).not.toHaveAttribute('open', '');
   await experimentalSection.locator('summary').click();
   await expect(experimentalSection.getByRole('link')).toHaveText([
+    'Workflow wizard',
     'Model routing',
     'Skills',
     'Steering',

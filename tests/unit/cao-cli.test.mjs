@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { readFile, readdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 import { commandHandlers } from "../../activity/commands/index.mjs";
@@ -19,19 +17,13 @@ const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
 test("preserves CAO public exports from their focused implementation modules", async () => {
   const exportsByModule = {
     "cli/activity-stats": ["activityWorkflowStats"],
-    "cli/authentication": ["fineGrainedTokenSetups", "setupCaoAuthentication"],
-    "cli/campaigns": ["addCaoCampaign", "updateCaoCampaigns", "setCaoCampaignMode", "setCaoCampaignWorkflowsEnabled"],
     "cli/dashboard": ["discoverWorkflows", "pruneDashboardFile", "analyzeDashboardComplexityFile"],
     "cli/download": ["downloadDeployedDashboardData"],
-    "cli/gh-aw": ["ensureGhAwMinimumVersion", "upgradeGhAw"],
     "cli/ingestion": ["ingestGhAwLogDirectory"],
     "cli/issue-status": ["issueStatusQuery", "updateIssueStatuses"],
     "cli/jsonl": ["compactJsonlShards"],
-    "cli/policy": ["initializeCaoPolicy"],
     "cli/queries": ["queryCanonicalData", "queryGhData"],
     "cli/run": ["runCli"],
-    authentication: ["formatSetupAuthenticationSummary"],
-    setup: ["setupCaoControlPlane"],
   };
   assert.deepEqual(Object.keys(caoApi).sort(), Object.values(exportsByModule).flat().sort());
   await Promise.all(Object.entries(exportsByModule).map(async ([module, names]) => {
@@ -61,24 +53,6 @@ test("importing the CAO entry point does not execute the CLI", async () => {
   ]);
   assert.equal(stdout, "");
   assert.equal(stderr, "");
-});
-
-test("non-interactive commands do not load the prompt adapter", async (t) => {
-  const directory = await mkdtemp(path.join(tmpdir(), "cao-cli-loader-"));
-  t.after(() => rm(directory, { recursive: true, force: true }));
-  const loader = path.join(directory, "reject-prompt-loader.mjs");
-  await writeFile(loader, `
-export async function resolve(specifier, context, nextResolve) {
-  if (specifier.endsWith("setup-prompt.mjs")) throw new Error("prompt adapter loaded");
-  return nextResolve(specifier, context);
-}
-`);
-  const { stdout } = await executeFile(process.execPath, [
-    "--experimental-loader", pathToFileURL(loader).href, cao, "--help",
-  ], {
-    env: { ...process.env, NODE_NO_WARNINGS: "1" },
-  });
-  assert.match(stdout, /^Usage:/);
 });
 
 test("keeps every CAO command in its own command module", async () => {
@@ -121,7 +95,7 @@ test("quickstart is not registered or advertised by the Node CLI", async () => {
   }
 });
 
-test("reports a missing cao add campaign without a stack trace", async () => {
+test("reports retired cao add without a stack trace", async () => {
   let error;
   try {
     await executeFile(process.execPath, [cao, "add"]);
@@ -131,11 +105,11 @@ test("reports a missing cao add campaign without a stack trace", async () => {
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.equal(error.stderr, "Error: cao add requires a campaign\n");
+  assert.equal(error.stderr, "Error: Node cao add has been retired; use gh cao add CAMPAIGN (repository enrollment: gh cao repos add OWNER/REPO)\n");
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });
 
-test("reports a missing cao enable campaign without a stack trace", async () => {
+test("reports retired cao enable without a stack trace", async () => {
   let error;
   try {
     await executeFile(process.execPath, [cao, "enable"]);
@@ -145,7 +119,7 @@ test("reports a missing cao enable campaign without a stack trace", async () => 
   assert.ok(error);
   assert.equal(error.code, 1);
   assert.equal(error.stdout, "");
-  assert.equal(error.stderr, "Error: cao enable requires at least one campaign\n");
+  assert.equal(error.stderr, "Error: Node cao enable has been retired; use gh cao campaigns enable\n");
   assert.doesNotMatch(error.stderr, /\n\s+at /);
 });
 

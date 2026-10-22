@@ -19,14 +19,14 @@ func addCommand(gh ghExecutor) *cobra.Command {
 	var engine string
 	cmd := &cobra.Command{
 		Use:                "add WORKFLOW_OR_CAMPAIGN [OPTIONS...]",
-		Short:              "Install a CAO workflow or campaign",
+		Short:              "Install a standalone CAO workflow or campaign",
 		DisableFlagParsing: true,
 		Long: `Install a standalone workflow or campaign with gh aw add.
 
-Campaigns use an OWNER/REPO[/PATH][@REF] coordinate or an existing local
-directory. Campaign options are passed unchanged to gh aw add. CAO materializes
-the exact installed campaign revision and merges its declared workers without
-widening rollout policy. Campaign installation never commits, pushes or runs work.
+Qualified campaign coordinates and existing local directories select campaign
+installation. Campaign options are passed unchanged to gh aw add. CAO materializes
+the exact installed revision and merges declared workers without widening rollout
+policy. Campaign installation never commits, pushes, enables workflows, or runs work.
 
 Standalone workflows are compiled and registered in
 .github/workflows/cao.json. New entries are review-only and limited to one

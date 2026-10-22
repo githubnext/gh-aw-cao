@@ -15,6 +15,7 @@ using the CLI should follow the
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
 The Go extension exposes the operator-facing command surface as `gh cao`.
+Onboarding and lifecycle administration run only in Go, not in Node wrappers.
 The Node `cao` entry point is the supported Actions runtime, including evidence
 APIs for agents inside agentic workflows, not an alternative operator surface.
 Its `queries`, `query-info`, `prompt`, `query`, `gh runs|issues|prs`,
@@ -261,7 +262,7 @@ gh cao query campaign-runs --param campaign=dependabot
 
 All help works offline, including `gh cao setup --help` and
 `gh cao campaigns --help`. Campaign mode and enablement controls are available
-under `campaigns`; installation uses the root `add` command.
+under `campaigns`. Workflow and campaign installation use `gh cao add`.
 Repository enrollment uses `gh cao repos add OWNER/REPO`; root-level `add`
 installs standalone workflows or campaign packages, not repositories.
 Authentication is grouped under `gh cao setup auth`; there is no root-level
@@ -311,17 +312,42 @@ Keep it separate from dashboard login and Actions read/write credentials.
 Setup does not change policy, Actions secrets, authentication mode, or enable
 hosted execution. The retired Node profile fails before any side effects and
 directs operators to `gh cao setup auth hosted-cli`; it does not wrap Go.
-The runtime JSON result for authentication retains `command: "setup-auth"`.
+The native JSON result for authentication retains `command: "setup-auth"`.
 `gh cao setup auth token --help` also works offline. Campaign installation through
 `add` and package updates through `update` retain gh-aw option passthrough.
 JSON output, repeatable query parameters, stdin queries, interactive
 secret prompts, and command exit codes retain their existing contracts.
 There is no `gh cao run`: workflow execution still belongs to gh-aw.
 
+### Retired Node operator commands
+
+The following Node commands are removed, including their administration modules
+and JavaScript exports. They exit nonzero with native replacement guidance
+before reading stdin, parsing options, opening a database, or changing files or
+GitHub settings. Even two-argument calls cannot enter legacy ingestion.
+
+| Retired `node activity/cao.mjs` command | Native replacement |
+| --- | --- |
+| `init` | `gh cao init` |
+| `setup` | `gh cao setup` |
+| `setup-auth PROFILE` | `gh cao setup auth PROFILE` (`github-app`, `enterprise-app`, `token`, `hosted-cli`) |
+| `add CAMPAIGN` | `gh cao add CAMPAIGN` |
+| `mode MODE CAMPAIGN...` | `gh cao campaigns mode MODE CAMPAIGN...` |
+| `enable CAMPAIGN...` | `gh cao campaigns enable CAMPAIGN...` |
+| `disable CAMPAIGN...` | `gh cao campaigns disable CAMPAIGN...` |
+| `update [REF] [OPTIONS...]` | `gh cao update [REF] [OPTIONS...]` |
+| `upgrade-gh-aw VERSION` | `gh cao upgrade-gh-aw VERSION` |
+
+Repository enrollment remains `gh cao repos add OWNER/REPO`, not campaign or
+standalone workflow installation. No native operator command invokes Node as a
+bridge. This consolidation does not activate workflows, widen scope, or change
+review-mode defaults; review and publish policy changes separately.
+
 ### `gh cao add WORKFLOW_OR_CAMPAIGN`
 
-`gh cao add` is the first-class native command for installing and registering
-a standalone CAO workflow or campaign package. Both use gh-aw for installation;
+`gh cao add` is the single native command for installing a standalone CAO workflow
+or a campaign package. There is no campaign-installation subcommand.
+Both installation kinds use gh-aw;
 CAO verifies and registers standalone workflows or materializes and merges
 declared campaign workers without widening policy.
 
