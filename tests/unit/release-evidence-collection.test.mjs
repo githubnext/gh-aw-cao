@@ -150,7 +150,7 @@ test("development receipt retains per-target identities and failures, not produc
   assert.equal(result.deployment.imageAssurance, "not-evaluated-development-only");
   assert.equal(result.deployment.runningImageMeasurement, "unknown");
   assert.equal(result.deployedImageDigest.status, "unknown");
-  assert.ok(!JSON.stringify(result).includes("private.azurecr.io"));
+  assert.doesNotMatch(JSON.stringify(result), /private\.azurecr\.io/);
   assert.ok(!JSON.stringify(result).includes(secret));
 });
 
