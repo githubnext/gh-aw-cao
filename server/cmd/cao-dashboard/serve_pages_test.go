@@ -365,3 +365,25 @@ func TestServePagesShutdownFailures(t *testing.T) {
 		t.Fatal("active connection not forcibly closed")
 	}
 }
+
+func TestPagesFileName(t *testing.T) {
+	cases := []struct {
+		base, path, want string
+		ok               bool
+	}{
+		{"/", "/", ".", true},
+		{"/site/", "/site/", ".", true},
+		{"/site/", "/site/data/x.json", "data/x.json", true},
+		{"/site/", "/site/docs/", "docs", true},
+		{"/", "/../secret", "", false},
+		{"/", "/a/../b", "", false},
+		{"/", `/a\b`, "", false},
+		{"/", "//a", "", false},
+	}
+	for _, tc := range cases {
+		got, ok := pagesFileName(tc.base, tc.path)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("pagesFileName(%q, %q) = %q, %t; want %q, %t", tc.base, tc.path, got, ok, tc.want, tc.ok)
+		}
+	}
+}

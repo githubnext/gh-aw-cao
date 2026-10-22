@@ -17,7 +17,11 @@ import (
 	"unicode"
 
 	"github.com/spf13/cobra"
+
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 )
+
+var pagesLog = debuglogger.New("cao:dashboard:pages")
 
 func newServePagesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -96,6 +100,20 @@ func newPagesHandler(directory, basePath string) (*os.Root, *pagesHandler, error
 	return root, &pagesHandler{root: root, basePath: basePath}, nil
 }
 
+// pagesFileName maps a request path under basePath to a confined relative file
+// name, using "." for the site root. It reports false for paths that are not
+// valid relative file names.
+func pagesFileName(basePath, urlPath string) (string, bool) {
+	name := strings.TrimSuffix(strings.TrimPrefix(urlPath, basePath), "/")
+	if strings.Contains(name, `\`) || name != "" && !fs.ValidPath(name) {
+		return "", false
+	}
+	if name == "" {
+		return ".", true
+	}
+	return name, true
+}
+
 func (h *pagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
@@ -111,14 +129,10 @@ func (h *pagesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	name := strings.TrimPrefix(r.URL.Path, h.basePath)
-	name = strings.TrimSuffix(name, "/")
-	if strings.Contains(name, `\`) || name != "" && !fs.ValidPath(name) {
+	name, ok := pagesFileName(h.basePath, r.URL.Path)
+	if !ok {
 		http.NotFound(w, r)
 		return
-	}
-	if name == "" {
-		name = "."
 	}
 	// Root confines even symlink resolution and concurrent renames to the
 	// prepared deployment. Never use an unconfined path after this check.
@@ -172,6 +186,7 @@ func runPagesServer(ctx context.Context, httpServer *http.Server, listener net.L
 	go func() { stopped <- httpServer.Serve(listener) }()
 	select {
 	case err := <-stopped:
+		pagesLog.Printf("pages server stopped before shutdown request: closed=%t", errors.Is(err, http.ErrServerClosed))
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
@@ -179,7 +194,9 @@ func runPagesServer(ctx context.Context, httpServer *http.Server, listener net.L
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 		defer cancel()
+		pagesLog.Printf("pages server shutting down: timeout_ms=%d", shutdownTimeout.Milliseconds())
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			pagesLog.Printf("pages server shutdown timed out; forcing close")
 			_ = httpServer.Close()
 			<-stopped
 			return fmt.Errorf("stop Pages server: %w", err)
