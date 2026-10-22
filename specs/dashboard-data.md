@@ -24,13 +24,62 @@ must also follow `specs/computations.md`.
 
 Model routing analytics SHALL read metadata projected from `usage/aw_session.jsonl`
 into the canonical Audit collection, not native logs, cumulative run totals or
-agent-written routing summaries. Audit retains typed routing identifiers,
+agent-written routing summaries. Ingestion SHALL materialize one compact routing
+aggregate on the canonical Run using the shared Dashboard Language query engine,
+not a JavaScript implementation of query or accounting semantics. The five
+overview views SHALL read only these Run aggregates; their source reads and row
+counts SHALL NOT grow with the number of model requests. The aggregate retains
+the run's routing state, configured goal/mode, pick, health/accounting coverage,
+recorded job outcome, baseline evidence and identifier-only problem causes.
+It SHALL use the same selected attempt and proxy-first rules as the drill-down.
+Canonical Run identity owns the aggregate, so refreshes replace rather than append
+another aggregate record. Structural-only refreshes of the same attempt SHALL
+preserve the aggregate; another attempt SHALL NOT inherit it.
+
+Audit retains typed routing identifiers,
 classifier labels, request identities, sub-agent ownership, token classes,
 per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
 free-form errors/reasons, raw tool payloads or content-derived hashes.
-Canonical schema 33 and IndexedDB version 43 invalidate older browser projections;
+Canonical schema 34 and IndexedDB version 44 invalidate older browser projections;
 hosted PostgreSQL deployments require a fresh schema with the generated Audit
-columns, including the configured-model resolution columns added in schema 32.
+and Run aggregate columns. Inventory (`model.inventory`) and generic proxy
+(`firewall.event`) rows SHALL NOT be retained, including replayed cached
+projections. Ingestion-only baseline and candidate-pool fields SHALL be removed
+from Audit before persistence. Existing run-page request, attribution, timeline
+and resolution tables retain run-scoped evidence: request rows explain deviations
+and unknown request costs; accounting rows explain excluded traffic and unmatched
+ownership. Deeper analysis SHALL use the Actions run's `usage` artifact and full
+`aw_session.jsonl`, linked from the run-page accounting view.
+
+The aggregate SHALL retain `model.baseline_estimate.baselineModel`, `aic` and
+the explicitly recorded `complete` flag. The observed comparison SHALL use
+the same main-agent proxy requests as T-UAS-081, never total agent-phase AIC.
+The producer's complete estimate attests that `as_selected` agent-phase requests
+do not match declared sub-agent models; classifier traffic, explicitly owned
+sub-agent traffic, detection and evals are excluded. Request identities SHALL be
+counted once, all paired observed AIC values SHALL be known, and their count SHALL
+match the producer's `mainRequests`. This is a comparison-specific population:
+it MUST NOT reclassify unknown-purpose traffic as main-agent traffic in general
+accounting. Missing or mismatched request counts SHALL make the comparison
+unknown. Only routed runs with a named baseline, `complete=true`, a positive
+baseline estimate and matching known observed main-request cost SHALL contribute
+to either comparison numerator or denominator. Workflow ratios SHALL divide
+the sums over that identical eligible set, grouped separately by baseline model.
+Incomplete or absent estimates, non-positive denominators and unknown observed
+cost SHALL remain unknown, never zero or inferred savings. A recorded partial
+estimate MAY appear on the run page, explicitly labelled incomplete.
+
+The final proxy selection's complete `eligibleChoices` and `catalogueOverlap`
+counters SHALL be validated as non-negative integers during ingestion. A
+`candidates not rankable` problem SHALL occur only when both counters are known
+and overlap is smaller than eligibility; it SHALL show the observed overlap/pool
+counts. Unknown counters and equal counts SHALL NOT produce a problem. Neither
+policy model-list length, inventory size nor a displayed ranking length is a
+substitute denominator. Ranking rows and policy lists are not retained.
+Each `firewall.upstream_error` SHALL contribute to the `upstream error` problem
+kind, not a duplicate generic routing failure. Distinct safe provider error
+codes SHALL be summarized once per run/kind; absent codes SHALL remain unknown.
+No error body, message, header, type, parameter or source is added.
 
 Dashboard Language queries SHALL resolve proxy-first routing state, choose one
 accounting source per phase, and attribute each response to one exclusive bucket.
@@ -106,18 +155,27 @@ separate fallback field exists), the share of runs whose agent-phase requests
 followed the pick, the success rate over known agent-job outcomes and the median
 AIC per complete run. Models picked over time answers what the router chooses,
 counting proxy-selected runs with a known pick model per UTC ISO week.
-Cost per run over time answers whether routing pays off with the weekly median
-AIC per routing state; it is labeled observational, not causal, because routed
-and unrouted runs are different tasks. Problems answers what needs attention
-with one row per run and kind (routing failure, deviation or resolution failure),
+Health also shows estimated main-request cost versus each named baseline.
+Cost per run over time retains weekly median agent-phase accounting AIC per
+routing state and adds paired observed main-request and explicitly estimated
+baseline series, grouped by baseline model. Paired series use identical eligible
+runs, UTC ISO weeks and the same minimum-sample floor. The baseline is a
+counterfactual estimate, not a claim of causal savings; routed versus unrouted
+accounting remains observational because these are different tasks.
+Problems answers what needs attention
+with one row per run and kind (routing failure, deviation, resolution failure,
+upstream error or candidates not rankable),
 its cause, a run-page link and the run's recorded observation time. Routing runs
 lists identified runs and opens the run drill-down. A share or median without
 evidence (a zero denominator or no complete cost) and a week with fewer complete
 runs than the minimum sample SHALL be unknown or a gap, never zero. It does
-not yet implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full
+not implement candidate ranking, inventory/router change context, prioritized deviation causes, failure clustering, or the full
 safe-output/grader/delayed-outcome comparison surfaces of the upstream analytics
 specification. Absent producer fields and these unimplemented analyses MUST NOT
 be represented as zero or successful outcomes.
+Every routing view SHALL describe its actionable decision in the supported
+`subject`, `objective` and `acceptance` metadata. Page-level `intent` remains
+supported; view-level `intent` is not part of Dashboard Language.
 
 ### Canvas query authoring boundary
 

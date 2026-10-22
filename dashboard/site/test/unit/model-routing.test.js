@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseUnifiedSessionDocument } from '../../src/data/adapters/unified-session.js';
 import { ingestCachedGhAwJsonl } from '../../src/data/ingest/coordinator.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import { readCollection } from '../../src/data/storage/indexeddb.js';
 import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import { compileDashboardViewPayloadQueries, dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../../src/data/queries/view-payload-compiler.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
@@ -39,6 +40,21 @@ async function ingest(indexedDB, run, events, attempt = 1) {
   }), { now });
 }
 
+/** @param {IDBFactory} indexedDB @param {typeof contract['observed-sessions'][number]} fixture
+ * @param {Record<string, unknown>[]} [records] */
+async function ingestObserved(indexedDB, fixture, records = fixture.records) {
+  const document = parseUnifiedSessionDocument(records.map((record) => JSON.stringify(record)).join('\n'),
+    'usage/aw_session.jsonl', { runId: fixture.run, attempt: 1 });
+  await ingestCachedGhAwJsonl(indexedDB, JSON.stringify({
+    schema_version: 5, kind: 'run',
+    run: { run_id: Number(fixture.run), run_attempt: 1, organization: 'github', repository: 'github/gh-aw',
+      workflow_name: 'Observed smoke workflow', workflow_path: '.github/workflows/smoke.lock.yml',
+      created_at: '2026-10-21T01:00:00Z', updated_at: '2026-10-21T12:00:00Z',
+      status: 'completed', conclusion: 'success',
+      cao_unified_session: { version: 1, path: 'usage/aw_session.jsonl', ...document } }
+  }), { now: Date.parse('2026-10-21T12:00:00Z') });
+}
+
 /** @param {IDBFactory} indexedDB @param {string[]} names @param {Record<string, string|number|boolean>} [parameters] */
 async function query(indexedDB, names, parameters = {}) {
   vi.stubGlobal('indexedDB', indexedDB);
@@ -66,6 +82,133 @@ const run101 = [
 
 describe('model routing unified-session contract', () => {
   afterEach(() => vi.unstubAllGlobals());
+  it('compacts real SDK, routed and CLI sessions and pairs only matching main-request costs', async () => {
+    const indexedDB = new IDBFactory();
+    for (const fixture of contract['observed-sessions']) await ingestObserved(indexedDB, fixture);
+    const result = await query(indexedDB, ['routing-runs', 'routing-health', 'routing-weekly-cost'], { 'minimum-sample': 1 });
+    expect(result['routing-runs'].rows).toHaveLength(3);
+    const sdk = result['routing-runs'].rows.find((row) => row.run === '39529495361');
+    expect(sdk).toMatchObject({ 'routing-aggregate-version': 1, 'routing-state': 'selected',
+      'pick-model': 'gpt-5.6-luna', 'baseline-model': 'claude-sonnet-5.5',
+      'baseline-aic': contract['baseline-estimate-aic'], 'baseline-complete': true, paired: true });
+    expect(sdk?.['main-aic']).toBeCloseTo(contract['baseline-main-aic'], 10);
+    const health = result['routing-health'].rows.find((row) => row['baseline-model'] === 'claude-sonnet-5.5');
+    expect(health?.['estimated-cost-vs-baseline']).toBeCloseTo(0.671398 / 6.02079, 10);
+    const baseline = result['routing-weekly-cost'].rows.find((row) => String(row['cost-series']).startsWith('Baseline estimate'));
+    expect(baseline).toMatchObject({ 'median-aic': 6.02079, 'complete-runs': 1 });
+    const observed = result['routing-weekly-cost'].rows.find((row) => String(row['cost-series']).startsWith('Main requests observed'));
+    expect(observed?.['median-aic']).toBeCloseTo(0.671398, 10);
+    expect(result['routing-runs'].rows.find((row) => row.run === '39529502581')).toMatchObject({
+      'routing-state': 'unrouted', 'baseline-aic': null, paired: false
+    });
+    expect(result['routing-runs'].rows.find((row) => row.run === '39540473269')).toMatchObject({
+      'routing-state': 'selected', 'baseline-aic': null, paired: false
+    });
+    const sparse = await query(indexedDB, ['routing-weekly-cost']);
+    expect(sparse['routing-weekly-cost'].rows.every((row) => row['median-aic'] === null)).toBe(true);
+  });
+
+  it.each([
+    { label: 'incomplete', complete: false, aic: 6.02079 },
+    { label: 'zero denominator', complete: true, aic: 0 },
+    { label: 'missing denominator', complete: true, aic: undefined }
+  ])('keeps the $label estimate unknown instead of implying savings', async ({ complete, aic }) => {
+    const indexedDB = new IDBFactory();
+    const fixture = contract['observed-sessions'][0];
+    // Deliberately modified test variants of the observed SDK record.
+    const records = fixture.records.map((record) => record.type === 'model.baseline_estimate'
+      ? { ...record, data: { ...record.data, complete, aic, unpricedRequests: complete ? 0 : 1 } } : record);
+    await ingestObserved(indexedDB, fixture, records);
+    const result = await query(indexedDB, ['routing-health', 'routing-weekly-cost'], { 'minimum-sample': 1 });
+    expect(result['routing-health'].rows[0]['estimated-cost-vs-baseline']).toBeNull();
+    expect(result['routing-weekly-cost'].rows.some((row) => String(row['cost-series']).startsWith('Baseline estimate'))).toBe(false);
+  });
+
+  it.each(['mismatched count', 'missing observed cost', 'missing baseline model'])(
+    'does not pair a complete estimate with $0', async (variant) => {
+      const indexedDB = new IDBFactory();
+      const fixture = contract['observed-sessions'][0];
+      const records = fixture.records.map((record) => {
+        if (record.type === 'model.baseline_estimate') return { ...record, data: {
+          ...record.data,
+          ...(variant === 'mismatched count' ? { mainRequests: 5 } : {}),
+          ...(variant === 'missing baseline model' ? { baselineModel: undefined } : {})
+        } };
+        if (variant === 'missing observed cost' && record.type === 'firewall.token_usage') {
+          return { ...record, data: { ...record.data, aic: undefined } };
+        }
+        return record;
+      });
+      await ingestObserved(indexedDB, fixture, records);
+      const result = await query(indexedDB, ['routing-health']);
+      expect(result['routing-health'].rows[0]['estimated-cost-vs-baseline']).toBeNull();
+    });
+
+  it('shows identifier-only upstream errors once and diagnoses only known candidate coverage gaps', async () => {
+    const indexedDB = new IDBFactory();
+    // T-UAS-082 req-1 projection; no native provider body is retained.
+    await ingest(indexedDB, 1, [
+      event('firewall.model_routing', { stage: 'selection', selectedModel: 'gpt-5', eligibleChoices: 6, catalogueOverlap: 5 }),
+      event('firewall.upstream_error', { requestId: 'req-1', provider: 'copilot', model: 'claude-haiku-4.5',
+        status: 400, errorCode: 'invalid_reasoning_effort', message: 'PRIVATE BODY', headers: { secret: 'PRIVATE HEADER' } })
+    ]);
+    await ingest(indexedDB, 2, [event('firewall.model_routing', {
+      stage: 'selection', selectedModel: 'gpt-5', eligibleChoices: 6, catalogueOverlap: 6
+    })]);
+    await ingest(indexedDB, 3, [event('firewall.model_routing', {
+      stage: 'selection', selectedModel: 'gpt-5', eligibleChoices: 6
+    })]);
+    const result = await query(indexedDB, ['routing-problems', 'routing-events']);
+    expect(result['routing-problems'].rows.map((row) => [row.run, row['problem-kind'], row['problem-cause']])).toEqual([
+      ['1', 'candidates not rankable', '5/6'], ['1', 'upstream error', 'invalid_reasoning_effort']
+    ]);
+    expect(result['routing-events'].rows.find((row) => row['event-type'] === 'firewall.upstream_error')).toMatchObject({
+      'correlation-id': 'req-1', provider: 'copilot', 'telemetry-model': 'claude-haiku-4.5', 'http-status': 400,
+      code: 'invalid_reasoning_effort'
+    });
+    expect(JSON.stringify(result)).not.toContain('PRIVATE');
+  });
+
+  it('combines distinct upstream codes once per run and leaves missing codes unknown', async () => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 1, [
+      event('firewall.upstream_error', { errorCode: 'invalid_reasoning_effort' }),
+      event('firewall.upstream_error', { errorCode: 'invalid_reasoning_effort' }),
+      event('firewall.upstream_error', { errorCode: 'model_not_supported' }),
+      event('firewall.event', { event: 'UPSTREAM_ERROR_RESPONSE' })
+    ]);
+    await ingest(indexedDB, 2, [event('firewall.upstream_error', { status: 503 })]);
+    const result = await query(indexedDB, ['routing-problems']);
+    expect(result['routing-problems'].rows).toHaveLength(2);
+    expect(result['routing-problems'].rows.every((row) => row['problem-kind'] === 'upstream error')).toBe(true);
+    expect(result['routing-problems'].rows.find((row) => row.run === '1')?.['problem-cause'])
+      .toBe('invalid_reasoning_effort, model_not_supported');
+    expect(result['routing-problems'].rows.find((row) => row.run === '2')?.['problem-cause']).toBe('unknown');
+  });
+
+  it('keeps overview reads run-sized for a 100-request test variant and drops unused event rows', async () => {
+    const indexedDB = new IDBFactory();
+    await ingest(indexedDB, 1, [
+      ...run101,
+      event('model.inventory', { endpoints: [{ provider: 'copilot', models: ['unused'] }] }),
+      event('firewall.event', { event: 'unused' }),
+      ...Array.from({ length: 100 }, (_, index) => event('firewall.token_usage', { requestId: `r-${index}`, aic: 1 }))
+    ]);
+    const reads = vi.spyOn(IDBObjectStore.prototype, 'openCursor');
+    const result = await query(indexedDB, ['routing-health', 'routing-weekly-models', 'routing-weekly-cost', 'routing-problems', 'routing-runs']);
+    expect(result['routing-runs'].rows).toHaveLength(1);
+    expect(reads.mock.instances.some((store) => store instanceof IDBObjectStore && store.name === 'audits')).toBe(false);
+    reads.mockRestore();
+    const events = await query(indexedDB, ['routing-events']);
+    expect(events['routing-events'].rows.some((row) => ['model.inventory', 'firewall.event'].includes(String(row['event-type'])))).toBe(false);
+    const runs = await readCollection(indexedDB, 'runs');
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ routingAggregateVersion: 1, routingState: 'selected' });
+    const audits = await readCollection(indexedDB, 'audits');
+    expect(audits.some((record) => ['routingBaselineModel', 'routingBaselineComplete', 'routingBaselineMainRequests',
+      'eligibleChoices', 'catalogueOverlap'].some((field) => Object.hasOwn(record, field)))).toBe(false);
+  });
+
   it.each(['firewall.upstream_error'])('preserves numeric status and HTTP evidence for %s', (type) => {
     const document = session(1, [event(type, { status: 429 })]);
     expect(document.events.find((entry) => entry.type === type)?.fields)

@@ -88,11 +88,14 @@ revision, or lock record) before it can report maintenance state.
 
 ## Run-owned records
 
-Model routing uses typed Audit facts projected from `usage/aw_session.jsonl`,
-not a parallel telemetry table. The Model routing page resolves proxy-first
-state, per-phase accounting, sub-agent attribution and cost completeness with
-Dashboard Language queries. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 33 / IndexedDB version 43 rebuild older
+Model routing uses one compact aggregate on each canonical Run, derived at
+ingestion from `usage/aw_session.jsonl` with the shared Dashboard Language
+queries. The five overview views read those aggregates, not per-request rows.
+Run-scoped Audit facts remain for request, attribution and resolution drill-downs;
+inventory and generic proxy events are discarded. Complete paired main-request
+costs can be compared to a named, explicitly estimated baseline, separately from
+total accounting. Missing costs remain unknown; partial runs do not
+enter cost quantiles. Browser schema 34 / IndexedDB version 44 rebuild older
 projections, and hosted PostgreSQL requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
