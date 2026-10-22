@@ -26,7 +26,7 @@ var (
 
 func addPolicyCommands(root *cobra.Command, gh ghExecutor) {
 	root.AddCommand(&cobra.Command{
-		Use: "init", Short: "Create an exact, review-safe control-plane policy", Args: cobra.NoArgs,
+		Use: "init", Short: "Optionally initialize local policy only, without runtime or remote setup", Args: cobra.NoArgs,
 		Long: "Create only a local exact, review-safe policy for preparation or scripting. Requires gh-aw and a GitHub checkout; does not install runtime files, configure Pages or credentials, commit, push, or execute work. For complete guided onboarding use gh cao setup; no prior init is needed.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			result, err := initializePolicy(cmd.Context(), gh)

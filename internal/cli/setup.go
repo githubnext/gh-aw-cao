@@ -7,7 +7,7 @@ import (
 )
 
 func setupCommand(execute runtimeExecutor, gh ghExecutor) *cobra.Command {
-	setup := operatorCommand("setup", "Configure repository scope and authentication", cobra.NoArgs, []operatorFlag{
+	setup := operatorCommand("setup", "Prepare monitoring runtime, policy, Pages, scope, and authentication", cobra.NoArgs, []operatorFlag{
 		jsonFlag,
 		{name: "repository", description: "Public monitoring quickstart scope OWNER/REPO or OWNER/* (repeatable; accepts public Pages)", repeat: true},
 	}, execute)
