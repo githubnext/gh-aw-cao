@@ -1,35 +1,7 @@
 {
   "source_sha": "cf53719535fcebea76de1791671f8c4b769c98d6",
-  "next_category": "dependency installation and caching",
+  "next_category": "Astro documentation generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-22T02:29:50Z",
-      "worker_run_id": "39711347654",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        39710782426,
-        39709805802,
-        39708509403,
-        39706637559,
-        39706197220,
-        39704459343,
-        39704096906,
-        39703889092,
-        39702392148,
-        39701994784,
-        39697372755,
-        39697049120,
-        39695525774,
-        39694184337,
-        39692879468,
-        39692776203,
-        39691227215,
-        39690627226,
-        39689267940,
-        39688952080
-      ],
-      "outcome": "no-op: the 2026-10-21T22:46:54Z to 2026-10-22T02:26:43Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Eight successful builds were comparable (four push and four schedule, across eight source SHAs): median/p90 end-to-end 144.5/259.9 seconds, initial queue or concurrency wait 3/4.3 seconds, queue-excluded execution 140.5/255.2 seconds, build job 89/206.6 seconds, and deploy job 39/53.3 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml; the latest five successful dashboard producer workflows remained 310/751 seconds median/p90 end-to-end and their build jobs 291/730.8 seconds. Docs reusable-dashboard restoration was 3/3 seconds and Pages artifact upload was 11/14 seconds. Trusted bounded logs for the newest build verified a 300 MiB npm package-cache hit and a 58 MiB reusable dashboard-cache hit; trusted step metadata showed all eight builds skipped dashboard artifact fallback. Packaging was only 7.8% of median queue-excluded execution, and even eliminating the 11-second median upload would save neither 60 seconds nor 15%. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. Newest run 39710782426 was disclosed as an outlier: npm ci took 307 seconds despite a verified package-cache hit, driving its 409-second workflow and 369-second build job; this was not attributed to packaging."
-    },
     {
       "evaluated_at": "2026-10-22T03:25:48Z",
       "worker_run_id": "39716484463",
@@ -692,6 +664,34 @@
         39839755798
       ],
       "outcome": "no-op: the 2026-10-22T19:24:14Z to 2026-10-22T21:33:07Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Ten successful build-and-deploy runs were comparable (five push, four workflow_run, and one schedule, across seven source SHAs): median/p90 end-to-end 109/126.6 seconds, initial queue 2/4.1 seconds, queue-excluded execution 106/125.4 seconds, build job 78/80.7 seconds, and deploy job 11.5/36.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows had median/p90 end-to-end 31/39.6 seconds and build jobs 16/25 seconds. Dependency installation was 22.5/28.8 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2.1 seconds, and Pages artifact upload 2/3 seconds. Trusted step metadata showed all ten builds restored the dashboard cache and skipped artifact fallback; a bounded trusted log for the newest build verified a 301 MiB npm package-cache hit and a 3 MiB reusable-dashboard-cache hit. Eight other successful schedule runs freshness-checked and avoided build and deploy. Initial queueing remained 1-5 seconds, and same-SHA push/workflow_run pairs reflected publication of newer successful dashboard snapshots rather than redundant work. The one 65-second Deploy Pages service outlier was disclosed rather than attributed to scheduling. Existing open issues #17171 and #18158 already represent freshness-history and historical push-deployment work. No new non-duplicate, correctness- and deployment-safe scheduling improvement met the repeated-evidence and 60-second or 15% thresholds, so the category advanced."
+    },
+    {
+      "evaluated_at": "2026-10-22T21:53:08Z",
+      "worker_run_id": "39860341542",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        39860009827,
+        39859869900,
+        39858147029,
+        39856721920,
+        39853841365,
+        39851881587,
+        39850101910,
+        39849775463,
+        39848891781,
+        39848482868,
+        39848428490,
+        39848107063,
+        39846338334,
+        39845758662,
+        39845403154,
+        39845248093,
+        39843325812,
+        39843076599,
+        39842243038,
+        39840996309
+      ],
+      "outcome": "no-op: the 2026-10-22T19:32:30Z to 2026-10-22T21:47:06Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Nine successful build-and-deploy runs were comparable (five push, three workflow_run, and one schedule, across six source SHAs): median/p90 end-to-end 110/131.2 seconds, initial queue 4/4.2 seconds, queue-excluded execution 107/127.4 seconds, build job 77/81.4 seconds, and deploy job 12/40.2 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful producer workflows were 31/39.6 seconds median/p90 end-to-end and their build jobs were 16/25 seconds. Dependency installation was 22/28.8 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2.2 seconds, and Pages upload 2/3 seconds. Bounded trusted logs verified npm package-cache hits of about 301 MiB and reusable dashboard-cache hits of about 3 MiB on the five newest comparable builds; trusted step metadata showed all nine builds skipped dashboard artifact fallback. Although dependency installation was 20.6% of median queue-excluded execution, it was already consistently cached, and the 16-36 second observed range does not identify a concrete correctness-preserving cache change expected to save 60 seconds or at least 16.1 seconds (15%). Caching node_modules would bypass npm ci clean-install semantics and transfer a similarly large platform-specific tree. No actionable dependency-cache recommendation met the threshold, so the category advanced. The 65-second Deploy Pages step on run 39851881587 was disclosed rather than attributed to dependency caching."
     }
   ]
 }
