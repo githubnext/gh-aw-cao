@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -89,6 +91,23 @@ func TestLocalCanvasUsesSharedHandlerAndPrivateAdapter(t *testing.T) {
 	}
 	if got := request("GET", prefix+"/api/v1/diagnostics", "", nil).Code; got != http.StatusOK {
 		t.Fatalf("adapter outage affected canonical data: %d", got)
+	}
+}
+
+func TestLocalCanvasMarkdownUsesPlainTextRegardlessOfSystemMIME(t *testing.T) {
+	app, _ := newSQLiteTestApp(t, false)
+	app.config.Canvas = &LocalCanvasConfig{
+		Prefix:     "/" + strings.Repeat("a", 48),
+		AdapterURL: "http://127.0.0.1:1234/" + strings.Repeat("b", 48),
+	}
+	if err := os.WriteFile(filepath.Join(app.config.SiteDirectory, "guide.md"), []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	app.static(response, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/guide.md", nil))
+	if response.Code != http.StatusOK || response.Header().Get("Content-Type") != "text/plain; charset=utf-8" ||
+		response.Body.String() != "# Guide\n" {
+		t.Fatalf("canvas markdown response: %d %s %q", response.Code, response.Header().Get("Content-Type"), response.Body.String())
 	}
 }
 

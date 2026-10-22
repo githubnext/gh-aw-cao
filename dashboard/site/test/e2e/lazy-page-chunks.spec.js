@@ -81,7 +81,7 @@ const inventory = {
       readme: '# Dependabot\n\nKeeps dependency updates moving.\n',
       'readme-path': 'dependabot/README.md',
       source: `githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
+      'add-command': `gh cao add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`,
     }, ...['aw-optimization', 'cao-evolution'].map((path, index) => ({
       id: `official:githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
       'registry-id': 'official',
@@ -101,7 +101,7 @@ const inventory = {
       readme: `# ${path}\n`,
       'readme-path': `${path}/README.md`,
       source: `githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
-      'add-command': `gh cao campaigns add githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
+      'add-command': `gh cao add githubnext/gh-cao/${path}@${'b'.repeat(40)}`,
       'observed-at': '2026-09-15T10:00:00Z',
     })), {
       id: `official:githubnext/gh-cao/aw-optimization@${'c'.repeat(40)}`,
@@ -528,7 +528,7 @@ test('marketplace page renders canonical package cards after ingestion', async (
   await dashboardRoot.evaluate((root) => root.setAttribute('data-theme', 'light'));
   await add.click();
   await expect(page.locator('.cli-action-dialog .cli-action-command')).toHaveText(
-    `gh cao campaigns add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`
+    `gh cao add githubnext/gh-cao/dependabot@${'a'.repeat(40)}`
   );
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(detail.locator('.dashboard-markdown')).toContainText('Keeps dependency updates moving.');
@@ -602,7 +602,15 @@ for (const width of [390, 1440]) {
       })
     }));
     await page.setViewportSize({ width, height: 844 });
+    await page.addInitScript(() => {
+      document.addEventListener('dashboard-data', event => {
+        if (event instanceof CustomEvent && event.detail.kind === 'refresh') {
+          document.documentElement.dataset.testRefreshState = event.detail.status;
+        }
+      });
+    });
     await page.goto(`${origin}/#page-marketplace`);
+    await expect(page.locator('html')).toHaveAttribute('data-test-refresh-state', 'completed');
     const marketplace = page.locator('[data-page-id="marketplace"]');
     const cards = marketplace.locator('.entity-card-list-card');
     await expect(cards).toHaveCount(25);
