@@ -476,6 +476,13 @@ commits nor pushes, enables campaigns, changes rollout limits, configures
 credentials, nor expands an explicitly narrowed Activity scope. Review and commit
 the policy before activation at a reviewed workflow SHA.
 
+Repository enrollment runs entirely in the Go extension and does not require
+Node.js or installed Activity runtime files. The former
+`node activity/cao.mjs add --repository OWNER/REPO` entry point and its
+`addCaoRepository` JavaScript export have been removed; use
+`gh cao repos add OWNER/REPO` instead. Node `add CAMPAIGN` still installs
+campaigns, while root-level `gh cao add WORKFLOW` installs standalone workflows.
+
 ### Setup and manual campaign execution
 
 Use `gh cao setup` for review-before-apply configuration and optional separately

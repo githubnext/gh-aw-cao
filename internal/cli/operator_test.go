@@ -188,7 +188,6 @@ func TestOperatorRuntimeArguments(t *testing.T) {
 		{[]string{"setup", "auth", "enterprise-app", "--repo", "owner/repo", "--read-client-id", "one", "--write-client-id", "two"}, []string{"setup-auth", "enterprise-app", "--read-client-id", "one", "--repo", "owner/repo", "--write-client-id", "two"}},
 		{[]string{"setup", "auth", "github-app", "--read-app-name", "cao-read", "--write-app-name", "cao-write", "--force", "--no-open", "--policy", "space dir/policy.json"}, []string{"setup-auth", "github-app", "--force", "--no-open", "--policy", "space dir/policy.json", "--read-app-name", "cao-read", "--write-app-name", "cao-write"}},
 		{[]string{"upgrade-gh-aw", "v1.2.3"}, []string{"upgrade-gh-aw", "v1.2.3"}},
-		{[]string{"repos", "add", "owner/repo"}, []string{"add", "--repository", "owner/repo"}},
 		{[]string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}, []string{"update", "--campaign", "dependabot", "main", "--engine", "copilot"}},
 	}
 	for _, tt := range tests {

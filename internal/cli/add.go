@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func repositoryCommands(runtime runtimeExecutor) *cobra.Command {
+func repositoryCommands(gh ghExecutor) *cobra.Command {
 	repos := &cobra.Command{
 		Use: "repos", Short: "Manage control-plane repository enrollment", Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
@@ -24,10 +24,7 @@ func repositoryCommands(runtime runtimeExecutor) *cobra.Command {
 		Long:  "Enroll one exact repository in review mode without widening existing campaign authority.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args[0]) > 200 || !repositoryPattern.MatchString(args[0]) {
-				return fmt.Errorf("repos add requires an exact OWNER/REPO")
-			}
-			return runtime(cmd, []string{"add", "--repository", args[0]})
+			return nativeRepositoryAdd(cmd, args[0], gh)
 		},
 	})
 	return repos
