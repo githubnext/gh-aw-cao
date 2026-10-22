@@ -8,7 +8,7 @@ description: Run the Central Agentic Ops dashboard server on Azure Functions wit
 
 ## About the Azure deployment
 
-The Azure deployment runs `cao-dashboard azure-functions` from the `server/` directory as a custom Linux container on Azure Functions. The `azure-functions-runtime` Docker target and `cao-functions` image repository remain unchanged; there is no separate `cao-functions` executable. The Functions Core Tools custom-handler configuration uses `defaultExecutablePath: "cao-dashboard"` with `arguments: ["azure-functions"]`. Browsers connect only to the Function App, over HTTPS on the same origin. The Function App:
+The Azure deployment runs `cao-dashboard azure-functions` from the `server/` directory as a custom Linux container on Azure Functions. The `azure-functions-runtime` Docker target and `cao-functions` image repository remain unchanged; there is no separate `cao-functions` executable. Bicep sets `appCommandLine: 'azure-functions'` as the arguments to the image's `/app/cao-dashboard` entrypoint. The Functions Core Tools custom-handler configuration uses `defaultExecutablePath: "cao-dashboard"` with `arguments: ["azure-functions"]`. Browsers connect only to the Function App, over HTTPS on the same origin. The Function App:
 
 - Signs users in with GitHub OAuth.
 - Authorizes explicitly allowed GitHub users or members of organizations or teams that you allow.

@@ -74,7 +74,7 @@ param storageAccountName string
 @description('Globally unique Azure Container Registry name containing the Function App image.')
 param containerRegistryName string
 
-@description('Container repository containing the CAO Azure Functions runtime.')
+@description('Container repository containing cao-dashboard azure-functions. The existing cao-functions image repository remains supported.')
 param functionImageRepository string = 'cao-functions'
 
 @description('Immutable or reviewed tag of the CAO Azure Functions runtime image.')
@@ -494,6 +494,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       minTlsVersion: '1.2'
       http20Enabled: true
       linuxFxVersion: 'DOCKER|${registry.properties.loginServer}/${functionImageRepository}${functionImageSelector}'
+      appCommandLine: 'azure-functions'
       acrUseManagedIdentityCreds: true
       appSettings: concat([
         {

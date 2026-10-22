@@ -22,6 +22,9 @@ test('Azure uses the consolidated dashboard subcommand without changing image co
   assert.match(runtime, /COPY --from=server-build --chown=cao:cao \/out\/cao-dashboard \/app\/cao-dashboard/);
   assert.match(runtime, /^ENTRYPOINT \["\/app\/cao-dashboard"\]$/m);
   assert.match(runtime, /^CMD \["azure-functions"\]$/m);
+  const app = resources.find((resource) => resource.type === 'Microsoft.Web/sites');
+  assert.equal(app.properties.siteConfig.appCommandLine, 'azure-functions');
+  assert.match(bicep, /appCommandLine: 'azure-functions'/);
   assert.match(runtime, /FUNCTIONS_CUSTOMHANDLER_HOST=0\.0\.0\.0/);
   assert.match(runtime, /FUNCTIONS_CUSTOMHANDLER_PORT=8080/);
   assert.doesNotMatch(dockerfile, /\/out\/cao-functions|\/app\/cao-functions|\.\/cmd\/cao-functions/);
