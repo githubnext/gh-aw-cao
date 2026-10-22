@@ -48,7 +48,7 @@ for (const width of [320, 1280]) {
       "Step 4 - Customize your report (optional)",
       "Continue learning",
     ]);
-    await expect(content).not.toContainText("install.sh");
+    await expect(content).not.toContainText("install-gh-cao.sh");
     await expect(content.getByRole("link", { name: "Set Up CAO", exact: true }))
       .toHaveAttribute("href", "/gh-cao/setup-quickstarts/");
     for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
@@ -1044,7 +1044,7 @@ for (const { name, viewport } of [
       await expect(phone).toBeVisible();
       await expect(page.locator(".terminal")).toBeAttached();
       await expect(page.locator(".terminal code")).toHaveText([
-        "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash",
+        "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash",
         "gh cao setup",
         "Add the Dependabot campaign to CAO",
       ]);

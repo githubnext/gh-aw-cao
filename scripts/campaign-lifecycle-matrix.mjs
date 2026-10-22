@@ -12,7 +12,7 @@ const suites = [
     prefixes: [
       "activity/",
       "dashboard/",
-      "install.sh",
+      "install-gh-cao.sh",
       ".github/actions/setup-cao-runtime/",
       ".github/actions/setup-gh-aw/",
       "cao-evolution/.github/graders/",

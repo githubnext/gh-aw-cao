@@ -36,7 +36,7 @@ canonical runtime files from the exact revision recorded by gh-aw:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh |
   bash -s -- githubnext/gh-cao
 ```
 
@@ -54,7 +54,7 @@ latest campaign release automatically:
 
 ```bash
 curl --fail --silent --show-error --location \
-  https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh |
+  https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh |
   bash -s -- githubnext/gh-cao
 ```
 

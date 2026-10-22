@@ -7,7 +7,7 @@ const names = (files) => selectCampaignLifecycleSuites(files).map(({ name }) => 
 
 test("campaign lifecycle matrix selects only campaigns owning changed files", () => {
   assert.deepEqual(names(["uk-ai-advisory/dashboard.json"]), []);
-  assert.deepEqual(names(["install.sh"]), ["root"]);
+  assert.deepEqual(names(["install-gh-cao.sh"]), ["root"]);
   assert.deepEqual(names([".github/workflows/repo-status.md"]), ["root"]);
   assert.deepEqual(
     names([".github/workflows/shared/control.md"]),

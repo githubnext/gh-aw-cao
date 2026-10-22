@@ -271,7 +271,7 @@ root campaign before invoking gh-aw and direct operators to the root installer.
 `cao update` MUST materialize each updated selected campaign before merging
 declarations.
 
-The root `install.sh` is the primary supported installation path for both gh-aw
+The root `install-gh-cao.sh` is the primary supported installation path for both gh-aw
 and gh-cao. It MUST invoke the upstream `github/gh-aw` `install-gh-aw.sh` with the
 required version and checksum verification enabled. Public tool release discovery
 and downloads MUST be anonymous, independent of the operator's GitHub token and

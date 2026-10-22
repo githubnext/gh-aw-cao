@@ -91,7 +91,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	bootstrapRun(t, ctx, workspace, environment, "bash", filepath.Join(catalog, "install.sh"), catalog, "--create-repo", "platform/control")
+	bootstrapRun(t, ctx, workspace, environment, "bash", filepath.Join(catalog, "install-gh-cao.sh"), catalog, "--create-repo", "platform/control")
 	consumer := filepath.Join(workspace, "control")
 	bootstrapAssertRepository(t, api, true, false)
 	for _, name := range []string{
@@ -123,7 +123,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	// Explicitly select the documented public-monitoring profile on fixture
 	// data only, then exercise the installer's --setup path and idempotency.
 	bootstrapRun(t, ctx, consumer, environment, "gh", "api", "-X", "PATCH", "repos/platform/control", "-F", "private=false")
-	bootstrapRun(t, ctx, consumer, environment, "bash", filepath.Join(catalog, "install.sh"), catalog, "--setup")
+	bootstrapRun(t, ctx, consumer, environment, "bash", filepath.Join(catalog, "install-gh-cao.sh"), catalog, "--setup")
 	bootstrapAssertRepository(t, api, false, true)
 	bootstrapAssertPolicy(t, policyFile)
 	configured, err := os.ReadFile(policyFile) // #nosec G304 -- fixed installed filename in t.TempDir.
@@ -155,7 +155,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	api.mu.Lock()
 	api.Assets["checksums.txt"] = []byte(strings.Repeat("0", 64) + "  gh-cao-" + runtime.GOOS + "-" + runtime.GOARCH + "\n")
 	api.mu.Unlock()
-	corrupt := exec.CommandContext(ctx, "bash", filepath.Join(catalog, "install.sh"), catalog, "--create-repo", "platform/corrupt") // #nosec G204 -- current checkout's installer and fixed test arguments.
+	corrupt := exec.CommandContext(ctx, "bash", filepath.Join(catalog, "install-gh-cao.sh"), catalog, "--create-repo", "platform/corrupt") // #nosec G204 -- current checkout's installer and fixed test arguments.
 	corrupt.Dir, corrupt.Env = workspace, environment
 	output, err = corrupt.CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "checksum verification failed") {

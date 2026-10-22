@@ -18,7 +18,7 @@ From the root of an existing control-repository checkout, install **gh-aw and
 gh-cao** and open guided setup:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash -s -- --setup
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup
 ```
 
 The installer requires Bash, curl, Node.js 24+, Git, and authenticated GitHub CLI
@@ -122,7 +122,7 @@ gh cao --help
 gh cao --version
 ```
 
-Rerun the root `install.sh` to refresh the extension. Runtime updates
+Rerun the root `install-gh-cao.sh` to refresh the extension. Runtime updates
 remain separate (`gh cao update --campaign root`). GitHub-CLI-managed
 installations can still use `gh extension upgrade gh-cao`, but that authenticated
 cross-organization release path can fail with enterprise SAML-restricted tokens.

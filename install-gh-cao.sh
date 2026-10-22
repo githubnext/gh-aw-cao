@@ -95,7 +95,7 @@ run_quiet_command() {
 
 usage() {
   printf '%s\n' \
-    'Usage: install.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
+    'Usage: install-gh-cao.sh [CATALOG_SOURCE] [--setup] [--create-repo [OWNER/NAME]]' \
     '' \
     'Install in the current GitHub checkout, or explicitly create and clone a private control repository.' \
     '--create-repo requires typing an eligible OWNER and NAME with no defaults; pass OWNER/NAME for non-interactive use.' \

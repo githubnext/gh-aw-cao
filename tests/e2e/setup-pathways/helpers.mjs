@@ -9,7 +9,7 @@ import { setupCaoControlPlane } from "../../../activity/setup.mjs";
 
 const executeFile = promisify(execFile);
 const catalog = path.resolve(".");
-const installer = path.join(catalog, "install.sh");
+const installer = path.join(catalog, "install-gh-cao.sh");
 const realGh = (await executeFile("which", ["gh"])).stdout.trim();
 const timeout = 120_000;
 

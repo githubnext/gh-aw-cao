@@ -26,7 +26,7 @@ repository instead, choose its visibility explicitly:
 ```bash
 gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 gh cao setup
 ```
 

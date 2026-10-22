@@ -6,7 +6,7 @@ const docs = readFileSync("docs/cao-cli.md", "utf8");
 const help = `${readFileSync("activity/cao.mjs", "utf8")}\n${readFileSync("activity/cli-usage.mjs", "utf8")}`;
 const gettingStarted = readFileSync("docs/setup-quickstarts.md", "utf8");
 const walkthrough = readFileSync("docs/repo-assist-quickstart.md", "utf8");
-const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash";
+const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash";
 
 test("getting started reaches monitoring before optional campaign execution", () => {
   const optional = gettingStarted.indexOf("## Optional: add automation later");
@@ -188,12 +188,12 @@ test("Node-only command documentation uses explicit runtime entry points without
   ]) {
     assert.ok(docs.includes(`node activity/cao.mjs ${command}`), command);
   }
-  assert.doesNotMatch(docs, /cao\.sh/);
+  assert.doesNotMatch(docs, /(?<![\w-])cao\.sh/);
   assert.match(docs, /gh cao setup --help/);
   const demo = readFileSync("docs/components/TerminalDemo.astro", "utf8");
   assert.match(demo, /gh cao<\/span> setup/);
   assert.match(demo, /data-terminal-output="setup">Monitoring configured locally\. No commit or push was performed\.[\s\S]*Next: gh cao doctor/);
-  assert.doesNotMatch(demo, /cao\.sh|<\/span> validate/);
+  assert.doesNotMatch(demo, /(?<![\w-])cao\.sh|<\/span> validate/);
 });
 
 test("active documentation and architecture do not advertise the retired Quickstart capability", () => {

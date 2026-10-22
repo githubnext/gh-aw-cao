@@ -42,7 +42,7 @@ The `cao-bootstrap.yml` workflow runs this test daily, on relevant pull
 requests, and manually, retaining the test log for 14 days.
 
 The test builds the current CAO CLI as a local release fixture, then runs the
-unmodified `install.sh --create-repo` and `install.sh --setup`, real `gh`
+unmodified `install-gh-cao.sh --create-repo` and `install-gh-cao.sh --setup`, real `gh`
 commands, and HTTPS Git push/clone against the simulator's test-only
 `BootstrapAPI` fixture. These bootstrap endpoints and their GraphQL selection
 reader are not compiled into production binaries. The fixture's

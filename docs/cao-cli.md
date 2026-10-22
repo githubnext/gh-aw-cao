@@ -32,7 +32,7 @@ From an existing control-repository checkout's root, install gh-aw, the `gh cao`
 extension, and the baseline runtime with the supported root installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash -s -- --setup
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash -s -- --setup
 gh cao --version
 ```
 
@@ -53,7 +53,7 @@ GitHub CLI classifies the extension using `releases/latest` before selecting a
 `--pin` tag, so maintainers must keep complete native assets in the latest stable
 release. Do not modify immutable historical releases to repair discovery.
 
-Prefer rerunning `install.sh` to refresh an installer-managed extension.
+Prefer rerunning `install-gh-cao.sh` to refresh an installer-managed extension.
 Refresh a GitHub-CLI-managed extension with:
 
 ```bash
@@ -116,7 +116,7 @@ configuration local. Unattended/CI setup never commits or pushes.
 The root installer is the primary supported installation path for both tools:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 ```
 
 The installer registers `gh cao` directly in GitHub CLI's data directory,

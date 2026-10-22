@@ -48,7 +48,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(hero, /Dependabot campaign, pairing a central orchestrator with one-target workers/);
   assert.match(hero, /repository scope, read\/write credentials and review\/live policy explicit/);
   assert.match(hero, /href="\/gh-cao\/operation-patterns\/"/);
-  assert.match(terminalText, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install\.sh \| bash/);
+  assert.match(terminalText, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/);
   assert.equal([...terminal.matchAll(/<code>/g)].length, 3);
   assert.match(terminalText, /gh cao setup/);
   assert.match(terminalText, /Add the Dependabot campaign to CAO/);
@@ -66,7 +66,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminalText, /Daily Repo Status|as standalone/);
   assert.doesNotMatch(terminal, /<a\b|href=/);
   assert.doesNotMatch(terminal, /result-mark|Ready to review and publish/);
-  assert.doesNotMatch(terminalText, /cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
+  assert.doesNotMatch(terminalText, /(?<![\w-])cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.deepEqual(
     [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
     ["dispatch-story", "terminal-story", "maintenance-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
@@ -139,7 +139,7 @@ test("gateway hero diagram shows cross-repo dispatch without an admission sectio
 
 test("terminal follows installer onboarding and matches the production CLI", () => {
   const setup = readFileSync("internal/cli/native_setup.go", "utf8");
-  const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash";
+  const installation = "curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash";
   assert.ok(terminalText.includes(installation));
   assert.ok(readFileSync("README.md", "utf8").includes(installation));
   assert.doesNotMatch(terminal, /gh extension install|\bgh cao init\b/);

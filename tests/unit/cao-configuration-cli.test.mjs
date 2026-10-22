@@ -1634,7 +1634,7 @@ test("cao add rejects the root package before modifying gh-aw records", async ()
         return versionResult;
       },
     }),
-    /cao add cannot install the CAO root package; use install\.sh/,
+    /cao add cannot install the CAO root package; use install-gh-cao\.sh/,
   );
   assert.deepEqual(calls, []);
 });

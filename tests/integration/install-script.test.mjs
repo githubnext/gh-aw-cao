@@ -86,7 +86,7 @@ exec "$CAO_INSTALLER_GH" "$@"
   await run("git", ["init", "--quiet", consumer], { env });
   await run("git", ["remote", "add", "origin", "https://github.com/installer-test/control.git"], { cwd: consumer, env });
 
-  const source = await readFile(path.join(catalog, "install.sh"), "utf8");
+  const source = await readFile(path.join(catalog, "install-gh-cao.sh"), "utf8");
   const { stdout, stderr } = await run("bash", ["-s", "--", catalog], { cwd: consumer, env }, source);
   assert.match(stdout, /CAO installed and verified/);
   assert.match(stdout, /Checksum verification passed/);

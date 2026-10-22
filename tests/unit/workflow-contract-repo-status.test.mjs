@@ -231,7 +231,7 @@ test("Setup quickstart is discoverable, review-first and honest about the missin
   assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
   assert.match(guide, /## Prerequisites/);
   assert.match(guide, /Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);
-  assert.doesNotMatch(guide, /install\.sh|gh cao setup|gh cao validate|Review and apply/);
+  assert.doesNotMatch(guide, /install-gh-cao\.sh|gh cao setup|gh cao validate|Review and apply/);
   assert.match(guide, /Reuse your setup/);
   assert.deepEqual([...guide.matchAll(/^## Step \d - (.+)$/gm)].map(match => match[1]), [
     "Add and review the sample workflow",

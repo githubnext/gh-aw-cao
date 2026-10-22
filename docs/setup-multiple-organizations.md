@@ -23,7 +23,7 @@ repository instead, choose visibility explicitly:
 ```bash
 gh repo create "$CONTROL_REPO" --private --clone
 cd "${CONTROL_REPO##*/}"
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 ```
 
 To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of

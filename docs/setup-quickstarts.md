@@ -79,7 +79,7 @@ to create and clone a private control repository.
 At the control checkout's root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 gh cao --version
 ```
 

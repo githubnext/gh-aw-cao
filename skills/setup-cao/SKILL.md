@@ -61,7 +61,7 @@ Prefer interactive setup for a separate control repository; see the
 
 ```bash
 # From an existing control checkout's root:
-curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash
 gh cao setup
 ```
 

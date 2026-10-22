@@ -1208,11 +1208,16 @@ registry access, but does not create credentials or dispatch workflows.
 
 ### Operator onboarding
 
-The primary path installs the native extension with
-`gh extension install githubnext/gh-cao`, enters an existing GitHub control
-checkout, and runs `gh cao setup` without a prerequisite `init` or installer.
-Repository creation and cloning remain explicit `gh repo create` and
-`gh repo clone` operations, not setup effects. Native
+The primary path runs the root `install-gh-cao.sh` from an existing GitHub control
+checkout, then runs `gh cao setup` (or passes `--setup` to the installer).
+The installer uses upstream `github/gh-aw`'s `install-gh-aw.sh` for gh-aw and
+downloads the native gh-cao extension. Public tool release discovery and downloads
+are anonymous and ignore curl authentication configuration; only the upstream
+installer's child process loses token variables and the Actions `INPUT_VERSION`
+override. Stored credentials and authenticated control-repository and runtime
+provenance operations remain intact. Repository creation and cloning remain
+explicit `gh repo create` and `gh repo clone` operations or the installer's
+`--create-repo`, not native setup effects. Native
 `internal/cli/native_setup.go` owns guided scope and authentication; runtime
 preparation lives in `internal/cli/setup_runtime.go`. Setup distinguishes absent
 policy from malformed policy, constructs only a missing exact campaign-free
@@ -1249,7 +1254,7 @@ and known dashboard links marked deployment pending, never dispatching, polling
 or waiting for collection/deployment. This native publication step is not part
 of the internal Node parity implementation.
 
-The compatibility `install.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
+The root `install-gh-cao.sh` checks required tools, Node.js 24+, GitHub sign-in, and checkout-root
 readiness before installing or upgrading anything. Repository creation and
 cloning are private-only and require an explicit `--create-repo OWNER/NAME`;
 existing clone directories are never overwritten. Bare installation ends with

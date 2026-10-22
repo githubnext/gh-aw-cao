@@ -3,7 +3,7 @@
 Load this reference only to inspect installer behavior, runtime layout, source
 versus generated files, or steering files.
 
-The primary operator path is the root `install.sh` from an existing control
+The primary operator path is the root `install-gh-cao.sh` from an existing control
 checkout, then `gh cao setup` (or the installer's `--setup` flag).
 The installer requires Bash, curl, and Node.js 24+ and invokes the upstream
 `github/gh-aw` installer for gh-aw. Public tool discovery and downloads are
@@ -33,7 +33,7 @@ no extra tags/submodule pushes. A failed push leaves the commit local.
 Success returns deployment-pending dashboard/Actions links without dispatching,
 polling or waiting. Declining/cancelling, CI and unattended setup never publish.
 
-The root `install.sh` downloads and verifies the platform-specific Go extension
+The root `install-gh-cao.sh` downloads and verifies the platform-specific Go extension
 from a published release, installs or upgrades the required gh-aw version,
 installs the root CAO package when runtime files are absent, materializes the runtime,
 and runs `gh cao init` only when policy is absent. Actions invoke Node entry points directly.
