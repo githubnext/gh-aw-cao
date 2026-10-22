@@ -612,3 +612,35 @@ Dates are UTC. Corrections are new events; original observations remain.
 - Decision/lifecycle: source slice remediate/in-progress, not merged/deployed;
   broader DATA-10 evidence-needed/open. One final audit-detection report
   remains pending. No control closure, risk acceptance or deployment action.
+
+## 2026-10-22 - SOC2-LOG-027 - Audit detector and revised metadata proposal
+
+- Type: final follow-up report and user-directed proposal revision;
+  RFC-035 record schema version 1.
+- Audit detector source: `8346491ecaa735bc902b327d41f601124a066bad`,
+  base `4beb309dd0e415e7bb82e156cdc463d6c21fb55f`;
+  [#19426](https://github.com/githubnext/gh-cao/pull/19426) open/draft/head/base
+  verified. Bounded read-only lifecycle scanning preserves capped/suffix/gap/
+  duplicate uncertainty and does not repair history or replay outcomes.
+- Session-reported detector race events: 34 pass; CLI 276 pass/three
+  PostgreSQL skips; focused independent PostgreSQL history also skipped.
+  Audit/SQLite, vet, full-server lint and 73-workflow compile passed.
+  OPS-01/OPS-05 operating/independent-custody evidence remains unresolved.
+- Metadata revision: verified draft
+  [#19422](https://github.com/githubnext/gh-cao/pull/19422) head
+  `51a569977074f87c7191c80621817424f060e2bf`. User-directed smaller,
+  centralized configurable budgets supersede SOC2-LOG-023's initial
+  8 MiB/16 MiB values: manifest 2 MiB, ordinary JSON 512 KiB, recursive
+  repository tree 8 MiB. Independent positive-byte environment overrides
+  fail explicitly when invalid before relevant I/O; effective deployment
+  limits remain unknown.
+- Revised metadata session reports 283 race events passing without skips,
+  scoped lint/vet/build and final 73-workflow compile passed. Prior six
+  PostgreSQL consumer skips were not rerun; original history preserved.
+- Coordinator verified proposal identities and consolidated material evidence,
+  not runtime test execution. All five follow-up draft proposals delivered;
+  combined release validation/integration/deployment not asserted.
+- Decisions/limitations: source slices remediate/in-progress, broader requests
+  evidence-needed/open; operator closure/risk/exclusion decisions pending.
+  No production change, permission widening, independent operating evidence
+  or compliance conclusion.

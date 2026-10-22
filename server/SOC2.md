@@ -161,7 +161,7 @@ changes, risk acceptance, exclusions or control closure.
 | --- | --- | --- |
 | DATA-10 metadata input bounds | `84846eb9-d1aa-42e5-876e-1371572695ea` | Draft [#19422](https://github.com/githubnext/gh-cao/pull/19422); proposal received |
 | DATA-10 PostgreSQL resource budgets | `e8629f70-f53a-4dce-b9f8-4da29d04de4f` | Draft [#19425](https://github.com/githubnext/gh-cao/pull/19425); elapsed-time/operator-ceiling proposal received |
-| OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Implementation pending |
+| OPS-01/05 missing-terminal audit detection | `ffb27ccf-ac05-42a3-9161-37e5f2fbd65f` | Draft [#19426](https://github.com/githubnext/gh-cao/pull/19426); bounded read-only detector proposed |
 | OPS-08 release/deployment evidence collection | `bb48a53b-9959-4b2a-88ce-5f7f7c703f42` | Draft [#19423](https://github.com/githubnext/gh-cao/pull/19423); proposal received |
 | IAM-006/EXEC-05 key custody and rotation | `baaf0260-80d5-48ed-86e4-fd85e0eb9584` | Draft [#19424](https://github.com/githubnext/gh-cao/pull/19424); offline rollover preflight proposed, not managed signing |
 
@@ -335,6 +335,83 @@ cost, fleet-wide replica/worker capacity, PostgreSQL 16/managed-provider
 cancellation, legitimate workload suitability and period evidence remain
 unverified. Deployed-artifact benchmarking was not run because local server/
 data prerequisites were absent. Operating effectiveness is **not-assessed**.
+
+#### Revised metadata budgets supersede the initial proposal
+
+User-directed revision in the metadata session supersedes the initial
+8 MiB/16 MiB budgets recorded above and in SOC2-LOG-023. Current verified
+draft [#19422](https://github.com/githubnext/gh-cao/pull/19422) head is
+`51a569977074f87c7191c80621817424f060e2bf`. Original observations remain
+history, not current defaults.
+
+At this head `server/internal/inputlimits/limits.go:8-43` centralizes defaults:
+2 MiB manifest (`CAO_REPOSITORY_MEMORY_MANIFEST_MAX_BYTES`), 512 KiB ordinary
+marketplace JSON (`CAO_MARKETPLACE_JSON_MAX_BYTES`) and a separate 8 MiB
+recursive repository tree (`CAO_MARKETPLACE_TREE_JSON_MAX_BYTES`).
+Unset selects the default; present-empty, zero, negative, malformed, overflow
+or maximum-platform-int values fail explicitly without echoing the value or
+falling back. Limits reserve one byte for overflow detection and resolve
+before relevant I/O. Source:
+`server/internal/repositorymemory/memory.go:102-135`;
+`server/internal/marketplace/resolve.go:84-112,417-418`. Other content and
+repository-signal limits remain unchanged; maximum 256 KiB base64 package
+content compatibility is covered.
+
+The session reports final race tests across inputlimits/repositorymemory/
+marketplace passing 283 test/subtest events, zero failures/skips; scoped lint
+zero issues, vet/build including consumers, whitespace and 73-workflow
+compilation passed. The prior six PostgreSQL consumer skips remain unverified
+and were not rerun. Coordinator verified PR identity, not execution.
+The updated report linked above preserves both revisions. Narrow byte-bound
+claims remain design-supported at the new proposal SHA; effective environment,
+operator-selected increases and deployed workload suitability are explicit
+capacity-evidence dependencies. No startup validation of unused readers,
+deployment or broader DATA-10 closure is claimed.
+
+#### Bounded audit lifecycle detection proposal
+
+Draft [#19426](https://github.com/githubnext/gh-cao/pull/19426), commit
+`8346491ecaa735bc902b327d41f601124a066bad`, uses the same descendant base
+`4beb309dd0e415e7bb82e156cdc463d6c21fb55f`. Coordinator verified
+open/draft/head/base identity. At this SHA,
+`server/internal/auditlifecycle/rebuild.go:82-272` and
+`server/cmd/cao-dashboard/audit_lifecycles.go:18-60` implement
+`cao-dashboard audit lifecycles` via OpenAuditReader/ListAudit only.
+
+Default scan is 10,000 rows, hard bound 100,000 plus one lookahead, pages at
+most 1,000, default deadline two minutes. Default one-hour grace has a
+35-minute minimum beyond the current work timeout/lease. JSON/exit status
+distinguishes possibly-active pending IDs, missing terminal evidence,
+retained/selected suffixes, gaps, truncation, invalid/duplicate/conflicting
+evidence and status-write failure. Capped scans do not label unread
+completions missing; duplicates cannot reset grace, gaps suppress unsupported
+missing-terminal claims and suffixes preserve incomplete coverage.
+Canceled/failed/succeeded completions are recognized without choosing an
+outcome for conflicting records. No history/status/canonical writes, fabricated
+outcomes, replay, cross-store atomicity or new scheduler/service is introduced.
+
+The narrow detection/uncertainty/read-only claims are **design-supported** at
+the proposal SHA, working CC7.2/CC7.3 with CC6.3 for read-only authority.
+Session-reported final race results: detector 34 passing test/subtest events,
+CLI 276 passing/three PostgreSQL-dependent skips; focused rebuild/reader tests
+passed with PostgreSQL independent-history skipped. Nonrace audit/SQLite,
+vet, full-server formatting/lint (zero issues) and 73-workflow compilation
+passed. Coordinator did not rerun these tests; no service was started.
+Report:
+`/Users/peli/.copilot/session-state/ffb27ccf-ac05-42a3-9161-37e5f2fbd65f/files/audit-lifecycle-handoff.md`.
+
+OPS-01/OPS-05 remain unresolved, with detector implementation
+`remediate` / `in-progress` only. Operators still must approve grace/cadence,
+run the real SELECT-only adapter, retain independently anchored complete
+history, monitor dead checks/backlog/alerts and manually reconcile uncertain
+IDs without synthesizing outcomes or replaying ingestion. Row-capped/retained
+history is not a full-history proof. Operating effectiveness is
+**not-assessed**.
+
+All five follow-up sessions have now delivered separate draft proposals.
+Their source claims are tied to separate heads, not a tested combined release
+or proof of integration/deployment. No merge, operational closure, approved
+exclusion or risk acceptance is implied.
 
 ## Assessment boundary and current status
 
