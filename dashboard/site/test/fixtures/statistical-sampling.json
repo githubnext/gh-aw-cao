@@ -1,6 +1,8 @@
 {
   "watermark": "2026-10-08T12:00:00.000Z",
   "capacity": 3,
+  "frameVersion": "canonical-snapshot-frame-v2",
+  "frameId": "sha256:4329cd40459fac98673adec217ea332a304d9c5c86c3f1bc8145561d6bdb93b4",
   "rows": [
     { "id": "github:run:o/r:1", "owner": "o", "repository": "r", "githubRunId": "1", "status": "completed", "conclusion": "success", "startedAt": "2026-10-01T12:00:00.000Z" },
     { "id": "github:run:o/r:2", "owner": "o", "repository": "r", "githubRunId": "2", "status": "completed", "conclusion": "success", "startedAt": "2026-10-01T13:00:00.000Z" },

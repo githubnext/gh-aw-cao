@@ -676,6 +676,16 @@ watermark, covered interval, candidate and selected counts, per-stratum
 populations/allocations, and weight validity. Inclusion probability is `k/N`
 and expansion weight is `N/k` only for a complete, frozen, valid frame of
 available canonical evidence. This does not attest complete upstream collection.
+The versioned frame identity SHALL cover every eligible canonical identity and
+its stratum, including unselected identities and strata allocated zero records.
+Identity ordering SHALL match canonical IndexedDB string ordering. Identical
+replays and input ordering SHALL NOT change that identity; changing the candidate
+population SHALL, even when selected identities, counts, and cutoffs stay equal.
+Selection-priority versioning SHALL remain independent of frame-format versioning.
+Each selected Run and its sampled linked observations SHALL carry
+`statistical-frame-id`, matching the frame metadata, so probabilities and weights
+remain bound to their population after row projection or filtering. This
+identifies the sampling design, not a revision of mutable Run measurements.
 Missing or conflicting evidence SHALL invalidate unsupported weights; strata
 allocated zero records SHALL preclude a full-population estimate. There is no
 expiration-without-refill probability claim: the projection is reconstructed

@@ -2,7 +2,7 @@ import { webcrypto } from 'node:crypto';
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import fixture from '../fixtures/statistical-sampling.json' with { type: 'json' };
-import { sampleStatisticalRuns, statisticalPriority, STATISTICAL_CAPACITIES, STATISTICAL_INPUT_LIMITS } from '../../src/data/queries/statistical-sample.js';
+import { sampleStatisticalRuns, statisticalPriority, STATISTICAL_CAPACITIES, STATISTICAL_FRAME_VERSION, STATISTICAL_INPUT_LIMITS } from '../../src/data/queries/statistical-sample.js';
 import { openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -13,6 +13,8 @@ const options = { watermark: fixture.watermark, capacity: fixture.capacity, comp
 describe('independent frozen statistical sampling', () => {
   it('shares framed SHA256 priorities and largest-remainder/failure-reserve golden membership with Go', async () => {
     const result = await sampleStatisticalRuns(fixture.rows, options);
+    expect(result.frame['frame-id']).toBe(fixture.frameId);
+    expect(result.frame['frame-version']).toBe(fixture.frameVersion);
     expect(result.rows.map((row) => row.id)).toEqual(fixture.expectedIds);
     expect(result.frame).toMatchObject({
       'population-count': 6, 'selected-count': 3, 'incomplete-count': 1,
@@ -72,6 +74,55 @@ describe('independent frozen statistical sampling', () => {
       expect(await sampleStatisticalRuns([...rows].reverse(), { ...options, capacity })).toEqual(result);
     }
   });
+
+  it('binds weights to the entire eligible population, including unselected and zero-allocation candidates', async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `github:run:o/r:${index}`, status: 'completed', conclusion: 'success',
+      startedAt: '2026-10-22T00:00:00Z'
+    }));
+    for (const capacity of [0, 1]) {
+      const settings = { watermark: '2026-10-23T00:00:00Z', capacity, complete: true };
+      const original = await sampleStatisticalRuns(rows, settings);
+      const changed = await sampleStatisticalRuns(rows.map((row, index) =>
+        index === 0 ? { ...row, id: 'github:run:o/r:changed0' } : row
+      ), settings);
+      expect(original.rows.every((row) => row.id !== rows[0].id)).toBe(true);
+      expect(changed.rows.map((row) => row.id)).toEqual(original.rows.map((row) => row.id));
+      expect(changed.frame.strata).toEqual(original.frame.strata);
+      expect(changed.frame['frame-id']).not.toBe(original.frame['frame-id']);
+      expect(original.frame['frame-version']).toBe(STATISTICAL_FRAME_VERSION);
+      expect(original.rows.every((row) => row['statistical-frame-id'] === original.frame['frame-id'])).toBe(true);
+      const replayed = await sampleStatisticalRuns([...rows].reverse().concat(rows[0]), settings);
+      expect(replayed.rows).toEqual(original.rows);
+      expect(replayed.frame['frame-id']).toBe(original.frame['frame-id']);
+      const enriched = await sampleStatisticalRuns(rows.map((row) => ({
+        ...row, measurement: 123, 'statistical-frame-id': 'untrusted'
+      })), settings);
+      expect(enriched.frame['frame-id']).toBe(original.frame['frame-id']);
+      expect(enriched.rows.every((row) => row['statistical-frame-id'] === original.frame['frame-id'])).toBe(true);
+    }
+    const original = await sampleStatisticalRuns(fixture.rows, { ...options, capacity: 0 });
+    const reclassified = fixture.rows.map((row, index) => ({
+      ...row,
+      startedAt: index === 1 ? fixture.rows[4].startedAt : index === 4 ? fixture.rows[1].startedAt : row.startedAt
+    }));
+    const changed = await sampleStatisticalRuns(reclassified, { ...options, capacity: 0 });
+    expect(changed.frame.strata).toEqual(original.frame.strata);
+    expect(changed.frame['frame-id']).not.toBe(original.frame['frame-id']);
+  });
+
+  it('fingerprints the maximum candidate population within the unchanged query operation budget', async () => {
+    const rows = Array.from({ length: STATISTICAL_INPUT_LIMITS.rows }, (_, index) => ({
+      id: `github:run:o/r:${index * 99991 % 200003}`,
+      status: 'completed', conclusion: 'success', startedAt: '2026-10-22T00:00:00Z'
+    }));
+    const sample = await sampleStatisticalRuns(rows, { watermark: '2026-10-23T00:00:00Z', complete: true });
+    expect(sample.frame).toMatchObject({
+      'population-count': STATISTICAL_INPUT_LIMITS.rows,
+      'selected-count': STATISTICAL_CAPACITIES.indexeddb, 'full-population-estimable': true
+    });
+    expect(sample.rows.every((row) => row['statistical-frame-id'] === sample.frame['frame-id'])).toBe(true);
+  }, 60000);
 
   it('never invents weights for incomplete frames, conflicting duplicates, invalid or missing timestamps', async () => {
     for (const rows of [
@@ -144,7 +195,7 @@ describe('independent frozen statistical sampling', () => {
       name: 'sampled', from: 'statistical-runs',
       filter: { predicates: [{ field: 'run-conclusion', equals: 'success' }] },
       select: [
-        { field: 'id' }, { field: 'statistical-weight' }, { field: 'sample-weight' },
+        { field: 'id' }, { field: 'statistical-frame-id' }, { field: 'statistical-weight' }, { field: 'sample-weight' },
         { field: 'sample-probability' }, { field: 'sample-stratum' }
       ]
     }];
@@ -163,6 +214,8 @@ describe('independent frozen statistical sampling', () => {
     expect(sampled.rows).toHaveLength(5);
     expect(sampled.metadata['statistical-frame']).toMatchObject({ 'population-count': 6, capacity: 16000 });
     expect(sampled.metadata['sample-frame']).toEqual(sampled.metadata['statistical-frame']);
+    const frame = /** @type {Record<string, unknown>} */ (sampled.metadata['statistical-frame']);
+    expect(sampled.rows.every((row) => row['statistical-frame-id'] === frame['frame-id'])).toBe(true);
     expect(sampled.rows.every((row) => row['sample-weight'] === 1 && row['sample-probability'] === 1
       && typeof row['sample-stratum'] === 'string')).toBe(true);
     expect(result.runs.rows).toHaveLength(9);
@@ -195,6 +248,10 @@ describe('independent frozen statistical sampling', () => {
       expect(result[store].rows).toHaveLength(4);
       expect(result[`statistical-${store}`].rows.map((row) => row.id)).toEqual(['a', 'b']);
       expect(result[`statistical-${store}`].rows.every((row) => row['statistical-weight'] === 1)).toBe(true);
+      const frame = /** @type {Record<string, unknown>} */ (result[`statistical-${store}`].metadata['statistical-frame']);
+      expect(result[`statistical-${store}`].rows.every((row) =>
+        row['statistical-frame-id'] === frame['frame-id']
+      )).toBe(true);
       expect(result[`statistical-${store}`].metadata['statistical-frame']).toMatchObject({ 'population-count': 6 });
     }
   });

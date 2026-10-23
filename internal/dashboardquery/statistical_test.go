@@ -19,11 +19,13 @@ func statisticalFixture(t *testing.T) ([]map[string]any, StatisticalOptions, []s
 		t.Fatal(err)
 	}
 	var fixture struct {
-		Rows        []map[string]any
-		Watermark   string
-		Capacity    int
-		ExpectedIDs []string
-		Priority    string
+		Rows         []map[string]any
+		Watermark    string
+		Capacity     int
+		ExpectedIDs  []string
+		Priority     string
+		FrameID      string
+		FrameVersion string
 	}
 	if err := json.Unmarshal(content, &fixture); err != nil {
 		t.Fatal(err)
@@ -31,7 +33,12 @@ func statisticalFixture(t *testing.T) ([]map[string]any, StatisticalOptions, []s
 	if StatisticalPriority("github:run:o/r:1", StatisticalSeed) != fixture.Priority {
 		t.Fatal("framed SHA256 priority differs from the shared golden fixture")
 	}
-	return fixture.Rows, StatisticalOptions{Watermark: fixture.Watermark, Capacity: fixture.Capacity, Complete: true}, fixture.ExpectedIDs
+	options := StatisticalOptions{Watermark: fixture.Watermark, Capacity: fixture.Capacity, Complete: true}
+	_, frame, err := SampleStatisticalRuns(fixture.Rows, options)
+	if err != nil || frame["frame-id"] != fixture.FrameID || frame["frame-version"] != fixture.FrameVersion {
+		t.Fatalf("frame identity differs from the shared golden fixture: %v %v", frame, err)
+	}
+	return fixture.Rows, options, fixture.ExpectedIDs
 }
 
 func TestStatisticalJSParity(t *testing.T) {
@@ -54,6 +61,62 @@ func TestStatisticalJSParity(t *testing.T) {
 		slices.Reverse(candidates)
 		statisticalJSParity(t, candidates, options, []int{7, 31})
 	})
+	t.Run("population-identity-order", func(t *testing.T) {
+		candidates := []map[string]any{}
+		for _, id := range []string{"github:run:o/r:\ue000", "github:run:o/r:😀", "github:run:o/r:1"} {
+			row := map[string]any{}
+			for field, value := range rows[0] {
+				row[field] = value
+			}
+			row["id"] = id
+			candidates = append(candidates, row)
+		}
+		statisticalJSParity(t, candidates, options, []int{0, 1, 3})
+	})
+}
+
+func TestStatisticalFrameCoversUnselectedPopulation(t *testing.T) {
+	rows := make([]map[string]any, 30)
+	for index := range rows {
+		rows[index] = map[string]any{
+			"id": "github:run:o/r:" + strconv.Itoa(index), "status": "completed",
+			"conclusion": "success", "startedAt": "2026-10-22T00:00:00Z",
+		}
+	}
+	for _, capacity := range []int{0, 1} {
+		t.Run(strconv.Itoa(capacity), func(t *testing.T) {
+			options := StatisticalOptions{Watermark: "2026-10-23T00:00:00Z", Capacity: capacity, Complete: true}
+			selected, frame, err := SampleStatisticalRuns(rows, options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			changed := slices.Clone(rows)
+			changed[0] = map[string]any{
+				"id": "github:run:o/r:changed0", "status": "completed",
+				"conclusion": "success", "startedAt": "2026-10-22T00:00:00Z",
+			}
+			again, changedFrame, err := SampleStatisticalRuns(changed, options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if frame["frame-id"] == changedFrame["frame-id"] || frame["frame-version"] != StatisticalFrameVersion ||
+				!reflect.DeepEqual(frame["strata"], changedFrame["strata"]) || len(selected) != len(again) {
+				t.Fatalf("frame did not distinguish equal-sized populations: %v %v", frame, changedFrame)
+			}
+			for index, row := range selected {
+				if row["id"] != again[index]["id"] || row["id"] == rows[0]["id"] ||
+					row["statistical-frame-id"] != frame["frame-id"] || again[index]["statistical-frame-id"] != changedFrame["frame-id"] {
+					t.Fatal("selected identity changed or weight lost its frame binding")
+				}
+			}
+			replayed := append(slices.Clone(rows), rows[0])
+			slices.Reverse(replayed)
+			replayedRows, replayedFrame, err := SampleStatisticalRuns(replayed, options)
+			if err != nil || replayedFrame["frame-id"] != frame["frame-id"] || !reflect.DeepEqual(replayedRows, selected) {
+				t.Fatal("replay or input order changed population identity")
+			}
+		})
+	}
 }
 
 func statisticalJSParity(t *testing.T, rows []map[string]any, options StatisticalOptions, capacities []int) {

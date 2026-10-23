@@ -98,6 +98,10 @@ func TestStatisticalNativeSQLBoundary(t *testing.T) {
 		t.Fatalf("statistical consumer bypassed native SQL: %+v", metrics)
 	}
 	for _, row := range result["sample-success"].Rows {
+		frame := result["sample-success"].Metadata["statistical-frame"].(map[string]any)
+		if row["statistical-frame-id"] != frame["frame-id"] {
+			t.Fatal("selected run lost its frame binding")
+		}
 		if row["sample-weight"] != row["statistical-weight"] || row["sample-stratum"] != row["statistical-stratum"] ||
 			row["sample-probability"] != row["statistical-probability"] {
 			t.Fatalf("public sample fields do not preserve frozen weights: %v", row)
@@ -106,6 +110,12 @@ func TestStatisticalNativeSQLBoundary(t *testing.T) {
 	for _, source := range []string{"statistical-tools", "statistical-domains", "statistical-skills", "statistical-audits"} {
 		if len(result[source].Rows) != 2 {
 			t.Fatalf("owned observations were independently sampled or expired children retained: %s %+v", source, result[source])
+		}
+		for _, row := range result[source].Rows {
+			frame := result[source].Metadata["statistical-frame"].(map[string]any)
+			if row["statistical-frame-id"] != frame["frame-id"] {
+				t.Fatalf("owned observation lost its run's frame binding: %s", source)
+			}
 		}
 	}
 }

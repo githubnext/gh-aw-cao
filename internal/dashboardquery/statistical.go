@@ -16,6 +16,7 @@ import (
 )
 
 const StatisticalVersion = "canonical-snapshot-bottom-k-v1"
+const StatisticalFrameVersion = "canonical-snapshot-frame-v2"
 const StatisticalSeed = "cao-statistical-v1"
 const StatisticalPostgresCapacity = 64000
 const StatisticalSQLiteCapacity = 8000
@@ -279,6 +280,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 	estimable := valid
 	selected := []map[string]any{}
 	strata := []map[string]any{}
+	populationParts := []string{}
 	slices.Sort(keys)
 	for _, key := range keys {
 		if err := ctx.Err(); err != nil {
@@ -286,6 +288,16 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		}
 		candidates := groups[key]
 		n, k := len(candidates), reserve[key]+remainder[key]
+		slices.SortFunc(candidates, func(a, b statisticalCandidate) int {
+			return compareRecordStrings(a.row["id"].(string), b.row["id"].(string))
+		})
+		populationParts = append(populationParts, key, strconv.Itoa(n))
+		for _, candidate := range candidates {
+			if err := ctx.Err(); err != nil {
+				return nil, nil, err
+			}
+			populationParts = append(populationParts, candidate.row["id"].(string))
+		}
 		estimable = estimable && k > 0
 		retained := make(statisticalHeap, 0, k)
 		if k > 0 {
@@ -325,7 +337,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		strata = append(strata, map[string]any{"stratum": key, "population": n, "allocation": k, "cutoff": cutoff})
 	}
 	frame := map[string]any{
-		"version": StatisticalVersion, "seed": options.Seed,
+		"version": StatisticalVersion, "frame-version": StatisticalFrameVersion, "seed": options.Seed,
 		"watermark-policy": "explicit",
 		"watermark":        watermark.UTC().Format("2006-01-02T15:04:05.000Z"),
 		"window-start":     start.UTC().Format("2006-01-02T15:04:05.000Z"),
@@ -341,7 +353,8 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		"input-row-limit": StatisticalMaxInputRows, "input-byte-limit": StatisticalMaxInputBytes,
 		"strata": strata,
 	}
-	frameParts := []string{StatisticalVersion, options.Seed, "frame", frame["watermark"].(string), strconv.Itoa(options.Capacity), strconv.FormatBool(valid)}
+	frameParts := []string{StatisticalFrameVersion, StatisticalVersion, options.Seed, "frame", frame["watermark"].(string), strconv.Itoa(options.Capacity), strconv.FormatBool(valid)}
+	frameParts = append(frameParts, populationParts...)
 	for _, stratum := range strata {
 		cutoff, _ := stratum["cutoff"].(string)
 		frameParts = append(frameParts, stratum["stratum"].(string), strconv.Itoa(stratum["population"].(int)), strconv.Itoa(stratum["allocation"].(int)), cutoff)
@@ -350,5 +363,8 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		frameParts = append(frameParts, row["id"].(string), row["statistical-priority"].(string), row["statistical-stratum"].(string))
 	}
 	frame["frame-id"] = "sha256:" + statisticalDigest(frameParts)
+	for _, row := range selected {
+		row["statistical-frame-id"] = frame["frame-id"]
+	}
 	return selected, frame, nil
 }

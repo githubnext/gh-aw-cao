@@ -36,4 +36,9 @@ func TestNativeStatisticalNamedQuery(t *testing.T) {
 		frame["watermark-policy"] != "canonical-run-max" || frame["weight-valid"] != false {
 		t.Fatalf("native named query lost statistical semantics: %+v", result)
 	}
+	for _, row := range result["rows"].([]map[string]any) {
+		if row["statistical-frame-id"] != frame["frame-id"] {
+			t.Fatal("native named query lost the selected run's frame binding")
+		}
+	}
 }

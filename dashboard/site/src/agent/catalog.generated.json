@@ -5437,9 +5437,11 @@
         "engines-models"
       ],
       "execution": {
-        "local": false,
-        "requirements": [],
-        "reason": "Requires statistical-runs, which the local SQLite projection does not provide."
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "statistical-runs"
+        ]
       }
     },
     {

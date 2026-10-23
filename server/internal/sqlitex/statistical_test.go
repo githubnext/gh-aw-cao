@@ -71,8 +71,20 @@ func TestStatisticalSnapshotProductionBoundary(t *testing.T) {
 			}
 		}
 		for _, row := range result["sample-success"].Rows {
+			frame := result["sample-success"].Metadata["statistical-frame"].(map[string]any)
+			if row["statistical-frame-id"] != frame["frame-id"] {
+				t.Fatal("selected run lost its frame binding")
+			}
 			if row["statistical-weight-valid"] != true || row["statistical-weight"] != float64(1) {
 				t.Fatalf("complete census frame lost its weights: %v", row)
+			}
+			for _, name := range []string{"statistical-tools", "statistical-domains", "statistical-skills", "statistical-audits"} {
+				frame := result[name].Metadata["statistical-frame"].(map[string]any)
+				for _, row := range result[name].Rows {
+					if row["statistical-frame-id"] != frame["frame-id"] {
+						t.Fatalf("owned observation lost its run's frame binding: %s", name)
+					}
+				}
 			}
 			if row["sample-weight"] != row["statistical-weight"] || row["sample-stratum"] != row["statistical-stratum"] ||
 				row["sample-probability"] != row["statistical-probability"] {

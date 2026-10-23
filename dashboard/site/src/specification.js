@@ -465,7 +465,7 @@ export const TABLE_VALUES = [
 ];
 
 export const STATISTICAL_FIELDS = [
-  'statistical-stratum', 'statistical-priority', 'statistical-population',
+  'statistical-frame-id', 'statistical-stratum', 'statistical-priority', 'statistical-population',
   'statistical-allocation', 'statistical-weight-valid', 'statistical-probability', 'statistical-weight'
 ];
 

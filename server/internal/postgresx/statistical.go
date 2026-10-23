@@ -109,7 +109,7 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 	if err != nil {
 		return query.SQLRelation{}, nil, err
 	}
-	names := []string{"id", "organization", "repository", "run", "statistical-stratum", "statistical-priority",
+	names := []string{"id", "organization", "repository", "run", "statistical-frame-id", "statistical-stratum", "statistical-priority",
 		"statistical-population", "statistical-allocation", "statistical-weight-valid", "statistical-probability", "statistical-weight"}
 	columns := map[string]query.SQLColumn{}
 	declarations := make([]string, len(names))

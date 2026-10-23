@@ -8,6 +8,7 @@ import { createDashboardQueryBudget, DASHBOARD_QUERY_LIMITS } from './declarativ
 
 export const STATISTICAL_CAPACITIES = Object.freeze({ postgres: 64000, sqlite: 8000, indexeddb: 16000 });
 export const STATISTICAL_VERSION = 'canonical-snapshot-bottom-k-v1';
+export const STATISTICAL_FRAME_VERSION = 'canonical-snapshot-frame-v2';
 export const STATISTICAL_INPUT_LIMITS = Object.freeze({
   rows: DASHBOARD_QUERY_LIMITS['max-input-rows'], bytes: 256 * 1024 * 1024
 });
@@ -187,9 +188,19 @@ export async function sampleStatisticalRuns(rows, options) {
   const selected = [];
   /** @type {Array<{ stratum: string, population: number, allocation: number, cutoff: string | null }>} */
   const strata = [];
+  const populationParts = [];
   for (const [key, candidates] of [...groups].sort(([a], [b]) => compare(a, b))) {
     const population = candidates.length;
     const count = (reserve.get(key) ?? 0) + (remainder.get(key) ?? 0);
+    candidates.sort((a, b) => {
+      checkpoint();
+      return compare(String(a.row.id), String(b.row.id));
+    });
+    populationParts.push(key, String(population));
+    for (const candidate of candidates) {
+      checkpoint();
+      populationParts.push(String(candidate.row.id));
+    }
     /** @type {Candidate[]} */
     const retained = [];
     if (count > 0) {
@@ -198,8 +209,10 @@ export async function sampleStatisticalRuns(rows, options) {
         const priority = await statisticalPriority(String(candidate.row.id), seed);
         retainCandidate(retained, { row: candidate.row, priority }, count, checkpoint);
       }
-      budget.spend(Math.ceil(retained.length * Math.log2(Math.max(1, retained.length))));
-      retained.sort(compareCandidates);
+      retained.sort((a, b) => {
+        checkpoint();
+        return compareCandidates(a, b);
+      });
     }
     for (const candidate of retained) selected.push({
       ...Object.fromEntries(Object.entries(candidate.row).filter(([field]) => !field.startsWith('statistical-'))),
@@ -212,17 +225,20 @@ export async function sampleStatisticalRuns(rows, options) {
   }
   const normalizedWatermark = new Date(watermark).toISOString();
   const frameId = await digest([
-    STATISTICAL_VERSION, seed, 'frame', normalizedWatermark, String(capacity), String(valid),
+    STATISTICAL_FRAME_VERSION, STATISTICAL_VERSION, seed, 'frame', normalizedWatermark, String(capacity), String(valid),
+    ...populationParts,
     ...strata.flatMap((stratum) => [
       stratum.stratum, String(stratum.population), String(stratum.allocation), stratum.cutoff ?? ''
     ]),
     ...selected.flatMap((row) => [String(row.id), String(row['statistical-priority']), String(row['statistical-stratum'])])
   ]);
   checkpoint();
+  for (const row of selected) row['statistical-frame-id'] = `sha256:${frameId}`;
   return {
     rows: selected,
     frame: {
-      version: STATISTICAL_VERSION, seed, watermark: normalizedWatermark, 'frame-id': `sha256:${frameId}`,
+      version: STATISTICAL_VERSION, 'frame-version': STATISTICAL_FRAME_VERSION,
+      seed, watermark: normalizedWatermark, 'frame-id': `sha256:${frameId}`,
       'watermark-policy': 'explicit',
       'window-start': new Date(watermark - WEEK).toISOString(),
       population: 'canonical-snapshot-completed-runs', capacity,
