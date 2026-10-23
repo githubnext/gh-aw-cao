@@ -80,7 +80,7 @@ The repository that hosts CAO workflows and policy. It coordinates work across e
 
 ## Copilot canvas
 
-The local, loopback-only **Central Agentic Ops** Copilot SDK surface that hosts the experimental dashboard **Query editor** page for authoring and previewing custom views. It is not enabled on the static website, hosted server, or ordinary local preview, and its authoring sessions have no filesystem, shell, MCP, or repository-write tools. See [Design queries in a Copilot canvas](dashboard.md#design-queries-in-a-copilot-canvas).
+The local, loopback-only **Central Agentic Ops** Copilot SDK surface that hosts the experimental dashboard **Query editor** page for authoring and previewing custom views. It is not enabled on the static website, hosted server, or ordinary local preview, and its authoring sessions have no filesystem, shell, MCP, or repository-write tools. See [Design queries in a Copilot canvas](agent-plugin.md#design-queries-in-a-copilot-canvas).
 
 ## Daily partition
 

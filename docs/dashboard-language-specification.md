@@ -28,25 +28,7 @@ The GitHub Agentic Workflows Team maintains this document. Version numbers follo
 
 Sections containing numbered requirements are normative. Examples, notes, rationales, and appendices identified as informative are non-normative unless stated otherwise.
 
-## Table of Contents
-
-1. [Introduction](#1-introduction)
-2. [Conformance](#2-conformance)
-3. [Terminology and Conceptual Model](#3-terminology-and-conceptual-model)
-4. [YAML Document Model](#4-yaml-document-model)
-5. [Intrinsic Semantic Model](#5-intrinsic-semantic-model)
-6. [Scope, Time, and Filters](#6-scope-time-and-filters)
-7. [Dimensions, Measures, and Aggregation](#7-dimensions-measures-and-aggregation)
-8. [Provenance, Freshness, and Data States](#8-provenance-freshness-and-data-states)
-9. [Links and Findings](#9-links-and-findings)
-10. [Built-in Pages](#10-built-in-pages)
-11. [Custom Pages](#11-custom-pages)
-12. [Validation and Errors](#12-validation-and-errors)
-13. [Security, Privacy, and Accessibility](#13-security-privacy-and-accessibility)
-14. [Compliance Testing](#14-compliance-testing)
-15. [References](#15-references)
-16. [Change Log](#16-change-log)
-17. [Appendices](#appendices)
+<span id="table-of-contents"></span>
 
 ---
 

@@ -56,14 +56,13 @@ missing artifacts from an existing successful
 run, and invalid restored snapshots still fail rather than being treated as
 normal startup.
 
-## Canvas administrative actions
+<span id="canvas-administrative-actions"></span>
 
 Canvas command execution is separate from ingestion. Ordinary Go local serving
 and static Pages previews cannot execute local commands. See
-[Run approved commands](agent-plugin.md#run-approved-commands) for the trusted
-canvas bridge, approval dialog, console, and command lifetime, and
+[Run approved commands](agent-plugin.md#run-approved-commands) and
 [Compiler-version evidence](agent-plugin.md#compiler-version-evidence) for the
-boundary between live metadata reads and immutable snapshot evidence.
+approval and evidence boundaries.
 
 ## Hosted server data pipeline
 

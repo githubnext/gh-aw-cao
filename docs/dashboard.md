@@ -77,13 +77,11 @@ Static Pages is read-only; optional canvas commands and
 [hosted CLI actions](https://github.com/githubnext/gh-cao/blob/main/server/README.md#hosted-cli-actions)
 have separate authorization and approval requirements.
 
-### Design queries in a Copilot canvas
+<span id="design-queries-in-a-copilot-canvas"></span>
 
-The local canvas adds a **Query editor** under **Experimental**, with
-AI-assisted authoring and workspace-local saved views. It is not enabled on the
-static website, hosted server, or ordinary local preview. See the
-[canvas guide](agent-plugin.md#design-queries-in-a-copilot-canvas) for setup,
-limits, AI-credit use, saving, and the Go/SQLite execution boundary.
+The [canvas Query editor](agent-plugin.md#design-queries-in-a-copilot-canvas)
+supports local AI-assisted authoring and saved views. It is not enabled on the
+static website, hosted server, or ordinary local preview.
 
 ### Configure compiler defaults
 

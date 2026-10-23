@@ -128,6 +128,8 @@ test("an external agent can traverse static discovery and resource metadata", as
 
 test("consolidated guides retain section links and expose their canonical sources", async () => {
   const routes = {
+    "architecture-at-a-glance": ["what-is-cao", "agentic-workflows-operated-across-repositories", "how-it-works", "a-simple-example", "get-started"],
+    architecture: ["objectives", "authority-and-admission", "execution-boundaries", "detailed-references"],
     authentication: [
       "configure-your-profile", "public-only-monitoring-quickstart", "reuse-approved-apps",
       "automated-app-setup", "multiple-organizations-in-one-enterprise",
@@ -143,9 +145,9 @@ test("consolidated guides retain section links and expose their canonical source
     "setup-multiple-organizations": ["install", "create-and-install-the-apps", "configure-the-control-repository", "validate-and-commit"],
     "setup-fine-grained-pat": ["install", "configure-the-tokens", "validate-and-commit"],
     "deployment-actions": ["choosing-a-credential-profile", "deploying-the-dashboard", "keeping-the-site-up-to-date", "publishing-from-an-existing-pages-workflow"],
-    "deployment-actions-github-app": ["deploying-the-dashboard", "configuration-reference", "monitoring-the-deployment", "validating-the-credentials", "rotating-and-revoking-credentials"],
-    "deployment-actions-pat": ["deploying-the-dashboard", "configuration-reference", "monitoring-the-deployment", "validating-the-credentials", "rotating-and-revoking-credentials"],
     deployment: ["about-the-shared-data-flow", "what-every-option-guarantees"],
+    "execution-and-safety": ["standard-control-envelope", "invariants", "failure-posture"],
+    "rollout-and-routing": ["promotion-at-a-glance", "live-authority-check"],
     dashboard: ["know-the-boundary", "design-queries-in-a-copilot-canvas"],
     "dashboard-data-ingestion": ["canvas-administrative-actions", "hosted-server-data-pipeline", "choose-a-local-serving-mode"],
     "agent-plugin": ["install-the-plugin", "open-a-copilot-canvas", "design-queries-in-a-copilot-canvas", "run-approved-commands", "compiler-version-evidence"],
@@ -188,5 +190,34 @@ test("consolidated guides retain section links and expose their canonical source
   const navigationHtml = await readPage(new URL("dashboard/", publicBase));
   for (const route of ["control-plane-authentication", "agent-plugin"]) {
     assert.ok(navigationHtml.includes(`href="/gh-cao/${route}/"`), `${route} must be in navigation`);
+  }
+});
+
+test("removed guides redirect to canonical sections without duplicate agent resources", async () => {
+  const resourceIndex = JSON.parse(await readFile(path.join(dist, "agent/resources.json"), "utf8"));
+  for (const [route, destination] of [
+    ["how-cao-works", "architecture-at-a-glance/#how-it-works"],
+    ["deployment-actions-github-app", "control-plane-authentication/#configure-private-github-apps"],
+    ["deployment-actions-pat", "control-plane-authentication/#configure-a-fine-grained-token"],
+  ]) {
+    const html = await readFile(path.join(dist, route, "index.html"), "utf8");
+    const target = new URL(destination, publicBase);
+    assert.equal(hrefForRel(html, "canonical"), target.href, route);
+    assert.ok(html.includes(`content="0;url=${target.pathname}${target.hash}"`), `${route} must redirect without JavaScript`);
+    const targetHtml = await readFile(path.join(fileForPublicUrl(target), "index.html"), "utf8");
+    assert.ok(targetHtml.includes(`id="${target.hash.slice(1)}"`), `${route} must resolve to a real section`);
+    assert.ok(!resourceIndex.resources.some((entry) => entry.id === route), `${route} must not duplicate its replacement`);
+    const canonicalRoute = destination.split("/")[0];
+    assert.ok(resourceIndex.resources.some((entry) => entry.id === canonicalRoute), `${canonicalRoute} must remain discoverable`);
+  }
+});
+
+test("specifications use the generated outline instead of a duplicate manual TOC", async () => {
+  for (const route of ["dashboard-language-specification", "operational-observability-visualization-specification"]) {
+    const html = await readFile(path.join(dist, route, "index.html"), "utf8");
+    assert.ok(html.includes('id="table-of-contents"'), `${route} retains its legacy anchor`);
+    assert.doesNotMatch(html, /<h[1-6]\b[^>]*\bid="table-of-contents"/);
+    assert.ok(html.includes('href="#1-introduction"'), `${route} must have a generated outline`);
+    assert.ok(html.includes('id="1-introduction"'), `${route} must retain specification sections`);
   }
 });

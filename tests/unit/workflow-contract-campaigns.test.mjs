@@ -478,9 +478,10 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(updateSection, /predate the campaign-owned `\.github\/workflows\/shared\/` runtime[\s\S]*?fails closed/);
   assert.doesNotMatch(updateSection, /gh extension (?:install|upgrade)|gh aw add|--create-pull-request/);
   assert.doesNotMatch(updateSection, /base64 -d|contents\/\.github\/cao/);
-  assert.match(authentication, /gh cao setup auth github-app \\\n\s+--repo acme\/central-agentic-ops/);
-  assert.match(authentication, /gh cao setup auth github-app --help/);
-  assert.doesNotMatch(authentication, /cao-setup|setup-github-apps\.mjs|CAO_REF=/);
+  const provisioning = readFileSync(join(root, "docs", "control-plane-authentication.md"), "utf8");
+  assert.match(authentication, /control-plane-authentication\.md#configure-private-github-apps/);
+  assert.match(provisioning, /gh cao setup auth github-app \\\n\s+--repo acme\/central-agentic-ops/);
+  assert.doesNotMatch(`${authentication}\n${provisioning}`, /cao-setup|setup-github-apps\.mjs|CAO_REF=/);
   assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
 });
 

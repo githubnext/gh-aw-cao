@@ -6,12 +6,11 @@ description: Compare the ways you can host the Central Agentic Ops dashboard, an
 > [!WARNING]
 > **Experimental:** All deployment options are experimental. Interfaces, configuration names, infrastructure templates, and procedures can change between releases without a migration path. No option is certified for production use. Before you expose a deployment to real users or data, complete your own security, compliance, privacy, network, monitoring, incident-response, and rollback reviews.
 
-## About deployment options
+<span id="about-deployment-options"></span>
 
 The [control plane and dashboard](architecture.md#control-plane-and-dashboard)
 are deployed separately. The control plane runs in GitHub Actions; this guide
-compares where to serve the dashboard and run its queries. For the evidence
-flow before choosing infrastructure, read [How does CAO work?](how-cao-works.md).
+compares where to serve the dashboard and run its queries.
 
 Choosing a deployment option never changes campaign policy, rollout mode, credentials, or target authority. Those settings stay in the reviewed `.github/workflows/cao.json` file in your control repository. For more information, see [Control policy](configuration.md#control-policy) and [Roll out a campaign](rollout-and-routing.md).
 

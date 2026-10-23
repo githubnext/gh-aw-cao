@@ -70,7 +70,8 @@ reviewed CAO allowlist.
 
 ## Configure private GitHub Apps
 
-CAO creates separate read-only and write-capable Apps. Review the dry-run manifests before creation.
+CAO creates separate private read-only and write-capable Apps with webhooks
+disabled. Review the dry-run manifests before creation.
 
 The helper reads exact `control-plane.scope.allowed-repositories` entries,
 adds the control repository, and does not expand `allowed-owners` into a
@@ -293,7 +294,8 @@ owner jobs do not mean one agent receives every owner's token.
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
 - For App profiles, confirm the write App's bot login (`APP-SLUG[bot]`) is
-  admitted by every worker workflow it may dispatch. A successful
+  in the `on.bots` allowlist of every worker it may dispatch, then recompile
+  changed workflow sources. A successful
   pre-activation job with skipped activation is not a successful worker run.
 - For an enterprise App profile, mint and test the read token separately for every enrolled organization, then perform and clean up a reversible write probe using only the write App in an approved output repository.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.

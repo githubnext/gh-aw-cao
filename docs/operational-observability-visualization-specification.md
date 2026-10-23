@@ -25,24 +25,7 @@ This document is a Working Draft and may be updated, replaced, or made obsolete.
 
 The GitHub Agentic Workflows Team maintains this document. Version numbers follow Semantic Versioning. Normative requirements are identified by `OOV-*` IDs. Examples, rationales, and the implementation profile in Appendix C are informative.
 
-## Table of Contents
-
-1. [Introduction](#1-introduction)
-2. [Conformance](#2-conformance)
-3. [Conceptual Model](#3-conceptual-model)
-4. [Information Architecture](#4-information-architecture)
-5. [Operational Attention](#5-operational-attention)
-6. [Cost and Efficiency](#6-cost-and-efficiency)
-7. [Episode Execution Maps](#7-episode-execution-maps)
-8. [Overlap Views](#8-overlap-views)
-9. [Statistical Anomaly Views](#9-statistical-anomaly-views)
-10. [Topology Views](#10-topology-views)
-11. [Interaction and Accessibility](#11-interaction-and-accessibility)
-12. [Security and Privacy](#12-security-and-privacy)
-13. [Compliance Testing](#13-compliance-testing)
-14. [References](#14-references)
-15. [Appendices](#15-appendices)
-16. [Change Log](#16-change-log)
+<span id="table-of-contents"></span>
 
 ---
 

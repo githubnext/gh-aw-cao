@@ -114,6 +114,21 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.doesNotMatch(hero, /<ul class="story-points">/);
 });
 
+test("README routes detailed tasks without rebuilding their chapter structure", () => {
+  const readme = readFileSync("README.md", "utf8");
+  assert.ok([...readme.matchAll(/^## /gm)].length <= 4);
+  assert.doesNotMatch(readme, /^### /m);
+  for (const anchor of [
+    "project-status-and-scope", "github-cli-extension", "agent-plugin-and-requirements",
+    "github-pages-setup", "agent-analysis", "contributing", "maintainers", "support",
+  ]) {
+    assert.ok(readme.includes(`id="${anchor}"`), `retain #${anchor} without a duplicate chapter`);
+  }
+  for (const guide of ["cao-cli", "agent-plugin", "agent-analysis", "deployment-actions"]) {
+    assert.ok(readme.includes(`docs/${guide}.md`), `${guide} must remain discoverable`);
+  }
+});
+
 test("evidence story identifies fictional records without presenting completed runs as accepted outcomes", () => {
   const evidence = readFileSync("docs/components/HeroEvidenceStory.astro", "utf8");
   assert.match(hero, /<HeroEvidenceStory \/>/);

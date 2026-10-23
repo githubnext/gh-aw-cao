@@ -5,8 +5,7 @@ description: Follow the control envelope, execution invariants, and fail-closed 
 
 Use this page when implementing or reviewing control-plane behavior. Start with
 [Execution boundaries](architecture.md#execution-boundaries) for the architectural
-model or [How does CAO work?](how-cao-works.md#opt-shared-work-into-controlled-execution)
-for the operating flow; this reference supplies the exact handoff and invariants.
+model; this reference supplies the exact handoff and invariants.
 
 ## Responsibility Model
 

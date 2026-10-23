@@ -42,9 +42,14 @@ Apps use short-lived, installation-scoped tokens and do not depend on one person
 
 ## Configure Your Profile
 
-Run credential setup from the control repository. Follow the
-[provisioning procedures](control-plane-authentication.md#choose-a-profile)
-for your profile; the sections below explain how the runtime uses it.
+<span id="reuse-approved-apps"></span>
+<span id="automated-app-setup"></span>
+
+Run credential setup from the control repository:
+[reuse approved Apps](control-plane-authentication.md#reuse-approved-apps),
+[create private Apps](control-plane-authentication.md#configure-private-github-apps),
+or [configure owner-scoped PATs](control-plane-authentication.md#configure-a-fine-grained-token).
+The sections below explain runtime behavior, not provisioning.
 
 ### Policy
 
@@ -157,6 +162,10 @@ permission-scoped `GITHUB_TOKEN` to avoid consuming a user's PAT rate limit.
 Missing cross-repository map entries and mapped secrets fail closed. In
 `app` mode, missing App IDs, private keys, installations, or repository grants
 likewise fail closed instead of borrowing PAT credentials.
+
+App tokens are narrowed to the declared job or safe-output handler permissions.
+A PAT cannot be narrowed per job: each use has the token's full permissions,
+so its stored read/write ceilings must already be least-privilege.
 
 The committed root `aw.yml` intentionally has no `config` block so normal
 installation remains compatible with non-interactive `gh aw add`.
@@ -277,43 +286,9 @@ exact allowlist. The field accepts exact `OWNER/REPOSITORY` coordinates only.
 Omitting it preserves the fail-closed rule: workflow-token mode rejects broader
 collection scope rather than inferring a control-repository-only subset.
 
-### Reuse approved Apps
+<span id="multiple-organizations-in-one-enterprise"></span>
 
-Prefer an approved private read/write App pair over creating replacements.
-Follow [Reuse approved Apps](control-plane-authentication.md#reuse-approved-apps)
-for the command, secure key prompts, repository-administrator approval
-boundaries, and supported GitHub versions. Setup verifies selected-repository
-access using the App's own credentials; approval alone does not supply a key or
-widen CAO policy.
-
-### Automated App setup
-
-For one organization, preview the App manifests and exact repository selections
-before following [Configure private GitHub Apps](control-plane-authentication.md#configure-private-github-apps):
-
-```bash
-gh cao setup auth github-app \
-  --repo acme/central-agentic-ops \
-  --dry-run
-```
-
-The native Go command needs neither Node.js nor a checked-out setup script.
-The provisioning guide covers installation preselection, scope verification,
-and manual storage of already-approved credentials. Inspect all options with:
-
-```bash
-gh cao setup auth github-app --help
-```
-
-### Multiple organizations in one enterprise
-
-Follow [Set Up Multiple Organizations](setup-multiple-organizations.md) and
-the [enterprise App provisioning procedure](control-plane-authentication.md#enterprise-owned-apps).
-Enterprise ownership alone grants no repository access: each organization
-needs a selected-repository installation. Prefer verified approved-App reuse;
-the legacy `enterprise-app` command stores credentials without verifying
-enterprise membership or installation reach. Public Apps are unsupported.
-For data-residency hosts, see [GHE.com setup boundaries](setup-compatibility.md#enterprise-cloud-data-residency-ghecom).
+### Multi-owner runtime credentials
 
 Installation IDs and tokens are never stored in policy or dispatch inputs.
 gh-aw selects the installation from the target owner and repository at runtime.
@@ -348,6 +323,8 @@ serializes PAT collection jobs and checks remaining core capacity before
 inventory discovery and each repository log invocation. It stops at the
 configured reserve without waiting for reset or switching credentials. App
 installation collection jobs retain independent, parallel execution.
+
+<span id="api-capacity"></span>
 
 ## API Capacity Admission
 
@@ -488,20 +465,18 @@ The explicit [runtime mode](#runtime-credential-selection) selects the profile.
 
 Tokens are resolved inside each run. They never belong in policy, dispatch inputs, prompts, logs, safe outputs, or review bundles.
 
-### API capacity
-
-See [API Capacity Admission](#api-capacity-admission) for reserves, reset
-handling, conditional requests, and bounded GraphQL reads.
-
 <span id="rotation-and-incidents"></span>
 
 ### Rotation and revocation
 
 For Apps, add replacement keys, validate bounded review runs, revoke old keys,
-and recheck installations. For PATs, create replacements with the same or
+and recheck installations; App private keys do not expire automatically.
+For PATs, create replacements with the same or
 narrower access, replace the affected owner's read/write secrets, validate read
 and approved safe-output access separately, then revoke the previous tokens.
-Track PAT approval and expiration yourself; CAO does not rotate credentials.
+Track PAT approval and expiration yourself; CAO does not rotate credentials or
+warn before expiry. Audit-log activity is attributed to the App identity or
+the PAT owner's user account, respectively.
 
 :::danger[Suspected exposure]
 Cancel active runs and revoke the credential first. Disabling a campaign does not revoke its App installation or PAT. Inspect logs and outputs, rotate credentials, and resume only in `review` mode.

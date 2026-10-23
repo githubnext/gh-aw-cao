@@ -22,6 +22,9 @@ export default defineConfig({
   site: "https://githubnext.github.io",
   base: "/gh-cao",
   redirects: {
+    "/how-cao-works": "/gh-cao/architecture-at-a-glance/#how-it-works",
+    "/deployment-actions-github-app": "/gh-cao/control-plane-authentication/#configure-private-github-apps",
+    "/deployment-actions-pat": "/gh-cao/control-plane-authentication/#configure-a-fine-grained-token",
     "/getting-started": "/gh-cao/setup-quickstarts/",
     "/setup": "/gh-cao/setup-quickstarts/",
   },
@@ -285,7 +288,6 @@ export default defineConfig({
           label: "Introduction",
           items: [
             { label: "What is Central Agentic Ops?", link: "/architecture-at-a-glance/" },
-            { label: "How does CAO work?", link: "/how-cao-works/" },
             { label: "From outcome to execution", link: "/operation-patterns/" },
             { label: "Architecture", link: "/architecture/" },
           ],
@@ -311,6 +313,7 @@ export default defineConfig({
             { label: "Set up the admission gate", link: "/admission-gate/" },
             { label: "Roll out a campaign", link: "/rollout-and-routing/" },
             { label: "Monitor and recover", link: "/operations/" },
+            { label: "Local worker debugging", link: "/local-debugging/" },
             { label: "Emergency stop", link: "/operations/#emergency-stop" },
           ],
         },
@@ -318,13 +321,8 @@ export default defineConfig({
           label: "Intelligence",
           items: [
             { label: "Overview", link: "/intelligence/" },
-            {
-              label: "Computations",
-              items: [
-                { label: "Runtime health", link: "/computation-runtime-health/" },
-                { label: "Portfolio decisions", link: "/computation-intelligence/" },
-              ],
-            },
+            { label: "Runtime health", link: "/computation-runtime-health/" },
+            { label: "Portfolio decisions", link: "/computation-intelligence/" },
           ],
         },
         {
@@ -332,8 +330,6 @@ export default defineConfig({
           items: [
             { label: "Deployment options", link: "/deployment/" },
             { label: "GitHub Actions only", link: "/deployment-actions/" },
-            { label: "Actions with GitHub Apps", link: "/deployment-actions-github-app/" },
-            { label: "Actions with a PAT", link: "/deployment-actions-pat/" },
             { label: "Azure", link: "/deployment-azure/" },
             { label: "Upstash Redis", link: "/deployment-upstash/" },
             { label: "Managed Redis", link: "/deployment-managed-redis/" },
@@ -346,19 +342,8 @@ export default defineConfig({
             { label: "Data ingestion", link: "/dashboard-data-ingestion/" },
             { label: "Data model", link: "/dashboard-data-model/" },
             { label: "Language", link: "/dashboard-language/" },
-            { label: "Language specification", link: "/dashboard-language-specification/" },
-            { label: "View catalog", link: "/dashboard-view-catalog/" },
-            { label: "WebMCP", link: "/dashboard-webmcp/" },
             { label: "Agent analysis", link: "/agent-analysis/" },
             { label: "Copilot plugin and canvas", link: "/agent-plugin/" },
-            { label: "Agent-readable documentation", link: "/agent-resources/" },
-            {
-              label: "Views",
-              items: [
-                { label: "Overview", link: "/dashboard-overview/" },
-                { label: "Overview components", link: "/dashboard-overview-components/" },
-              ],
-            },
           ],
         },
         {
@@ -374,15 +359,6 @@ export default defineConfig({
             { label: "Agentic workflow smells", link: "/agentic-workflow-smells/" },
             { label: "Glossary", link: "/glossary/" },
             { label: "Orchestrators and workers", link: "/orchestrators-and-workers/" },
-          ],
-        },
-        {
-          label: "Maintain",
-          items: [
-            { label: "Add a campaign", link: "/operations/#adding-a-campaign" },
-            { label: "Add a worker", link: "/operations/#adding-a-worker" },
-            { label: "Local worker debugging", link: "/local-debugging/" },
-            { label: "Validate changes", link: "/operations/#change-validation" },
           ],
         },
       ],

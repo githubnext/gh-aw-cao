@@ -2,8 +2,8 @@
 title: What is Central Agentic Ops?
 description: Monitor and govern GitHub Agentic Workflows across repositories, with shared evidence and policy-controlled execution.
 next:
-  link: /gh-cao/how-cao-works/
-  label: How does CAO work?
+  link: /gh-cao/architecture/
+  label: Architecture
 ---
 
 **Central Agentic Ops (CAO)** is a system for monitoring and governing
@@ -13,34 +13,35 @@ outcome evidence into a shared dashboard and supports policy-governed execution
 and rollout of participating shared workflows.
 
 <span id="what-is-central-agentic-ops"></span>
-
-## What is CAO?
+<span id="what-is-cao"></span>
 
 Agentic work might begin with a single task, then grow across repositories.
 AWs run those tasks in GitHub Actions, using Markdown instructions and configured
 tools and permissions. These AWs form the building blocks of CAO as we scale.
 
-CAO helps you operate these building blocks together:
-
 <span id="what-you-can-do-today"></span>
+<span id="agentic-workflows-operated-across-repositories"></span>
 
-- **Observe activity**: See collected runs across configured repositories and
-  follow them back to GitHub.
-- **Evaluate results**: Inspect available costs, outputs, and outcome evidence,
-  not just whether a workflow ran.
-- **Govern shared work**: Decide whether and where participating workflows may
-  run, then roll them out within explicit policy.
+## How it works
 
-## Agentic workflows, operated across repositories
+1. **Observe activity.** [CAO Activity](activity.md) collects a bounded,
+   read-only snapshot from explicitly configured repositories for dashboards,
+   reports, and agents. Existing workflows keep running where they are.
+2. **Evaluate results.** Follow runs and outputs back to GitHub; check
+   [freshness and completeness](dashboard.md#read-a-result) and
+   [accepted outcomes](operational-value-how-to.md), not just run success.
+   Missing evidence is not a healthy zero.
+3. **Govern shared work when needed.** Explicitly integrated workflows run
+   under reviewed control-repository policy. Start with one target in `review`,
+   inspect the proposal, and authorize live output separately.
 
-You can start with workflows that already run in their own repositories.
-Monitoring them does not move them or change their permissions. When you choose
-to govern shared automation, describe the outcome, target scope, and execution
+Monitoring existing workflows does not move them or change their permissions.
+When you choose to govern shared automation, describe the outcome, target scope, and execution
 requirements; guidance and authoring agents derive the simplest structure.
 Campaigns are one way to package and scale work, not a prerequisite. See
 [From Outcome to Execution](operation-patterns.md).
 
-### A simple example
+## A simple example
 
 An issue-triage workflow runs in one repository while another investigates
 failures elsewhere. CAO shows their collected runs and available outputs in one
@@ -61,12 +62,12 @@ successful outcome. The evidence helps you investigate what the work produced.
 <span id="operating-workflows-across-repositories"></span>
 
 CAO governs explicitly integrated workflows, not every observed AW or ordinary
-Actions job. Shared execution starts in `review`: proposals go to a review
-destination; live output requires explicit authorization.
+Actions job. Review is real execution and can create proposals in the review
+destination; live output requires explicit authorization. Missing required
+authority, access, or evidence fails closed.
 
 <span id="get-started"></span>
 
-- [How does CAO work?](how-cao-works.md)
-- [Architecture](architecture.md)
 - [Set up CAO and monitor your workflows](setup-quickstarts.md)
+- [Architecture and safety boundaries](architecture.md)
 - [Browse campaigns](catalog.md)

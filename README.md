@@ -1,5 +1,7 @@
 # Central Agentic Ops
 
+<span id="project-status-and-scope"></span>
+
 > [!NOTE]
 > **Research prototype:** Features and interfaces may change as the project evolves.
 
@@ -9,8 +11,10 @@
 > [!TIP]
 > **Agent debugging router:** When a CAO deployment, credential, Agentic Workflow, Activity collection, or dashboard build fails, load and follow [the `debug-cao` skill](skills/debug-cao/SKILL.md). Preserve the failing workflow commit and exact component versions before changing or rerunning the deployment.
 
-Monitor GitHub Agentic Workflow runs, costs, and outcomes from one control
-repository. Add trusted agentic operations when you are ready.
+Monitor [GitHub Agentic Workflow](https://github.github.com/gh-aw/) runs, costs,
+and outcomes from one control repository. Add policy-governed operations when
+you are ready; CAO does not replace repository permissions, branch protections,
+or human review.
 
 ## Get started: monitor one repository
 
@@ -37,8 +41,7 @@ or adding or running a campaign.
 
 No checkout yet? Explicitly use `gh repo create OWNER/CONTROL --private --clone`
 or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before installation. Choose
-`--public` instead only for public evidence. A private control repository
-requires credentials even when its other targets are public.
+`--public` instead only for public evidence.
 
 Follow [Set Up CAO](docs/setup-quickstarts.md) for scope, authentication,
 publication, and the first dashboard visit. Setup offers a separate default-No
@@ -61,33 +64,6 @@ policy and declared safe-output capabilities. You can also read
 [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
 without starting a workflow or spending AI credits.
 
-## Project status and scope
-
-Central Agentic Ops extends
-[GitHub Agentic Workflows](https://github.github.com/gh-aw/) with a catalog of
-reusable campaigns and a central control plane for policy-governed operations.
-It does not replace repository permissions, branch protections, or human review.
-
-See the [open issues](https://github.com/githubnext/gh-cao/issues) for current
-work and planned improvements.
-
-### GitHub CLI extension
-
-The compiled `gh cao` extension handles setup, authentication, campaigns,
-diagnostics, and read-only evidence analysis without local Go or Node.js:
-
-```bash
-gh cao --help
-gh cao --version
-```
-
-See [CAO Commands](docs/cao-cli.md) for installation and upgrades, command
-selection, runtime provenance, and the Go/Node boundary. Operators use `gh cao`;
-workflow agents and Activity/Dashboard Actions use `node activity/cao.mjs`.
-The plugin and contributor tooling are not part of the installed control-plane
-runtime. For local extension development, see
-[Contributing](CONTRIBUTING.md#go-extension-development).
-
 ## Documentation
 
 Read the [documentation site](https://githubnext.github.io/gh-cao/), or start
@@ -97,65 +73,32 @@ with the guide for your task:
 | --- | --- |
 | Understand CAO and its boundaries | [What is CAO?](docs/architecture-at-a-glance.md) and [Architecture](docs/architecture.md) |
 | Install and monitor existing workflows | [Set Up CAO](docs/setup-quickstarts.md) |
+| Use or upgrade the CLI | <span id="github-cli-extension"></span>[CAO Commands](docs/cao-cli.md) |
 | Choose and provision credentials | [Authentication](docs/authentication.md) and [credential setup](docs/control-plane-authentication.md) |
-| Choose dashboard hosting | [Deployment options](docs/deployment.md) |
+| Host the dashboard | <span id="github-pages-setup"></span>[Deployment options](docs/deployment.md) and [GitHub Pages](docs/deployment-actions.md) |
 | Interpret evidence | [Dashboard](docs/dashboard.md) |
+| Analyze evidence with CLI or MCP | <span id="agent-analysis"></span>[Agent analysis](docs/agent-analysis.md) |
+| Install skills or use a Copilot canvas | <span id="agent-plugin-and-requirements"></span>[Agent plugin and canvas](docs/agent-plugin.md) |
+| Preview locally | [Local serving modes](docs/dashboard-data-ingestion.md#choose-a-local-serving-mode) |
 | Add shared work | [From Outcome to Execution](docs/operation-patterns.md) and [campaign catalog](https://githubnext.github.io/gh-cao/catalog/) |
 | Operate, update, or recover | [Monitor and recover](docs/operations.md) |
 
-For coding agents, use
-[`llms.txt`](https://githubnext.github.io/gh-cao/llms.txt) for navigation and
-high-value routes,
-[`llms-small.txt`](https://githubnext.github.io/gh-cao/llms-small.txt) for
-compact context, or
-[`llms-full.txt`](https://githubnext.github.io/gh-cao/llms-full.txt) for the
-broad documentation corpus.
+For agents: [`llms.txt`](https://githubnext.github.io/gh-cao/llms.txt) for
+navigation, [`llms-small.txt`](https://githubnext.github.io/gh-cao/llms-small.txt)
+for compact context, and [`llms-full.txt`](https://githubnext.github.io/gh-cao/llms-full.txt)
+for the full corpus.
 
-## Agent plugin and Requirements
+<span id="contributing"></span>
+<span id="maintainers"></span>
+<span id="support"></span>
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin,
-with portable skills for setup, debugging, campaign authoring, and analysis.
-In Copilot CLI it also provides a **Central Agentic Ops** canvas.
-See [Agent plugin and Copilot canvas](docs/agent-plugin.md) for installation,
-requirements, query authoring, approved commands, and the local trust boundary.
+## Contributing and support
 
-For previews outside Copilot, use the
-[local serving guide](docs/dashboard-data-ingestion.md#choose-a-local-serving-mode).
-Hosted deployment is separate; see the [Go server guide](server/README.md).
-
-## GitHub Pages setup
-
-Guided setup configures Pages with **GitHub Actions** as its source and checks
-public-publication consent. Successful default-branch **CAO Activity** runs
-automatically trigger **CAO Dashboard**; manual dashboard rebuilds are also
-available. The workflow itself does not enable Pages.
-See [GitHub Actions deployment](docs/deployment-actions.md) for publication,
-visibility, retention, and stopping or recovering the site.
-
-## Agent analysis
-
-Central Agentic Ops can give an agent its dashboard data without a browser or
-shell. Install CAO, run `gh cao download`, and then either query the snapshot from
-a shell with `gh cao pages`, `gh cao queries`, and `gh cao query QUERY_ID`, or start the
-read-only MCP server with `gh cao mcp` and let an agent call `cao_catalog` and
-`cao_query`. See [Agent analysis](docs/agent-analysis.md) for the GitHub Actions
-bootstrap.
-
-## Contributing
-
-Contributions and issue reports are welcome. Read
-[CONTRIBUTING.md](CONTRIBUTING.md) and our
-[Code of Conduct](CODE_OF_CONDUCT.md) before participating.
-
-## Maintainers
-
-Central Agentic Ops is maintained by [GitHub Next](https://github.com/githubnext).
-Ownership rules are recorded in [.github/CODEOWNERS](.github/CODEOWNERS).
-
-## Support
-
-See [SUPPORT.md](SUPPORT.md) for help and support expectations. Report suspected
-security vulnerabilities privately by following [SECURITY.md](SECURITY.md).
+Read [Contributing](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+Use [open issues](https://github.com/githubnext/gh-cao/issues) and
+[Support](SUPPORT.md) for help; report vulnerabilities privately through
+[Security](SECURITY.md). Maintained by [GitHub Next](https://github.com/githubnext),
+with ownership in [CODEOWNERS](.github/CODEOWNERS).
 
 ## License
 
