@@ -86,7 +86,7 @@ jobs:
         run: >-
           go -C server test -race ./internal/simulator ./internal/admission
           ./internal/webhookgateway ./cmd/cao-webhook-gateway
-          -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' -count=1 -timeout=2m -v
+          -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestIssueServiceSimulator($|HTTP|GatewaySQLite)|TestGitHubSimulator(Gateway|Discovery)SQLite)' -count=1 -timeout=2m -v
       - name: Check shared local query engine
         working-directory: internal/dashboardquery
         run: |
@@ -126,7 +126,7 @@ jobs:
           POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_actions_test?sslmode=disable
         run: >-
           go -C server test -race ./internal/admission ./internal/webhookgateway
-          -run '^(TestLocalActionsPostgresIntegration|TestGitHubSimulator(Gateway|Discovery)Postgres)$' -count=1 -timeout=2m -v
+          -run '^(TestLocalActionsPostgresIntegration|TestIssueServiceSimulatorGatewayPostgres|TestGitHubSimulator(Gateway|Discovery)Postgres)$' -count=1 -timeout=2m -v
 
   server-backfill:
     name: Postgres backfill and OpenObserve integration

@@ -1400,7 +1400,7 @@ npm run test:integration:actions-simulator
 # Equivalent without Node/npm (also suitable for a GitHub Actions run step):
 go -C server test -race ./internal/simulator ./internal/admission \
   ./internal/webhookgateway ./cmd/cao-webhook-gateway \
-  -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' \
+  -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestIssueServiceSimulator($|HTTP|GatewaySQLite)|TestGitHubSimulator(Gateway|Discovery)SQLite)' \
   -count=1 -timeout=2m -v
 ```
 
@@ -1480,6 +1480,42 @@ The Go CI `actions-simulator-postgres` job supplies a health-checked local
 Postgres 16 service on a dynamically allocated port and runs this integration
 with the race detector on pull requests and pushes. It uses no deployed service,
 GitHub credential, or live GitHub API.
+
+### Local Jira, Linear, and Azure DevOps issue webhooks
+
+Run just the self-contained issue-service simulator and gateway integration:
+
+```bash
+npm run test:integration:issue-services
+```
+
+`simulator.NewIssueService("jira" | "linear" | "azure-devops")` creates an
+ephemeral receive secret and synthetic tenant/resource identities.
+`Delivery(id, issueNumber, activity, timestamp)` deterministically generates
+native opened, edited, closed, reopened, labeled, unlabeled, and deleted issue
+payloads; Azure DevOps also supports restored work items. Updates contain native
+before/after evidence, including Azure revision IDs distinct from work item IDs.
+`DeliverWebhook` signs Jira and Linear HMAC deliveries or supplies Azure service
+hook Basic authentication, using the same exact numeric-loopback-only transport
+as the Actions simulator. Proxy settings and redirects cannot escape it.
+
+These are webhook protocol simulators, not full issue-service API emulators.
+Provider-shaped HTTPS resource URLs are inert payload references and are never
+fetched. No Jira, Linear, Azure DevOps, or GitHub account, token, external
+callback, service container, or deployed service is required. All fixtures,
+listeners, secrets, and SQLite state are test-owned and cleaned up afterward.
+The ordinary local Actions integration command and Go CI also run these suites.
+
+The gateway tests discover compiled external declarations from the local GitHub
+API simulator, intersect them with independent receiver enrollment, and exercise
+the production ingress, durable queue, live destination authorization, worker,
+and GitHub compiler dispatcher. They verify every supported lifecycle activity,
+provider-isolated batching, canonical resource URLs and filter evidence, native
+authentication failures, tenant/collection/resource mismatches, Linear timestamp
+freshness, replay deduplication across restart, minimal persisted/dispatched
+payloads, and cancellation when the discovered workflow changes.
+The PostgreSQL command above runs the same gateway suite against isolated local
+PostgreSQL state; it is optional for the fully self-contained SQLite command.
 
 ### Discovered agentic workflows, webhooks, and dispatch
 

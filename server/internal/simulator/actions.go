@@ -172,11 +172,6 @@ func (a Actions) Post(ctx context.Context, stage, endpoint string, body json.Raw
 // DeliverWebhook posts a signed synthetic GitHub event to a local gateway.
 // Delivery identity is supplied by the scenario so replays remain explicit.
 func (a Actions) DeliverWebhook(ctx context.Context, endpoint, secret string, delivery Delivery) (int, error) {
-	client, closeClient, err := localClient(endpoint)
-	if err != nil {
-		return 0, err
-	}
-	defer closeClient()
 	if len(delivery.Payload) > 1<<20 || !json.Valid(delivery.Payload) {
 		return 0, errors.New("invalid simulator webhook payload")
 	}
@@ -184,13 +179,22 @@ func (a Actions) DeliverWebhook(ctx context.Context, endpoint, secret string, de
 	if err != nil {
 		return 0, errors.New("create simulator webhook request")
 	}
+	return deliverLocalWebhook(request, a.Trace, "actions.webhook")
+}
+
+func deliverLocalWebhook(request *http.Request, trace *Trace, stage string) (int, error) {
+	client, closeClient, err := localClient(request.URL.String())
+	if err != nil {
+		return 0, err
+	}
+	defer closeClient()
 	response, err := client.Do(request)
 	if err != nil {
-		a.Trace.record("actions.webhook", 0)
+		trace.record(stage, 0)
 		return 0, errors.New("simulator webhook endpoint unavailable")
 	}
 	defer func() { _ = response.Body.Close() }()
-	a.Trace.record("actions.webhook", response.StatusCode)
+	trace.record(stage, response.StatusCode)
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return response.StatusCode, errors.New("simulator webhook rejected")
 	}
