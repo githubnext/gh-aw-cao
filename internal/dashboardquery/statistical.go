@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -31,6 +32,7 @@ type StatisticalOptions struct {
 	Complete  bool
 	Seed      string
 	HotIDs    map[string]bool
+	Logf      func(string, ...any)
 }
 
 var statisticalTimestamp = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$`)
@@ -140,7 +142,7 @@ func statisticalAllocation(counts map[string]int, capacity int) map[string]int {
 type statisticalCandidate struct {
 	row      map[string]any
 	priority string
-	variants map[string]bool
+	variants map[[sha256.Size]byte]bool
 }
 
 func compareStatisticalCandidates(a, b statisticalCandidate) int {
@@ -168,6 +170,33 @@ func (h *statisticalHeap) Pop() any {
 // SampleStatisticalRuns freezes a candidate frame over the current snapshot.
 // It is not a persisted reservoir and makes no claim about discarded history.
 func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([]map[string]any, map[string]any, error) {
+	startedAt := time.Now()
+	diagnostics := statisticalDiagnostics{stage: "validation"}
+	selected, frame, err := sampleStatisticalRuns(rows, options, &diagnostics)
+	if options.Logf != nil {
+		status := "completed"
+		if err != nil {
+			status = "failed"
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				status = "cancelled"
+			}
+		}
+		// Only fixed labels, counts, and timings belong in diagnostics.
+		options.Logf("event=statistical-sample status=%s stage=%s duration_ms=%d input_count=%d input_bytes=%d population_count=%v selected_count=%d invalid_count=%v duplicate_conflicts=%v weight_valid=%v",
+			status, diagnostics.stage, time.Since(startedAt).Milliseconds(), len(rows), diagnostics.inputBytes,
+			frame["population-count"], len(selected), frame["invalid-count"], frame["duplicate-conflicts"], frame["weight-valid"])
+	}
+	return selected, frame, err
+}
+
+type statisticalDiagnostics struct {
+	stage      string
+	inputBytes int
+}
+
+var ErrStatisticalBudget = errors.New("statistical candidate frame exceeds input budget")
+
+func sampleStatisticalRuns(rows []map[string]any, options StatisticalOptions, diagnostics *statisticalDiagnostics) ([]map[string]any, map[string]any, error) {
 	ctx := options.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -175,7 +204,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	if len(rows) > StatisticalMaxInputRows {
-		return nil, nil, errors.New("statistical candidate frame exceeds input row budget")
+		return nil, nil, fmt.Errorf("statistical candidate frame exceeds input row budget: %w", ErrStatisticalBudget)
 	}
 	watermark, ok := statisticalInstant(options.Watermark)
 	if !ok {
@@ -191,35 +220,42 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 	identities := map[string]statisticalCandidate{}
 	invalid, conflicts, incomplete, hotExcluded := 0, 0, 0, 0
 	inputBytes := 0
+	diagnostics.stage = "candidates"
 	for _, row := range rows {
 		if err := ctx.Err(); err != nil {
 			return nil, nil, err
-		}
-		id, ok := row["id"].(string)
-		if !ok || !statisticalIdentity.MatchString(id) {
-			invalid++
-			continue
 		}
 		content, err := json.Marshal(row)
 		if err != nil {
 			return nil, nil, err
 		}
 		inputBytes += len(content)
+		diagnostics.inputBytes = inputBytes
 		if inputBytes > StatisticalMaxInputBytes {
-			return nil, nil, errors.New("statistical candidate frame exceeds working byte budget")
+			return nil, nil, fmt.Errorf("statistical candidate frame exceeds working byte budget: %w", ErrStatisticalBudget)
+		}
+		id, ok := row["id"].(string)
+		if !ok || !statisticalIdentity.MatchString(id) {
+			invalid++
+			continue
 		}
 		prior, exists := identities[id]
-		variants := prior.variants
-		if variants == nil {
-			variants = map[string]bool{}
-		}
-		variants[string(content)] = true
-		if !exists {
-			identities[id] = statisticalCandidate{row: row, variants: variants}
+		if exists {
+			if prior.variants == nil {
+				previous, err := json.Marshal(prior.row)
+				if err != nil {
+					return nil, nil, err
+				}
+				prior.variants = map[[sha256.Size]byte]bool{sha256.Sum256(previous): true}
+			}
+			prior.variants[sha256.Sum256(content)] = true
+			identities[id] = prior
+		} else {
+			identities[id] = statisticalCandidate{row: row}
 		}
 	}
 	for _, candidate := range identities {
-		conflicts += len(candidate.variants) - 1
+		conflicts += max(0, len(candidate.variants)-1)
 	}
 	groups := map[string][]statisticalCandidate{}
 	quarantined := 0
@@ -281,6 +317,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 	selected := []map[string]any{}
 	strata := []map[string]any{}
 	populationParts := []string{}
+	diagnostics.stage = "selection"
 	slices.Sort(keys)
 	for _, key := range keys {
 		if err := ctx.Err(); err != nil {
@@ -362,9 +399,22 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 	for _, row := range selected {
 		frameParts = append(frameParts, row["id"].(string), row["statistical-priority"].(string), row["statistical-stratum"].(string))
 	}
-	frame["frame-id"] = "sha256:" + statisticalDigest(frameParts)
+	diagnostics.stage = "frame"
+	hash := sha256.New()
+	for _, part := range frameParts {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		_ = binary.Write(hash, binary.BigEndian, uint32(len(part)))
+		_, _ = hash.Write([]byte(part))
+	}
+	frame["frame-id"] = "sha256:" + hex.EncodeToString(hash.Sum(nil))
 	for _, row := range selected {
 		row["statistical-frame-id"] = frame["frame-id"]
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	diagnostics.stage = "complete"
 	return selected, frame, nil
 }

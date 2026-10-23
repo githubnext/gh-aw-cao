@@ -9,9 +9,12 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
+
+var statisticalLog = logger.New("cao:postgresx:sampling")
 
 // Sampling reads compact metadata from the pinned transaction. Consumer filters
 // compile only after this root has been frozen; SQL remains responsible for all
@@ -51,7 +54,7 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 		var bytes int64
 		for rows.Next() {
 			if len(result) >= query.MaxInputRows {
-				return nil, errors.New("statistical candidate frame exceeds input budget")
+				return nil, dashboardquery.ErrStatisticalBudget
 			}
 			values := make([]any, len(fields))
 			dest := make([]any, len(fields))
@@ -71,13 +74,13 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 			}
 			bytes += query.EstimateRowsBytes([]model.Row{model.Row(row)})
 			if bytes > query.MaxWorkingBytes {
-				return nil, errors.New("statistical candidate frame exceeds working byte budget")
+				return nil, dashboardquery.ErrStatisticalBudget
 			}
 			result = append(result, row)
 		}
 		return result, rows.Err()
 	}()
-	if err != nil {
+	if err != nil && !errors.Is(err, dashboardquery.ErrStatisticalBudget) {
 		return query.SQLRelation{}, nil, err
 	}
 	watermark, policy := dashboardquery.CanonicalStatisticalWatermark(candidates), "canonical-run-max"
@@ -86,18 +89,30 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 	}
 	var selected []map[string]any
 	frame := map[string]any{"weight-valid": false}
-	if watermark == "" {
+	if errors.Is(err, dashboardquery.ErrStatisticalBudget) {
+		statisticalLog.Print("event=statistical-source status=unavailable reason=input-budget")
+		quality["availability"] = "unavailable"
+		quality["completeness"] = "unknown"
+		quality["error"] = "statistical candidate frame exceeds input budget"
+	} else if watermark == "" {
+		statisticalLog.Print("event=statistical-source status=unavailable reason=missing-clock")
 		quality["availability"] = "unavailable"
 		quality["completeness"] = "unknown"
 		quality["error"] = "statistical sampling requires a recorded canonical watermark"
 	} else {
 		selected, frame, err = dashboardquery.SampleStatisticalRuns(candidates, dashboardquery.StatisticalOptions{
-			Context:   ctx,
+			Context: ctx, Logf: statisticalLog.Printf,
 			Watermark: watermark, Capacity: dashboardquery.StatisticalPostgresCapacity,
 			Complete: quality["completeness"] == "complete" && quality["availability"] != "unavailable",
 		})
 		if err != nil {
-			return query.SQLRelation{}, nil, err
+			if !errors.Is(err, dashboardquery.ErrStatisticalBudget) {
+				return query.SQLRelation{}, nil, err
+			}
+			frame = map[string]any{"weight-valid": false}
+			quality["availability"] = "unavailable"
+			quality["completeness"] = "unknown"
+			quality["error"] = "statistical candidate frame exceeds input budget"
 		}
 	}
 	frame["watermark-policy"] = policy

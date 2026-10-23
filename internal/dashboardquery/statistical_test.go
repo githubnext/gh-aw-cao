@@ -3,6 +3,8 @@ package dashboardquery
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"reflect"
@@ -11,6 +13,77 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestStatisticalMaximumCandidateFrame(t *testing.T) {
+	rows := make([]map[string]any, StatisticalMaxInputRows)
+	for index := range rows {
+		rows[index] = map[string]any{
+			"id":     "github:run:o/r:" + strconv.Itoa(index*99991%200003),
+			"status": "completed", "conclusion": "success", "startedAt": "2026-10-22T00:00:00Z",
+		}
+	}
+	for _, capacity := range []int{StatisticalSQLiteCapacity, StatisticalIndexedDBCapacity, StatisticalPostgresCapacity} {
+		t.Run(strconv.Itoa(capacity), func(t *testing.T) {
+			selected, frame, err := SampleStatisticalRuns(rows, StatisticalOptions{
+				Context: t.Context(), Watermark: "2026-10-23T00:00:00Z", Capacity: capacity, Complete: true,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(selected) != capacity || frame["population-count"] != StatisticalMaxInputRows || frame["full-population-estimable"] != true {
+				t.Fatalf("maximum frame selection failed: %v", frame)
+			}
+			for _, row := range selected {
+				if row["statistical-frame-id"] != frame["frame-id"] || row["statistical-weight"] != float64(len(rows))/float64(capacity) {
+					t.Fatal("selected row lost its population-bound weight")
+				}
+			}
+		})
+	}
+}
+
+func TestStatisticalDiagnosticsAndBudgets(t *testing.T) {
+	rows, options, _ := statisticalFixture(t)
+	var messages []string
+	options.Seed = "private-seed"
+	rows[0]["private-payload"] = "private-content"
+	options.Logf = func(format string, args ...any) { messages = append(messages, fmt.Sprintf(format, args...)) }
+	if _, _, err := SampleStatisticalRuns(rows, options); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(messages[0], "status=completed stage=complete") || !strings.Contains(messages[0], "selected_count=3") ||
+		!strings.Contains(messages[0], "weight_valid=true") {
+		t.Fatalf("missing sampling completion metrics: %s", messages[0])
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	options.Context = ctx
+	if selected, frame, err := SampleStatisticalRuns(rows, options); !errors.Is(err, context.Canceled) || selected != nil || frame != nil {
+		t.Fatalf("cancellation exposed partial sampling data: %v", err)
+	}
+	if !strings.Contains(messages[1], "status=cancelled stage=candidates") {
+		t.Fatalf("missing cancellation diagnostics: %s", messages[1])
+	}
+	options.Context = t.Context()
+	options.Watermark = "private-invalid-clock"
+	if _, _, err := SampleStatisticalRuns(rows, options); err == nil {
+		t.Fatal("invalid clock accepted")
+	}
+	for _, message := range messages {
+		if strings.Contains(message, "private") || strings.Contains(message, "github:") || strings.Contains(message, "sha256:") {
+			t.Fatalf("sensitive input escaped into diagnostics: %s", message)
+		}
+	}
+	options.Watermark = "2026-10-23T00:00:00Z"
+	invalid := make([]map[string]any, 257)
+	payload := strings.Repeat("x", 1<<20)
+	for index := range invalid {
+		invalid[index] = map[string]any{"id": "invalid", "payload": payload}
+	}
+	if selected, frame, err := SampleStatisticalRuns(invalid, options); !errors.Is(err, ErrStatisticalBudget) || selected != nil || frame != nil {
+		t.Fatalf("invalid identities bypassed byte budget: %v", err)
+	}
+}
 
 func statisticalFixture(t *testing.T) ([]map[string]any, StatisticalOptions, []string) {
 	t.Helper()

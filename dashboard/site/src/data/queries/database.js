@@ -1197,13 +1197,25 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const requested = new Set(sourceNames);
   const databaseRequested = resolveDashboardQuerySources(databaseQueries, requested)
     .filter((name) => databaseQueryIndex.has(name) && !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name));
-  const statisticalRequested = databaseRequested.some((name) => name.startsWith('statistical-'));
+  const statisticalNames = new Set(databaseRequested.filter((name) => name.startsWith('statistical-')));
+  const statisticalRequested = statisticalNames.size > 0;
+  const exactStores = new Set(resolveDashboardQuerySources(databaseQueries, requested, statisticalNames)
+    .filter((name) => !statisticalNames.has(name)).flatMap(queryStores));
+  let statisticalError = '';
   if (statisticalRequested) {
     options.checkpoint?.();
     const counts = await countCollections(indexedDB, ['runs']);
-    if (counts.runs > STATISTICAL_INPUT_LIMITS.rows) throw new Error('Statistical candidate frame exceeds input row budget');
+    if (counts.runs > STATISTICAL_INPUT_LIMITS.rows) {
+      statisticalError = 'Statistical candidate frame exceeds input row budget';
+      debugDatabase({ event: 'statistical-source', status: 'unavailable', reason: 'input-budget', inputCount: counts.runs });
+    }
   }
-  const stores = [...new Set(databaseRequested.flatMap(queryStores))];
+  const unavailableStatistical = new Set(statisticalError
+    ? statisticalNames : []);
+  const activeQueries = statisticalError
+    ? resolveDashboardQuerySources(databaseQueries, requested, unavailableStatistical)
+      .filter((name) => !unavailableStatistical.has(name)) : databaseRequested;
+  const stores = [...new Set(activeQueries.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
   const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
     stores.filter((name) => name !== 'transactions')
@@ -1211,14 +1223,25 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const databaseStartedAt = monotonicNow();
   /** @type {[Record<string, Record<string, unknown>[]>, Record<string, unknown>[]]} */
   const [collections, transactions] = await Promise.all([
-    collectionStores.length > 0 ? readCollections(indexedDB, collectionStores) : {},
+    collectionStores.length > 0 ? readCollections(indexedDB, collectionStores, {
+      checkpoint: options.checkpoint,
+      ...(statisticalRequested ? { bounds: {
+        stores: new Set(collectionStores.filter((store) => !exactStores.has(store))),
+        rows: STATISTICAL_INPUT_LIMITS.rows, bytes: STATISTICAL_INPUT_LIMITS.bytes,
+        onLimit: () => {
+          statisticalError = 'Statistical source exceeds input budget';
+          for (const name of statisticalNames) unavailableStatistical.add(name);
+          debugDatabase({ event: 'statistical-source', status: 'unavailable', reason: 'input-budget' });
+        }
+      } } : {})
+    }) : {},
     transactionRequested ? readTransactions(indexedDB) : []
   ]);
   const databaseMs = monotonicNow() - databaseStartedAt;
   const sources = namedSources(logicalSources);
   /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */
   let statisticalMembership;
-  if (statisticalRequested) {
+  if (statisticalRequested && !statisticalError) {
     const rawRuns = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources.runs);
     const runMetadata = queryMetadata(sources, 'runs', 'runs', rawRuns?.metadata?.availability !== 'unavailable');
     try {
@@ -1254,6 +1277,12 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const resolveSource = (name) => {
     const cached = resolved.get(name);
     if (cached) return cached;
+    if (unavailableStatistical.has(name)) {
+      return {
+        source: name, rows: [],
+        metadata: { ...queryMetadata(sources, 'runs', name, false), error: statisticalError }
+      };
+    }
     if (name === SIMULATION_DAYS) {
       return simulationDaysSource();
     }

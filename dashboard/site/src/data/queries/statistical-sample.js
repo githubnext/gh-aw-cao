@@ -4,7 +4,8 @@
  * exact evidence. The caller supplies a recorded logical clock.
  */
 import { timestampMilliseconds } from '../model/schema.js';
-import { createDashboardQueryBudget, DASHBOARD_QUERY_LIMITS } from './declarative.js';
+import { createDashboardQueryBudget, DashboardQueryCancelledError, DASHBOARD_QUERY_LIMITS } from './declarative.js';
+import { createDebug } from '../../debug.js';
 
 export const STATISTICAL_CAPACITIES = Object.freeze({ postgres: 64000, sqlite: 8000, indexeddb: 16000 });
 export const STATISTICAL_VERSION = 'canonical-snapshot-bottom-k-v1';
@@ -16,6 +17,8 @@ const SEED = 'cao-statistical-v1';
 const WEEK = 7 * 86400000;
 const FAILURES = new Set(['failure', 'timed_out', 'action_required', 'startup_failure']);
 const OUTCOMES = new Set(['success', ...FAILURES, 'cancelled', 'skipped', 'neutral', 'stale']);
+const HASH_BATCH_SIZE = 64;
+const debugSampling = createDebug('data:sampling');
 
 /** @param {unknown} value */
 function instant(value) {
@@ -34,18 +37,22 @@ export function canonicalStatisticalWatermark(rows) {
   return Number.isFinite(latest) ? new Date(latest).toISOString() : '';
 }
 
-/** @param {string[]} parts */
-function framed(parts) {
+/** @param {string[]} parts @param {() => void} [checkpoint] */
+function framed(parts, checkpoint) {
   const encoder = new TextEncoder();
-  const chunks = parts.map((part) => encoder.encode(part));
-  const bytes = new Uint8Array(chunks.reduce((size, chunk) => size + 4 + chunk.length, 0));
+  const lengths = parts.map((part, index) => {
+    if (index % 256 === 0) checkpoint?.();
+    return encoder.encode(part).length;
+  });
+  const bytes = new Uint8Array(lengths.reduce((size, length) => size + 4 + length, 0));
   const view = new DataView(bytes.buffer);
   let offset = 0;
-  for (const chunk of chunks) {
-    view.setUint32(offset, chunk.length);
+  for (let index = 0; index < parts.length; index++) {
+    if (index % 256 === 0) checkpoint?.();
+    view.setUint32(offset, lengths[index]);
     offset += 4;
-    bytes.set(chunk, offset);
-    offset += chunk.length;
+    encoder.encodeInto(parts[index], bytes.subarray(offset, offset + lengths[index]));
+    offset += lengths[index];
   }
   return bytes;
 }
@@ -56,9 +63,9 @@ export async function statisticalPriority(identity, seed = SEED) {
   return digest([STATISTICAL_VERSION, seed, identity]);
 }
 
-/** @param {string[]} parts */
-async function digest(parts) {
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', framed(parts));
+/** @param {string[]} parts @param {() => void} [checkpoint] */
+async function digest(parts, checkpoint) {
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', framed(parts, checkpoint));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -129,6 +136,41 @@ function retainCandidate(heap, candidate, capacity, checkpoint) {
  * @param {{ watermark: unknown, capacity?: number, complete?: boolean, seed?: string, hotIds?: Iterable<string>, checkpoint?: () => void }} options
  */
 export async function sampleStatisticalRuns(rows, options) {
+  const startedAt = performance.now();
+  const diagnostics = { stage: 'validation', inputBytes: 0, hashBatches: 0, maxPendingHashes: 0 };
+  let status = 'failed';
+  let reason = '';
+  /** @type {Record<string, unknown>} */
+  let frame = {};
+  try {
+    const result = await selectStatisticalRuns(rows, options, diagnostics);
+    frame = result.frame;
+    status = 'completed';
+    return result;
+  } catch (error) {
+    if (error instanceof DashboardQueryCancelledError) {
+      status = 'cancelled';
+      reason = error.kind;
+    }
+    throw error;
+  } finally {
+    debugSampling({
+      event: 'statistical-sample', status, reason, ...diagnostics,
+      durationMs: Math.round(performance.now() - startedAt), inputCount: rows.length,
+      populationCount: frame['population-count'] ?? 0, selectedCount: frame['selected-count'] ?? 0,
+      stratumCount: Array.isArray(frame.strata) ? frame.strata.length : 0,
+      invalidCount: frame['invalid-count'] ?? 0, duplicateConflicts: frame['duplicate-conflicts'] ?? 0,
+      weightValid: frame['weight-valid'] === true
+    });
+  }
+}
+
+/**
+ * @param {Record<string, unknown>[]} rows
+ * @param {Parameters<typeof sampleStatisticalRuns>[1]} options
+ * @param {{ stage: string, inputBytes: number, hashBatches: number, maxPendingHashes: number }} diagnostics
+ */
+async function selectStatisticalRuns(rows, options, diagnostics) {
   const budget = createDashboardQueryBudget();
   const checkpoint = () => { budget.spend(1); options.checkpoint?.(); };
   if (rows.length > STATISTICAL_INPUT_LIMITS.rows) throw new Error('Statistical candidate frame exceeds input row budget');
@@ -138,25 +180,28 @@ export async function sampleStatisticalRuns(rows, options) {
   if (!Number.isFinite(watermark)) throw new Error('Statistical sampling requires an explicit canonical UTC watermark');
   const hot = new Set(options.hotIds ?? []);
   const seed = options.seed || SEED;
-  /** @type {Map<string, { row: Record<string, unknown>, variants: Set<string> }>} */
+  /** @type {Map<string, { row: Record<string, unknown>, variants?: Set<string> }>} */
   const identities = new Map();
   let invalid = 0;
   let conflicts = 0;
   let inputBytes = 0;
   const encoder = new TextEncoder();
+  diagnostics.stage = 'candidates';
   for (const row of rows) {
     checkpoint();
-    const id = row.id;
-    if (typeof id !== 'string' || !/^github:run:[^/:]+\/[^:]+:[^:]+$/.test(id)) { invalid++; continue; }
     const json = stableJSON(row);
     inputBytes += encoder.encode(json).byteLength;
+    diagnostics.inputBytes = inputBytes;
     if (inputBytes > STATISTICAL_INPUT_LIMITS.bytes) throw new Error('Statistical candidate frame exceeds working byte budget');
+    const id = row.id;
+    if (typeof id !== 'string' || !/^github:run:[^/:]+\/[^:]+:[^:]+$/.test(id)) { invalid++; continue; }
     const prior = identities.get(id);
-    const variants = prior?.variants ?? new Set();
-    variants.add(json);
-    if (!prior) identities.set(id, { row, variants });
+    if (prior) {
+      prior.variants ??= new Set([stableJSON(prior.row)]);
+      prior.variants.add(json);
+    } else identities.set(id, { row });
   }
-  conflicts = [...identities.values()].reduce((sum, entry) => sum + entry.variants.size - 1, 0);
+  conflicts = [...identities.values()].reduce((sum, entry) => sum + (entry.variants?.size ?? 1) - 1, 0);
   /** @type {Map<string, Array<{ row: Record<string, unknown>, priority: string }>>} */
   const groups = new Map();
   let incomplete = 0;
@@ -164,7 +209,7 @@ export async function sampleStatisticalRuns(rows, options) {
   let quarantined = 0;
   for (const [id, { row, variants }] of identities) {
     checkpoint();
-    if (variants.size > 1) { quarantined++; continue; }
+    if ((variants?.size ?? 1) > 1) { quarantined++; continue; }
     if (row.status !== 'completed') { incomplete++; continue; }
     const started = instant(row.startedAt);
     const at = Number.isFinite(started) ? started : instant(row.createdAt);
@@ -189,6 +234,7 @@ export async function sampleStatisticalRuns(rows, options) {
   /** @type {Array<{ stratum: string, population: number, allocation: number, cutoff: string | null }>} */
   const strata = [];
   const populationParts = [];
+  diagnostics.stage = 'selection';
   for (const [key, candidates] of [...groups].sort(([a], [b]) => compare(a, b))) {
     const population = candidates.length;
     const count = (reserve.get(key) ?? 0) + (remainder.get(key) ?? 0);
@@ -204,10 +250,16 @@ export async function sampleStatisticalRuns(rows, options) {
     /** @type {Candidate[]} */
     const retained = [];
     if (count > 0) {
-      for (const candidate of candidates) {
+      for (let offset = 0; offset < candidates.length; offset += HASH_BATCH_SIZE) {
         checkpoint();
-        const priority = await statisticalPriority(String(candidate.row.id), seed);
-        retainCandidate(retained, { row: candidate.row, priority }, count, checkpoint);
+        const batch = candidates.slice(offset, offset + HASH_BATCH_SIZE);
+        diagnostics.hashBatches++;
+        diagnostics.maxPendingHashes = Math.max(diagnostics.maxPendingHashes, batch.length);
+        const priorities = await Promise.all(batch.map((candidate) => statisticalPriority(String(candidate.row.id), seed)));
+        for (let index = 0; index < batch.length; index++) {
+          checkpoint();
+          retainCandidate(retained, { row: batch[index].row, priority: priorities[index] }, count, checkpoint);
+        }
       }
       retained.sort((a, b) => {
         checkpoint();
@@ -224,6 +276,7 @@ export async function sampleStatisticalRuns(rows, options) {
     strata.push({ stratum: key, population, allocation: count, cutoff: count > 0 ? retained[count - 1].priority : null });
   }
   const normalizedWatermark = new Date(watermark).toISOString();
+  diagnostics.stage = 'frame';
   const frameId = await digest([
     STATISTICAL_FRAME_VERSION, STATISTICAL_VERSION, seed, 'frame', normalizedWatermark, String(capacity), String(valid),
     ...populationParts,
@@ -231,9 +284,10 @@ export async function sampleStatisticalRuns(rows, options) {
       stratum.stratum, String(stratum.population), String(stratum.allocation), stratum.cutoff ?? ''
     ]),
     ...selected.flatMap((row) => [String(row.id), String(row['statistical-priority']), String(row['statistical-stratum'])])
-  ]);
+  ], checkpoint);
   checkpoint();
   for (const row of selected) row['statistical-frame-id'] = `sha256:${frameId}`;
+  diagnostics.stage = 'complete';
   return {
     rows: selected,
     frame: {

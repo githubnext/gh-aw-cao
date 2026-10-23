@@ -11,10 +11,13 @@ import (
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
 
 	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
+	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/postgresx"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
+
+var statisticalLog = logger.New("cao:sqlitex:sampling")
 
 const (
 	maxSnapshotInputRows     = 500_000
@@ -205,6 +208,13 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			[]string{"id", "owner", "repository", "githubRunId", "startedAt", "createdAt", "completedAt", "updatedAt", "status", "conclusion"},
 			dashboardquery.StatisticalMaxInputRows, dashboardquery.StatisticalMaxInputBytes)
 		if err != nil {
+			if errors.Is(err, dashboardquery.ErrSnapshotInputBudget) {
+				statisticalLog.Print("event=statistical-source status=unavailable reason=input-budget")
+				return model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{
+					"source-id": name, "availability": "unavailable", "completeness": "unknown",
+					"error": "statistical candidate frame exceeds input budget",
+				}}, nil
+			}
 			return model.Source{}, err
 		}
 		// Unlike exact-source presentation clocks, sampling never falls back to
@@ -216,17 +226,24 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			watermark, policy = dashboardquery.CanonicalStatisticalWatermark(rows), "canonical-run-max"
 		}
 		if watermark == "" {
+			statisticalLog.Print("event=statistical-source status=unavailable reason=missing-clock")
 			return model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{
 				"source-id": name, "availability": "unavailable", "completeness": "unknown",
 				"error": "statistical sampling requires a recorded canonical watermark",
 			}}, nil
 		}
 		selected, frame, err := dashboardquery.SampleStatisticalRuns(rows, dashboardquery.StatisticalOptions{
-			Context:   ctx,
+			Context: ctx, Logf: statisticalLog.Printf,
 			Watermark: watermark, Capacity: dashboardquery.StatisticalSQLiteCapacity,
 			Complete: quality["completeness"] == "complete" && quality["availability"] != "unavailable",
 		})
 		if err != nil {
+			if errors.Is(err, dashboardquery.ErrStatisticalBudget) {
+				return model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{
+					"source-id": name, "availability": "unavailable", "completeness": "unknown",
+					"error": "statistical candidate frame exceeds input budget",
+				}}, nil
+			}
 			return model.Source{}, err
 		}
 		frame["watermark-policy"] = policy

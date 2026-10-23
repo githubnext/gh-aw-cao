@@ -671,6 +671,22 @@ Statistical capacities are independent: PostgreSQL 64,000; SQLite 8,000;
 IndexedDB 16,000. Explicit hot-identity exclusions MAY narrow the frame; this
 increment leaves the exact layer unchanged and does not infer a hot census.
 
+Candidate frames are bounded to 200,000 input rows and 256 MiB of serialized
+input, including malformed identities. Bottom-k priority retention SHALL remain
+bounded by the allocated sample capacity; browser priority hashing SHALL use
+bounded batches rather than one promise per population member. Browser stores
+needed only for sampling SHALL be read in bounded batches within one readonly
+snapshot, with a shared byte budget. Exceeding sampling input limits SHALL mark
+statistical sources unavailable without suppressing independent exact queries.
+Database failures and caller cancellation SHALL NOT be disguised as empty samples.
+
+Sampling diagnostics SHALL be disabled by default and contain only fixed event
+labels, stages, counts, timings, and validity indicators, never identities,
+payloads, seeds, or arbitrary error text. Enable browser summaries with
+`?debug=data:sampling` (source-loading diagnostics use `?debug=database`).
+Go backends use `DEBUG=cao:postgresx:sampling` or `DEBUG=cao:sqlitex:sampling`;
+native CLI summaries use `DEBUG=cao:cli` and remain off JSON stdout.
+
 The source SHALL retain ordinary Run fields and expose its sampling frame,
 watermark, covered interval, candidate and selected counts, per-stratum
 populations/allocations, and weight validity. Inclusion probability is `k/N`

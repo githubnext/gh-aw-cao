@@ -15,6 +15,8 @@ import (
 const DatabaseName = "gh-aw-cao-dashboard-data"
 const DatabaseVersion = 45
 
+var ErrSnapshotInputBudget = errors.New("snapshot input budget exceeded")
+
 // SnapshotReader accepts a database or an already pinned read transaction.
 type SnapshotReader interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
@@ -66,7 +68,7 @@ func ReadCollectionFields(ctx context.Context, db SnapshotReader, collection str
 		}
 		bytes += int64(len(keyJSON)) + storedBytes
 		if maxRows > 0 && len(entries) >= maxRows || maxBytes > 0 && bytes > maxBytes {
-			return nil, fmt.Errorf("canonical %s exceeds local query input budget", collection)
+			return nil, fmt.Errorf("canonical %s exceeds local query input budget: %w", collection, ErrSnapshotInputBudget)
 		}
 		var key any
 		if err := json.Unmarshal([]byte(keyJSON), &key); err != nil || !ValidRecordKey(key) {

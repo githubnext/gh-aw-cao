@@ -292,7 +292,7 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 				return nil, readErr
 			}
 			selected, frame, sampleErr := dashboardquery.SampleStatisticalRuns(candidates, dashboardquery.StatisticalOptions{
-				Context:   ctx,
+				Context: ctx, Logf: log.Printf,
 				Watermark: dashboardquery.CanonicalStatisticalWatermark(candidates), Capacity: dashboardquery.StatisticalSQLiteCapacity,
 			})
 			if sampleErr != nil {

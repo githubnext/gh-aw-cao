@@ -1,13 +1,15 @@
 import { webcrypto } from 'node:crypto';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore, IDBKeyRange } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import fixture from '../fixtures/statistical-sampling.json' with { type: 'json' };
 import { sampleStatisticalRuns, statisticalPriority, STATISTICAL_CAPACITIES, STATISTICAL_FRAME_VERSION, STATISTICAL_INPUT_LIMITS } from '../../src/data/queries/statistical-sample.js';
-import { openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
+import { openCanonicalDatabase, readCollections } from '../../src/data/storage/indexeddb.js';
+import { DashboardQueryCancelledError } from '../../src/data/queries/declarative.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
 
 vi.stubGlobal('crypto', webcrypto);
+vi.stubGlobal('IDBKeyRange', IDBKeyRange);
 const options = { watermark: fixture.watermark, capacity: fixture.capacity, complete: true };
 
 describe('independent frozen statistical sampling', () => {
@@ -175,6 +177,91 @@ describe('independent frozen statistical sampling', () => {
     await expect(sampleStatisticalRuns(fixture.rows, {
       ...options, checkpoint: () => { throw new Error('cancelled'); }
     })).rejects.toThrow('cancelled');
+  });
+
+  it('bounds concurrent hashing and stops after cancellation during priority or frame hashing', async () => {
+    for (const phase of ['priority', 'frame']) {
+      let pending = 0;
+      let peak = 0;
+      let cancelled = false;
+      const rows = Array.from({ length: 130 }, (_, index) => ({ ...fixture.rows[0], id: `github:run:o/r:${index}` }));
+      const digest = vi.fn(async (/** @type {AlgorithmIdentifier} */ algorithm, /** @type {BufferSource} */ data) => {
+        peak = Math.max(peak, ++pending);
+        if (phase === 'priority' || digest.mock.calls.length === rows.length + 1) cancelled = true;
+        try { return await webcrypto.subtle.digest(algorithm, data); }
+        finally { pending--; }
+      });
+      vi.stubGlobal('crypto', { subtle: { digest } });
+      try {
+        await expect(sampleStatisticalRuns(rows, {
+          ...options, checkpoint: () => {
+            if (cancelled) throw new DashboardQueryCancelledError('private cancellation', 'aborted');
+          }
+        })).rejects.toMatchObject({ name: 'DashboardQueryCancelledError', kind: 'aborted' });
+        expect(peak).toBeGreaterThan(1);
+        expect(peak).toBeLessThanOrEqual(64);
+        expect(digest).toHaveBeenCalledTimes(phase === 'priority' ? 64 : rows.length + 1);
+        expect(pending).toBe(0);
+      } finally {
+        vi.stubGlobal('crypto', webcrypto);
+      }
+    }
+  });
+
+  it('charges malformed candidates against the byte budget before accepting any frame', async () => {
+    const row = { id: 'invalid', payload: 'x'.repeat(1024 * 1024) };
+    await expect(sampleStatisticalRuns(Array(257).fill(row), options)).rejects.toThrow('working byte budget');
+  }, 30000);
+
+  it('keeps exact queries available and skips oversized statistical-only stores', async () => {
+    const factory = new IDBFactory();
+    const database = await openCanonicalDatabase(factory);
+    const transaction = database.transaction('repositories', 'readwrite');
+    transaction.objectStore('repositories').put({ id: 'repository', owner: 'o', name: 'r' });
+    await new Promise((resolve, reject) => { transaction.oncomplete = resolve; transaction.onerror = reject; });
+    database.close();
+    const nativeCount = IDBObjectStore.prototype.count;
+    const count = vi.spyOn(IDBObjectStore.prototype, 'count').mockImplementation(/** @this {IDBObjectStore} */ function (...args) {
+      const request = nativeCount.apply(this, args);
+      if (this.name === 'runs') vi.spyOn(request, 'result', 'get').mockReturnValue(STATISTICAL_INPUT_LIMITS.rows + 1);
+      return request;
+    });
+    const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    try {
+      const result = await queryDatabaseSources(factory, {}, ['repositories', 'statistical-tools']);
+      expect(result.repositories.rows).toHaveLength(1);
+      expect(result['statistical-tools']).toMatchObject({
+        rows: [], metadata: { availability: 'unavailable', completeness: 'unknown' }
+      });
+      expect((/** @type {IDBObjectStore[]} */ (getAll.mock.instances)).map((store) => store.name)).toEqual(['repositories']);
+    } finally {
+      count.mockRestore();
+      getAll.mockRestore();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('bounds statistical materialization inside the same multi-store snapshot without limiting exact stores', async () => {
+    const factory = new IDBFactory();
+    const database = await openCanonicalDatabase(factory);
+    const transaction = database.transaction(['runs', 'repositories'], 'readwrite');
+    for (let index = 0; index < 1002; index++) transaction.objectStore('runs').put({ id: `run:${String(index).padStart(4, '0')}` });
+    transaction.objectStore('repositories').put({ id: 'repository' });
+    await new Promise((resolve, reject) => { transaction.oncomplete = resolve; transaction.onerror = reject; });
+    database.close();
+    for (const limits of [{ rows: 1002, bytes: 100000 }, { rows: 1001, bytes: 100000 }, { rows: 1002, bytes: 10 }]) {
+      const onLimit = vi.fn();
+      const result = await readCollections(factory, ['runs', 'repositories'], {
+        bounds: { stores: new Set(['runs']), ...limits, onLimit }
+      });
+      expect(result.repositories).toEqual([{ id: 'repository' }]);
+      expect(result.runs).toHaveLength(limits.rows === 1002 && limits.bytes > 10 ? 1002 : 0);
+      expect(onLimit).toHaveBeenCalledTimes(result.runs.length ? 0 : 1);
+    }
+    await expect(readCollections(factory, ['runs'], {
+      bounds: { stores: new Set(['runs']), rows: 1002, bytes: 100000, onLimit: vi.fn() },
+      checkpoint: () => { throw new DashboardQueryCancelledError('aborted', 'aborted'); }
+    })).rejects.toMatchObject({ kind: 'aborted' });
   });
 
   it('resolves through the production data worker and filters only after frozen membership', async () => {
