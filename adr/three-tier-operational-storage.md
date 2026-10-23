@@ -49,6 +49,231 @@ not a substitute for the current native PostgreSQL storage contract.
 
 ## Decision
 
+### Formal data model
+
+Use **typed relational algebra with a guarded state-transition system**. Relations
+express keys, ownership, and additive accounting directly across all three
+backends; transitions express atomicity, replay, and publication without assuming
+SQL transactions or IndexedDB APIs. This is a mathematical specification of the
+proposal, not executable TLA+, an implemented schema, or a model-checked proof.
+The numbered decisions below refine its policy parameters.
+
+#### Domains, identities, and relations
+
+Let `N`, `R`, `F`, `G`, `A`, `I`, `T`, and `D` denote namespaces, repository
+identities, workflow identities, GitHub run identities, attempt numbers,
+observation identities, UTC instants, and UTC dates. Identifiers use canonical
+encoding and bytewise ordering. Define:
+
+```text
+RunKey         = N × R × G
+ExecutionKey   = RunKey × A
+ObservationKey = ExecutionKey × Kind × I
+AggregateKey   = N × D × R × F
+Tier           = {hot, statistical}
+FieldValue(X)  = Absent | Unknown | Null | Present(X)
+```
+
+These are tagged alternatives: `Present(0) ≠ Absent ≠ Unknown ≠ Null`.
+`RunKey` is the namespaced logical form of the existing canonical Run ID;
+`ExecutionKey` distinguishes source attempts, not additional canonical Runs.
+`Kind` ranges over the existing run-owned observation types.
+
+The following are logical relations; implementations may combine tables or
+stores without changing their keys or dependencies. `key → attributes` denotes
+a functional dependency after reconciliation.
+
+| Relation | Key and dependent attributes |
+| --- | --- |
+| `Repository` | `(n, r) → canonical repository attributes` |
+| `Workflow` | `(n, r, f) → canonical workflow attributes` |
+| `Run` | `u: RunKey → workflow, winningAttempt, executionTime, status, outcome, completeness, revision` |
+| `Observation` | `o: ObservationKey → payload, revision, provenance` |
+| `Membership` | `u: RunKey → tier, policyFingerprint` |
+| `Sample` | `u: RunKey → stratum, priority, frameId, inclusionProbability?, weightValidity` |
+| `Contribution` | `u: RunKey → revision, sparse contribution vector, reconciliation fingerprint` |
+| `Daily` | `g: AggregateKey → additive metric vector, coverage metadata` |
+| `Frame` | `(scope, stratum) → populationCount, allocation, seedVersion, watermark, validity` |
+| `Import` | `scope → manifestDigest, policyFingerprint, watermark, phase, expectedActiveRevision` |
+| `Progress` | `(scope, shardDigest, phase) → committedPosition, receipt` |
+
+Each Run references a Workflow in the same namespace and repository. Each
+retained Observation references its Run and preserves its source attempt.
+Membership and Sample reference retained Runs; `Sample` exists exactly for
+statistical members. Contribution receipts do **not** require a retained Run:
+their keys and compact reconciliation state survive detail eviction. Daily
+rows and retained detail keep their structural parents reachable.
+
+#### Evidence reconciliation
+
+Let `E` be the finite **set** of normalized evidence revisions in a completed
+scope, identified by source identity, revision, and canonical payload digest.
+Duplicates do not add elements. Let `ρᵥ(E)` be the canonical reconciliation at
+version `v`, including deterministic diagnostics for unresolved conflicts.
+
+Incremental reconciliation must implement a merge `⊔` satisfying:
+
+```text
+x ⊔ x             = x                         (idempotence)
+x ⊔ y             = y ⊔ x                     (commutativity)
+(x ⊔ y) ⊔ z       = x ⊔ (y ⊔ z)               (associativity)
+ρᵥ(E₁ ∪ E₂)       = ρᵥ(E₁) ⊔ ρᵥ(E₂)
+```
+
+This requires enough revision/provenance state to distinguish “field absent”
+from an authoritative tombstone and to preserve precedence when batches merge.
+A naive field overwrite or “latest arrival wins” does not satisfy the model.
+Unsupported conflicts produce the same quarantine result for every ordering,
+not an arbitrary usable value. The equations are obligations for the proposed
+reconciler, not claims about the existing implementation.
+
+#### Exact contributions and conservation
+
+Let `M` be the fixed set of additive metric coordinates, including outcome
+counters and the observation counts for each measured quantity. Use agreed
+integer base units or exact fixed-point representations; subtraction operates
+in `ℤ^M`. Persisted observed counts remain nonnegative. Incomparable units
+must not occupy the same coordinate.
+
+Let `Cᵥ(u, ρᵥ(E))` be a finite sparse map `AggregateKey → ℤ^M`, calculated for
+one canonical Run and its reconciled observations. Its date is the reconciled
+execution date. Its outcome coordinates sum to one for a counted Run, including
+the explicit pending/unknown classes, not one per attempt. Unknown measurements
+add neither a measured value nor a measurement count; an observed zero adds
+zero value and the appropriate positive observation count. Unsupported or
+undated evidence is diagnosed rather than assigned a made-up date.
+
+For watermark `W`, let `week(W)` be its UTC Monday-starting week and let:
+
+```text
+Q(W) = dates in week(W), week(W) - 1 week, or week(W) - 2 weeks
+L[u] = last committed contribution receipt for u, restricted to Q(W)
+Daily[g] = Σu L[u][g]                          for date(g) ∈ Q(W)
+```
+
+Missing map entries are zero. `L` denotes compact receipts, not historical
+execution detail. For an admissible reconciled update to `u`, commit together:
+
+```text
+old       := L[u]                             (zero if never admitted)
+new       := Cᵥ(u, updatedEvidence) restricted to Q(W)
+Daily'    := Daily - old + new
+L'[u]     := new
+```
+
+A date, workflow, or winning-attempt correction uses the same equation: it can
+remove one retained key and add another without counting a second Run.
+Replaying an unchanged revision has `old = new`, hence zero delta. Deleting a
+hot or statistical bundle changes neither `L` nor `Daily`. Aggregate rollover
+removes expired Daily coordinates and the corresponding receipt coordinates
+together; it does not subtract detail from retained dates.
+
+Updates involving an expired date require a surviving receipt and authoritative
+revision evidence sufficient to distinguish correction from replay. Otherwise
+reject/quarantine the update; do not apply `new` with an assumed zero `old`.
+Sealed-scope replay guards prevent expired inputs from recreating history.
+Thus conservation is exact for admitted, reconcilable evidence, not a claim of
+complete upstream collection.
+
+#### Tier selection and sampling frame
+
+Fix policy `P = (h, s, p, budget, seed, v, allocationVersion)` for one backend
+and namespace: hot/statistical/pending capacities, byte envelope, seed, and
+algorithm versions. `W` is an explicit logical watermark, never wall-clock
+import time. Let `B(E)` be the set of eligible complete terminal Run bundles
+after reconciliation; incomplete/running bundles are in a separate set `U`.
+Let `t(u)` be the reconciled execution time. Define:
+
+```text
+order(u) = (t(u), canonicalByteEncoding(u))
+H        = greatest min(h, |B(E)|) elements of B(E) by order
+C        = {u ∈ B(E) \ H : W - 7 days ≤ t(u) < W}
+Cj       = {u ∈ C : stratum(u) = j}
+Nj       = |Cj|
+(kj)     = allocateP((Nj)) with 0 ≤ kj ≤ Nj and Σj kj ≤ s
+priority(u) = (Hash(seedVersion, seed, framedEncoding(u)), encoding(u))
+Sj       = least kj elements of Cj by priority
+S        = union of Sj
+```
+
+Stratum is execution UTC date × outcome class. `allocateP` is the versioned,
+deterministic proportional/failure-reserve policy in Section 3. It depends on
+reconciled population counts, not arrival order. For a completed frame:
+
+```text
+H ∩ S = ∅                 |H| ≤ h                 |S| ≤ s
+S ⊆ C                     |Uadmitted| ≤ p
+retained detail = bundles(H ∪ S) plus bounded pending staging
+```
+
+Bundle retention preserves all admitted associated observations together, not
+independently sampled children. Retention cannot turn a partial bundle into a
+complete one. Byte limits additionally constrain all protected state and staging;
+inability to fit aborts admission or causes a recorded policy reduction, never
+a silent violation of exact accounting or a partial bundle deletion.
+
+Under the ideal uniform-priority model, conditional on a complete, frozen frame
+with `Nj > 0`, inclusion probability for `u ∈ Cj` is `πu = kj/Nj`.
+For a sampled measurement `yu`, a supported candidate-population total estimator
+is `Σu∈S yu/πu`, only for populations whose contributing strata have positive
+inclusion probability. Hashing is a deterministic approximation to this random
+priority model; quality is assessed across seeds. This estimator is not used
+instead of exact Daily totals.
+
+Store probability with its frame identity. Online reclassification, allocation
+changes, and expiration without refill do not establish a new complete frame:
+set validity to unsupported unless the surviving design's probabilities can be
+derived. In particular, recomputing `π = survivingCount/currentPopulation` is not
+justified. The model deliberately does not assert online/bulk sample equivalence.
+
+#### Atomic state transitions and convergence
+
+Represent persisted logical state as:
+
+```text
+Σ = (activeRevision, activeProjection, stagingScopes, progress,
+     contributionReceipts, samplingState, policy, watermark, replayGuards)
+```
+
+`Begin(scope)` fixes the manifest, policy fingerprint, reconciliation version,
+seed, and watermark. `Apply(scope, batch)` atomically merges evidence, applies
+admissible contribution deltas to that scope's working state, and checkpoints
+progress and sampling state. Uncommitted writes have no effect after a crash;
+retrying committed evidence is idempotent. A staged bulk scope is not visible
+through the active query projection.
+
+`Finalize(scope)` is enabled only after all manifested shards are verified,
+required metadata is reconciled, selection is complete, and budget/integrity
+checks pass. `Activate(scope)` atomically publishes its complete projection and
+accounting state only if `expectedActiveRevision = activeRevision`; otherwise
+the stale scope must be reconciled or rejected, not overwrite newer state.
+`Expire(W')` requires `W' ≥ W` and atomically expires samples and rolls aggregate
+weeks while preserving the conservation equation. `EvictDetail(u)` removes its
+bundle and obsolete membership, not its contribution, and is enabled only
+after selection establishes `u ∉ H ∪ S` and it is not protected pending evidence.
+Displacement, expiration, or budget-driven policy changes must commit the new
+selection and any affected sampling-validity changes atomically with eviction;
+a current hot winner or frozen-frame sample cannot be deleted independently.
+Online commits obey the same atomic accounting rule but retain the weaker
+sampling contract.
+
+Let `Π` discard physical row order, local timing, and other noncanonical
+telemetry. For the same admissible starting state, complete evidence set `E`,
+policy `P`, versions, and cutoff `W`, successful bulk finalization must satisfy:
+
+```text
+Π(Finalize(Apply*(Σ₀, batches₁(E)), P, W))
+  = Π(Finalize(Apply*(Σ₀, batches₂(E ∪ E)), P, W))
+```
+
+`batches₁` and `batches₂` may use different ordering, duplication, grouping,
+concurrency, and crash/retry schedules. Backend implementations refine this
+logical result under identical policies; differing defaults are not a parity
+failure. This is a safety/convergence obligation for successful imports, not a
+liveness guarantee under insufficient storage or invalid evidence. Golden
+fixtures and permutation/crash tests must establish these properties before
+rollout; no formal verification tool or proof is introduced by this ADR.
+
 ### 1. Three complementary layers, one logical contract
 
 Use complete recent execution detail for debugging, representative older detail
