@@ -262,12 +262,15 @@ telemetry. For the same admissible starting state, complete evidence set `E`,
 policy `P`, versions, and cutoff `W`, successful bulk finalization must satisfy:
 
 ```text
-Π(Finalize(Apply*(Σ₀, batches₁(E)), P, W))
-  = Π(Finalize(Apply*(Σ₀, batches₂(E ∪ E)), P, W))
+support(flatten(batches₁)) = support(flatten(batches₂)) = E
+
+Π(Finalize(Apply*(Σ₀, batches₁), P, W))
+  = Π(Finalize(Apply*(Σ₀, batches₂), P, W))
 ```
 
-`batches₁` and `batches₂` may use different ordering, duplication, grouping,
-concurrency, and crash/retry schedules. Backend implementations refine this
+`flatten` concatenates batches; `support` takes their set of evidence revisions,
+discarding multiplicity. `batches₁` and `batches₂` may use different ordering,
+duplication, grouping, concurrency, and crash/retry schedules. Backend implementations refine this
 logical result under identical policies; differing defaults are not a parity
 failure. This is a safety/convergence obligation for successful imports, not a
 liveness guarantee under insufficient storage or invalid evidence. Golden
