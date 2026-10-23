@@ -132,3 +132,14 @@ Both paths import the same frozen evidence contract, collector, and scoring func
 Accepted operational-value observations are queryable from any local or downloaded canonical SQLite snapshot with `cao query --collection operationalValues`. Querying alone does not publish or reconstruct history. The Activity compute path may explicitly query missing cadence observations for a named campaign while their authoritative source evidence remains in its bounded canonical database; it writes only the resulting numeric observations into the same canonical Activity shard used for current values. No history archive is installed with the campaign. The Dashboard workflow then deploys those canonical records to Pages through the normal Activity snapshot pipeline.
 
 The rolling Activity database is a query source for current observations, not the definition of operational-value history. Explicit evaluation schedules observations from adoption and incrementally preserves accepted snapshots. Git and other immutable repository facts can be reconstructed at historical cutoffs. Ephemeral run, usage, artifact, queue, and tool-call facts can be backfilled only while their source remains available; an expired interval without a contemporaneous snapshot is missing, not zero. The current live Activity publication retains 30 days of operational-value records compacted to each metric's declared cadence plus its latest open-bucket observation, while the explicit evidence archive is the durable since-adoption record.
+
+## Standalone design reference
+
+The [operational-value reference prototype](https://github.com/githubnext/gh-cao/tree/main/examples/operational-value)
+contains a seven-scene storyboard, a dependency-free synthetic model, tests,
+and a reproducible operation-count study with retained offline-replay inputs.
+It explores independent observation cadence, optional linked-integration
+questions, selective computation, and evidence timing. It is **not a production
+collector or dashboard feature**: the storyboard uses fictional Go-file counts,
+while the executable study uses a separate synthetic JavaScript-file metric.
+See its README for local viewing, exact-runtime replay, and limitations.

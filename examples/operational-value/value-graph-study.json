@@ -1,0 +1,322 @@
+{
+  "scope": "Synthetic executable design study; not production performance, API cost, or a security proof.",
+  "modelSha256": "94ea08227e68865e15776090e9b073fe6c0173e9665c46a9a32f179fbcd64ab7",
+  "nodeVersion": "v24.21.0",
+  "metric": "Count eligible synthetic .js files with more than 10 lines; not a replacement for the storyboard contract.",
+  "scenarios": [
+    {
+      "layout": "nested-localized",
+      "eligibleFiles": 100000,
+      "baselineDistinctBlobs": 100000,
+      "directories": 1000,
+      "modifiedPaths": 12,
+      "distinctNewBlobs": 3,
+      "result": {
+        "oversized": 12,
+        "eligible": 100000
+      },
+      "flatInventoryWithBlobCache": {
+        "treeEntries": 101001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      },
+      "subtreeReuseWithBlobCache": {
+        "treeEntries": 1101,
+        "occurrences": 100,
+        "blobMeasurements": 3,
+        "aggregateReuses": 999
+      }
+    },
+    {
+      "layout": "nested-spread",
+      "eligibleFiles": 100000,
+      "baselineDistinctBlobs": 100000,
+      "directories": 1000,
+      "modifiedPaths": 12,
+      "distinctNewBlobs": 3,
+      "result": {
+        "oversized": 12,
+        "eligible": 100000
+      },
+      "flatInventoryWithBlobCache": {
+        "treeEntries": 101001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      },
+      "subtreeReuseWithBlobCache": {
+        "treeEntries": 2201,
+        "occurrences": 1200,
+        "blobMeasurements": 3,
+        "aggregateReuses": 988
+      }
+    },
+    {
+      "layout": "flat-localized",
+      "eligibleFiles": 100000,
+      "baselineDistinctBlobs": 100000,
+      "directories": 1,
+      "modifiedPaths": 12,
+      "distinctNewBlobs": 3,
+      "result": {
+        "oversized": 12,
+        "eligible": 100000
+      },
+      "flatInventoryWithBlobCache": {
+        "treeEntries": 100001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      },
+      "subtreeReuseWithBlobCache": {
+        "treeEntries": 100001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      }
+    },
+    {
+      "layout": "nested-all-directories",
+      "eligibleFiles": 100000,
+      "baselineDistinctBlobs": 100000,
+      "directories": 1000,
+      "modifiedPaths": 1000,
+      "distinctNewBlobs": 3,
+      "result": {
+        "oversized": 1000,
+        "eligible": 100000
+      },
+      "flatInventoryWithBlobCache": {
+        "treeEntries": 101001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      },
+      "subtreeReuseWithBlobCache": {
+        "treeEntries": 101001,
+        "occurrences": 100000,
+        "blobMeasurements": 3,
+        "aggregateReuses": 0
+      }
+    }
+  ],
+  "limits": [
+    "Both strategies already cache blobs; subtree reuse can save metadata traversal and occurrence evaluation, not extra blob reads in these cases.",
+    "Logical operation counts only; no GitHub API calls, network timing or real repository benchmark.",
+    "Flat or widely changed trees require broad traversal. The pruned fold examines no more tree entries than the baseline in these fixtures, but cache lookup overhead remains unbenchmarked.",
+    "The model assumes already-verified source facts and atomic in-process coordination; production adapters and distributed races are not validated here.",
+    "Verified merge/squash integration can use the first parent. Rebase or grouped integration requires a verified before/after boundary; a current PR base or final commit parent is not a substitute.",
+    "The model archives immutable fixture inputs. It does not implement enterprise storage, retention, the canonical packet schema, or forecast fitting."
+  ],
+  "designCorrections": [
+    "Native outputs are evidence, not automatic acceptance watches; explicitly declared questions determine follow-up.",
+    "Independent per-question deadlines prevent lifecycle updates, missing evidence, and late repairs from postponing the repository cadence.",
+    "Event time, capture time, and first publication availability are distinct; late publication cannot backfill a historical forecasting view.",
+    "Completed immutable questions retire their timers. Zero and negative results remain; pending or unavailable results are not zero.",
+    "Changed-tree folding replaced old/new tree subtraction to avoid doubled metadata traversal for flat layouts.",
+    "Dirty-key overflow becomes a full-scope invalidation; it does not drop the newest changes.",
+    "Shared integration facts have one identity, while several output or PR links can refer to them."
+  ],
+  "delayedMerge": [
+    {
+      "observedAt": 0,
+      "domainState": "open",
+      "readiness": "waiting",
+      "nextDue": 30,
+      "measurement": null
+    },
+    {
+      "observedAt": 60,
+      "domainState": "merged",
+      "readiness": "waiting",
+      "nextDue": 67,
+      "measurement": null
+    },
+    {
+      "observedAt": 67,
+      "domainState": "merged",
+      "readiness": "ready",
+      "nextDue": null,
+      "measurement": {
+        "id": "43c9e83e327f146e87aa086829806c674cfe52f2d3a2a34c0e67e89f8fd4775c",
+        "effectiveAt": 60,
+        "before": 1,
+        "after": 0,
+        "reductions": 1,
+        "beforeRevision": "56db556c3e1d761119a4db1378ebfa982c3b98c2b9e99a30af0cf4423db96b87",
+        "afterRevision": "3085a927370450abc5d646ec287bfa1526e23a64bb764a03a88ab64bc38bc3b5",
+        "grouped": false
+      }
+    }
+  ],
+  "offlineReplay": {
+    "originalObservedAt": 67,
+    "preserved": true,
+    "liveSourceEnabled": false
+  },
+  "replayFixture": {
+    "capture": {
+      "evaluator": "synthetic-file-count/v1",
+      "implementation": {
+        "sourceSha256": "94ea08227e68865e15776090e9b073fe6c0173e9665c46a9a32f179fbcd64ab7",
+        "runtime": "v24.21.0"
+      },
+      "rule": {
+        "id": "oversized-files",
+        "version": 1,
+        "repository": "example/repo",
+        "workflow": "synthetic-file-diet",
+        "targetRef": "refs/heads/main",
+        "prefix": "src/",
+        "extension": ".js",
+        "excludedSuffix": ".test.js",
+        "threshold": 10,
+        "cadence": 10,
+        "maturation": 7,
+        "reconcileEvery": 30,
+        "requireChecks": false
+      },
+      "question": {
+        "kind": "merge-change",
+        "subject": "pr-1"
+      },
+      "evidence": {
+        "repository": "example/repo",
+        "targetRef": "refs/heads/main",
+        "subject": "pr-1",
+        "coverage": "complete",
+        "outputLinks": [
+          "native-output-a",
+          "native-output-b"
+        ],
+        "boundary": {
+          "kind": "first-parent",
+          "basis": "verified-squash"
+        },
+        "state": "merged",
+        "acceptedAt": 60,
+        "observedAt": 67,
+        "revision": "3085a927370450abc5d646ec287bfa1526e23a64bb764a03a88ab64bc38bc3b5"
+      },
+      "observedAt": 67,
+      "gate": {
+        "readiness": "ready",
+        "domainState": "merged",
+        "nextDue": null
+      },
+      "measurement": {
+        "id": "43c9e83e327f146e87aa086829806c674cfe52f2d3a2a34c0e67e89f8fd4775c",
+        "effectiveAt": 60,
+        "before": 1,
+        "after": 0,
+        "reductions": 1,
+        "beforeRevision": "56db556c3e1d761119a4db1378ebfa982c3b98c2b9e99a30af0cf4423db96b87",
+        "afterRevision": "3085a927370450abc5d646ec287bfa1526e23a64bb764a03a88ab64bc38bc3b5",
+        "grouped": false
+      }
+    },
+    "objects": [
+      [
+        "3085a927370450abc5d646ec287bfa1526e23a64bb764a03a88ab64bc38bc3b5",
+        {
+          "type": "commit",
+          "value": {
+            "tree": "f97a79377586e6306c19225019b1d8c29bc62a753502579c55e11fe3702a3a5b",
+            "parents": [
+              "56db556c3e1d761119a4db1378ebfa982c3b98c2b9e99a30af0cf4423db96b87"
+            ]
+          }
+        }
+      ],
+      [
+        "56db556c3e1d761119a4db1378ebfa982c3b98c2b9e99a30af0cf4423db96b87",
+        {
+          "type": "commit",
+          "value": {
+            "tree": "1385c118982bd722915de75eab980649c980aec73e76f9f918cff071538bf53d",
+            "parents": [
+              "8d4c717f11512c775baddd1ccdadb943e86da26529e050a0427bee9ef849702d"
+            ]
+          }
+        }
+      ],
+      [
+        "1385c118982bd722915de75eab980649c980aec73e76f9f918cff071538bf53d",
+        {
+          "type": "tree",
+          "value": [
+            {
+              "name": "src",
+              "type": "tree",
+              "id": "856b1a8b20aa04429385ceb7e92ada01d260603b433939f2e60fbaf0f52efde0"
+            }
+          ]
+        }
+      ],
+      [
+        "856b1a8b20aa04429385ceb7e92ada01d260603b433939f2e60fbaf0f52efde0",
+        {
+          "type": "tree",
+          "value": [
+            {
+              "name": "a.js",
+              "type": "blob",
+              "id": "6df5d039448504a09ec800522bc16bbd611bf4b6f76f4b75fea50cce4d69e0b6"
+            },
+            {
+              "name": "b.js",
+              "type": "blob",
+              "id": "396ca5b5298f3e4eb15fb09c3215a9f42c87075e644d426b071d258b102b9571"
+            }
+          ]
+        }
+      ],
+      [
+        "6df5d039448504a09ec800522bc16bbd611bf4b6f76f4b75fea50cce4d69e0b6",
+        {
+          "type": "blob",
+          "value": "line\nline\nline\nline\nline\nline\nline\nline\nline\nline\nline\nline\nline\nline\nline\n"
+        }
+      ],
+      [
+        "396ca5b5298f3e4eb15fb09c3215a9f42c87075e644d426b071d258b102b9571",
+        {
+          "type": "blob",
+          "value": "line\nline\nline\n"
+        }
+      ],
+      [
+        "f97a79377586e6306c19225019b1d8c29bc62a753502579c55e11fe3702a3a5b",
+        {
+          "type": "tree",
+          "value": [
+            {
+              "name": "src",
+              "type": "tree",
+              "id": "2a5b4910704e9b4587fed69c367f58d29b53156d371c6600875340b1ea7eec7b"
+            }
+          ]
+        }
+      ],
+      [
+        "2a5b4910704e9b4587fed69c367f58d29b53156d371c6600875340b1ea7eec7b",
+        {
+          "type": "tree",
+          "value": [
+            {
+              "name": "a.js",
+              "type": "blob",
+              "id": "396ca5b5298f3e4eb15fb09c3215a9f42c87075e644d426b071d258b102b9571"
+            },
+            {
+              "name": "b.js",
+              "type": "blob",
+              "id": "396ca5b5298f3e4eb15fb09c3215a9f42c87075e644d426b071d258b102b9571"
+            }
+          ]
+        }
+      ]
+    ]
+  }
+}
