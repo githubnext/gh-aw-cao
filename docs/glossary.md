@@ -82,6 +82,10 @@ The repository that hosts CAO workflows and policy. It coordinates work across e
 
 The local, loopback-only **Central Agentic Ops** Copilot SDK surface that hosts the experimental dashboard **Query editor** page for authoring and previewing custom views. It is not enabled on the static website, hosted server, or ordinary local preview, and its authoring sessions have no filesystem, shell, MCP, or repository-write tools. See [Design queries in a Copilot canvas](dashboard.md#design-queries-in-a-copilot-canvas).
 
+## Daily partition
+
+A UTC-day partition of a high-volume canonical PostgreSQL table, such as runs. Owner-run bootstrap initializes the partitions and owner-run maintenance keeps historical, current, and 28 upcoming days provisioned, expiring only complete days at each retention cutoff; runtime opens provisioned state without DDL. See [Architecture](architecture.md).
+
 ## Dashboard Language
 
 The declarative YAML vocabulary used to define dashboard queries, pages, views, and presentation. It keeps data selection and operational calculations in the dashboard data worker rather than in UI components. See the [Dashboard Language guide](dashboard-language.md) and [specification](dashboard-language-specification.md).
@@ -169,6 +173,10 @@ A control repository whose own visibility is public, so its policy, workflow run
 ## Public-only monitoring
 
 A setup profile for a public control repository that monitors currently public repositories with the workflow `GITHUB_TOKEN` and no App or PAT. Policy records it as `control-plane.activity.public-only: true` with exact repository names, never a wildcard. Activity verifies public visibility and unchanged repository identity before discovery and again before log collection, and blocks publication if either check fails. It grants no campaign activation, safe output, or live authority. See [Public-only monitoring quickstart](authentication.md#public-only-monitoring-quickstart).
+
+## Repair database
+
+The Node-only `node activity/cao.mjs repair-database` command, also available as the `cao repair-database` bin, that repairs a SQLite snapshot and applies retention. It is not a read-only check: it creates a backup first and may prune expired or orphaned records, and it is distinct from `gh cao doctor`. See the [CLI reference](cao-cli.md).
 
 ## Repo memory
 
