@@ -84,6 +84,11 @@ Grant only the permissions that your installed campaigns need. For more informat
    - `OWNER/OUTPUT-REPOSITORY` with an approved safe-output repository.
    - `READ-APP-CLIENT-ID` and `WRITE-APP-CLIENT-ID` with the client IDs of your apps.
 1. For every installation, select **Only select repositories**.
+   - For new installations on github.com, review the account and exact
+     repositories preselected by setup before approving. Existing installations
+     retain **Configure**; GHES/data-residency hosts retain manual selection.
+     [Preselection failures or selections over 100 repositories](control-plane-authentication.md#configure-private-github-apps)
+     stop setup rather than dropping repositories or selecting all.
    - Install the read app on the control repository and on every repository that `.github/workflows/cao.json` allows.
    - Install the write app only on approved safe-output repositories. By default, that's only the control repository.
    - Setup uses a short-lived App installation token to verify the exact

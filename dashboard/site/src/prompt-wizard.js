@@ -1,5 +1,8 @@
 import { isSafeRepositorySlug } from './validator-common.js';
+import { createDebug } from './debug.js';
 import octiconNames from './octicon-names.json' with { type: 'json' };
+
+const debugPromptWizard = createDebug('src:prompt-wizard');
 
 /**
  * @typedef {{ value: string, label: string, description?: string, summary?: string, instructions?: string, icon?: string, context?: unknown, defaults?: WizardValues }} WizardOption
@@ -118,6 +121,7 @@ export function parsePromptWizard(value) {
       if (!Number.isSafeInteger(source[key]) || Number(source[key]) < 0) throw new Error(`provenance.${key} must be a nonnegative integer.`);
     }
   }
+  debugPromptWizard({ event: 'parsed', steps: wizard.steps.length, fields: fields.size, provenance: wizard.provenance !== undefined });
   return /** @type {PromptWizard} */ (wizard);
 }
 
@@ -206,6 +210,7 @@ export function buildWizardPrompt(wizard, values) {
     '## Task requirements',
     ...sections
   ].join('\n\n');
+  debugPromptWizard({ event: 'prompt-built', sections: sections.length, length: prompt.length, overLimit: prompt.length > 100_000 });
   if (prompt.length > 100_000) throw new Error('Generation prompt exceeds the 100,000-character limit. Shorten the design.');
   return prompt;
 }

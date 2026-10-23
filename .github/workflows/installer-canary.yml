@@ -1,0 +1,93 @@
+name: Public installer release canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * *"
+  pull_request:
+    paths:
+      - .github/workflows/installer-canary.yml
+      - scripts/installer-canary.mjs
+      - tests/unit/installer-canary.test.mjs
+      - tests/integration/install-script.test.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-canary-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: node --test tests/unit/installer-canary.test.mjs
+
+  matrix:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - id: matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          matrix="$(node scripts/installer-canary.mjs matrix)"
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: matrix
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Test real release installation
+        env:
+          CAO_INSTALLER_SCENARIO: ${{ matrix.scenario }}
+          CAO_INSTALLER_REQUIRED_VERSION: ${{ matrix.required }}
+          CAO_INSTALLER_PREINSTALLED_VERSION: ${{ matrix.preinstalled }}
+        run: npm run test:integration:installer
+
+  deployed-smoke:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Verify existing Activity, deployment and populated-dashboard checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/installer-canary.mjs smoke | tee -a "$GITHUB_STEP_SUMMARY"

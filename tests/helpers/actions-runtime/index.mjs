@@ -76,16 +76,16 @@ export function compile(workspace, workflows) {
     readFileSync(join(root, ".github/workflows/dependabot.lock.yml"), "utf8"),
   )?.[1];
   if (!setup) throw new Error("Catalog lock does not declare an immutable setup action");
-  const args = ["aw", "compile", ...workflows, "--use-samples", "--no-check-update",
+  const args = ["aw", "compile", "--use-samples", "--no-check-update",
     "--schedule-seed", "githubnext/gh-cao", "--action-mode", "action", "--action-tag", setup];
-  // Establish a reviewed fixture baseline for the real shared control import's
-  // secret references. No secret values are supplied, and only dry-run locks run.
-  run(realGh, [...args, "--approve"], { cwd: workspace, env });
-  const result = run(realGh, [...args, "--dry-run"], { cwd: workspace, env });
+  // CAO's reviewed host steps are incompatible with compile-only dry runs.
+  // Replay them only as staged samples inside the credential-free, offline container.
+  const result = workflows.map(workflow => run(realGh, [...args, workflow,
+    ...(workflow === "cao" ? ["--staged", "--shellcheck"] : ["--dry-run"])], { cwd: workspace, env })).join("\n");
   run("git", ["add", ".github"], { cwd: workspace });
   run("git", ["-c", "user.name=Actions simulator", "-c", "user.email=simulator@example.invalid",
     "commit", "--quiet", "--no-gpg-sign", "-m",
-    "Compile synthetic dry-run workflows\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"], { cwd: workspace });
+    "Compile synthetic sample workflows\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"], { cwd: workspace });
   return result;
 }
 

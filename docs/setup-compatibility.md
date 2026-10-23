@@ -123,6 +123,7 @@ repositories, credentials, campaigns, or workflow dispatches are created.
 | Evidence | Automated coverage and boundary |
 | --- | --- |
 | Bootstrap | Real installer, local release/checksum verification, simulated repository creation, runtime preparation, Git push and fresh clone; no live repository provisioning |
+| Installer compatibility | Stable/prerelease minimums with missing, current, outdated and newer gh-aw; exact fresh-install version forwarding, byte-preserved existing extensions, noninteractive upgrade refusal, unchanged policy/index/HEAD, and rejection outside a checkout before distribution |
 | Recorded low-friction path | Public control, organization wildcard saved as exact names, no App/PAT prompt, public Pages consent, separately approved Git publication and deployment-pending result |
 | Visibility and owner combinations | Public/private controls on GitHub.com; private/internal controls on GHE.com; same, cross, and mixed owners; public/private/internal/mixed targets as allowed by the host; public controls reject non-public evidence |
 | PAT path | Interactive retention of simulated existing secret names, exact owner read maps, control-only write map, and PAT-mode selection; no token issuance, decryption, or live approval |
@@ -130,10 +131,51 @@ repositories, credentials, campaigns, or workflow dispatches are created.
 | Capability boundaries | Denied Pages administration, denied secret lookup, denied authentication-mode override, declined public Pages, protected consumer/index state; not a simulation of every GitHub role or custom-role policy |
 | Enterprise host | Real CLI/API and HTTPS Git routing to the simulated GHE.com host, private/internal scope and publication; not a public-repository scenario or cross-host federation |
 
+The installer matrix follows the
+[playground canary scenarios](https://github.com/githubnext/cao-playground/blob/cb66e602b239816f871b674e033128d0f8c2e889/tests/install_release_test.sh)
+with fixed versions, an inert upstream installer/version-only gh-aw fixture,
+and the production local-source materializer. It verifies installer decisions
+and real CLI extension discovery, not upstream release availability or gh-aw
+execution compatibility. Environment unit tests reject inherited credentials,
+extension/configuration overrides and proxy bypasses; a missing-extension probe
+must not discover an ambient developer or runner installation.
+
 The simulator supplies Pages access metadata; it does not prove that a paid
 plan supports restricted Pages, or that the deployed site is inaccessible
 outside the enterprise. It does not execute the ordinary Activity/Dashboard
 Actions workflows or render their resulting deployed dashboard.
+
+## Playground retirement gate
+
+`gh-cao` now owns the replacement checks in
+`.github/workflows/installer-canary.yml`. Its daily schedule and manual trigger
+run the real public installer integration on Linux and macOS for stable and
+prerelease gh-aw, each with missing, current, outdated and newer installations.
+Pull requests run deterministic canary contracts only. The integration uses
+isolated homes/configuration, a real local control checkout and source catalog,
+anonymous public release downloads, checksum verification, real extension
+discovery and source materialization. Control-repository sign-in/identity are
+synthetic; no remote repository is created or configured.
+
+The same canary reads existing default-branch Activity, Dashboard build and
+deployed-dashboard integration results. It requires recent successful completed
+runs (less than 24 hours old), successful collection/indexing and build jobs,
+and a successful populated-dashboard browser check. Skipped jobs, missing
+evidence and a latest completed failure do not count as success. This reuses
+the existing deployment rather than creating or dispatching a second one;
+Pages deployment may intentionally be disabled for the hosted deployment.
+Run these read-only checks locally with:
+
+```bash
+node scripts/installer-canary.mjs matrix
+node scripts/installer-canary.mjs smoke
+```
+
+Archive `githubnext/cao-playground` only after the replacement workflow is
+merged and all 16 platform/channel/scenario cells plus the deployed smoke job
+pass in Actions. Preserve the repository and its run/issue history; do not
+delete it. Local simulator or single-platform results are not that retirement
+gate. Archival is a separate operator action, not something the canary performs.
 
 ## Live verification still required
 

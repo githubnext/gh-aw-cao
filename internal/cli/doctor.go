@@ -35,13 +35,16 @@ func doctorCommand(version func(context.Context) (string, error), gh ghExecutor)
 		Long: `Run read-only installation checks from the control repository root.
 
 Checks GitHub CLI, gh-aw, GitHub authentication, and basic local cao.json
-structure and compiler pin. Authentication may contact GitHub. External checks
+structure and compiler pin. Authentication checks only the operator's gh login,
+not workflow App installation access or target write permissions.
+Authentication may contact GitHub. External checks
 have at most 15 seconds each; the GitHub CLI version probe has five seconds.
 No files, secrets, or repository settings are changed.
 
 This does not repair SQLite snapshots or replace the full policy and workflow
 validation performed by the CAO validation Actions workflow. No Node.js runtime
-is required for these installation checks.`,
+is required for these installation checks. Explicit runtime credential verification:
+gh workflow run cao-validate.yml -f verify-credentials=true`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			report, err := diagnose(cmd.Context(), version, gh)
@@ -126,7 +129,7 @@ func diagnose(ctx context.Context, version func(context.Context) (string, error)
 		if err != nil {
 			add("authentication", "fail", "GitHub authentication could not be verified.", "Run gh auth status to inspect the selected host and accounts; use gh auth login to authenticate.")
 		} else {
-			add("authentication", "pass", "GitHub authentication verified.", "")
+			add("authentication", "pass", "Operator GitHub CLI authentication verified; workflow credentials and target write access are not checked.", "")
 		}
 	} else {
 		add("gh-aw", "skip", "Requires a working GitHub CLI.", "")

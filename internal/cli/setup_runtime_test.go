@@ -56,8 +56,10 @@ func setupBootstrapGH(t *testing.T, failure string, calls *[]string) ghExecutor 
 				t.Fatalf("isolated installation missing: %v %v", matches, err)
 			}
 			base := matches[0]
-			for _, name := range setupRuntimeFiles[:7] {
-				writeTestFile(t, filepath.Join(base, name), "package: "+name)
+			for _, name := range setupRuntimeFiles {
+				if strings.HasPrefix(name, ".github/workflows/") {
+					writeTestFile(t, filepath.Join(base, name), "package: "+name)
+				}
 			}
 			writeTestFile(t, filepath.Join(base, ".github/aw/packages/root.json"),
 				`{"package":"githubnext/gh-cao","source":"githubnext/gh-cao@v1.2.3","resolvedCommit":"`+revision+`"}`)

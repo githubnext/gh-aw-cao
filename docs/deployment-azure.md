@@ -375,6 +375,17 @@ owner-only maintenance job is configured, schedule this manual provisioning
 job at least daily with the unchanged passwords and reviewed configuration.
 Monitor failures; runtime does not repair missing partitions.
 
+Canonical Runs and run-owned records use UTC midnight-to-midnight daily
+partitions named `<table>_dYYYYMMDD`. Owner maintenance provisions the current
+day and 28 upcoming days, so a missed or failed daily job must be repaired
+before that runway is exhausted; missing ingestion days are a hard error, not
+silent data loss. It removes only whole days that end at or before each
+retention cutoff, so the partial cutoff day remains and scheduling lag can
+extend physical retention. Existing weekly (`<table>_wYYYYMMDD`) layouts are
+rejected without in-place conversion: provision a fresh canonical schema or
+database and re-ingest authoritative inputs. See `server/POSTGRES.md` for the
+normative detail.
+
 ### Bootstrap steps
 
 1. Register a GitHub OAuth app, or use a GitHub App's user authorization flow. Set its **Authorization callback URL** to `https://FUNCTION-APP-NAME.azurewebsites.net/auth/callback`. Store the client secret in your secret manager for use in a later step. For more information, see [Creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) or [Authenticating with a GitHub App on behalf of a user](https://docs.github.com/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-with-a-github-app-on-behalf-of-a-user) in the GitHub documentation.

@@ -301,6 +301,15 @@ control-plane setup, or configure credentials independently with
 `gh cao setup auth github-app`, `gh cao setup auth enterprise-app`, or
 `gh cao setup auth token`. Each authentication profile retains its existing
 options, dry-run behavior, credential prompts, and separate read/write scope.
+New `github-app` installations on github.com preselect the read App's control
+repository plus exact allowlist, and the write App's control repository or
+explicit `--write-repository` replacement scope. Review and approve the
+preselected repositories on GitHub. Existing installations retain **Configure**;
+GHES/data-residency hosts retain manual selection. Missing/invalid IDs, failed
+lookups, or more than 100 repositories stop preselection without widening or
+truncating access; see [limits and recovery](control-plane-authentication.md#configure-private-github-apps).
+Installation coverage is still verified, `--dry-run --repo OWNER/REPO` stays
+offline, and `--no-open` prints browser URLs.
 After wildcard expansion, guided setup skips authentication prompts when every
 remote target is confirmed public, using Actions' built-in token for public-only
 monitoring. The control repository itself may be private or internal: its own
@@ -328,8 +337,9 @@ gh cao setup auth hosted-cli --repo OWNER/CONTROL \
 It creates a separate private App with exactly actions, contents, pull requests,
 and workflows write plus metadata read. Targets are explicit same-owner
 repositories, never inferred from policy. GitHub's browser flow requires creation
-and installation approval with **Only select repositories**; repository-admin
-additions to an approved installation fall back to browser approval when denied.
+and installation approval with **Only select repositories**. New github.com
+installations preselect only the control repository for review; repository-admin
+additions to an approved installation retain their browser fallback when denied.
 `--app-name`, repeatable `--target-repository`, `--no-open`, and `--dry-run` are
 supported. Dry-run prints the manifest, targets, and executor environment names
 without contacting GitHub or requiring a key destination.

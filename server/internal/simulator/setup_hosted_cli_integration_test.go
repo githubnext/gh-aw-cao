@@ -111,7 +111,7 @@ func TestCAOHostedCLISetupIntegration(t *testing.T) {
 				if address, ok := strings.CutPrefix(line, "Open this URL to continue: "); ok {
 					switch {
 					case strings.HasPrefix(address, "http://127.0.0.1:"):
-						setupHostedApproveManifest(t, ctx, client, address, test.name)
+						setupHostedApproveManifest(t, ctx, client, address, test.name, f.api.Repositories["platform/control"].ID)
 					case address == "https://github.com/organizations/platform/settings/installations/456":
 						setupHostedApproveInstallation(t, ctx, client, address, "selected", []string{"platform/control", "platform/alpha", "platform/zeta"})
 					default:
@@ -191,7 +191,7 @@ func TestCAOHostedCLISetupIntegration(t *testing.T) {
 			}
 			for _, request := range f.api.Requests {
 				switch request {
-				case "GET /", "GET /user", "POST /graphql", "GET /users/platform", "GET /repos/platform/alpha", "GET /repos/platform/zeta":
+				case "GET /", "GET /user", "POST /graphql", "GET /users/platform", "GET /repos/platform/control", "GET /repos/platform/alpha", "GET /repos/platform/zeta":
 				default:
 					t.Errorf("unexpected API request or authority mutation: %s", request)
 				}
@@ -278,7 +278,7 @@ func (a *setupHostedAppAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		a.converted = true
 		write(http.StatusCreated, map[string]any{"id": 123, "client_id": "simulator-hosted-app", "pem": a.pem, "slug": "approved-hosted-app", "name": "approved-hosted-app"})
-	case r.Method == http.MethodPost && (path == "/apps/approved-hosted-app/installations/new" || path == "/organizations/platform/settings/installations/456"):
+	case r.Method == http.MethodPost && (path == "/apps/approved-hosted-app/installations/new/permissions" || path == "/organizations/platform/settings/installations/456"):
 		if !a.converted || r.ParseForm() != nil {
 			write(http.StatusBadRequest, nil)
 			return
@@ -430,7 +430,7 @@ func setupHostedBrowserRequest(t *testing.T, ctx context.Context, client *http.C
 	return response.StatusCode, response.Header.Get("Location"), body
 }
 
-func setupHostedApproveManifest(t *testing.T, ctx context.Context, client *http.Client, address, scenario string) {
+func setupHostedApproveManifest(t *testing.T, ctx context.Context, client *http.Client, address, scenario string, controlID int64) {
 	t.Helper()
 	status, _, page := setupHostedBrowserRequest(t, ctx, client, http.MethodGet, address, nil)
 	action := regexp.MustCompile(`action="([^"]+)"`).FindSubmatch(page)
@@ -449,8 +449,11 @@ func setupHostedApproveManifest(t *testing.T, ctx context.Context, client *http.
 		}
 		return
 	}
-	if status != http.StatusFound || install != "https://github.com/apps/approved-hosted-app/installations/new" {
-		t.Fatal("callback did not redirect to the expected App installation")
+	location, err := url.Parse(install)
+	if status != http.StatusFound || err != nil || location.Scheme != "https" || location.Host != "github.com" ||
+		location.Path != "/apps/approved-hosted-app/installations/new/permissions" ||
+		!reflect.DeepEqual(location.Query(), url.Values{"suggested_target_id": {"1"}, "repository_ids[]": {strconv.FormatInt(controlID, 10)}}) {
+		t.Fatalf("callback did not preselect only the control repository: %s", install)
 	}
 	selection := "selected"
 	if scenario == "all-repository installation" {

@@ -333,7 +333,7 @@ test("root campaign provides default control-repository agent context", () => {
   const debugSkill = readFileSync(join(root, "skills", "debug-cao", "SKILL.md"), "utf8");
 
   assert.doesNotMatch(rootManifestSource, /source: AGENTS\.md|default-AGENTS\.md/);
-  assert.equal(rootManifest.resources.length, 7);
+  assert.equal(rootManifest.resources.length, 8);
   assert.equal(rootManifest.resources.some(({ destination }) => destination.startsWith(".github/skills/")), false);
   assert.deepEqual(rootManifest.skills, [
     "skills/agentic-workflows",
@@ -530,6 +530,10 @@ test("root campaign composes its operational campaigns through manifests", () =>
     {
       source: ".github/workflows/shared/control.mjs",
       destination: ".github/workflows/shared/control.mjs",
+    },
+    {
+      source: ".github/workflows/shared/inventory-credentials.mjs",
+      destination: ".github/workflows/shared/inventory-credentials.mjs",
     },
     {
       source: ".github/workflows/shared/policy.mjs",

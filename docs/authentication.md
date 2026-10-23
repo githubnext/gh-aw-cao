@@ -47,6 +47,85 @@ App-token action's `permission-*` inputs at compile time. Undeclared permissions
 remain empty strings. Do not route these values through runtime step outputs:
 gh-aw strict-mode validation must be able to inspect the declared scopes.
 
+### Pre-activation inventory credentials
+
+Admission reads policy at the exact `github.workflow_sha` with the control
+repository's job token. After admission, shared control resolves the selected
+read profile and creates **separate control and inventory Octokit clients**.
+Changing `GH_TOKEN` does not change a github-script client.
+
+The pre-activation App action remains restricted to the control repository with
+`Actions: read` and `Contents: read`. Inventory uses independently minted,
+read-only tokens for only the explicit admitted target, or the exact
+`allowed-repositories` enrollment. Tokens are grouped by owner and split into
+batches of at most 500 repository names; no installation-wide token is minted.
+They are revoked after precompute, including on failure. Credentials stay in
+Actions execution wiring, never in `cao.json`, dispatch inputs or artifacts.
+The later worker/agent read tokens and target-bound safe outputs are unchanged.
+
+Owner-wide discovery is not supported by this pre-activation credential path.
+Provide an explicit in-scope `target_repo` or commit exact enrollment. The
+optional shared-control import `inventory_exclude_control: true` narrows fleet
+inventory before token creation and rejects an explicit control target. It does
+not replace a worker's own target restrictions or grant new policy authority.
+Existing campaign target-mode overrides still apply; a `targets` mode override
+map is not a repository allowlist.
+
+In explicit `app` mode, missing credentials or denied installation access never
+fall through to a PAT or workflow token. In `pat` mode, the control repository
+and each target need exact read-secret mappings. Without an explicit target, a
+scheduled fleet must map every enrolled repository to the control repository's
+selected read PAT secret; multi-secret fleets are explicitly unsupported in
+this path. Use explicit targets or the App profile instead. Unset mode retains
+legacy precedence, selecting one profile before making requests; a partially
+configured App fails closed. Public metadata reads with the workflow token do
+not establish private target reach.
+
+Required inventory is **all-or-nothing**. An incomplete fleet retains the
+admission artifact and an `authorized: true` policy decision, but records
+`activation_ready: false`, an incomplete inventory status and sanitized
+diagnostics in `cao-control-precompute`. The precompute step fails and emits
+`authorized=false` to the existing activation gate: no agent or dispatch runs.
+A complete, empty partition remains a legitimate no-op. Renamed or redirected
+repositories require reviewed enrollment updates rather than following aliases.
+Diagnostics distinguish
+missing credentials, malformed/out-of-scope enrollment, denied permission,
+capacity and service failures where the API permits. A 404 can mean repository
+identity, token scope, installation access or organization restrictions; it
+does not alone prove absent installation membership.
+
+### Explicit runtime credential verification
+
+`gh cao doctor` checks local tools, policy/compiler configuration and the
+**operator's** GitHub CLI login. It does not prove workflow App access.
+After publishing reviewed product/runtime changes, explicitly request a
+read-only check in the existing CAO validation workflow:
+
+```bash
+gh workflow run cao-validate.yml -f verify-credentials=true
+```
+
+This resolves policy at the workflow SHA and reuses runtime credential
+resolution to check control-source/workflow access and every exactly enrolled
+target's metadata, Actions and Contents read reach. Disabled campaigns need not
+be activated for verification. To inspect the write App's `Issues: write`
+installation prerequisite on the enrolled target destinations rather than the
+control review destination:
+
+```bash
+gh workflow run cao-validate.yml -f verify-credentials=true \
+  -f output-mode=live -f output-permission=issues
+```
+
+These options select diagnostic checks, not live authority. The write App is
+used only for read-only installation/permission inspection; no write token,
+issue, dispatch or activation is produced. The ordinary validation issue
+reporter is disabled for this invocation. Inspect the sanitized
+`cao-credential-verification` artifact and job summary. PAT/workflow-token output
+write permissions cannot be established by these read checks and are reported
+as unverified. Even a passing App prerequisite check leaves **issue publication
+unverified**: an actual bounded safe-output canary requires separate authority.
+
 The supported control-plane credentials are:
 
 | Priority | Credential | Configuration |
@@ -271,7 +350,15 @@ gh cao setup auth github-app \
   --repo acme/central-agentic-ops
 ```
 
-Choose **Only select repositories** and select only those printed by the command. CAO stores client IDs as repository variables and sends private keys directly to Actions secrets.
+For new installations on github.com, guided setup and this command preselect
+the exact repositories for each App. Review the account and preselected list,
+keep **Only select repositories**, and approve on GitHub. Existing installations
+still use **Configure**, and GHES/data-residency hosts require manual selection
+of the printed repositories. Missing or invalid repository/account IDs, lookup
+failures, or more than 100 repositories stop preselection rather than dropping
+repositories or selecting all. See [preselection limits and recovery](control-plane-authentication.md#configure-private-github-apps).
+CAO still verifies installation coverage before storing client IDs as repository
+variables and sending private keys directly to Actions secrets.
 
 Automated setup installs the read App on the control repository and every exact
 allowlisted evidence source. The write App defaults to only the control

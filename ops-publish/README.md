@@ -75,6 +75,14 @@ Configure `GH_AW_GITHUB_READ_APP_ID` and `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` for
 
 ## Operate
 
-Review and edit the private proposal, then apply `ops:publish-to-target`. A successful run creates or finds the corresponding target issue, comments with its URL on the review issue, and closes the review issue as completed. Removing the label before the publication step causes the run to fail closed.
+Review and edit the private proposal. Once review is finished, apply **`ops:publish-to-target`** to the **review issue**:
+
+```bash
+gh issue edit ISSUE_NUMBER \
+  --repo OWNER/REVIEW_REPO \
+  --add-label "ops:publish-to-target"
+```
+
+Replace `ISSUE_NUMBER` with the review issue number and `OWNER/REVIEW_REPO` with the repository that holds it, not the target repository. A successful run recreates the reviewed issue in its validated target repository (or finds an existing publication), posts the target URL on the review issue, and closes the review issue as completed. **It does not rerun the agent or change campaign mode.** Removing the label before the publication step causes the run to fail closed.
 
 The workflow serializes attempts per review issue. On retry, it scans target issues newer than the review proposal for its deterministic source marker so a target issue created by a partially completed earlier attempt is reused rather than duplicated.

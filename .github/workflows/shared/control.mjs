@@ -16,8 +16,9 @@ import {
   loadPolicyFile,
   parsePolicy,
 } from "./policy.mjs";
-import { validateTargetScope } from "./authority.mjs";
+import { AuthorityError, validateTargetScope } from "./authority.mjs";
 import { operationBinding, operationRequest, prepareOperation, resolveOperation, validateOperationHandoff } from "./operations.mjs";
+import { credentialFailure, inventoryScope, InventoryError, verifyCredentials, withInventoryCredentials } from "./inventory-credentials.mjs";
 
 const AGENT_DIRECTORY = "/tmp/gh-aw/agent";
 const OUTPUT_PATH = join(AGENT_DIRECTORY, "control-precompute.json");
@@ -31,7 +32,7 @@ const GITHUB_REST_BEST_PRACTICES = "https://docs.github.com/en/rest/using-the-re
 const GITHUB_APP_ACTIONS_DOCS = "https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow";
 const GITHUB_PAT_DOCS = "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens";
 const GITHUB_ACTIONS_SECRETS_DOCS = "https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions";
-const ACTION_GLOBALS = ["core", "github", "context", "exec", "io", "getOctokit"];
+const ACTION_GLOBALS = ["core", "github", "context", "exec", "io", "getOctokit", "inventoryGithub"];
 const ADMISSION_CHECKS = [
   ["Runtime revision", "The control and policy modules are read from the exact `github.workflow_sha` commit."],
   ["Policy document", "The checked-in policy is parsed and validated for supported keys, types, ranges, unique names, and expressions."],
@@ -117,8 +118,11 @@ function run(command, args, options = {}) {
   return result.stdout;
 }
 
-async function githubRequest(endpoint, fields = {}) {
-  const client = globalThis.github;
+async function githubRequest(endpoint, fields = {}, boundary = "control") {
+  const client = boundary === "inventory" ? globalThis.inventoryGithub : globalThis.github;
+  if (boundary === "inventory" && globalThis.github && !client) {
+    throw new InventoryError("inventory-credential-unavailable", "The inventory client has not been resolved for the admitted scope.");
+  }
   if (!client?.request) return null;
   const [path, query = ""] = endpoint.split("?", 2);
   const params = { ...fields };
@@ -148,8 +152,8 @@ function filterGithubResponse(data, jq) {
   throw new ControlError(`unsupported GitHub API response filter: ${jq}`);
 }
 
-async function ghApi(endpoint, { fields = {}, jq = "" } = {}) {
-  const data = await githubRequest(endpoint, fields);
+async function ghApi(endpoint, { fields = {}, jq = "", boundary = "control" } = {}) {
+  const data = await githubRequest(endpoint, fields, boundary);
   if (data !== null) return filterGithubResponse(data, jq);
   const args = ["api", "--cache", GITHUB_API_CACHE_DURATION];
   if (Object.keys(fields).length > 0) args.push("--method", "GET");
@@ -671,8 +675,14 @@ async function loadWorkflowInventory(repository) {
 async function loadRepository(endpoint) {
   const repository = parseJsonOutput(await ghApi(endpoint, {
     jq: "{id, full_name, archived, disabled, private, pushed_at, default_branch}",
+    boundary: "inventory",
   }));
   const { id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch } = repository;
+  if (!Number.isSafeInteger(id) || id <= 0 || !REPOSITORY_PATTERN.test(full_name)
+    || !repositoryEqual(endpoint.slice("repos/".length), full_name)
+    || typeof archived !== "boolean" || typeof disabled !== "boolean" || typeof isPrivate !== "boolean") {
+    throw new InventoryError("inventory-response-invalid", "Repository metadata is malformed or does not match the enrolled repository identity.");
+  }
   return { id, full_name, archived, disabled, private: isPrivate, pushed_at, default_branch };
 }
 
@@ -872,17 +882,20 @@ async function selectInventory(context, maximum) {
       logDecision("repository-inventory", "selected", { source: result.source, repository_count: 1 });
       return result;
     } catch (error) {
+      if (globalThis.github || error instanceof InventoryError) throw credentialFailure(error);
       logDecision("repository-inventory", "unavailable", { source: "target_repo", repository_count: 0 });
       return { repositories: [], source: "target_repo", error: error.message };
     }
   }
-  const allowedRepositories = context.policy.allowed_repositories;
+  const allowedRepositories = context.inventoryRepositories ?? context.policy.allowed_repositories;
+  if (context.inventoryRepositories?.length === 0) return { repositories: [], source: "allowed_repos", error: "" };
   if (allowedRepositories.length > 0) {
     const repositories = [];
     for (const repository of allowedRepositories) {
       try {
         repositories.push(await loadRepository(`repos/${repository}`));
-      } catch {
+      } catch (error) {
+        if (globalThis.github || error instanceof InventoryError) throw credentialFailure(error);
         logDecision("repository-inventory", "unavailable", { source: "allowed_repos", repository_count: 0 });
         return { repositories: [], source: "allowed_repos", error: `cannot read allowed repository ${repository}` };
       }
@@ -972,12 +985,14 @@ function createInventory(context, repositories) {
 async function resolveTargetInventory(context) {
   const maximumScanRepositories = context.policy.inventory["max-scan-repositories"];
 
-  if (context.policy.allowed_repositories.length > maximumScanRepositories) {
+  if ((context.inventoryRepositories ?? context.policy.allowed_repositories).length > maximumScanRepositories) {
     throw new ControlError("allowed repos exceed max_scan_repos");
   }
   validateTargetRepository(context.targetRepository, context.policy);
 
   const selected = await selectInventory(context, maximumScanRepositories);
+  if (selected.error) throw new InventoryError("inventory-unavailable",
+    "Required repository inventory could not be read; verify credentials, exact enrollment, API capacity and GitHub availability.");
   const { candidates, metadata } = createInventory(context, selected.repositories);
   const resolvedCandidates = candidates.map((repository) => ({
     ...repository,
@@ -1169,6 +1184,44 @@ async function writeOperationPrecompute(admitted) {
   logDecision("precompute", "prepared", { role: "direct", candidate_count: candidates.length });
 }
 
+function precomputeFailure(error) {
+  return error instanceof ControlError || error instanceof PolicyError || error instanceof AuthorityError
+    ? new InventoryError("precompute-contract-invalid", error.message, { phase: "control" })
+    : credentialFailure(error);
+}
+
+function writeIncompletePrecompute(policy, error) {
+  const failure = precomputeFailure(error);
+  writeJson(OUTPUT_PATH, {
+    authorized: policy.authorized,
+    activation_ready: false,
+    reason: failure.code,
+    control_role: environment("CAO_ROLE"),
+    campaign: importIdentity("CAO_CAMPAIGN"),
+    bundle: importIdentity("CAO_CAMPAIGN"),
+    worker: environment("CAO_ROLE") === "worker" ? environment("CAO_WORKER") : "",
+    workflow: importIdentity("CAO_WORKFLOW"),
+    inventory_status: "incomplete",
+    repo_error: failure.message,
+    diagnostics: [
+      { code: failure.code, phase: failure.phase, status: failure.status, message: failure.message },
+      ...(failure.cleanupFailure ? [{ code: "credential-cleanup-failed", phase: "inventory", status: null, message: failure.cleanupFailure }] : []),
+    ],
+    effective_max_repos: 0,
+    candidate_repositories: [],
+    worker_workflows: [],
+    policy_source: { repository: environment("GITHUB_REPOSITORY"), path: POLICY_PATH, sha: environment("GITHUB_WORKFLOW_SHA") },
+  });
+  writeActionsOutputs({ authorized: false, policy_authorized: policy.authorized, activation_ready: false, reason: failure.code });
+  actionsCommand("error", `CAO precompute incomplete (${failure.code}): ${failure.message}`);
+  if (failure.cleanupFailure) actionsCommand("error", failure.cleanupFailure);
+  const summary = environment("GITHUB_STEP_SUMMARY");
+  if (summary) writeFileSync(summary,
+    `\n### CAO inventory incomplete\n\nPolicy admission: **authorized**. Activation and dispatch: **blocked**.\n\n${[failure.message, failure.cleanupFailure].filter(Boolean).join(" ")}\n\nDiagnostic: \`${failure.code}\` (${failure.phase}${failure.status ? `, HTTP ${failure.status}` : ""}). No partial fleet execution.\n`,
+    { flag: "a" });
+  process.exitCode = 1;
+}
+
 async function precompute() {
   mkdirSync(AGENT_DIRECTORY, { recursive: true });
   const effectivePath = join(admissionDirectory(), "effective-policy.json");
@@ -1190,11 +1243,66 @@ async function precompute() {
     campaign: policy.campaign,
     role: environment("CAO_ROLE"),
   });
+  if (globalThis.github) {
+    const original = globalThis.github;
+    try {
+      const options = policyOptions({ normalizeOrchestrator: true });
+      const document = parsePolicy(await decodeRepositoryFile(options.controlRepository, POLICY_PATH, environment("GITHUB_WORKFLOW_SHA")));
+      const operation = options.role === "direct"
+        ? resolveOperation(document, operationRequest(process.env), operationBinding(process.env)) : null;
+      const current = operation ?? effectivePolicy(document, options);
+      if (!current.authorized) throw new InventoryError("policy-handoff-denied", "Policy no longer admits this exact workflow request.");
+      if (operation) validateOperationHandoff(policy, operation, operationBinding(process.env));
+      policy = current;
+      const repositories = options.role === "worker" ? []
+        : operation ? operation.authority_envelope.grants.map(grant => grant.target)
+          : inventoryScope(current, {
+            controlRepository: options.controlRepository,
+            target: options.targetRepository,
+            excludeControl: environment("CAO_INVENTORY_EXCLUDE_CONTROL") === "true",
+          });
+      if (operation && environment("CAO_INVENTORY_EXCLUDE_CONTROL") === "true"
+        && repositories.some(repository => repositoryEqual(repository, options.controlRepository))) {
+        throw new InventoryError("target-excluded", "The importing workflow excludes the control repository from inventory.");
+      }
+      await withInventoryCredentials({
+        repositories, controlRepository: options.controlRepository,
+        getOctokit: globalThis.getOctokit, core: globalThis.core,
+      }, async ({ control, inventory, profile }) => {
+        globalThis.github = control;
+        globalThis.inventoryGithub = inventory;
+        logDecision("inventory-credential", "resolved", { profile, repository_count: repositories.length });
+        try {
+          await preparePrecompute(policy, repositories);
+        } catch (error) {
+          throw precomputeFailure(error);
+        }
+      });
+    } catch (error) {
+      writeIncompletePrecompute(policy, error);
+    } finally {
+      globalThis.github = original;
+      delete globalThis.inventoryGithub;
+    }
+    return;
+  }
+  try {
+    await preparePrecompute(policy);
+  } catch (error) {
+    if (!(error instanceof InventoryError)) throw error;
+    writeIncompletePrecompute(policy, error);
+    process.stderr.write(`[CAO failure] ${error.message}\n`);
+  }
+}
+
+async function preparePrecompute(policy, repositories = undefined) {
   if (environment("CAO_ROLE") === "direct") {
     await writeOperationPrecompute(policy);
+    markInventoryComplete();
     return;
   }
   const context = createContext(policy);
+  context.inventoryRepositories = repositories;
   try {
     requireMode(context.mode, "safe_output_mode", { allowDebug: context.role === "worker" });
     if (context.mode === "debug") {
@@ -1206,6 +1314,7 @@ async function precompute() {
     if (context.role === "orchestrator" || context.role === "standalone") validateInventoryLimits(context);
     if (context.role === "standalone") {
       await writeStandalonePrecompute(context);
+      markInventoryComplete();
       writeActionsOutputs({ authorized: true, reason: "authorized" });
       logDecision("precompute", "prepared", { role: "standalone" });
       return;
@@ -1220,6 +1329,7 @@ async function precompute() {
       return;
     }
     await writeOrchestratorPrecompute(context);
+    markInventoryComplete();
     writeActionsOutputs({ authorized: true, reason: "authorized" });
     const result = readJson(OUTPUT_PATH);
     logDecision("precompute", "prepared", {
@@ -1229,6 +1339,7 @@ async function precompute() {
       effective_cap: result.effective_max_repos,
     });
   } catch (error) {
+    if (globalThis.github || error instanceof InventoryError) throw error;
     if (!isRateLimitError(error)) throw error;
     const required = githubApiRequestRequirement(policy, { role: context.role, targetRepository: context.targetRepository });
     const capacity = await githubApiCapacity(required);
@@ -1243,6 +1354,40 @@ async function precompute() {
       capacity.status === "unavailable" ? { ...capacity, status: "limited" } : capacity,
     );
   }
+}
+
+function markInventoryComplete() {
+  const result = readJson(OUTPUT_PATH);
+  writeJson(OUTPUT_PATH, { ...result, activation_ready: true, inventory_status: "complete" });
+}
+
+async function verifyRuntimeCredentials() {
+  const workflowSha = environment("GITHUB_WORKFLOW_SHA");
+  if (!SHA_PATTERN.test(workflowSha)) throw new ControlError("Credential verification requires an exact workflow SHA.");
+  const controlRepository = environment("GITHUB_REPOSITORY");
+  let report;
+  try {
+    const document = parsePolicy(await decodeRepositoryFile(controlRepository, POLICY_PATH, workflowSha));
+    report = await verifyCredentials({
+      settings: controlSettings(document, controlRepository),
+      controlRepository, workflowSha, getOctokit: globalThis.getOctokit, core: globalThis.core,
+    });
+  } catch (error) {
+    const failure = credentialFailure(error, "control-policy");
+    report = {
+      schema_version: 1, workflow_sha: workflowSha, ok: false, issue_publication: "unverified",
+      read_checks: [{ check: "control-policy", status: "incomplete", code: failure.code, message: failure.message }],
+      output_checks: [],
+    };
+  }
+  mkdirSync(admissionDirectory(), { recursive: true });
+  writeJson(join(admissionDirectory(), "credential-verification.json"), report);
+  const summary = environment("GITHUB_STEP_SUMMARY");
+  if (summary) writeFileSync(summary,
+    `\n### CAO runtime credential verification\n\n${report.ok ? "Read reach and requested output prerequisites verified." : "Credential verification is incomplete; inspect the sanitized artifact."} No issue publication, dispatch or activation was attempted. Successful read checks do not prove issue publication.\n`,
+    { flag: "a" });
+  for (const check of [...report.read_checks, ...report.output_checks]) logDecision("credential-verification", check.status, check);
+  if (!report.ok) process.exitCode = 1;
 }
 
 function readSource(path) {
@@ -1292,15 +1437,18 @@ export async function main(actionsOrArguments = {}, maybeArguments = undefined) 
     if (command === "precompute" && args.length === 0) {
       return await withLogGroup("Central Agentic Ops precompute", precompute);
     }
+    if (command === "verify-credentials" && args.length === 0) {
+      return await withLogGroup("Central Agentic Ops runtime credential verification", verifyRuntimeCredentials);
+    }
     if (command === "authority") return authority(args);
     if (command === "compiler-version") return compilerVersion(args);
     if (["validate-policy", "resolve-policy", "control-settings"].includes(command)) {
       process.stdout.write(`${JSON.stringify(await policyCommand(command, args), null, 2)}\n`);
       return;
     }
-    throw new ControlError("usage: control.mjs admit | precompute | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <campaign>");
+    throw new ControlError("usage: control.mjs admit | precompute | verify-credentials | validate-policy <file|-> | resolve-policy <file|-> | control-settings <file|-> | compiler-version <file|-> | authority <file|-> <campaign>");
   } catch (error) {
-    if (error instanceof ControlError || error instanceof PolicyError || error?.code === "ENOENT") {
+    if (error instanceof ControlError || error instanceof PolicyError || error instanceof InventoryError || error?.code === "ENOENT") {
       process.stderr.write(`[CAO failure] ${error.message}\n`);
       process.exitCode = 1;
       return;

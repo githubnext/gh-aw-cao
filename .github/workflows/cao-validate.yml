@@ -4,6 +4,21 @@ run-name: CAO validation / ${{ github.run_id }}
 
 on:
   workflow_dispatch:
+    inputs:
+      verify-credentials:
+        description: Explicitly verify runtime read reach and safe-output permission prerequisites without activation, dispatch or issue publication.
+        type: boolean
+        default: false
+      output-mode:
+        description: Check the control review destination or all exact enrolled live destinations; this does not authorize execution.
+        type: choice
+        options: [review, live]
+        default: review
+      output-permission:
+        description: Declared safe-output permission prerequisite to inspect without minting a write token.
+        type: choice
+        options: [issues, actions, contents, pull_requests]
+        default: issues
   pull_request:
     paths:
       - ".github/workflows/cao-validate.yml"
@@ -50,6 +65,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  credentials:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.verify-credentials == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Generate control-only read App token
+        id: control-token
+        continue-on-error: true
+        env:
+          CAO_APP_ID: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          CAO_APP_KEY: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+        if: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && env.CAO_APP_ID != '' && env.CAO_APP_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_AW_GITHUB_READ_APP_ID }}
+          private-key: ${{ secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+      - name: Verify runtime credential boundaries
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          CAO_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          CAO_CONTROL_READ_TOKEN: ${{ steps.control-token.outputs.token }}
+          CAO_READ_APP_ID: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_READ_APP_PRIVATE_KEY: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          CAO_READ_PAT_REPOSITORIES: ${{ vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES }}
+          CAO_CONTROL_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[github.repository]] || '' }} # zizmor: ignore[overprovisioned-secrets] - the runtime-validated repository map selects exactly one read PAT for the control repository; no secrets object is serialized.
+          CAO_INVENTORY_PAT_REPOSITORY: ${{ github.repository }}
+          CAO_INVENTORY_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[github.repository]] || '' }} # zizmor: ignore[overprovisioned-secrets] - verification reuses that single mapped control PAT and rejects fleets requiring a different secret.
+          CAO_LEGACY_READ_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == '' && (secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN) || '' }}
+          CAO_WORKFLOW_TOKEN: ${{ github.token }}
+          CAO_WRITE_APP_ID: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_WRITE_APP_ID || '' }}
+          CAO_WRITE_APP_PRIVATE_KEY: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY || '' }}
+          CAO_VERIFY_OUTPUT_MODE: ${{ inputs.output-mode }}
+          CAO_VERIFY_OUTPUT_PERMISSION: ${{ inputs.output-permission }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const control = await import(`${process.env.GITHUB_WORKSPACE}/.github/workflows/shared/control.mjs`);
+            await control.main({ core, github, context, getOctokit }, ['verify-credentials']);
+            if (process.exitCode) throw new Error('Runtime credential verification is incomplete; inspect the sanitized artifact.');
+      - name: Upload sanitized credential verification
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cao-credential-verification
+          path: ${{ runner.temp }}/cao/credential-verification.json
+          if-no-files-found: error
+          retention-days: 8
+
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -114,6 +190,7 @@ jobs:
     needs: validate
     if: >-
       always() &&
+      inputs.verify-credentials != true &&
       needs.validate.result != 'cancelled' &&
       needs.validate.outputs.api_available == 'true' &&
       (github.event_name != 'pull_request' ||

@@ -402,7 +402,10 @@ test("control workflows deny before activation through one shared admission cont
   );
   const admissionEnd = sharedControl.indexOf("- name: Run CAO control precompute");
   const admissionStart = sharedControl.indexOf("- name: Evaluate Central Agentic Ops admission");
-  assert.doesNotMatch(sharedControl.slice(admissionStart, admissionEnd), /\n\s+- name:/);
+  assert.deepEqual(
+    [...sharedControl.slice(admissionStart, admissionEnd).matchAll(/\n\s+- name: (.+)/g)].map(match => match[1]),
+    ["Generate CAO pre-activation GitHub App token"],
+  );
   for (const action of sharedControl.matchAll(/^\s*uses:\s+([^./\s][^@\s]+)@([^\s#]+)/gm)) {
     assert.match(action[2], /^[0-9a-f]{40}$/, `shared/control.md: ${action[1]} is mutable`);
   }
@@ -417,7 +420,7 @@ test("control workflows deny before activation through one shared admission cont
   assert.match(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /::warning title=CAO precompute could not verify GitHub API capacity/);
   assert.doesNotMatch(stepBlock(sharedControl, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /^\s+exit 1$/m);
   assert.match(sharedControl, /name: Validate CAO control precompute artifact\n\s+id: cao_precompute_validation\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
-  assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+id: cao_precompute_upload\n\s+if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/);
+  assert.match(sharedControl, /name: Upload CAO control precompute artifact\n\s+id: cao_precompute_upload\n\s+if: \$\{\{ always\(\) && steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outcome != 'skipped' \}\}/);
   for (const id of [
     "cao_pre_activation_app_token",
     "cao_control_checkout",
@@ -489,7 +492,7 @@ test("control workflows deny before activation through one shared admission cont
     assert.match(stepBlock(preActivation, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /::warning title=CAO precompute could not verify GitHub API capacity/);
     assert.doesNotMatch(stepBlock(preActivation, "\"CAO precompute blocked: GitHub API capacity unavailable\""), /^\s+exit 1$/m);
     assert.match(preActivation, /Validate CAO control precompute artifact[\s\S]*?if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/, generatedName);
-    assert.match(preActivation, /Upload CAO control precompute artifact[\s\S]*?if: \$\{\{ steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outputs\.authorized != 'false' \}\}/, generatedName);
+    assert.match(preActivation, /Upload CAO control precompute artifact[\s\S]*?if: \$\{\{ always\(\) && steps\.cao_admission\.outputs\.authorized == 'true' && steps\.cao_precompute\.outcome != 'skipped' \}\}/, generatedName);
     assert.match(activation, /needs\.pre_activation\.outputs\.cao_authorized == 'true'/, generatedName);
     assert.ok(transitivelyNeeds(jobs, "agent", "activation"), `${generatedName}: agent must depend on activation`);
   }

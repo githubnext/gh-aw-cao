@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -52,7 +52,12 @@ test("streamed installer installs real public tools with unusable cross-organiza
   const metadataLog = path.join(root, "metadata-requests.log");
   const catalogSource = path.join(root, "catalog with spaces '\"; $()");
   await Promise.all([config, bin, consumer].map((directory) => mkdir(directory, { recursive: true })));
-  await symlink(catalog, catalogSource, "dir");
+  await mkdir(catalogSource);
+  const archive = path.join(root, "catalog.tar");
+  await run("git", ["archive", "--format=tar", `--output=${archive}`, "HEAD"], { cwd: catalog });
+  await run("tar", ["-xf", archive, "-C", catalogSource]);
+  await run("git", ["init", "--quiet", catalogSource]);
+  await run("git", ["add", "."], { cwd: catalogSource });
   const { stdout: executable } = await run("which", ["gh"]);
   assert.ok(path.isAbsolute(executable.trim()), "GitHub CLI must be installed");
   const { stdout: curlExecutable } = await run("which", ["curl"]);
@@ -139,15 +144,57 @@ exec "$CAO_INSTALLER_GH" "$@"
   await run("git", ["init", "--quiet", consumer], { env });
   await run("git", ["remote", "add", "origin", "https://github.com/installer-test/control.git"], { cwd: consumer, env });
 
+  const scenario = process.env.CAO_INSTALLER_SCENARIO ?? "missing";
+  assert.ok(["missing", "current", "outdated", "newer"].includes(scenario), "known release scenario");
+  const requiredVersion = process.env.CAO_INSTALLER_REQUIRED_VERSION ??
+    (await readFile(path.join(catalog, "aw.yml"), "utf8")).match(/^min-version: (v\d+\.\d+\.\d+)$/m)?.[1];
+  const preinstalledVersion = process.env.CAO_INSTALLER_PREINSTALLED_VERSION ?? "";
+  assert.match(requiredVersion ?? "", /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+  const sourceManifest = await readFile(path.join(catalog, "aw.yml"), "utf8");
+  await writeFile(path.join(catalogSource, "aw.yml"), sourceManifest.replace(/^min-version: .+$/m, `min-version: ${requiredVersion}`));
+  await writeFile(path.join(consumer, "aw.yml"), `min-version: ${requiredVersion}\n`);
+  const extension = path.join(env.XDG_DATA_HOME, "gh", "extensions", "gh-aw", "gh-aw");
+  let beforeExtension;
+  if (scenario !== "missing") {
+    assert.match(preinstalledVersion, /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
+    const upstream = await run("curl", ["--disable", "--fail", "--show-error", "--location",
+      "https://raw.githubusercontent.com/github/gh-aw/main/install-gh-aw.sh"], { env });
+    const anonymous = { ...env };
+    for (const name of ["GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "INPUT_VERSION"]) {
+      delete anonymous[name];
+    }
+    const installation = await run("bash", ["-c", 'curl() { command curl --disable "$@"; }; export -f curl; bash -s -- "$1"', "--", preinstalledVersion],
+      { env: anonymous }, upstream.stdout);
+    assert.match(installation.stdout + installation.stderr, /Checksum verification passed/);
+    beforeExtension = await readFile(extension);
+    const version = await run("gh", ["aw", "version"], { cwd: consumer, env });
+    assert.ok((version.stdout + version.stderr).includes(`gh aw version ${preinstalledVersion}`));
+  } else {
+    await assert.rejects(run("gh", ["aw", "version"], { cwd: consumer, env }),
+      "isolated missing extension must not resolve an ambient installation");
+  }
   const source = await readFile(path.join(catalog, "install-gh-cao.sh"), "utf8");
+  if (scenario === "outdated") {
+    await assert.rejects(run("bash", ["-s", "--", catalogSource], { cwd: consumer, env }, source), (error) => {
+      assert.match(error.stderr, /gh-aw was not upgraded/);
+      assert.ok(error.stderr.includes(`bash -s -- ${requiredVersion}`));
+      assert.doesNotMatch(error.stdout + error.stderr, /CAO installed and verified|Verifying exact CAO runtime/);
+      return true;
+    });
+    assert.deepEqual(await readFile(extension), beforeExtension);
+    await assert.rejects(readFile(path.join(consumer, ".github/workflows/cao.json")), { code: "ENOENT" });
+    await assert.rejects(readFile(path.join(env.XDG_DATA_HOME, "gh/extensions/gh-cao/gh-cao")), { code: "ENOENT" });
+    return;
+  }
   const { stdout, stderr } = await run("bash", ["-s", "--", catalogSource], { cwd: consumer, env }, source);
   assert.match(stdout, /CAO installed and verified/);
-  assert.match(stdout, /Checksum verification passed/);
+  if (scenario === "missing") assert.match(stdout, /Checksum verification passed/);
   assert.doesNotMatch(stdout + stderr, /Checksum verification (?:skipped|will be skipped)|synthetic-[\w-]*token/);
-  const expectedGhAw = (await readFile(path.join(catalog, "aw.yml"), "utf8")).match(/^min-version: (v\d+\.\d+\.\d+)$/m)?.[1];
+  const expectedGhAw = preinstalledVersion || requiredVersion;
   assert.ok(expectedGhAw, "the catalog declares a required gh-aw version");
   const aw = await run("gh", ["aw", "version"], { cwd: consumer, env });
   assert.match(aw.stdout + aw.stderr, new RegExp(`gh aw version ${expectedGhAw.replaceAll(".", "\\.")}\\b`));
+  if (beforeExtension) assert.deepEqual(await readFile(extension), beforeExtension);
   const cao = await run("gh", ["cao", "--version"], { cwd: consumer, env });
   assert.match(cao.stdout, /^gh cao version v\d+\.\d+\.\d+\s*$/);
   const help = await run("gh", ["cao", "--help"], { cwd: consumer, env });
