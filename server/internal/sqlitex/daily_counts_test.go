@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
 	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
@@ -68,8 +69,46 @@ func TestDailyCountsSnapshotSourceWithoutDetail(t *testing.T) {
 			source.Rows[0]["workflow"] != ".github/workflows/test.md" || source.Metadata["undated-run-count"] != int64(1) {
 			t.Fatalf("daily source lost aggregate rows: %+v", source)
 		}
+		if source.Metadata["retention"] != "all-admitted-dated-observations" ||
+			source.Metadata["aggregate-retention-start"] != nil || source.Metadata["aggregate-retention-watermark"] != nil {
+			t.Fatalf("legacy snapshot claimed bounded retention: %+v", source.Metadata)
+		}
 		_, err = dashboardquery.ReadCollection(ctx, r.(*reader).tx, "runs", 10, 1000)
 		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	watermark := time.Date(2026, 1, 2, 3, 4, 5, 123000000, time.UTC)
+	if _, err := db.ExecContext(t.Context(), `UPDATE __idb_records
+		SET value=json_set(value,'$.retentionCutoff','2025-12-15','$.retentionWatermark',?)
+		WHERE store_name='dailyRunCountState'`, watermark.UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+		sources, _, err := r.ExecuteSQLPlan(ctx, []query.Definition{
+			{Name: "daily", From: "daily-run-counts"}, {Name: "raw", From: "$dailyRunCounts"},
+		}, []string{"daily", "raw"})
+		if err != nil {
+			return err
+		}
+		for _, name := range []string{"daily", "raw"} {
+			metadata := sources[name].Metadata
+			if metadata["retention"] != "three-utc-calendar-weeks" || metadata["aggregate-retention-start"] != "2025-12-15" ||
+				metadata["aggregate-retention-watermark"] != watermark.Format(time.RFC3339Nano) {
+				t.Fatalf("%s snapshot lost persisted retention provenance: %+v", name, metadata)
+			}
+			if len(sources[name].Rows) != 1 || sources[name].Rows[0]["total"] != float64(7) {
+				t.Fatalf("retention metadata changed snapshot counts: %+v", sources[name])
+			}
+		}
+		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}

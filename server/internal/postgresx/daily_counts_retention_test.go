@@ -157,6 +157,7 @@ func TestDailyCountsLegacyExtensionOwnerUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	legacy := strings.NewReplacer("  observed_at TIMESTAMPTZ NOT NULL,\n", "", "  retention_at TIMESTAMPTZ,\n", "",
+		"  known_fields BIGINT NOT NULL,\n", "", "  conflict BOOLEAN NOT NULL,\n", "",
 		"  watermark_at TIMESTAMPTZ NOT NULL,\n", "", "  cutoff_at TIMESTAMPTZ NOT NULL,\n", "").Replace(dailySchemaSQL)
 	if digest := fmt.Sprintf("%x", sha256.Sum256([]byte(legacy))); digest != legacyDailyDigest {
 		t.Fatalf("legacy fixture no longer matches supported upgrade: %s", digest)

@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS run_count_contributions (
   completed_at TIMESTAMPTZ,
   observed_at TIMESTAMPTZ NOT NULL,
   retention_at TIMESTAMPTZ,
+  known_fields BIGINT NOT NULL,
+  conflict BOOLEAN NOT NULL,
   PRIMARY KEY (namespace, id)
 );
 

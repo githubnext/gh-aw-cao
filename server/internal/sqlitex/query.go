@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
 
@@ -217,6 +219,35 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			}
 			metadata["undated-run-count"] = undated
 			metadata["retention"] = "all-admitted-dated-observations"
+			states, err := dashboardquery.ReadCollectionFields(ctx, r.tx, "dailyRunCountState",
+				[]string{"id", "retentionCutoff", "retentionWatermark"}, 1, 64<<10)
+			if err != nil {
+				return model.Source{}, err
+			}
+			for _, dailyState := range states {
+				if dailyState["id"] != "daily-run-counts" || dailyState["retentionCutoff"] == nil {
+					continue
+				}
+				cutoff, ok := dailyState["retentionCutoff"].(string)
+				if !ok {
+					return model.Source{}, errors.New("daily run count retention cutoff must be a UTC date")
+				}
+				if cutoff == "" {
+					continue
+				}
+				if _, err := time.Parse("2006-01-02", cutoff); err != nil {
+					return model.Source{}, errors.New("daily run count retention cutoff must be a UTC date")
+				}
+				metadata["retention"] = "three-utc-calendar-weeks"
+				metadata["aggregate-retention-start"] = cutoff
+				if dailyState["retentionWatermark"] != nil {
+					watermark, ok := dailyState["retentionWatermark"].(float64)
+					if !ok || math.IsNaN(watermark) || math.IsInf(watermark, 0) || watermark < 0 || watermark > 253402300799999 {
+						return model.Source{}, errors.New("daily run count retention watermark must be Unix milliseconds")
+					}
+					metadata["aggregate-retention-watermark"] = time.UnixMilli(int64(watermark)).UTC().Format(time.RFC3339Nano)
+				}
+			}
 		}
 		result := make([]model.Row, len(rows))
 		for index, row := range rows {

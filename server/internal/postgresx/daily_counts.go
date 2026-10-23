@@ -51,6 +51,14 @@ func initializeDailyCounts(ctx context.Context, db *sql.DB) error {
 				`ALTER TABLE run_count_contributions ADD COLUMN observed_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()`,
 				`ALTER TABLE run_count_contributions ALTER COLUMN observed_at DROP DEFAULT`,
 				`ALTER TABLE run_count_contributions ADD COLUMN retention_at TIMESTAMPTZ`,
+				`ALTER TABLE run_count_contributions ADD COLUMN known_fields BIGINT NOT NULL DEFAULT 0,
+					ADD COLUMN conflict BOOLEAN NOT NULL DEFAULT false`,
+				`UPDATE run_count_contributions SET known_fields=
+					(repository_id IS NOT NULL)::int+2*(workflow_id IS NOT NULL)::int+4*(owner IS NOT NULL)::int
+					+8*(repository IS NOT NULL)::int+16*(workflow_path IS NOT NULL)::int+32*(started_at IS NOT NULL)::int
+					+64*(attempt IS NOT NULL)::int+128*(status IS NOT NULL)::int+256*(conclusion IS NOT NULL)::int
+					+512*(updated_at IS NOT NULL)::int+1024*(completed_at IS NOT NULL)::int`,
+				`ALTER TABLE run_count_contributions ALTER COLUMN known_fields DROP DEFAULT, ALTER COLUMN conflict DROP DEFAULT`,
 				`ALTER TABLE daily_run_count_state ADD COLUMN watermark_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 					ADD COLUMN cutoff_at TIMESTAMPTZ NOT NULL DEFAULT ((date_trunc('week',clock_timestamp() AT TIME ZONE 'UTC') - interval '14 days') AT TIME ZONE 'UTC')`,
 				`ALTER TABLE daily_run_count_state ALTER COLUMN watermark_at DROP DEFAULT, ALTER COLUMN cutoff_at DROP DEFAULT`,
@@ -178,7 +186,7 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		return err
 	}
 	columns := []string{"repository_id", "workflow_id", "owner", "repository", "workflow_path", "started_at", "attempt", "status", "conclusion", "updated_at", "completed_at"}
-	merged := []string{"r.namespace", "r.id", "coalesce(p.observed_at,s.watermark_at) AS observed_at",
+	merged := []string{"r.namespace", "r.id", "coalesce(p.observed_at,least(s.watermark_at,greatest(r.updated_at,r.completed_at))) AS observed_at",
 		"p.id IS NOT NULL AS had_previous", "p.attempt AS previous_attempt",
 		"greatest(p.updated_at,p.completed_at) AS previous_revision",
 		"greatest(r.updated_at,r.completed_at) AS incoming_revision"}
@@ -194,15 +202,21 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		return "CASE WHEN " + fieldPresence(name) + " THEN r." + name + " ELSE p." + name + " END"
 	}
 	attempt := "coalesce((" + mergedField("attempt") + "),1)"
-	for _, column := range columns {
+	known := []string{}
+	for index, column := range columns {
 		value := mergedField(column)
+		bit := fmt.Sprint(1 << index)
+		presence := "(" + fieldPresence(column) + " OR (coalesce(p.known_fields,0)&" + bit + ")<>0)"
 		if column == "started_at" || column == "status" || column == "conclusion" || column == "updated_at" || column == "completed_at" {
 			value = "CASE WHEN " + attempt + ">coalesce(p.attempt,1) THEN r." + column + " ELSE " + value + " END"
+			presence = "(CASE WHEN " + attempt + ">coalesce(p.attempt,1) THEN " + fieldPresence(column) + " ELSE " + presence + " END)"
 		}
 		value = "CASE WHEN p.id IS NOT NULL AND " + attempt + "=coalesce(p.attempt,1) AND greatest(p.updated_at,p.completed_at) IS NOT NULL" +
-			" AND greatest(r.updated_at,r.completed_at) IS NULL THEN coalesce(p." + column + ",r." + column + ") ELSE " + value + " END"
+			" AND greatest(r.updated_at,r.completed_at) IS NULL THEN CASE WHEN (p.known_fields&" + bit + ")<>0 THEN p." + column + " ELSE r." + column + " END ELSE " + value + " END"
 		merged = append(merged, value+" AS "+column)
+		known = append(known, "CASE WHEN "+presence+" THEN "+bit+" ELSE 0 END")
 	}
+	merged = append(merged, "("+strings.Join(known, "+")+")::bigint AS known_fields")
 	rank := func(alias string) string {
 		return "CASE WHEN " + alias + ".status='completed' OR " + alias + ".conclusion IN ('success','failure','startup-failure','stale','timed-out','action-required') THEN 1 ELSE 0 END"
 	}
@@ -218,8 +232,13 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		return "(jsonb_build_array(" + strings.Join(values, ",") + `)::text COLLATE "C")`
 	}
 	statements := []string{
-		`CREATE TEMP TABLE daily_changes ON COMMIT DROP AS SELECT m.*,
+		`CREATE TEMP TABLE daily_candidates ON COMMIT DROP AS SELECT m.*,
 			to_char(m.started_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS day,
+			coalesce((m.had_previous AND coalesce(m.attempt,1)=coalesce(m.previous_attempt,1)
+				AND m.previous_revision IS NOT NULL AND m.incoming_revision=m.previous_revision
+				AND ` + key("o") + `<>` + key("m") + `)
+				OR (o.conflict AND m.attempt IS NOT DISTINCT FROM o.attempt
+					AND m.updated_at IS NOT DISTINCT FROM o.updated_at AND m.completed_at IS NOT DISTINCT FROM o.completed_at),false) AS conflict,
 			` + strings.NewReplacer("conclusion", "m.conclusion", "status", "m.status").Replace(dailyOutcomeSQL) + ` AS outcome FROM (
 			SELECT ` + strings.Join(merged, ",") + ` FROM runs r JOIN daily_run_keys k ON k.id=r.id
 			JOIN daily_run_count_state s ON s.namespace=r.namespace AND s.id='daily-run-counts' LEFT JOIN run_count_contributions p
@@ -231,12 +250,18 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 				AND greatest(p.updated_at,p.completed_at)>greatest(r.updated_at,r.completed_at))) m
 			JOIN daily_run_count_state s ON s.namespace=m.namespace AND s.id='daily-run-counts'
 			LEFT JOIN run_count_contributions o ON o.namespace=m.namespace AND o.id=m.id
-			WHERE (m.started_at IS NULL OR (m.started_at>=s.cutoff_at AND m.started_at<s.cutoff_at+interval '504 hours')
+			WHERE ((m.started_at IS NULL AND (m.had_previous OR greatest(m.updated_at,m.completed_at) IS NULL
+					OR greatest(m.updated_at,m.completed_at)>=s.cutoff_at))
+				OR (m.started_at>=s.cutoff_at AND m.started_at<s.cutoff_at+interval '504 hours')
 				OR (m.had_previous AND (coalesce(m.attempt,1)>coalesce(m.previous_attempt,1)
-					OR greatest(m.updated_at,m.completed_at)>m.previous_revision)))
-			AND NOT (m.had_previous AND coalesce(m.attempt,1)=coalesce(m.previous_attempt,1)
-				AND m.previous_revision IS NOT NULL AND m.incoming_revision=m.previous_revision
+					OR greatest(m.updated_at,m.completed_at)>m.previous_revision)))`,
+		`CREATE TEMP TABLE daily_changes ON COMMIT DROP AS SELECT m.* FROM daily_candidates m
+			LEFT JOIN run_count_contributions o ON o.namespace=m.namespace AND o.id=m.id
+			WHERE NOT (m.had_previous AND coalesce(m.attempt,1)=coalesce(m.previous_attempt,1)
+				AND m.previous_revision IS NOT NULL AND m.incoming_revision IS NOT NULL AND m.incoming_revision=m.previous_revision
 				AND (` + rank("o") + `,` + key("o") + `)>(` + rank("m") + `,` + key("m") + `))`,
+		`UPDATE run_count_contributions p SET conflict=true FROM daily_candidates n
+			WHERE n.namespace=p.namespace AND n.id=p.id AND n.conflict`,
 		`WITH contributions AS (
 			SELECT p.namespace,to_char(p.started_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS day,
 				p.repository_id,p.workflow_id,coalesce(p.owner,'') AS owner,coalesce(p.repository,'') AS repository,
@@ -273,15 +298,17 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		ON CONFLICT(namespace,id) DO UPDATE SET owner=excluded.owner,repository=excluded.repository,workflow_path=excluded.workflow_path,
 			total=excluded.total,successful=excluded.successful,failed=excluded.failed,
 			approval=excluded.approval,pending=excluded.pending,other=excluded.other`,
-		`INSERT INTO run_count_contributions AS p(namespace,id,` + strings.Join(columns, ",") + `,observed_at,retention_at)
-			SELECT n.namespace,n.id,n.` + strings.Join(columns, ",n.") + `,n.observed_at,
+		`INSERT INTO run_count_contributions AS p(namespace,id,` + strings.Join(columns, ",") + `,observed_at,known_fields,conflict,retention_at)
+			SELECT n.namespace,n.id,n.` + strings.Join(columns, ",n.") + `,n.observed_at,n.known_fields,n.conflict,
 				CASE WHEN n.started_at>=s.cutoff_at AND n.started_at<s.cutoff_at+interval '504 hours' THEN n.started_at
 					ELSE coalesce(o.retention_at,o.started_at) END
 			FROM daily_changes n JOIN daily_run_count_state s ON s.namespace=n.namespace AND s.id='daily-run-counts'
 			LEFT JOIN run_count_contributions o ON o.namespace=n.namespace AND o.id=n.id
-			ON CONFLICT(namespace,id) DO UPDATE SET ` + dailyReceiptUpdates(columns) + `,retention_at=excluded.retention_at`,
+			ON CONFLICT(namespace,id) DO UPDATE SET ` + dailyReceiptUpdates(columns) + `,
+				retention_at=excluded.retention_at,known_fields=excluded.known_fields,conflict=excluded.conflict`,
 		`DELETE FROM daily_run_counts WHERE namespace=$1 AND total=0`,
 		`DROP TABLE daily_changes`,
+		`DROP TABLE daily_candidates`,
 	}
 	after := ""
 	for {
@@ -301,7 +328,7 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		}
 		for index, statement := range statements {
 			var args []any
-			if index == 0 || index == 3 {
+			if strings.Contains(statement, "$1") {
 				args = []any{namespace}
 			}
 			if err := exec(ctx, statement, args...); err != nil {
@@ -394,9 +421,10 @@ func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, er
 	if err != nil || !initialized {
 		return metadata, err
 	}
-	var count, undated int64
+	var count, undated, conflicts int64
 	if err := r.tx.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM daily_run_counts WHERE namespace=$1),
-		(SELECT count(*) FROM run_count_contributions WHERE namespace=$1 AND started_at IS NULL)`, r.store.namespace).Scan(&count, &undated); err != nil {
+		(SELECT count(*) FROM run_count_contributions WHERE namespace=$1 AND started_at IS NULL),
+		(SELECT count(*) FROM run_count_contributions WHERE namespace=$1 AND conflict)`, r.store.namespace).Scan(&count, &undated, &conflicts); err != nil {
 		return nil, err
 	}
 	metadata["availability"], metadata["completeness"] = "available", "partial"
@@ -404,6 +432,7 @@ func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, er
 		metadata["availability"] = "empty"
 	}
 	metadata["undated-run-count"] = undated
+	metadata["conflicted-runs"] = conflicts
 	var watermark, cutoff time.Time
 	if err := r.tx.QueryRowContext(ctx, `SELECT watermark_at,cutoff_at FROM daily_run_count_state
 		WHERE namespace=$1 AND id='daily-run-counts'`, r.store.namespace).Scan(&watermark, &cutoff); err != nil {
@@ -412,6 +441,8 @@ func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, er
 	metadata["retention"] = "three-utc-calendar-weeks"
 	metadata["watermark"] = watermark.UTC().Format(time.RFC3339Nano)
 	metadata["retention-cutoff"] = cutoff.UTC().Format("2006-01-02")
+	metadata["aggregate-retention-watermark"] = metadata["watermark"]
+	metadata["aggregate-retention-start"] = metadata["retention-cutoff"]
 	metadata["backfill-coverage"] = "available-evidence-only"
 	return metadata, nil
 }

@@ -34,6 +34,8 @@ model runCountContributions {
   completedAt?: utcDateTime;
   observedAt: utcDateTime;
   retentionAt?: utcDateTime;
+  knownFields: int64;
+  conflict: boolean;
 }
 
 model dailyRunCountState {
