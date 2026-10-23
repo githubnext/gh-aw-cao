@@ -430,3 +430,25 @@ test("credential verification is opt-in and cannot reach the validation issue re
   assert.ok(steps.indexOf(token) > steps.findIndex(step => step.id === "cao_admission"));
   assert.ok(condition(precomputeStep.if, { status: "success", steps: { cao_admission: { outputs: { authorized: "true" } } } }));
 });
+
+test("verification wiring selects only the mapped control PAT without serializing unrelated secrets", () => {
+  const source = readFileSync(join(root, ".github/workflows/cao-validate.yml"), "utf8");
+  const workflow = parse(source);
+  const step = workflow.jobs.credentials.steps.find(step => step.name === "Verify runtime credential boundaries");
+  for (const mode of ["pat", "app", "workflow-token"]) {
+    const env = Object.fromEntries(Object.entries(step.env).map(([name, value]) => [name, interpolate(value, {
+      vars: {
+        GH_AW_GITHUB_AUTH_MODE: mode,
+        GH_AW_GITHUB_READ_PAT_REPOSITORIES: JSON.stringify({ "acme/control": "CONTROL_PAT", "acme/target": "TARGET_PAT" }),
+      },
+      secrets: { CONTROL_PAT: "control-pat", TARGET_PAT: "never-expose-target", UNRELATED: "never-expose-unrelated" },
+      github: { repository: "acme/control", token: "workflow-token" },
+      steps: { "control-token": { outputs: { token: "control-token" } } },
+      inputs: {},
+    })]));
+    assert.equal(env.CAO_CONTROL_READ_PAT, mode === "pat" ? "control-pat" : "");
+    assert.equal(env.CAO_INVENTORY_READ_PAT, mode === "pat" ? "control-pat" : "");
+    assert.doesNotMatch(JSON.stringify(env), /never-expose/);
+  }
+  assert.doesNotMatch(source, /toJSON\s*\(\s*secrets\s*\)/i);
+});
