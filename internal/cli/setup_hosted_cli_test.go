@@ -187,6 +187,13 @@ func hostedCLICompleteRegistration(t *testing.T, address, key string, invalid bo
 	if callback.StatusCode != wantStatus {
 		t.Fatalf("callback status=%d want=%d", callback.StatusCode, wantStatus)
 	}
+	if !invalid {
+		location, err := callback.Location()
+		if err != nil || location.Host != "github.com" || location.Path != "/apps/hosted-app/installations/new/permissions" ||
+			!reflect.DeepEqual(location.Query(), url.Values{"suggested_target_id": {"42"}, "repository_ids[]": {"101"}}) {
+			t.Fatalf("hosted CLI creation must preselect only its initial control repository: %v (%v)", location, err)
+		}
+	}
 }
 
 func TestHostedCLISetupNativeApply(t *testing.T) {
@@ -263,6 +270,8 @@ func TestHostedCLISetupNativeApply(t *testing.T) {
 					return "acme/control", "", nil
 				case call == "api /users/acme --jq .login":
 					return "acme", "", nil
+				case call == "api /repos/acme/control":
+					return `{"id":101,"full_name":"acme/control","owner":{"id":42,"login":"acme"}}`, "", nil
 				case args[0] == "browse" && strings.Contains(args[1], "/register"):
 					hostedCLICompleteRegistration(t, args[1], key, scenario == "invalid callback")
 					return "", "", nil
@@ -338,6 +347,7 @@ func TestHostedCLISetupNativeApply(t *testing.T) {
 }
 
 func TestHostedCLINoOpenAndCancellation(t *testing.T) {
+	t.Setenv("GH_HOST", "github.com")
 	cmd := nativeSetupTestCommand()
 	gh := func(context.Context, ...string) (string, string, error) {
 		t.Fatal("--no-open must not spawn a browser")
@@ -352,7 +362,8 @@ func TestHostedCLINoOpenAndCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	cmd.SetContext(ctx)
-	if _, err := nativeSetupCreateApp(cmd, gh, "acme", "hosted-app", "https://github.com/acme/control", nativeSetupHostedProfile(), true); !errors.Is(err, context.Canceled) {
+	target := nativeSetupOwnerGroup{Owner: "acme", Repositories: []string{"control"}}
+	if _, err := nativeSetupCreateApp(cmd, gh, target, "hosted-app", "https://github.com/acme/control", nativeSetupHostedProfile(), true); !errors.Is(err, context.Canceled) {
 		t.Fatalf("browser setup ignored cancellation: %v", err)
 	}
 }

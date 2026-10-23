@@ -271,7 +271,15 @@ gh cao setup auth github-app \
   --repo acme/central-agentic-ops
 ```
 
-Choose **Only select repositories** and select only those printed by the command. CAO stores client IDs as repository variables and sends private keys directly to Actions secrets.
+For new installations on github.com, guided setup and this command preselect
+the exact repositories for each App. Review the account and preselected list,
+keep **Only select repositories**, and approve on GitHub. Existing installations
+still use **Configure**, and GHES/data-residency hosts require manual selection
+of the printed repositories. Missing or invalid repository/account IDs, lookup
+failures, or more than 100 repositories stop preselection rather than dropping
+repositories or selecting all. See [preselection limits and recovery](control-plane-authentication.md#configure-private-github-apps).
+CAO still verifies installation coverage before storing client IDs as repository
+variables and sending private keys directly to Actions secrets.
 
 Automated setup installs the read App on the control repository and every exact
 allowlisted evidence source. The write App defaults to only the control

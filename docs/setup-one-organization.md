@@ -69,9 +69,15 @@ gh cao setup auth github-app \
 For both browser flows:
 
 1. Keep the App private.
-2. Choose **Only select repositories**.
-3. Select only the repositories printed in the terminal.
+2. Keep **Only select repositories**.
+3. For a new installation on github.com, review the preselected account and
+   repositories against those printed in the terminal. Existing installations
+   open **Configure**; GHES/data-residency hosts still require manual selection.
 4. Finish the installation and return to the terminal.
+
+Preselection stops on missing/invalid IDs, lookup failures, or more than 100
+repositories; it never drops repositories or selects all. See
+[preselection limits and recovery](control-plane-authentication.md#configure-private-github-apps).
 
 Setup verifies the exact selected repository membership with a short-lived App
 installation token and does not accept a manual-verification fallback. The

@@ -60,6 +60,21 @@ enabled. Logs/artifacts may be unavailable; evidence is marked partial.`
 		textFlag("read-app-name", "Name for a new read App"), textFlag("write-app-name", "Name for a new write App"),
 		boolFlag("force", "Replace the selected App configuration"), boolFlag("no-open", "Print browser URLs instead of opening them"),
 	), authenticate)
+	app.Long = `Configure separate private read-only and write-capable GitHub Apps.
+
+The read App covers the control repository plus the exact policy allowlist.
+The write App covers only the control repository by default; --write-repository
+replaces that default with the exact approved output repositories.
+
+New installations on github.com preselect these repositories for your review.
+Keep Only select repositories and approve on GitHub. Preselection requires
+valid repository/account IDs and at most 100 repositories per installation;
+lookup failures stop setup rather than omitting repositories or selecting all.
+Existing installations open Configure when coverage is missing. GHES and
+data-residency hosts retain manual selection. Setup verifies selected-repository
+coverage after installation; browser approval does not change CAO policy.
+
+--dry-run is offline when --repo is supplied. --no-open prints browser URLs.`
 	enterprise := operatorCommand("enterprise-app", "Configure existing enterprise-owned GitHub Apps", cobra.NoArgs, appendFlags(common,
 		textFlag("read-client-id", "Read App client ID"), textFlag("write-client-id", "Write App client ID"),
 	), authenticate)
@@ -83,7 +98,8 @@ enabled. Logs/artifacts may be unavailable; evidence is marked partial.`
 Requests only actions, contents, pull_requests and workflows write plus metadata
 read. Never requests administration, repository_creation, installation_repositories
 or organization permissions. GitHub's browser flow provides creation and installation
-approval; choose Only select repositories. Additional targets must be explicit
+approval; choose Only select repositories. New github.com installations preselect
+only the control repository for review. Additional targets must be explicit
 OWNER/REPO values under the control repository owner, not policy-derived scope.
 Repository administrators can add repositories to an approved installation unless
 organization policy requires owner approval; denied additions continue in the browser.

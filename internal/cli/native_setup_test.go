@@ -726,15 +726,17 @@ func TestNativeSetupWildcardExpansionFailsClosed(t *testing.T) {
 
 func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 	for _, test := range []struct {
-		name, owner, appName, homepage string
-		invalid                        bool
+		name, owner, appName, homepage, host string
+		invalid                              bool
 	}{
-		{"valid", "org", "test-app", "https://github.com/org/control", false},
-		{"invalid state", "org", "test-app", "https://github.com/org/control", true},
-		{"quoted HTML and JSON", "org", `app"></form><script>alert("manifest")</script><input name="injected" value="`, "https://github.com/org/control?q=\"'<>&\\\n\u2028\u2029", false},
-		{"quoted action URL", `org"><script>alert("action")</script><input name="injected`, "test-app", "https://github.com/org/control", false},
+		{"valid", "org", "test-app", "https://github.com/org/control", "github.com", false},
+		{"invalid state", "org", "test-app", "https://github.com/org/control", "github.com", true},
+		{"quoted HTML and JSON", "org", `app"></form><script>alert("manifest")</script><input name="injected" value="`, "https://github.com/org/control?q=\"'<>&\\\n\u2028\u2029", "github.com", false},
+		{"quoted action URL", `org"><script>alert("action")</script><input name="injected`, "test-app", "https://github.example.test/org/control", "github.example.test", false},
+		{"data residency", "org", "test-app", "https://contoso.ghe.com/org/control", "contoso.ghe.com", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("GH_HOST", test.host)
 			cmd := nativeSetupTestCommand()
 			key := nativeSetupTestKey(t)
 			conversions := 0
@@ -800,7 +802,35 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 					if result.StatusCode != expected {
 						t.Fatalf("callback status %d, expected %d", result.StatusCode, expected)
 					}
+					if !test.invalid {
+						location, err := result.Location()
+						if err != nil {
+							t.Fatal(err)
+						}
+						if test.host == "github.com" {
+							if location.Host != "github.com" || location.Path != "/apps/read-app/installations/new/permissions" ||
+								!reflect.DeepEqual(location.Query(), url.Values{"suggested_target_id": {"42"}, "repository_ids[]": {"101", "102"}}) {
+								t.Fatalf("creation callback lost repository preselection: %s", location)
+							}
+						} else {
+							path := "/apps/read-app/installations/new"
+							if strings.HasSuffix(test.host, ".ghe.com") {
+								path = "/organizations/org/settings/apps/read-app/installations"
+							}
+							if location.Host != test.host || location.Path != path || location.RawQuery != "" {
+								t.Fatalf("unsupported-host installation URL changed: %s", location)
+							}
+						}
+					}
 					return "", "", nil
+				}
+				if test.host == "github.com" && len(args) == 2 && args[0] == "api" {
+					switch args[1] {
+					case "/repos/org/control":
+						return `{"id":101,"full_name":"org/control","owner":{"id":42,"login":"org"}}`, "", nil
+					case "/repos/org/evidence":
+						return `{"id":102,"full_name":"org/evidence","owner":{"id":42,"login":"org"}}`, "", nil
+					}
 				}
 				if strings.Join(args, " ") == "api -X POST -H Accept: application/vnd.github+json /app-manifests/manifest-code/conversions" {
 					conversions++
@@ -810,7 +840,8 @@ func TestNativeSetupAppManifestBrowserProtocol(t *testing.T) {
 				t.Fatalf("unexpected gh operation: %v", args)
 				return "", "", nil
 			}
-			app, err := nativeSetupCreateApp(cmd, gh, test.owner, test.appName, test.homepage, nativeSetupCredentials(false)[0], false)
+			target := nativeSetupOwnerGroup{Owner: test.owner, Repositories: []string{"control", "evidence"}}
+			app, err := nativeSetupCreateApp(cmd, gh, target, test.appName, test.homepage, nativeSetupCredentials(false)[0], false)
 			if test.invalid {
 				if err == nil || conversions != 0 {
 					t.Fatalf("invalid callback exchanged a code: %v conversions=%d", err, conversions)

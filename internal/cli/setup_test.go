@@ -88,12 +88,12 @@ func TestSetupGitHubAppDryRunIsNative(t *testing.T) {
 	if err := help.Execute(); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"gh cao setup auth github-app", "--dry-run", "--read-client-id", "--write-client-id", "--write-repository"} {
+	for _, want := range []string{"gh cao setup auth github-app", "--dry-run", "--read-client-id", "--write-client-id", "--write-repository", "preselect", "100 repositories", "Configure", "GHES"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("GitHub App help omits %q: %s", want, stdout)
 		}
 	}
-	for _, host := range []string{"github.com", "contoso-aw.ghe.com"} {
+	for _, host := range []string{"github.com", "contoso-aw.ghe.com", "github.example.test"} {
 		t.Run(host, func(t *testing.T) {
 			t.Setenv("GH_HOST", host)
 			policy := nativeSetupTestPolicy()

@@ -111,7 +111,8 @@ func nativeSetupHostedCLI(cmd *cobra.Command, gh ghExecutor) (err error) {
 		return err
 	}
 	noOpen := nativeSetupBool(cmd, "no-open")
-	app, err := nativeSetupCreateApp(cmd, gh, owner, name, server+"/"+canonical, profile, noOpen)
+	controlTarget := nativeSetupOwnerGroup{Owner: owner, Repositories: []string{control}}
+	app, err := nativeSetupCreateApp(cmd, gh, controlTarget, name, server+"/"+canonical, profile, noOpen)
 	if err != nil {
 		return err
 	}
@@ -135,7 +136,7 @@ func nativeSetupHostedCLI(cmd *cobra.Command, gh ghExecutor) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := nativeSetupEnsureInstallations(cmd, gh, api, app, []nativeSetupOwnerGroup{{Owner: owner, Repositories: []string{control}}}, noOpen, true); err != nil {
+	if err := nativeSetupEnsureInstallations(cmd, gh, api, app, []nativeSetupOwnerGroup{controlTarget}, noOpen, true); err != nil {
 		return err
 	}
 	installation, err := api.installation(cmd.Context(), app, owner)

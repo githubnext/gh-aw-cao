@@ -87,6 +87,23 @@ control repository for review outputs. Repeat `--write-repository OWNER/REPO`
 to replace that default with the exact repositories approved for safe-output
 writes.
 
+For **new installations on github.com**, both guided `gh cao setup` and
+`gh cao setup auth github-app` preselect each App's exact repositories, including
+the installation page reached immediately after App creation. Review the account
+and repository list, keep **Only select repositories**, and approve on GitHub.
+Existing installations still open **Configure** when coverage is missing; GHES
+and data-residency hosts retain manual selection.
+
+Preselection uses numeric REST repository and owner IDs, with at most **100
+repositories per installation**. Missing, invalid, inconsistent, or unreadable
+metadata stops setup before opening that new installation; no repositories are
+silently omitted and setup never substitutes an all-repositories link. Check
+`gh` authentication and access to each exact repository before retrying. For a
+larger selection, create and install the Apps manually with **Only select
+repositories**, then [reuse their client IDs](#reuse-approved-apps).
+`--dry-run --repo OWNER/REPO` remains offline and `--no-open` prints browser URLs.
+See GitHub's [installation preselection contract](https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/migrating-oauth-apps-to-github-apps#prompt-users-to-install-your-github-app).
+
 The helper uses `GH_HOST`, or `GITHUB_SERVER_URL` in Actions, for repository,
 App registration, installation, API, and settings URLs. The generated read-App
 manifest requests only supported repository permissions.
