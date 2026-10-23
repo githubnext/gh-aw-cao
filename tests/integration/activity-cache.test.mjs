@@ -171,7 +171,7 @@ test("activity workflow caches gh-aw logs and their SQLite projection", async ()
   for (const [name, variable] of [
     ["Download owner-scoped agentic workflow logs", "REPORT_ACTIVITY_DATABASE"],
     ["Enrich owner-scoped issue statuses", "ACTIVITY_DATABASE"],
-    ["Compute owner-scoped operational value", "ACTIVITY_DATABASE"],
+    ["Retain Value evidence and publish collection health", "ACTIVITY_DATABASE"],
   ]) {
     assert.equal(collectSteps.find((step) => step.name === name).env[variable],
       "${{ runner.temp }}/cao-activity/collection.sqlite",
