@@ -12,8 +12,36 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-cao/server/internal/auditlifecycle"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/server"
 )
+
+var auditLifecyclesLog = debuglogger.New("cao:dashboard:audit-lifecycles")
+
+// validateLifecycleScan checks scan options and the whole-invocation deadline.
+func validateLifecycleScan(options auditlifecycle.Options, timeout time.Duration) error {
+	if err := options.Validate(); err != nil {
+		return err
+	}
+	if timeout < time.Second || timeout > 30*time.Minute {
+		return errors.New("audit lifecycle timeout must be between 1s and 30m")
+	}
+	return nil
+}
+
+// lifecycleScanError maps a completed scan to the command's exit error.
+func lifecycleScanError(result auditlifecycle.Result, scanErr error) error {
+	if scanErr != nil {
+		auditLifecyclesLog.Printf("audit lifecycle scan failed: status=%s scanned=%d", result.Status, result.Scanned)
+		return scanErr
+	}
+	auditLifecyclesLog.Printf("audit lifecycle scan finished: status=%s scanned=%d completed=%d pending=%d missing_terminal=%d",
+		result.Status, result.Scanned, result.Completed, result.Pending, result.MissingTerminal)
+	if result.Status != "ok" {
+		return errors.New("audit lifecycle evidence requires operator attention; inspect the JSON result")
+	}
+	return nil
+}
 
 func newAuditLifecyclesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,11 +56,8 @@ func newAuditLifecyclesCommand() *cobra.Command {
 	timeout := cmd.Flags().Duration("timeout", 2*time.Minute, "whole invocation deadline (1s-30m)")
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		options := auditlifecycle.Options{AfterSequence: *after, MaxEvents: *maxEvents, Grace: *grace, Now: time.Now()}
-		if err := options.Validate(); err != nil {
+		if err := validateLifecycleScan(options, *timeout); err != nil {
 			return err
-		}
-		if *timeout < time.Second || *timeout > 30*time.Minute {
-			return errors.New("audit lifecycle timeout must be between 1s and 30m")
 		}
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -48,13 +73,7 @@ func newAuditLifecyclesCommand() *cobra.Command {
 		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(result); err != nil {
 			return errors.New("audit lifecycle scan could not write its operational result")
 		}
-		if scanErr != nil {
-			return scanErr
-		}
-		if result.Status != "ok" {
-			return errors.New("audit lifecycle evidence requires operator attention; inspect the JSON result")
-		}
-		return nil
+		return lifecycleScanError(result, scanErr)
 	}
 	return cmd
 }

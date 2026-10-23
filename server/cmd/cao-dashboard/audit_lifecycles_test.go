@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/auditlifecycle"
 	"github.com/githubnext/gh-cao/server/internal/operational"
@@ -79,5 +81,41 @@ func TestAuditLifecyclesRejectsInvalidOptionsAndMissingStore(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("read-only command created storage: %v", err)
+	}
+}
+
+func TestValidateLifecycleScan(t *testing.T) {
+	valid := auditlifecycle.Options{MaxEvents: 10, Grace: auditlifecycle.DefaultGrace, Now: time.Now()}
+	for name, tc := range map[string]struct {
+		options auditlifecycle.Options
+		timeout time.Duration
+		wantErr bool
+	}{
+		"valid":        {valid, time.Minute, false},
+		"min timeout":  {valid, time.Second, false},
+		"max timeout":  {valid, 30 * time.Minute, false},
+		"short":        {valid, time.Second - 1, true},
+		"long":         {valid, 30*time.Minute + 1, true},
+		"zero events":  {auditlifecycle.Options{Grace: auditlifecycle.DefaultGrace}, time.Minute, true},
+		"negative seq": {auditlifecycle.Options{AfterSequence: -1, MaxEvents: 10, Grace: auditlifecycle.DefaultGrace}, time.Minute, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateLifecycleScan(tc.options, tc.timeout); (err != nil) != tc.wantErr {
+				t.Fatalf("err=%v wantErr=%t", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestLifecycleScanError(t *testing.T) {
+	scanErr := errors.New("scan failed")
+	if err := lifecycleScanError(auditlifecycle.Result{Status: "ok"}, nil); err != nil {
+		t.Fatalf("ok result: %v", err)
+	}
+	if err := lifecycleScanError(auditlifecycle.Result{Status: "incomplete"}, nil); err == nil || !strings.Contains(err.Error(), "operator attention") {
+		t.Fatalf("incomplete result: %v", err)
+	}
+	if err := lifecycleScanError(auditlifecycle.Result{Status: "ok"}, scanErr); !errors.Is(err, scanErr) {
+		t.Fatalf("scan error not preserved: %v", err)
 	}
 }
