@@ -1,5 +1,0 @@
-2026-10-23 21:05:24.216 UTC [31249] LOG:  starting PostgreSQL 16.15 (Ubuntu 16.15-1.pgdg24.04+2) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
-2026-10-23 21:05:24.216 UTC [31249] LOG:  listening on IPv4 address "127.0.0.1", port 55439
-2026-10-23 21:05:24.216 UTC [31249] LOG:  listening on Unix socket "/home/runner/work/gh-cao/gh-cao/.work/sampling/.s.PGSQL.55439"
-2026-10-23 21:05:24.221 UTC [31263] LOG:  database system was shut down at 2026-10-23 21:05:24 UTC
-2026-10-23 21:05:24.231 UTC [31249] LOG:  database system is ready to accept connections

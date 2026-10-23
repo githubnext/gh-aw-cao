@@ -656,7 +656,7 @@ same frame. UI code SHALL NOT reconstruct a sample from view rows.
 
 The frame SHALL use a recorded logical UTC watermark, never query wall-clock
 time. A recorded Run-source `as-of` takes precedence. Without it, the greatest
-valid recorded Run `startedAt`, `completedAt`, or `updatedAt` MAY define a
+valid recorded Run `startedAt`, `createdAt`, `completedAt`, or `updatedAt` MAY define a
 `canonical-run-max` watermark; the frame SHALL label that policy explicitly.
 Neither import time nor query time is a fallback. Without either recorded clock,
 the source SHALL be unavailable rather than an exact empty result.
