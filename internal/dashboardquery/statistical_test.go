@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -35,11 +36,33 @@ func statisticalFixture(t *testing.T) ([]map[string]any, StatisticalOptions, []s
 
 func TestStatisticalJSParity(t *testing.T) {
 	rows, options, _ := statisticalFixture(t)
+	t.Run("golden", func(t *testing.T) {
+		statisticalJSParity(t, rows, options, []int{0, 1, 3, 20})
+	})
+	t.Run("bounded-selection", func(t *testing.T) {
+		candidates := make([]map[string]any, 513)
+		for index := range candidates {
+			row := map[string]any{}
+			for field, value := range rows[index%6] {
+				row[field] = value
+			}
+			row["id"] = "github:run:o/r:" + strconv.Itoa(index+1)
+			row["githubRunId"] = strconv.Itoa(index + 1)
+			candidates[index] = row
+		}
+		statisticalJSParity(t, candidates, options, []int{0, 1, 7, 31, 513, 600})
+		slices.Reverse(candidates)
+		statisticalJSParity(t, candidates, options, []int{7, 31})
+	})
+}
+
+func statisticalJSParity(t *testing.T, rows []map[string]any, options StatisticalOptions, capacities []int) {
+	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatal("Node.js is required for the existing cross-engine parity tests")
 	}
-	for _, capacity := range []int{0, 1, 3, 20} {
+	for _, capacity := range capacities {
 		options.Capacity = capacity
 		for _, complete := range []bool{false, true} {
 			options.Complete = complete

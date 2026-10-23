@@ -1,6 +1,7 @@
 package dashboardquery
 
 import (
+	"container/heap"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
@@ -135,6 +136,34 @@ func statisticalAllocation(counts map[string]int, capacity int) map[string]int {
 	return result
 }
 
+type statisticalCandidate struct {
+	row      map[string]any
+	priority string
+	variants map[string]bool
+}
+
+func compareStatisticalCandidates(a, b statisticalCandidate) int {
+	if order := strings.Compare(a.priority, b.priority); order != 0 {
+		return order
+	}
+	return strings.Compare(a.row["id"].(string), b.row["id"].(string))
+}
+
+// The largest retained priority is the first candidate displaced by a smaller one.
+type statisticalHeap []statisticalCandidate
+
+func (h statisticalHeap) Len() int           { return len(h) }
+func (h statisticalHeap) Less(i, j int) bool { return compareStatisticalCandidates(h[i], h[j]) > 0 }
+func (h statisticalHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *statisticalHeap) Push(value any)    { *h = append(*h, value.(statisticalCandidate)) }
+func (h *statisticalHeap) Pop() any {
+	last := len(*h) - 1
+	value := (*h)[last]
+	(*h)[last] = statisticalCandidate{}
+	*h = (*h)[:last]
+	return value
+}
+
 // SampleStatisticalRuns freezes a candidate frame over the current snapshot.
 // It is not a persisted reservoir and makes no claim about discarded history.
 func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([]map[string]any, map[string]any, error) {
@@ -158,12 +187,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		options.Seed = StatisticalSeed
 	}
 	start := watermark.Add(-7 * 24 * time.Hour)
-	type candidate struct {
-		row      map[string]any
-		priority string
-		variants map[string]bool
-	}
-	identities := map[string]candidate{}
+	identities := map[string]statisticalCandidate{}
 	invalid, conflicts, incomplete, hotExcluded := 0, 0, 0, 0
 	inputBytes := 0
 	for _, row := range rows {
@@ -190,13 +214,13 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		}
 		variants[string(content)] = true
 		if !exists {
-			identities[id] = candidate{row: row, variants: variants}
+			identities[id] = statisticalCandidate{row: row, variants: variants}
 		}
 	}
 	for _, candidate := range identities {
 		conflicts += len(candidate.variants) - 1
 	}
-	groups := map[string][]candidate{}
+	groups := map[string][]statisticalCandidate{}
 	quarantined := 0
 	for id, candidate := range identities {
 		if err := ctx.Err(); err != nil {
@@ -263,21 +287,24 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		candidates := groups[key]
 		n, k := len(candidates), reserve[key]+remainder[key]
 		estimable = estimable && k > 0
+		retained := make(statisticalHeap, 0, k)
 		if k > 0 {
-			for index := range candidates {
+			for _, candidate := range candidates {
 				if err := ctx.Err(); err != nil {
 					return nil, nil, err
 				}
-				candidates[index].priority = StatisticalPriority(candidates[index].row["id"].(string), options.Seed)
-			}
-			slices.SortFunc(candidates, func(a, b candidate) int {
-				if order := strings.Compare(a.priority, b.priority); order != 0 {
-					return order
+				candidate.priority = StatisticalPriority(candidate.row["id"].(string), options.Seed)
+				candidate.variants = nil
+				if len(retained) < k {
+					heap.Push(&retained, candidate)
+				} else if compareStatisticalCandidates(candidate, retained[0]) < 0 {
+					retained[0] = candidate
+					heap.Fix(&retained, 0)
 				}
-				return strings.Compare(a.row["id"].(string), b.row["id"].(string))
-			})
+			}
+			slices.SortFunc(retained, compareStatisticalCandidates)
 		}
-		for _, candidate := range candidates[:k] {
+		for _, candidate := range retained {
 			row := map[string]any{}
 			for field, value := range candidate.row {
 				if !strings.HasPrefix(field, "statistical-") {
@@ -293,7 +320,7 @@ func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([
 		}
 		var cutoff any
 		if k > 0 {
-			cutoff = candidates[k-1].priority
+			cutoff = retained[k-1].priority
 		}
 		strata = append(strata, map[string]any{"stratum": key, "population": n, "allocation": k, "cutoff": cutoff})
 	}

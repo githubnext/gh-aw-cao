@@ -48,6 +48,31 @@ describe('independent frozen statistical sampling', () => {
     expect(STATISTICAL_CAPACITIES).toEqual({ postgres: 64000, sqlite: 8000, indexeddb: 16000 });
   });
 
+  it('matches full-sort bottom-k selection across strata, capacities, and input orders', async () => {
+    const rows = Array.from({ length: 513 }, (_, index) => ({
+      ...fixture.rows[index % 6], id: `github:run:o/r:${index + 1}`, githubRunId: String(index + 1)
+    }));
+    const priorities = new Map(await Promise.all(rows.map(async (row) =>
+      /** @type {[string, string]} */ ([row.id, await statisticalPriority(row.id)]))));
+    const sorted = [...rows].sort((a, b) => {
+      const left = String(priorities.get(a.id));
+      const right = String(priorities.get(b.id));
+      return left < right ? -1 : left > right ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+    for (const capacity of [0, 1, 7, 31, 513, 600]) {
+      const result = await sampleStatisticalRuns(rows, { ...options, capacity });
+      const expected = result.frame.strata.flatMap(({ stratum, population, allocation, cutoff }) => {
+        const candidates = sorted.filter((row) => `${row.startedAt.slice(0, 10)}/${row.conclusion}` === stratum);
+        expect(candidates).toHaveLength(population);
+        expect(cutoff).toBe(allocation > 0 ? priorities.get(candidates[allocation - 1].id) : null);
+        return candidates.slice(0, allocation).map((row) => row.id);
+      });
+      expect(result.rows.map((row) => row.id)).toEqual(expected);
+      expect(result.rows).toHaveLength(Math.min(capacity, rows.length));
+      expect(await sampleStatisticalRuns([...rows].reverse(), { ...options, capacity })).toEqual(result);
+    }
+  });
+
   it('never invents weights for incomplete frames, conflicting duplicates, invalid or missing timestamps', async () => {
     for (const rows of [
       [...fixture.rows, { ...fixture.rows[0], startedAt: 'invalid' }],

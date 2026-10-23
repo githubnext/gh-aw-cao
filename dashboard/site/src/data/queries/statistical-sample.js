@@ -88,6 +88,41 @@ function allocate(counts, capacity) {
 /** @param {string} a @param {string} b */
 function compare(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
 
+/** @typedef {{ row: Record<string, unknown>, priority: string }} Candidate */
+
+/** @param {Candidate} a @param {Candidate} b */
+function compareCandidates(a, b) {
+  return compare(a.priority, b.priority) || compare(String(a.row.id), String(b.row.id));
+}
+
+/** @param {Candidate[]} heap @param {Candidate} candidate @param {number} capacity @param {() => void} checkpoint */
+function retainCandidate(heap, candidate, capacity, checkpoint) {
+  if (heap.length < capacity) {
+    let index = heap.length;
+    heap.push(candidate);
+    while (index > 0) {
+      checkpoint();
+      const parent = Math.floor((index - 1) / 2);
+      if (compareCandidates(heap[parent], candidate) >= 0) break;
+      heap[index] = heap[parent];
+      index = parent;
+    }
+    heap[index] = candidate;
+    return;
+  }
+  if (compareCandidates(candidate, heap[0]) >= 0) return;
+  let index = 0;
+  while (index * 2 + 1 < heap.length) {
+    checkpoint();
+    let child = index * 2 + 1;
+    if (child + 1 < heap.length && compareCandidates(heap[child + 1], heap[child]) > 0) child++;
+    if (compareCandidates(candidate, heap[child]) >= 0) break;
+    heap[index] = heap[child];
+    index = child;
+  }
+  heap[index] = candidate;
+}
+
 /**
  * @param {Record<string, unknown>[]} rows
  * @param {{ watermark: unknown, capacity?: number, complete?: boolean, seed?: string, hotIds?: Iterable<string>, checkpoint?: () => void }} options
@@ -155,22 +190,25 @@ export async function sampleStatisticalRuns(rows, options) {
   for (const [key, candidates] of [...groups].sort(([a], [b]) => compare(a, b))) {
     const population = candidates.length;
     const count = (reserve.get(key) ?? 0) + (remainder.get(key) ?? 0);
+    /** @type {Candidate[]} */
+    const retained = [];
     if (count > 0) {
-      budget.spend(Math.ceil(candidates.length * Math.log2(Math.max(1, candidates.length))));
       for (const candidate of candidates) {
         checkpoint();
-        candidate.priority = await statisticalPriority(String(candidate.row.id), seed);
+        const priority = await statisticalPriority(String(candidate.row.id), seed);
+        retainCandidate(retained, { row: candidate.row, priority }, count, checkpoint);
       }
-      candidates.sort((a, b) => compare(a.priority, b.priority) || compare(String(a.row.id), String(b.row.id)));
+      budget.spend(Math.ceil(retained.length * Math.log2(Math.max(1, retained.length))));
+      retained.sort(compareCandidates);
     }
-    for (const candidate of candidates.slice(0, count)) selected.push({
+    for (const candidate of retained) selected.push({
       ...Object.fromEntries(Object.entries(candidate.row).filter(([field]) => !field.startsWith('statistical-'))),
       'statistical-stratum': key, 'statistical-priority': candidate.priority,
       'statistical-population': population, 'statistical-allocation': count,
       'statistical-weight-valid': valid,
       ...(valid ? { 'statistical-probability': count / population, 'statistical-weight': population / count } : {})
     });
-    strata.push({ stratum: key, population, allocation: count, cutoff: count > 0 ? candidates[count - 1].priority : null });
+    strata.push({ stratum: key, population, allocation: count, cutoff: count > 0 ? retained[count - 1].priority : null });
   }
   const normalizedWatermark = new Date(watermark).toISOString();
   const frameId = await digest([
