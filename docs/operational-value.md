@@ -12,8 +12,9 @@ For the short intent → output → Git evidence flow, see
 Research and replay details are in the
 [blog article](/gh-cao/blog/measuring-agent-work-value/).
 
-Open **Value** in the sidebar (the trophy icon) to see evidence-backed workflow
-result cards; a workflow's **Value** tab is also a shortcut to its reports.
+Open **Value** in the sidebar (the trophy icon) to see reviewed registrations,
+collection health and evidence-backed workflow result cards. A workflow's
+**Value** tab shows its collection decision and retained reports.
 The legacy **Operational Value** page and its **Repository measurements** tab
 have been removed. Existing native observations remain in the canonical data
 model; missing measurements are not zero value.
@@ -27,7 +28,13 @@ their Git evidence; select a measured dot to inspect the exact counted items.
 The card and native report share one canonical evidence packet, not a saved HTML
 page. Opening either does not collect new evidence or silently fill missing
 measurements. Each workflow still needs a frozen measurement contract and
-published evidence; no packet produces an explicit unconfigured state.
+published evidence. No packet does not mean unconfigured: an enabled collector
+can be deferred before its first capture. Only an authoritative policy check
+establishes an unconfigured or disabled state.
+Health cards keep the decision time, last actual attempt, successful capture and
+evidence cutoff separate. A newer failure or deferral does not make retained
+evidence fresh. "No retained capture" describes available history, not every
+historical archive.
 These evidence routes keep their declared cohort and cutoff when the dashboard's
 global display horizon changes; they are not new evaluations of that horizon.
 
@@ -74,16 +81,32 @@ measurement uses the same fixed rules, never a new model-generated assessment.
 Keep immutable measurements and receipts in the supplied per-workflow workspace
 for reuse. Uploaded report packets cannot register or execute collector code.
 
-The existing Activity cycle or hosted collector invokes only due, opted-in
-collectors at the frozen cadence. It follows new safe-output lifecycle and
-acceptance evidence, measures the independent repository state, and publishes
-a validated capture into the same canonical facts consumed by **Value**.
-Opening a report does not trigger collection. Fast/recycle-only runs do not
-silently request fresh measurements. A failed acquisition, insufficient budget
-or invalid packet leaves the previous evidence and capture timestamp intact;
-it is not a fresh success or zero. Collection timing is bounded by the existing
-cycle and available credentials, not a guarantee of an observation at every
-wall-clock instant.
+**Recurring remote acquisition remains deferred pending enforceable shared-budget
+admission.** Existing subprocess collectors do not participate in shared
+per-request REST, search and GraphQL accounting. A separate worker is not
+separate API quota, and a remaining-quota probe cannot reserve capacity against
+concurrent consumers. Activity therefore publishes the enabled registration
+with an explicit deferral reason, retaining accepted packets and immutable proof.
+Observed API exhaustion, fast mode and public-only mode retain their actual
+reasons; otherwise the reason identifies unavailable shared-budget enforcement.
+This is health visibility and core isolation, not guaranteed fresh collection.
+
+Bounded cache-only/local computation remains available separately.
+`CAO Local Value` runs only after successful default-branch Activity publication,
+checks the exact snapshot and policy digest, and uses the reviewed local-only
+adapter without target credentials. Local-capable modules (currently Optimization)
+may query that snapshot; remote modules may only reuse exact versioned observations.
+Older/custom adapters defer rather than ignoring local-only mode. The job has a
+five-minute ceiling, with two minutes per computation batch and thirty seconds
+per adapter; it does not backfill history. Existing fast, public-only and
+API-limited gates remain. A later Activity snapshot imports completed results.
+The hosted collector uses the same local runtime under a separate lease and
+private snapshot, never the core projection lease.
+
+Opening a report does not trigger collection. A failed acquisition, timeout or
+invalid result leaves previous evidence and its capture/cutoff timestamps intact;
+it is not a fresh success or zero. Explicit operator evaluation and one-time
+publication remain separate, subject to their existing authority and budgets.
 
 ### Daily File Diet collector
 
@@ -109,8 +132,9 @@ The control policy explicitly lists the same six repositories previously
 collected from `scope.allowed-repositories`; this pins Activity enrollment
 without adding targets or activating Daily File Diet itself. Only the exact
 File Diet pair is registered for recurring Value acquisition.
-Registration takes effect after the collector and policy are reviewed and
-deployed together. It does not override `campaigns.dashboard.deploy: false`:
+Registration is visible after the collector and policy are reviewed and
+deployed together; remote acquisition remains deferred as described above.
+It does not override `campaigns.dashboard.deploy: false`:
 this repository intentionally disables standalone Pages deployment because
 Documentation Pages owns the combined site. The existing publication chain is
 CAO Activity, then the CAO Dashboard artifact/cache, then Documentation Pages
@@ -124,14 +148,14 @@ administrator OAuth session.
 
 CAO uses one shared campaign module for both collection paths:
 
-- By default, scheduled `cao operational-value` collection evaluates only the current repository observation and publishes compact numeric records to the canonical data model. Retention keeps one observation per declared cadence bucket: closed cadence-aligned observations remain fixed, while repeated collections replace the latest observation in the still-open bucket.
+- Explicit `cao operational-value` collection evaluates the current repository observation and publishes compact numeric records to the canonical data model. Automatic local-only computation uses the same contract without remote acquisition. Retention keeps one observation per declared cadence bucket: closed cadence-aligned observations remain fixed, while repeated collections replace the latest observation in the still-open bucket.
 - Explicit historical evaluation incrementally fills missing immutable observations and produces the evidence archive, timeline, chart, and definitions page.
 
 Both paths import the same frozen evidence contract, collector, and scoring functions. Default routine collection does not rebuild repository history, and a metric cannot drift between the dashboard record and its historical report.
 
-Accepted operational-value observations are queryable from any local or downloaded canonical SQLite snapshot with `cao query --collection operationalValues`. Querying alone does not publish or reconstruct history. The Activity compute path may explicitly query missing cadence observations for a named campaign while their authoritative source evidence remains in its bounded canonical database; it writes only the resulting numeric observations into the same canonical Activity shard used for current values. No history archive is installed with the campaign. The Dashboard workflow then deploys those canonical records to Pages through the normal Activity snapshot pipeline.
+Accepted operational-value observations are queryable from any local or downloaded canonical SQLite snapshot with `cao query --collection operationalValues`. Querying alone does not publish or reconstruct history. An explicit historical evaluation may query missing cadence observations for a named campaign while their authoritative source evidence remains in its bounded canonical database. The automatic local lane does not request that backfill. No history archive is installed with the campaign. Completed numeric records use the ordinary Activity snapshot pipeline; Dashboard artifact production and the configured Pages deployment owner remain unchanged.
 
-The rolling Activity database is a query source for current observations, not the definition of operational-value history. Explicit evaluation schedules observations from adoption and incrementally preserves accepted snapshots. Git and other immutable repository facts can be reconstructed at historical cutoffs. Ephemeral run, usage, artifact, queue, and tool-call facts can be backfilled only while their source remains available; an expired interval without a contemporaneous snapshot is missing, not zero. The current live Activity publication retains 30 days of operational-value records compacted to each metric's declared cadence plus its latest open-bucket observation, while the explicit evidence archive is the durable since-adoption record.
+The rolling Activity database is a query source for current observations, not the definition of operational-value history. Explicit evaluation schedules observations from adoption and incrementally preserves accepted snapshots. Git and other immutable repository facts can be reconstructed at historical cutoffs. Ephemeral run, usage, artifact, queue, and tool-call facts can be backfilled only while their source remains available; an expired interval without a contemporaneous snapshot is missing, not zero. Compact operational-value history retains its separate 365-day window, compacted to each metric's declared cadence plus its latest open-bucket observation, while the explicit evidence archive is the durable since-adoption record.
 
 ## Standalone design reference
 

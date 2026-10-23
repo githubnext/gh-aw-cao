@@ -497,7 +497,8 @@ static Pages have no direct-publication endpoint; Pages uses Activity transport.
 **Collection is wired automatically by the skill** once its frozen function and
 repository-local recurring collector pass verification. It stages the exact
 pair with `value enable ... --if-absent`, preserving existing registrations and
-explicit disables. Review, commit and deploy those files to start collection.
+explicit disables. Review, commit and deploy those files to publish the reviewed
+registration; registration does not bypass collection admission.
 For manual registration or an intentional re-enable, replace `COLLECTOR_PATH.mjs`
 with that collector's actual path; an evidence file or renderer is not a
 collector:
@@ -510,9 +511,10 @@ gh cao value disable github/gh-aw daily-file-diet
 These commands edit local `.github/workflows/cao.json`; review, commit and deploy
 that policy and collector together. They do not enable the measured workflow,
 enroll repositories, upload executable code or immediately start a collection.
-The existing Activity/hosted collection cycle refreshes only registered,
-in-scope pairs when their frozen cadence is due. No new schedule or model call
-is needed. A failed refresh retains the last accepted capture without changing
+Recurring remote acquisition remains deferred pending enforceable shared API
+budgets. Activity publishes the enabled registration and actual deferral reason,
+while bounded local-only computations run outside its publication path.
+A failed refresh retains the last accepted capture without changing
 its timestamp or inventing a zero. Disable stops future collection, not history.
 An explicit disable persists even if the skill is used again.
 See the [collector contract](operational-value.md#recurring-collection-after-opt-in).

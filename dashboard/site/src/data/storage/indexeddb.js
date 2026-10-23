@@ -18,7 +18,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 44;
+export const DATABASE_VERSION = 45;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 
@@ -52,6 +52,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'issues',
   'operationalValues',
   'operationalValueEvidence',
+  'workflowValueCollections',
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
@@ -132,6 +133,10 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
     }
   },
   operationalValueEvidence: {
+    keyPath: 'id',
+    indexes: { byRepository: 'repositoryId', byWorkflow: 'workflowId' }
+  },
+  workflowValueCollections: {
     keyPath: 'id',
     indexes: { byRepository: 'repositoryId', byWorkflow: 'workflowId' }
   },
@@ -796,7 +801,7 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
               validRunIds.add(id);
               referencedWorkflowIds.add(workflowId);
               referencedRepositoryIds.add(repositoryId);
-            } else if (storeName === 'operationalValueEvidence') {
+            } else if (storeName === 'operationalValueEvidence' || storeName === 'workflowValueCollections') {
               const repositoryId = String(record.repositoryId);
               const workflowId = String(record.workflowId);
               if (!repositoryIds.has(repositoryId) || workflowRepositories.get(workflowId) !== repositoryId) {

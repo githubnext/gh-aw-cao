@@ -27,6 +27,7 @@ try {
 }
 if (
   request?.schemaVersion !== 1
+  || (request.localOnly !== undefined && typeof request.localOnly !== "boolean")
   || typeof request.timestamp !== "string"
   || Number.isNaN(Date.parse(request.timestamp))
   || !Array.isArray(request.repositories)
@@ -93,11 +94,13 @@ for (const moduleFile of moduleFiles) {
     valueIds: definition.metrics.map((metric) => `${definition.slug}.${metric.id}`),
     ...(valueModule.historyBatch === true ? { historyBatch: true } : {}),
   }));
+  if (request.localOnly && request.disabledWorkflows?.includes(definition.slug)) continue;
 
   const supported = new Set(
     definition.evidence.repositories.map((repository) => String(repository).toLowerCase()),
   );
-  const repositories = request.repositories.filter((repository) => supported.has(repository.toLowerCase()));
+  const repositories = request.repositories.filter((repository) => supported.has(repository.toLowerCase())
+    && !(request.localOnly && request.disabledCollections?.includes(`${repository.toLowerCase()}:${definition.slug}`)));
   if (repositories.length === 0) continue;
 
   const { durationDays, maturationDays } = definition.evidence.window;
@@ -176,10 +179,16 @@ for (const moduleFile of moduleFiles) {
     }
   }
 
+  if (request.localOnly && valueModule.localCollection !== true) {
+    console.log(JSON.stringify({ kind: "operational_value_deferred", workflowSlug: definition.slug,
+      reason: "Remote acquisition requires enforceable shared API admission; retained evidence is unchanged." }));
+    continue;
+  }
   let collections;
   try {
     collections = await collectBatch(windows, {
       database: request.database,
+      ...(request.localOnly ? { localOnly: true } : {}),
       ...(history ? { history: true } : {}),
     });
   } catch (error) {

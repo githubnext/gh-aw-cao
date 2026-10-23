@@ -55,6 +55,7 @@ the exact identities and parent relationships.
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
 | **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a campaign-defined numeric repository metric. |
 | **Operational Value Evidence** | Deterministic repository, workflow, metric, and metric-version identity | Repository and Workflow | Retains a coherent evidence packet connecting intent, safe outputs, accepted implementations, and independent repository snapshots. |
+| **Workflow Value Collection** | Deterministic repository and workflow identity | Repository and Workflow | Retains the reviewed registration and latest collection decision separately from actual attempts and accepted capture/cutoff clocks. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -122,7 +123,7 @@ The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnex
 The canonical model is version 34. The browser database is
 `gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
+`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `workflowValueCollections`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.

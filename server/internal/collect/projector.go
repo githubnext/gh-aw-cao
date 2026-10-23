@@ -18,7 +18,6 @@ import (
 	"github.com/githubnext/gh-cao/server/internal/ingest"
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/operational"
-	"github.com/githubnext/gh-cao/server/internal/operationalvalue"
 	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
@@ -215,13 +214,6 @@ func (p Projector) project(ctx context.Context, force bool) (ingest.Result, erro
 		return ingest.Result{}, fmt.Errorf("record projection completion: %w", err)
 	}
 	projectorLog.Printf("activated dashboard data revision=%d sources=%d", result.Revision, len(result.Counts))
-	revision, err := p.refreshWorkflowValues(ctx)
-	if revision > result.Revision {
-		result.Revision = revision
-	}
-	if err != nil {
-		projectorLog.Printf("opted-in workflow Value collection failed; retaining accepted evidence")
-	}
 	return result, nil
 }
 
@@ -272,18 +264,10 @@ func (p Projector) refreshCompaction(ctx context.Context) error {
 		}
 		projectorLog.Printf("inventory discovery failed; retaining the previous valid inventory")
 	}
-	if err := p.refreshManifest(ctx); err != nil {
-		return err
+	if err := p.refreshWorkflowValueHealth(ctx); err != nil {
+		projectorLog.Printf("Value collection health could not be refreshed; retaining the previous dated decisions")
 	}
-	if p.Tokens != nil {
-		if err := p.refreshOperationalValues(ctx); err != nil {
-			// Match the Actions profile: operational value is best-effort and
-			// must not prevent newer Activity evidence from being projected.
-			projectorLog.Printf("operational value reconstruction failed; continuing without refreshed values")
-		}
-		return p.refreshManifest(ctx)
-	}
-	return nil
+	return p.refreshManifest(ctx)
 }
 
 // refreshManifest regenerates payload-hashes.json, gh-aw-logs-runs, and
@@ -300,78 +284,6 @@ func (p Projector) refreshManifest(ctx context.Context) error {
 		"--output", p.Lake.ManifestPath(),
 	}
 	return p.run(ctx, arguments)
-}
-
-// refreshOperationalValues collects current outcomes from the retained Activity
-// projection without reconstructing historical windows, using
-// one installation-scoped token per enrolled repository.
-func (p Projector) refreshOperationalValues(ctx context.Context) error {
-	repositories, err := p.enrolledRepositories(ctx)
-	if err != nil {
-		return err
-	}
-	if len(repositories) == 0 {
-		return nil
-	}
-	workspace, err := os.MkdirTemp("", "cao-operational-value-")
-	if err != nil {
-		return fmt.Errorf("create operational value workspace: %w", err)
-	}
-	defer func() {
-		_ = os.RemoveAll(workspace)
-	}()
-	database := filepath.Join(workspace, "activity.sqlite")
-	retentionDays := strconv.Itoa(p.windowDays())
-	if err := p.run(ctx, []string{
-		filepath.Join(p.CatalogRoot, "activity", "cao.mjs"),
-		"ingest-jsonl",
-		"--database", database,
-		"--runs-dir", p.Lake.RunsDirectory(),
-		"--records-dir", p.Lake.RecordsDirectory(),
-		"--retention-days", retentionDays,
-		"--run-retention-days", retentionDays,
-	}); err != nil {
-		return err
-	}
-	observedAt := time.Now().UTC()
-	output := p.Lake.operationalValuesPath()
-	for _, repository := range repositories {
-		installationID, err := p.Enrollment.InstallationFor(ctx, repository)
-		if err != nil {
-			return fmt.Errorf("resolve installation for %s: %w", repository, err)
-		}
-		if installationID <= 0 {
-			return fmt.Errorf("resolve installation for %s: no installation is enrolled", repository)
-		}
-		reserve, err := p.rateLimitReserve(ctx, installationID)
-		if err != nil {
-			return err
-		}
-		token, err := p.Tokens.InstallationToken(ctx, installationID)
-		if err != nil {
-			return err
-		}
-		environment := append(collectionEnvironment(p.GitHubAPIURL), []string{
-			"CAO_OPERATIONAL_VALUE_GH_TOKEN=" + token,
-			"GH_TOKEN=" + token,
-			"CAO_GITHUB_API_MIN_REMAINING=" + strconv.Itoa(reserve),
-		}...)
-		result, err := operationalvalue.Collect(ctx, operationalvalue.Config{
-			Root: p.CatalogRoot, Database: database, Output: output,
-			ObservedAt: observedAt, Repositories: []string{repository},
-			Retention:  operationalvalue.DefaultRetention,
-			NodeBinary: p.node(), GitHubBinary: p.GitHubBinary,
-			Environment: environment, RedactValues: []string{token},
-			RateLimitReserve: reserve,
-		})
-		if err != nil {
-			return err
-		}
-		if len(result.Warnings) > 0 {
-			projectorLog.Printf("operational value adapters failed count=%d", len(result.Warnings))
-		}
-	}
-	return nil
 }
 
 func (p Projector) rateLimitReserve(ctx context.Context, installationID int64) (int, error) {

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValueEvidence','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValueEvidence','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','$workflowValueCollections','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -1148,6 +1148,41 @@ CREATE TABLE IF NOT EXISTS transactions (
   CHECK (bit_length(present_fields) = 16),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS workflow_value_collections (
+  namespace TEXT NOT NULL,
+  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
+  present_fields BIT VARYING NOT NULL,
+  id TEXT NOT NULL CHECK (id <> ''),
+  schema_version BIGINT,
+  repository TEXT,
+  workflow TEXT,
+  source_path TEXT,
+  observed_at TIMESTAMPTZ,
+  registration TEXT,
+  collector TEXT,
+  state TEXT,
+  reason_code TEXT,
+  reason TEXT,
+  policy_digest TEXT,
+  last_attempt_at TIMESTAMPTZ,
+  last_attempt_outcome TEXT,
+  repository_id TEXT,
+  workflow_id TEXT,
+
+  PRIMARY KEY (namespace, id),
+  UNIQUE (namespace, ordinal),
+  CHECK (bit_length(present_fields) = 16),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (repository_id IS NOT NULL AND repository_id <> ''),
+  FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
+  CHECK (workflow_id IS NOT NULL AND workflow_id <> ''),
+  FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE INDEX IF NOT EXISTS workflow_value_collections_repository_id ON workflow_value_collections (namespace, repository_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS workflow_value_collections_workflow_id ON workflow_value_collections (namespace, workflow_id, ordinal);
 
 CREATE TABLE IF NOT EXISTS work_items (
   namespace TEXT NOT NULL,

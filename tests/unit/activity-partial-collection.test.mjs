@@ -199,9 +199,15 @@ test("partial fragments skip extra API work without bypassing authentication and
   const steps = workflow.jobs.collect.steps;
   assert.equal(steps.find(({ name }) => name === "Enrich owner-scoped issue statuses").if,
     "steps.activity-logs.outputs.rate-limited != 'true' && matrix.publicOnly != true");
-  const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
+  const value = steps.find(({ name }) => name === "Retain Value evidence and publish collection health");
   assert.equal(value.env.REPORT_RATE_LIMITED, "${{ steps.activity-logs.outputs.rate-limited }}");
   assert.ok(value.run.indexOf('cp "$retained_values" "$value_output"') < value.run.indexOf('"$REPORT_RATE_LIMITED" == "true"'));
+  assert.match(value.run, /reason=api-budget/);
+  assert.match(value.run, /--defer "\$reason"/);
+  assert.equal(value.env.GH_TOKEN, "");
+  assert.equal(value["timeout-minutes"], 1);
+  assert.equal(value["continue-on-error"], true);
+  assert.doesNotMatch(value.run, /cao\.mjs operational-value|gh api/);
   assert.equal(steps.find(({ name }) => name === "Select independent activity credential")["continue-on-error"], undefined);
   assert.equal(steps.find(({ name }) => name === "Validate repository visibility boundary")["continue-on-error"], undefined);
   assert.match(workflow.jobs.index.if, /needs\.collect\.result == 'success'/);

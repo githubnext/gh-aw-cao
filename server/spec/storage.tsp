@@ -490,6 +490,28 @@ model operationalValueEvidence {
   facts: Values.OperationalValueFact[];
 }
 
+/** Latest reviewed registration and collection decision, independent of outcome evidence. */
+model workflowValueCollections {
+  id: string;
+  schemaVersion: int64;
+  repository: string;
+  workflow: string;
+  sourcePath: string;
+  observedAt: utcDateTime;
+  registration: string;
+  collector?: string;
+  state: string;
+  reasonCode: string;
+  reason: string;
+  policyDigest: string;
+  lastAttemptAt?: utcDateTime;
+  lastAttemptOutcome?: string;
+  @parent("repositories")
+  repositoryId: string;
+  @parent("workflows")
+  workflowId: string;
+}
+
 model operationalValues {
   @minValueExclusive(0)
   `cadence-days`?: decimal;

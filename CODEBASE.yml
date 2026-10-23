@@ -283,7 +283,10 @@ components:
     responsibility: authenticate explicit administrator publication of original bounded evidence through POST /api/v1/value, with PostgreSQL namespace-locked atomic packet/fact ownership preserved across snapshot replacement, idempotent exact retries, frozen contracts and immutable historical measurements; never register or execute uploaded code
   workflow_value_collection:
     path: activity/workflow-values.mjs
-    responsibility: refresh exact repository/workflow registrations from reviewed local source on existing Activity and hosted collection cycles; the skill stages registration after frozen function and bounded collector verification, preserving existing selections and explicit disables; intersect effective collection scope, preserve frozen cadence and reusable proof, retain prior capture on failure and history on disable
+    responsibility: publish reviewed exact-registration collection health through the canonical browser/SQLite/PostgreSQL pipeline independently of accepted evidence; preserve actual-attempt and capture/cutoff clocks, explicit disables, scope and proof; defer recurring remote acquisition pending enforceable shared per-request budgets rather than spending ordinary Activity headroom
+  local_value_computation:
+    path: activity/local-values.mjs
+    responsibility: compute bounded local values only after eligible policy-matched Activity publication, using the reviewed local-only standard adapter, explicit local-capability modules or exact versioned cache reuse; no target credentials or automatic backfill; two-minute batch and thirty-second adapter limits; hosted work owns a separate lease and verified snapshot without the projection lease or long evidence lock; a later ordinary snapshot publishes results without a compute/publication retry loop
   package_problem_clustering:
     path: <operation>/problem-clustering.mjs
     responsibility: compute bounded package problem rows from a private Activity SQLite snapshot through the cao cluster-problems command
@@ -425,6 +428,9 @@ dependencies:
   - computations -> cao_cli
   - package_operational_value -> cao_cli
   - package_operational_value -> activity_jsonl_shards
+  - workflow_value_collection -> activity_jsonl_shards
+  - local_value_computation -> package_operational_value
+  - local_value_computation -> activity_jsonl_shards
   - sqlite_projection -> package_problem_clustering
   - package_problem_clustering -> cao_cli
   - activity_jsonl_shards -> indexeddb_projection
@@ -622,6 +628,7 @@ invariants:
   - "Browsers and external clients MUST NOT receive Redis or Postgres endpoints, credentials, keys, or storage-specific representations."
   - "Computations MUST consume canonical evidence, preserve evidence quality and provenance, and emit bounded, versioned results."
   - "Operational Value evidence MUST retain one bounded current packet per target repository, workflow and frozen contribution metric/version, with acquired contract, output, acceptance, lineage, independent snapshot, quality and coverage facts as typed relational children. Atomic packet replacement MUST preserve one coherent evidence revision independently of seven-day Run-detail retention. Retained source identity MUST materialize observed Repository and Workflow parents without inferring registration or activation. Packet cutoff/capture provenance MUST supply metadata without asserting complete coverage or current freshness. The operational-value-evidence logical source MUST only normalize facts; counts, comparisons, movement and report presentation belong to declarative queries. Import MUST NOT grant target authority and navigation MUST NOT acquire evidence."
+  - "Workflow Value collection decisions MUST remain separate canonical facts, visible before a report and without inventing attempts or capture/cutoff freshness. Stale/conflicting decisions and regressed attempt history MUST fail closed. Recurring remote acquisition MUST defer until enforceable shared per-request admission protects core Activity; a separate worker is not separate quota. Bounded local-only work MUST remain independent of ordinary publication, preserve scope, disables and existing fast/public-only/API-limited gates, and retain accepted evidence on failure."
   - "Direct value publication MUST require PostgreSQL, existing observed parents, hosted administrator step-up and CSRF or local loopback bearer. Publication MUST atomically preserve owned packet/fact rows and required structural parents across Activity replacement, reject stale/conflicting captures, frozen-contract drift and immutable-history rewrites, and leave exact retries revision-neutral. No uploaded evaluator code, PAT fallback, enrollment or implicit collection is permitted."
   - "Recurring workflow-value collection MUST require exact reviewed opt-in under control-plane.campaigns.activity.workflow-values and a confined local collector deployed with policy. Existing Activity and hosted collection cycles MUST intersect effective collection scope and frozen cadence; failed refreshes MUST retain the original accepted capture without invented freshness or zeros. Disable MUST stop future collection without deleting history. Navigation, upload and discovery MUST NOT enable collection or introduce a new schedule or model call."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."

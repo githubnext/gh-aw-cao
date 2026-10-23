@@ -1,6 +1,7 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import {
   auditCurationRunFacts, discardAudit, AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION
 } from '../model/audit-curation.js';
@@ -94,6 +95,10 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       ? withStorageMetadata(storeName, mergeOperationalValueEvidence(
           withoutStorageMetadata(previous), withoutStorageMetadata(record)
         ))
+      : previous && storeName === 'workflowValueCollections'
+      ? withStorageMetadata(storeName, mergeWorkflowValueCollection(
+          withoutStorageMetadata(previous), withoutStorageMetadata(record)
+        ))
       : record);
   }
   const incoming = [...unique.values()];
@@ -133,6 +138,10 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       if (merged !== incomingRun) record = withStorageMetadata(storeName, merged);
     } else if (storeName === 'operationalValueEvidence') {
       record = withStorageMetadata(storeName, mergeOperationalValueEvidence(
+        existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
+      ));
+    } else if (storeName === 'workflowValueCollections') {
+      record = withStorageMetadata(storeName, mergeWorkflowValueCollection(
         existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
       ));
     } else if (EVIDENCE_DEFINITION_STORES.has(storeName)) {

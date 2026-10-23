@@ -9,6 +9,7 @@ import { adaptCachedGhAwJsonlStream } from '../../dashboard/site/src/data/adapte
 import { GH_AW_JSONL_INGESTION_VERSION, NORMALIZED_JSONL_INGESTION_VERSION } from '../../dashboard/site/src/data/ingest/coordinator.js';
 import { normalize } from '../../dashboard/site/src/data/normalize/index.js';
 import { mergeOperationalValueEvidence } from '../../dashboard/site/src/data/model/operational-value-evidence.js';
+import { mergeWorkflowValueCollection } from '../../dashboard/site/src/data/model/workflow-value-collection.js';
 import { CANONICAL_SCHEMA_VERSION, mergeEvidenceDefinition } from '../../dashboard/site/src/data/model/schema.js';
 import { mergeActivityStructuralRecord } from '../../dashboard/site/src/data/storage/retention.js';
 import { NORMALIZED_COLLECTIONS } from '../cli-usage.mjs';
@@ -98,6 +99,10 @@ async function consolidatePhasePayloads(
       const existing = records.get(id);
       if (entry.collection === 'operationalValueEvidence') {
         records.set(id, mergeOperationalValueEvidence(existing, record));
+        continue;
+      }
+      if (entry.collection === 'workflowValueCollections') {
+        records.set(id, mergeWorkflowValueCollection(existing, record));
         continue;
       }
       // Mirrors canonical ingestion precedence: discovery owns repository and

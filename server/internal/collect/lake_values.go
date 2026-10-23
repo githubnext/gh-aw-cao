@@ -16,6 +16,9 @@ func (l Lake) filterOperationalValues(keep func(string) bool) error {
 	if err := operationalvalue.FilterRepositories(l.operationalValuesPath(), keep); err != nil {
 		return err
 	}
+	if err := operationalvalue.FilterCollectionRepositories(filepath.Join(l.ShardDirectory(), "workflow-values-collections.jsonl"), keep); err != nil {
+		return err
+	}
 	// Normalized files are disposable, potentially shared projections, not
 	// independent evidence. Drop an affected file as a unit and let compaction
 	// regenerate it from the preserved raw sources, rather than editing hashes,
@@ -73,7 +76,7 @@ func containsWithdrawnValue(path string, keep func(string) bool) (bool, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
 			return false, errors.New("invalid normalized evidence while erasing operational values")
 		}
-		if item.Kind != "record" || item.Collection != "operationalValues" {
+		if item.Kind != "record" || item.Collection != "operationalValues" && item.Collection != "workflowValueCollections" {
 			continue
 		}
 		coordinate, found := strings.CutPrefix(item.Record.RepositoryID, "repository:")

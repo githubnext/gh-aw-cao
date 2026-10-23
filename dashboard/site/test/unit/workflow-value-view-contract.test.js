@@ -81,7 +81,8 @@ describe('native workflow value production contract', () => {
   it('declares a shared card, native report, complete source contract and exact-item route', () => {
     const value = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === 'value');
     expect(value).toMatchObject({ title: 'Value', icon: 'trophy' });
-    expect(value.views[0]).toMatchObject({ data: { source: contract.query }, list: { card: contract.card } });
+    expect(value.views[0]).toMatchObject({ data: { source: 'value-registered-collections' }, list: { card: contract.collectionCard } });
+    expect(value.views[1]).toMatchObject({ data: { source: contract.query }, list: { card: contract.card } });
     expect(dashboard.navigation.flatMap((/** @type {{ pages: string[] }} */ group) => group.pages)).toContain('value');
     expect(value.route?.tabs).toBeUndefined();
     expect(value.views[0]['empty-message']).not.toContain('Repository measurements');
@@ -95,6 +96,10 @@ describe('native workflow value production contract', () => {
       query.name.startsWith('operational-value-'))).toBe(false);
     const page = dashboard.pages.find((/** @type {{ id: string }} */ page) => page.id === contract.page);
     expect(page.views[0]).toMatchObject({
+      id: contract.collectionView, data: { source: contract.collectionQuery, arguments: [{ name: 'workflow', field: 'workflow-route' }] },
+      mark: 'list', list: { card: contract.collectionCard }
+    });
+    expect(page.views[1]).toMatchObject({
       id: contract.view, data: { source: contract.query, 'route-field': 'workflow-route' },
       mark: 'list', list: { card: contract.card, drill: { page: contract.reportPage } }
     });
@@ -110,7 +115,7 @@ describe('native workflow value production contract', () => {
 
   it('resolves lower-is-better movement, all report evidence and exact snapshot items from emitted canonical facts', async () => {
     const packet = await publish(fileLedger());
-    const [cards] = await execute(contract.page, { workflow: contract.route });
+    const [, cards] = await execute(contract.page, { workflow: contract.route });
     expect(cards.rows).toHaveLength(1);
     expect(cards.rows[0]).toMatchObject({
       'change-label': contract.headline, movement: 'Worse', 'reference-value': 16, 'current-value': 54,
@@ -129,12 +134,12 @@ describe('native workflow value production contract', () => {
     expect(snapshotSources[0].rows).toHaveLength(1);
     expect(snapshotSources[1].rows).toHaveLength(54);
     expect(snapshotSources[1].rows[0].url).toMatch(/^https:\/\/github.com\/octo\/example\/blob\/abc123\/pkg\/file-\d+.go$/);
-    expect((await execute(contract.page, { workflow: 'octo/other:.github/workflows/verify-bugs.md' }))[0].rows).toEqual([]);
+    expect((await execute(contract.page, { workflow: 'octo/other:.github/workflows/verify-bugs.md' }))[1].rows).toEqual([]);
   });
 
   it('interprets the same native movement using the frozen desired direction', async () => {
     await publish(fileLedger('increase'));
-    expect((await execute(contract.page, { workflow: contract.route }))[0].rows[0]).toMatchObject({
+    expect((await execute(contract.page, { workflow: contract.route }))[1].rows[0]).toMatchObject({
       'change-label': '↑ +38 files · Better', movement: 'Better', 'direction-label': '↑ Higher is better'
     });
   });
@@ -158,7 +163,7 @@ describe('native workflow value production contract', () => {
     ledger.events[0].observedAt = '2026-09-02T00:00:00Z';
     ledger.events[0].lineage[0].at = '2026-08-31T00:00:00Z';
     await publish(ledger);
-    expect((await execute(contract.page, { workflow: contract.route }))[0].rows[0]).toMatchObject({
+    expect((await execute(contract.page, { workflow: contract.route }))[1].rows[0]).toMatchObject({
       'complete-report': true, 'recent-result': 0, 'previous-result': 1
     });
   });
@@ -167,20 +172,20 @@ describe('native workflow value production contract', () => {
     const ledger = structuredClone(ledgerFixture);
     ledger.repositoryState.observations.splice(0, 1);
     await publish(ledger);
-    expect((await execute(contract.page, { workflow: contract.route }))[0].rows[0]).toMatchObject({
+    expect((await execute(contract.page, { workflow: contract.route }))[1].rows[0]).toMatchObject({
       'current-value': 0, 'native-change': null, movement: 'Comparison unavailable'
     });
     ledger.repositoryState.observations.unshift({ ...ledger.repositoryState.observations[0], at: '2026-10-01T00:00:00Z' });
     ledger.observedAt = '2026-10-20T12:01:00Z';
     await publish(ledger);
-    expect((await execute(contract.page, { workflow: contract.route }))[0].rows[0]).toMatchObject({
+    expect((await execute(contract.page, { workflow: contract.route }))[1].rows[0]).toMatchObject({
       'native-change': 0, movement: 'Unchanged', 'change-label': 'Unchanged'
     });
   });
 
   it('keeps absent output, snapshot and quality evidence unknown', async () => {
     await publish({ ...structuredClone(ledgerFixture), outputs: undefined, repositoryState: undefined, checks: undefined });
-    const [cards] = await execute(contract.page, { workflow: contract.route });
+    const [, cards] = await execute(contract.page, { workflow: contract.route });
     expect(cards.rows[0]).toMatchObject({
       'output-count': null, 'receipt-outputs': null, 'current-value': null,
       'native-change': null, movement: 'Comparison unavailable', 'direction-label': 'Direction not retained',
@@ -194,7 +199,7 @@ describe('native workflow value production contract', () => {
     ledger.outputs.items = [];
     ledger.coverage[0].status = 'complete';
     await publish(ledger);
-    const [cards] = await execute(contract.page, { workflow: contract.route });
+    const [, cards] = await execute(contract.page, { workflow: contract.route });
     expect(cards.rows[0]).toMatchObject({
       'output-count': 0, 'receipt-outputs': 0, 'accepted-implementations': 0,
       'native-result': 0, 'complete-report': true, 'recent-result': 0, 'previous-result': 0
@@ -208,9 +213,45 @@ describe('native workflow value production contract', () => {
     newer.metric.version = 'v2';
     newer.repositoryState.observations.splice(0, 1);
     await publish(newer);
-    const [cards] = await execute(contract.page, { workflow: contract.route });
+    const [, cards] = await execute(contract.page, { workflow: contract.route });
     expect(cards.rows).toHaveLength(1);
     expect(cards.rows[0]).toMatchObject({ 'metric-version': 'v2', movement: 'Comparison unavailable' });
     expect((await execute(contract.reportPage, { report: older.id }))[0].rows[0]['change-label']).toBe(contract.headline);
+  });
+
+  it('publishes real registration decisions through the producer, canonical storage and worker before any packet exists', async () => {
+    const policy = join(directory, 'cao.json');
+    writeFileSync(policy, JSON.stringify({ version: 1, 'gh-aw-version': 'v0.93.1', 'control-plane': {
+      scope: { 'allowed-repositories': ['octo/example'] }, activity: { repositories: ['octo/example'] },
+      campaigns: { activity: { 'workflow-values': [{
+        repository: 'octo/example', workflow: 'verify-bugs', collector: 'absent-by-design.mjs'
+      }] } }
+    } }));
+    const healthOutput = join(directory, 'health.jsonl');
+    execFileSync(process.execPath, ['activity/workflow-values.mjs',
+      '--root', directory, '--policy', policy, '--database', join(directory, 'unused.sqlite'),
+      '--output', join(directory, 'packets.jsonl'), '--workspace', join(directory, 'proof'),
+      '--repository', 'octo/example', '--healthOutput', healthOutput, '--defer', 'api-budget'
+    ], { cwd: repository, stdio: 'pipe' });
+    const checkedAt = JSON.parse(readFileSync(healthOutput, 'utf8')).workflow_value_collection.observedAt;
+    await ingestCachedGhAwJsonl(indexedDB, readFileSync(healthOutput, 'utf8'), {
+      payloadScope: 'first-health', now: Date.parse(checkedAt)
+    });
+    const [health, reports] = await execute(contract.page, { workflow: contract.route });
+    expect(health.rows).toHaveLength(1);
+    expect(health.rows[0]).toMatchObject({
+      registration: 'enabled', 'collection-state': 'deferred', 'reason-code': 'api-budget',
+      'checked-at': checkedAt, 'captured-at': null, 'evidence-cutoff': null, 'evidence-state': 'No retained capture'
+    });
+    expect(health.rows[0]['last-attempt-at']).toBeUndefined();
+    expect(reports.rows).toEqual([]);
+    expect((await execute('value', {}))[0].rows).toEqual(health.rows);
+    const packet = await publish();
+    const [retained] = await execute(contract.page, { workflow: contract.route });
+    expect(retained.rows[0]).toMatchObject({
+      'collection-state': 'deferred', 'captured-at': packet.observedAt,
+      'evidence-cutoff': packet.windowEnd, 'evidence-state': 'Retained evidence available'
+    });
+    expect((await execute(contract.page, { workflow: 'octo/other:.github/workflows/verify-bugs.md' }))[0].rows).toEqual([]);
   });
 });

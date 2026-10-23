@@ -227,8 +227,16 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
   if (roots.length === 0) throw new Error('No owner-scoped activity fragments were downloaded');
   const inventories = [];
   const incoming = new Map();
+  const localValueRequests = [];
   for (const fragment of roots) {
     inventories.push(JSON.parse(await readFile(path.join(fragment, 'inventory-sources.json'), 'utf8')));
+    try {
+      const requests = JSON.parse(await readFile(path.join(fragment, 'gh-aw-logs-shards', 'workflow-value-local.json'), 'utf8'));
+      if (!Array.isArray(requests)) throw new Error('Invalid owner-scoped local Value requests');
+      localValueRequests.push(...requests);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
     const proofs = path.join(fragment, 'workflow-value-workspaces');
     try {
       if ((await lstat(proofs)).isSymbolicLink()) throw new Error('Workflow evidence workspaces must not be symlinks');
@@ -254,9 +262,10 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
   const destination = path.join(outputDirectory, 'gh-aw-logs-shards');
   // Each successful collection fragment already includes its retained seed data.
   for (const file of await shardPaths(destination)) {
-    if (!incoming.has(path.basename(file))) await rm(file);
+    if (!incoming.has(path.basename(file)) && path.basename(file) !== 'operational-values-local.jsonl') await rm(file);
   }
   for (const [name, file] of incoming) await rename(file, path.join(destination, name));
   await writeFile(path.join(outputDirectory, 'inventory-sources.json'), `${JSON.stringify(inventory, null, 2)}\n`);
+  await writeFile(path.join(destination, 'workflow-value-local.json'), `${JSON.stringify(localValueRequests)}\n`);
   return { fragments: roots.length, shards: incoming.size };
 }

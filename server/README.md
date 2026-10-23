@@ -2855,8 +2855,20 @@ advances the revision. Value-dependent queries key their bounded result cache
 by that revision; other query caches retain their existing fixed lifetime.
 This endpoint does not activate ongoing collection: explicitly register a
 reviewed collector in policy through `gh cao value enable`, then deploy policy
-and collector together. Recurring work uses the existing collector's enrolled
-repository credentials, not an administrator's browser session.
+and collector together. Recurring remote acquisition remains deferred pending
+enforceable shared-budget admission. Health publication is credential-free and
+keeps enabled registrations visibly deferred, with original capture/cutoff dates.
+It does not mint a token or treat a quota preflight as a shared reservation.
+
+Bounded local-only computation has its own `value-local` lease, a verified private
+Activity snapshot and one attempt per completed projection generation. It does
+not hold the projection lease or evidence lock while computing. The two-minute
+batch/30-second adapter budgets cancel the owned process tree; final publication
+uses a short evidence lock and rechecks enrollment. Completed output waits for
+the next ordinary projection, avoiding a Value-generated retry loop. An
+unsupported adapter, missing input, timeout or failure preserves accepted history.
+This improves health visibility and core isolation, not guaranteed fresh Value
+collection or separate capacity for external consumers.
 
 The hosted dashboard shows a user icon at the lower left of the navigation.
 It appears only after the server confirms an authenticated GitHub session and

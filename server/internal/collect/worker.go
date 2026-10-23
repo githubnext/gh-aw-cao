@@ -120,13 +120,19 @@ func (w Worker) Run(ctx context.Context) error {
 	if w.Project {
 		projectionCtx, cancelProjection := context.WithCancel(ctx)
 		projectionDone := make(chan struct{})
+		valueDone := make(chan struct{})
 		go func() {
 			defer close(projectionDone)
 			w.projectionLoop(projectionCtx)
 		}()
+		go func() {
+			defer close(valueDone)
+			w.localValueLoop(projectionCtx)
+		}()
 		defer func() {
 			cancelProjection()
 			<-projectionDone
+			<-valueDone
 		}()
 	}
 	for ctx.Err() == nil {
@@ -324,13 +330,6 @@ func (w Worker) projectionLoop(ctx context.Context) {
 			continue
 		}
 		if !pending {
-			revision, err := w.Projector.CollectWorkflowValues(ctx)
-			if revision > 0 && w.OnProjection != nil {
-				w.OnProjection(revision)
-			}
-			if err != nil && !errors.Is(err, ErrProjectionBusy) {
-				workerLog.Printf("opted-in workflow Value collection failed")
-			}
 			continue
 		}
 		result, err := w.Projector.Project(ctx)
@@ -342,6 +341,21 @@ func (w Worker) projectionLoop(ctx context.Context) {
 		}
 		if w.OnProjection != nil {
 			w.OnProjection(result.Revision)
+		}
+	}
+}
+
+func (w Worker) localValueLoop(ctx context.Context) {
+	ticker := time.NewTicker(w.Projector.minInterval())
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := w.Projector.CollectLocalValues(ctx); err != nil && !errors.Is(err, ErrLocalValueBusy) && ctx.Err() == nil {
+				workerLog.Printf("local Value computation deferred or failed; core Activity publication is independent")
+			}
 		}
 	}
 }

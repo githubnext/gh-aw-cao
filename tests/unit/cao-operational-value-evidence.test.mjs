@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { exportOperationalValueEvidence, operationalValueEvidenceJsonl } from '../../.github/skills/add-operational-value/scripts/export-evidence.mjs';
@@ -74,6 +74,16 @@ test('shared writePulse publishes adjacent replayable evidence and normal CLI ca
     writePulse(ledger, output);
     const evidence = output.replace(/\.html$/, '-evidence.jsonl');
     assert.deepEqual(JSON.parse(readFileSync(evidence)), JSON.parse(operationalValueEvidenceJsonl(ledger)));
+    const policy = path.join(directory, 'cao.json');
+    writeFileSync(policy, JSON.stringify({ version: 1, 'gh-aw-version': 'v0.93.1', 'control-plane': {
+      scope: { 'allowed-repositories': ['octo/example'] }, activity: { repositories: ['octo/example'] },
+      campaigns: { activity: { 'workflow-values': [{
+        repository: 'octo/example', workflow: 'verify-bugs', collector: 'collectors/not-imported.mjs',
+      }] } },
+    } }));
+    execFileSync(process.execPath, ['activity/workflow-values.mjs', '--root', directory, '--policy', policy,
+      '--output', evidence, '--healthOutput', path.join(directory, 'collection.jsonl'), '--repository', 'octo/example',
+      '--defer', 'api-budget'], { stdio: 'pipe' });
     const database = path.join(directory, 'dashboard.sqlite');
     execFileSync(process.execPath, ['activity/cao.mjs', 'ingest-jsonl', '--database', database,
       '--input-dir', directory, '--retention-days', 'all'], { stdio: 'pipe' });
@@ -81,15 +91,35 @@ test('shared writePulse publishes adjacent replayable evidence and normal CLI ca
       '--database', database, '--collection', 'operationalValueEvidence'], { encoding: 'utf8' }));
     assert.equal(rows.length, 1);
     assert.equal(rows[0].facts.length, exportOperationalValueEvidence(ledger).facts.length);
+    const health = JSON.parse(execFileSync(process.execPath, ['activity/cao.mjs', 'query',
+      '--database', database, '--collection', 'workflowValueCollections'], { encoding: 'utf8' }));
+    assert.equal(health.length, 1);
+    assert.equal(health[0].registration, 'enabled');
+    assert.equal(health[0].reasonCode, 'api-budget');
+    assert.equal(health[0].lastAttemptAt, undefined);
+    assert.equal(rows[0].observedAt, ledger.observedAt);
     const published = path.join(directory, 'normalized');
+    const runPhase = path.join(published, 'runs');
+    const recordPhase = path.join(published, 'records');
     execFileSync(process.execPath, ['activity/cao.mjs', 'hash-payloads', '--database', database,
-      '--shard-dir', directory, '--normalized-dir', published, '--output', path.join(directory, 'payload-hashes.json')],
+      '--shard-dir', directory, '--runs-dir', runPhase, '--records-dir', recordPhase,
+      '--output', path.join(directory, 'payload-hashes.json')],
     { stdio: 'pipe' });
-    const records = readdirSync(published).filter(name => name.endsWith('.jsonl')).flatMap(name =>
-      readFileSync(path.join(published, name), 'utf8').trim().split('\n').map(line => JSON.parse(line)));
+    const records = [runPhase, recordPhase].flatMap(phase =>
+      readdirSync(phase).filter(name => name.endsWith('.jsonl')).flatMap(name =>
+        readFileSync(path.join(phase, name), 'utf8').trim().split('\n').map(line => JSON.parse(line))));
     const packet = records.find(record => record.collection === 'operationalValueEvidence')?.record;
     assert.equal(packet.id, rows[0].id);
     assert.equal(packet.facts.length, rows[0].facts.length);
+    const normalizedHealth = records.find(record => record.collection === 'workflowValueCollections')?.record;
+    assert.equal(normalizedHealth.id, health[0].id);
+    assert.equal(normalizedHealth.observedAt, health[0].observedAt);
+    const replay = path.join(directory, 'replay.sqlite');
+    execFileSync(process.execPath, ['activity/cao.mjs', 'ingest-jsonl', '--database', replay,
+      '--runs-dir', runPhase, '--records-dir', recordPhase, '--retention-days', 'all'], { stdio: 'pipe' });
+    const replayed = JSON.parse(execFileSync(process.execPath, ['activity/cao.mjs', 'query',
+      '--database', replay, '--collection', 'workflowValueCollections'], { encoding: 'utf8' }));
+    assert.deepEqual(replayed, health);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

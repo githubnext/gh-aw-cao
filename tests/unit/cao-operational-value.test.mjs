@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { runOperationalValue } from '../../activity/operational-value.mjs';
+import { LOCAL_VALUE_ADAPTER_DIGEST, MAX_LOCAL_VALUE_BYTES, runOperationalValue } from '../../activity/operational-value.mjs';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const cao = path.join(root, 'activity', 'cao.mjs');
@@ -170,10 +171,10 @@ export function collectBatch(windows) {
 export function scoreMetric(id, evidence) { return evidence.value; }
 `;
   writeFileSync(modulePath, moduleSource);
-  const run = (timestamp) => JSON.parse(execFileSync(process.execPath, [
+  const run = (timestamp, extra = []) => JSON.parse(execFileSync(process.execPath, [
     cao, 'operational-value', '--database', database, '--root', temporary,
     '--output', output, '--timestamp', timestamp, '--repository', 'octo/api',
-    '--retention-days', '30'
+    '--retention-days', '30', ...extra
   ], { encoding: 'utf8' }));
   const ingest = () => execFileSync(process.execPath, [
     cao, 'ingest-jsonl', '--database', database, '--input', output
@@ -210,6 +211,11 @@ export function scoreMetric(id, evidence) { return evidence.value; }
     assert.equal(reused.values[0].evidenceDigest, first.values[0].evidenceDigest);
     assert.equal(reused.values[0].populationDigest, first.values[0].populationDigest);
     assert.equal(readFileSync(output, 'utf8').trim().split('\n').length, 1);
+    const localReuse = run('2026-09-24T11:01:00Z', ['--local-only', '--max-github-api-rate-limit', '-2000']);
+    assert.deepEqual(localReuse.warnings, []);
+    assert.equal(localReuse.values[0].timestamp, first.values[0].timestamp);
+    assert.equal(localReuse.values[0].evidenceDigest, first.values[0].evidenceDigest);
+    assert.equal(callCount(), 1, 'cache-only reuse must not perform remote acquisition or a quota probe');
 
     const accepted = JSON.parse(readFileSync(output, 'utf8').trim());
     const unavailable = { ...accepted, operational_value: {
@@ -242,6 +248,112 @@ export function scoreMetric(id, evidence) { return evidence.value; }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
+});
+
+test('local-only mode admits the reviewed adapter, computes declared local modules and defers remote or legacy code', async (t) => {
+  const temporary = mkdtempSync(path.join(root, '.tmp', 'value-local-only-'));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const campaign = path.join(temporary, 'example');
+  const modules = path.join(campaign, 'operational-value');
+  mkdirSync(modules, { recursive: true });
+  const template = readFileSync(path.join(root, '.github/skills/add-operational-value/templates/campaign-operational-value.mjs'));
+  assert.equal(createHash('sha256').update(template).digest('hex'), LOCAL_VALUE_ADAPTER_DIGEST);
+  writeFileSync(path.join(campaign, 'operational-value.mjs'), template);
+  const called = path.join(temporary, 'local-called');
+  for (const slug of ['local-worker', 'remote-worker', 'disabled-worker']) {
+    const local = slug === 'local-worker';
+    writeFileSync(path.join(modules, `${slug}.mjs`), `
+import { writeFileSync } from "node:fs";
+export const localCollection = ${local};
+export const definition = {
+  slug: "${slug}", adoption: {adoptedAt:"2026-09-01T00:00:00Z"},
+  evaluation: {mode:"attainment-only"},
+  evidence: {repositories:["octo/api"], window:{durationDays:7,maturationDays:0,cadenceDays:1}},
+  metrics: [{id:"count",name:"Count",role:"primary",unit:"items",direction:"decrease"}]
+};
+export function collectBatch(windows, context) {
+  if (!${local} || !context.localOnly || process.env.GH_TOKEN || process.env.GITHUB_TOKEN
+    || process.env.CAO_OPERATIONAL_VALUE_GH_TOKEN) throw new Error("remote boundary crossed");
+  writeFileSync(${JSON.stringify(called)}, "local");
+  return windows.map(() => ({evidence:{value:3}}));
+}
+export function scoreMetric(id, evidence) { return evidence.value; }
+`);
+  }
+  const legacy = path.join(temporary, 'legacy');
+  mkdirSync(legacy);
+  writeFileSync(path.join(legacy, 'operational-value.mjs'), `throw new Error("legacy adapter must never execute");`);
+  const output = path.join(temporary, 'retained.jsonl');
+  const disabled = { schema_version: 2, kind: 'operational_value', operational_value: {
+    timestamp: '2026-10-19T12:00:00Z', campaign: 'example', repository: 'octo/api',
+    value_id: 'disabled-worker.count', value: 7,
+  } };
+  writeFileSync(output, JSON.stringify(disabled) + '\n');
+  const result = await runOperationalValue({
+    root: temporary, databasePath: path.join(temporary, 'empty.sqlite'), repositories: ['octo/api'],
+    localOnly: true, rateLimitReserve: 2000, timestamp: '2026-10-20T12:00:00Z',
+    disabledWorkflows: ['disabled-worker'], outputPath: output, retentionWindow: 365 * 86400000,
+  });
+  assert.equal(result.values.length, 1);
+  assert.equal(result.values[0].value, 3);
+  assert.equal(readFileSync(called, 'utf8'), 'local');
+  assert.equal(result.warnings.length, 2);
+  assert.ok(result.warnings.some(warning => warning.message.includes('Remote acquisition requires enforceable shared API admission')));
+  assert.ok(result.warnings.some(warning => warning.message.includes('no reviewed local-only boundary')));
+  assert.ok(readFileSync(output, 'utf8').trim().split('\n').some(line => JSON.stringify(JSON.parse(line)) === JSON.stringify(disabled)));
+});
+
+test('local-only input, combined output and cumulative worker budgets preserve accepted evidence', async (t) => {
+  const temporary = mkdtempSync(path.join(os.tmpdir(), 'cao-local-value-budget-'));
+  t.after(() => rmSync(temporary, { recursive: true, force: true }));
+  const template = readFileSync(path.join(root, '.github/skills/add-operational-value/templates/campaign-operational-value.mjs'));
+  const output = path.join(temporary, 'values.jsonl');
+  const config = {
+    root: temporary, databasePath: path.join(temporary, 'empty.sqlite'), repositories: ['octo/api'],
+    outputPath: output, localOnly: true, timestamp: '2026-10-20T12:00:00Z', retentionWindow: 365 * 86400000,
+  };
+  const accepted = { schema_version: 2, kind: 'operational_value', operational_value: {
+    campaign: 'retained', repository: 'octo/api', value_id: 'worker.count',
+    timestamp: '2026-10-19T12:00:00Z', value: 0,
+  }, padding: '' };
+  const sizedEvidence = bytes => {
+    accepted.padding = '';
+    accepted.padding = 'x'.repeat(bytes - Buffer.byteLength(JSON.stringify(accepted)) - 1);
+    return JSON.stringify(accepted) + '\n';
+  };
+  const oversized = sizedEvidence(MAX_LOCAL_VALUE_BYTES + 1);
+  writeFileSync(output, oversized);
+  await assert.rejects(runOperationalValue(config), /Retained local Value exceeds its byte budget/);
+  assert.equal(readFileSync(output, 'utf8'), oversized);
+
+  const addCampaign = (name, metricBytes) => {
+    const campaign = path.join(temporary, name);
+    mkdirSync(path.join(campaign, 'operational-value'), { recursive: true });
+    writeFileSync(path.join(campaign, 'operational-value.mjs'), template);
+    writeFileSync(path.join(campaign, 'operational-value/worker.mjs'), `
+export const localCollection = true;
+export const definition = {
+  slug: "worker", adoption: {adoptedAt:"2026-09-01T00:00:00Z"}, evaluation: {mode:"attainment-only"},
+  evidence: {repositories:["octo/api"], window:{durationDays:7,maturationDays:0,cadenceDays:1}},
+  metrics: [{id:"count",name:"x".repeat(${metricBytes}),role:"primary",unit:"items",direction:"decrease"}]
+};
+export function collectBatch(windows) { return windows.map(() => ({evidence:{value:1}})); }
+export function scoreMetric(id, evidence) { return evidence.value; }
+`);
+  };
+  addCampaign('first', 5);
+  const retained = sizedEvidence(MAX_LOCAL_VALUE_BYTES - 32);
+  writeFileSync(output, retained);
+  await assert.rejects(runOperationalValue(config), /Combined local Value exceeds its output budget/);
+  assert.equal(readFileSync(output, 'utf8'), retained);
+
+  accepted.padding = '';
+  const original = JSON.stringify(accepted) + '\n';
+  writeFileSync(output, original);
+  addCampaign('first', MAX_LOCAL_VALUE_BYTES / 2 + 1024);
+  addCampaign('second', MAX_LOCAL_VALUE_BYTES / 2 + 1024);
+  await assert.rejects(runOperationalValue(config), /Local Value batch exceeded its output budget/);
+  assert.equal(readFileSync(output, 'utf8'), original);
 });
 
 function writeProcessTreeWorker(packageDirectory, config) {

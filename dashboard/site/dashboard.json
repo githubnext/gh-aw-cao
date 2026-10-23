@@ -49,6 +49,25 @@
         ]
       },
       {
+        "id": "workflow-value-collection",
+        "icon": "pulse",
+        "title": { "field": "workflow-context", "title": "Workflow" },
+        "status": { "field": "collection-state", "title": "Collection" },
+        "detail-labels": "visible",
+        "labels": [{ "field": "registration", "title": "Registration" }, { "field": "evidence-state", "title": "Evidence" }],
+        "details": [
+          { "field": "reason", "title": "Reason" },
+          { "field": "collector", "title": "Reviewed collector" },
+          { "field": "last-attempt-outcome", "title": "Last attempt outcome" }
+        ],
+        "timing": [
+          { "field": "checked-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Collection checked", "icon": "clock" },
+          { "field": "last-attempt-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Last collector attempt", "icon": "history" },
+          { "field": "captured-at", "type": "temporal", "format": "human-friendly-timestamp", "title": "Evidence captured", "icon": "clock" },
+          { "field": "evidence-cutoff", "type": "temporal", "format": "human-friendly-timestamp", "title": "Evidence through", "icon": "calendar" }
+        ]
+      },
+      {
         "id": "workflow-value-result",
         "icon": "trophy",
         "title": { "field": "delta-label", "title": "Observed change" },

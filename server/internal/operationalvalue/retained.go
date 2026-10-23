@@ -15,6 +15,14 @@ import (
 // The caller must serialize this read/replace with collection and projection.
 // This boundary does not own independently published value-evidence packets.
 func FilterRepositories(path string, keep func(string) bool) error {
+	return filterRepositories(path, "operational_value", keep)
+}
+
+func FilterCollectionRepositories(path string, keep func(string) bool) error {
+	return filterRepositories(path, "workflow_value_collection", keep)
+}
+
+func filterRepositories(path, kind string, keep func(string) bool) error {
 	file, err := os.Open(path) // #nosec G304 -- operator-configured collector shard.
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -34,14 +42,27 @@ func FilterRepositories(path string, keep func(string) bool) error {
 			content.WriteByte('\n')
 			continue
 		}
-		var item envelope
+		var item struct {
+			SchemaVersion int    `json:"schema_version"`
+			Kind          string `json:"kind"`
+			Value         struct {
+				Repository string `json:"repository"`
+			} `json:"operational_value"`
+			Collection struct {
+				Repository string `json:"repository"`
+			} `json:"workflow_value_collection"`
+		}
 		if err := json.Unmarshal(raw, &item); err != nil {
 			return fmt.Errorf("retained operational value line %d: invalid JSON", line)
 		}
-		if item.SchemaVersion != 2 || item.Kind != "operational_value" {
+		if item.SchemaVersion != 2 || item.Kind != kind {
 			return fmt.Errorf("retained operational value line %d: unexpected envelope", line)
 		}
-		repositories, err := normalizeRepositories([]string{item.OperationalValue.Repository})
+		repository := item.Value.Repository
+		if kind == "workflow_value_collection" {
+			repository = item.Collection.Repository
+		}
+		repositories, err := normalizeRepositories([]string{repository})
 		if err != nil {
 			return fmt.Errorf("retained operational value line %d: invalid repository", line)
 		}
