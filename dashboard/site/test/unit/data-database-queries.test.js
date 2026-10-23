@@ -684,17 +684,25 @@ describe('canonical view sources', () => {
 
   it('streams row-local computed daily run aggregates without changing declarative results', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const queries = [{
+      name: 'retained-daily-conclusions', from: 'runs',
+      compute: [{ as: 'day', function: 'date-day', args: [{ field: 'started-at' }] }],
+      aggregate: {
+        by: ['day', 'run-conclusion'],
+        values: [{ field: 'run', as: 'runs', reducer: 'count' }]
+      }
+    }];
 
     const native = await queryNativeCountSources(
       indexedDB,
       sources,
-      dashboardQueries,
-      ['runs-daily-conclusions']
+      queries,
+      ['retained-daily-conclusions']
     );
 
     const canonical = await queryCanonicalViewSources(indexedDB, sources, ['runs']);
-    const expected = executeDashboardQueries(dashboardQueries, canonical, ['runs-daily-conclusions']);
-    expect(native['runs-daily-conclusions'].rows).toEqual(expected['runs-daily-conclusions'].rows);
+    const expected = executeDashboardQueries(queries, canonical, ['retained-daily-conclusions']);
+    expect(native['retained-daily-conclusions'].rows).toEqual(expected['retained-daily-conclusions'].rows);
   });
 
   it('streams eligible transformed counts and declines joins, invalid queries, and non-table sources', async () => {

@@ -156,7 +156,9 @@ describe('incremental canonical storage shards', () => {
       expect(result).toMatchObject({ deletedRecords: 0, retainedRecords: 2001 });
       expect(indexGetAll).not.toHaveBeenCalled();
       expect(cursor).not.toHaveBeenCalled();
-      expect(stringify).not.toHaveBeenCalled();
+      expect(stringify.mock.calls).toEqual([
+        [expect.objectContaining({ id: 'daily-run-counts', status: 'ready' })]
+      ]);
       expect(getAll.mock.contexts.every((store) => store instanceof IDBObjectStore && store.name === 'storageShards')).toBe(true);
       expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
     } finally {

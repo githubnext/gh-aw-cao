@@ -93,24 +93,26 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
   });
 });
 
-test('production data worker preserves daily health and coverage after detail eviction', async ({ page }) => {
+test('production data worker preserves daily health and chart coverage after detail eviction', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
     const { normalize } = await import(`${location.origin}/src/data/normalize/index.js`);
     const fragment = await (await fetch('/dashboard-fragments/workflow-runs.json')).json();
+    const inventory = await (await fetch('/dashboard-fragments/inventory.json')).json();
     const query = fragment.queries.find((/** @type {{ name: string }} */ value) =>
       value.name === 'workflow-runtime-health-summary');
     const worker = new Worker(`${location.origin}/src/data-worker.js`, { type: 'module' });
-    const queryHealth = () => /** @type {Promise<import('../../src/presenter.js').LogicalSourceInput>} */ (new Promise((resolve, reject) => {
+    const queryHealth = () => /** @type {Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>} */ (new Promise((resolve, reject) => {
       worker.onmessage = (event) => {
         if (event.data.id !== 'daily-health') return;
         if (event.data.error) reject(new Error(event.data.error));
-        else resolve(event.data.data['workflow-runtime-health-summary']);
+        else resolve(event.data.data);
       };
       worker.onerror = (event) => reject(new Error(event.message));
       worker.postMessage({
         id: 'daily-health', operation: 'load-dashboard-query-sources',
-        sources: {}, queries: [query], sourceNames: ['workflow-runtime-health-summary']
+        sources: {}, queries: [...inventory.queries, query],
+        sourceNames: ['workflow-runtime-health-summary', 'runs-daily-conclusions']
       });
     }));
     try {
@@ -142,11 +144,28 @@ test('production data worker preserves daily health and coverage after detail ev
       worker.terminate();
     }
   });
-  expect(result.pending.rows).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
-  expect(result.corrected.rows).toEqual([expect.objectContaining({ total: 1, pending: 0, failed: 1 })]);
-  expect(result.corrected.metadata).toMatchObject({
+  expect(Object.keys(result.corrected).sort()).toEqual(['runs-daily-conclusions', 'workflow-runtime-health-summary']);
+  expect(result.pending['workflow-runtime-health-summary'].rows).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
+  expect(result.corrected['workflow-runtime-health-summary'].rows).toEqual([expect.objectContaining({ total: 1, pending: 0, failed: 1 })]);
+  expect(result.corrected['workflow-runtime-health-summary'].metadata).toMatchObject({
     'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'complete'
   });
+  for (const [source, day, pending, failed] of [
+    [result.pending, '2026-10-01', 1, 0],
+    [result.corrected, '2026-10-02', 0, 1]
+  ]) {
+    const chart = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (source)['runs-daily-conclusions'];
+    expect(chart.rows).toEqual([
+      { day, 'runtime-health': 'Approval required', runs: 0 },
+      { day, 'runtime-health': 'Failed', runs: failed },
+      { day, 'runtime-health': 'Other', runs: 0 },
+      { day, 'runtime-health': 'Pending', runs: pending },
+      { day, 'runtime-health': 'Successful', runs: 0 }
+    ]);
+    expect(chart.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'complete'
+    });
+  }
   expect(result.daily).toEqual([expect.objectContaining({ day: '2026-10-02', total: 1, failed: 1 })]);
   expect(result.detailCount).toBe(0);
   expect(result.maintenance.protectedBytes).toBeGreaterThan(0);

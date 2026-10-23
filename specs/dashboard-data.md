@@ -4387,6 +4387,17 @@ the source is unavailable. The existing workflow route element owns metric
 labels rather than declarative encodings; its metadata-only presentation SHALL
 label these as daily observations, distinguish partial coverage, and retain the
 separate usage-telemetry window. It SHALL NOT derive counts or query data.
+`runs-daily-conclusions` SHALL compose the five health classes from summed daily
+counts through declarative queries, not raw conclusion strings or retained
+Runs. Its chart SHALL label these as runtime health, preserve aggregate coverage
+and unavailable states, and keep the retained Runs table on its detail source.
+Time bounds select whole UTC start-day buckets by their midnight; they SHALL
+NOT be presented as exact sub-day execution totals. The chart SHALL preserve
+zero-valued classes for an observed day without fabricating unobserved days.
+Selected context filters outside organization, Repository, and Workflow SHALL
+fail the daily-chart request explicitly rather than silently include unselected
+Runs; in particular the projection cannot answer rollout-mode selections.
+
 Only supported dimensions and complete-day predicates
 are eligible; sub-day filters, arbitrary Run predicates, distinct counts,
 costs, token usage, and ordered incident evidence remain on their existing

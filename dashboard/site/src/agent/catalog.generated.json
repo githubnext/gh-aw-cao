@@ -4654,14 +4654,139 @@
       }
     },
     {
-      "id": "runs-daily-conclusions",
-      "subject": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
-      "objective": "Expose changes in observed run conclusions by day for investigation.",
-      "acceptance": "Count retained runs by started-at UTC day and recorded conclusion; an empty day or missing conclusion is not evidence of healthy execution or absence of activity.",
+      "id": "runs-daily-health-buckets",
+      "subject": "Select whole UTC start-day buckets against the requested time bounds.",
       "description": "",
       "parameters": [],
       "sources": [
-        "runs"
+        "daily-run-counts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-health-totals",
+      "subject": "Sum observed daily run health across the selected scope.",
+      "objective": "Keep daily activity counts independent of detail retention.",
+      "acceptance": "Sum only daily counts, never retained Runs. UTC start-day buckets are selected by midnight; sub-day totals are unsupported. Missing or undated evidence remains unavailable or partial.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-buckets"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-successful",
+      "subject": "Observed daily successful run counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-failed",
+      "subject": "Observed daily failed run counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-approval",
+      "subject": "Observed daily approval-required run counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-pending",
+      "subject": "Observed daily pending run counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-other",
+      "subject": "Observed daily unclassified terminal or missing-status run counts.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-health-totals"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "runs-daily-conclusions",
+      "subject": "Daily observed runtime health classes for the Runs chart.",
+      "objective": "Investigate daily activity independently of retained run detail.",
+      "acceptance": "Classes sum to observed dated Runs, not attempts or verified outcomes. Pending is last-observed state; Other is not success. Select whole UTC start-day buckets by midnight, not sub-day totals. Preserve partial or unavailable coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "runs-daily-approval",
+        "runs-daily-failed",
+        "runs-daily-other",
+        "runs-daily-pending",
+        "runs-daily-successful"
       ],
       "used-by-pages": [
         "runs"
@@ -4670,7 +4795,7 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "runs"
+          "daily-run-counts"
         ]
       }
     },

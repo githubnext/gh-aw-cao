@@ -576,7 +576,8 @@ statistical context for older retained examples, never an exact population.
 | `overview.json`: `cost-by-repository`, `cost-by-workflow`, `cost-per-workflow-run` | Aggregate candidates: preserve AIC units, observed-cost denominators, and quality. |
 | `overview.json`: `overview-delivery-summary`, `overview-repository-coverage`, `overview-workflow-health-groups` | Mixed/blocked: distinct targets, worker dispatch filters, and latest workflow state cannot be reconstructed by summing daily totals. |
 | `overview.json`: `overview-value-summary`, `overview-issue-summary`, status/presentation queries | Retain dedicated evidence sources; route dependencies, not presentation objects, to new tiers. |
-| `inventory.json`: `runs-daily-conclusions`, `workflow-aic-per-run` | Aggregate candidates for supported dates/denominators. |
+| `inventory.json`: `runs-daily-conclusions` | Migrated to the isolated daily run-count layer as runtime health classes, not raw conclusions; whole UTC start-day buckets and aggregate coverage remain explicit. |
+| `inventory.json`: `workflow-aic-per-run` | Blocked for run-count-only migration: positive-AIC attempt denominators must remain aligned with retained cost telemetry. |
 | `inventory.json`: `workflow-ordered-runs`, `workflow-latest-runs`, `runs-table`, `entity-events` | Detail: latest identity, ordered attempts, and individual observations are not daily counters. |
 | `workflow-runs.json`: `workflow-runtime-health-summary`, `workflow-runtime-usage-summary`, `workflow-failure-trend` | Aggregate candidates; pending state and usage-record counts require their own exact contribution semantics. |
 | `workflow-runs.json`: `entity-runs`, `workflow-runs`, `workflow-reports`, `outcome-route-record` | Detail/dedicated outcome evidence; preserve route keys and retained execution links. |

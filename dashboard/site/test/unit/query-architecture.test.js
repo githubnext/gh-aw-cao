@@ -216,7 +216,7 @@ describe('dashboard query architecture', () => {
     expect(processor).toContain("operation: 'query-canonical-database-diagnostics'");
     expect(worker).toContain("operation === 'query-canonical-database-diagnostics'");
     expect(worker).toContain('return collectCanonicalDatabaseDiagnostics()');
-    expect(databaseQueryLayer).not.toMatch(/diagnostic|relationshipErrors/);
+    expect(databaseQueryLayer).not.toMatch(/collectCanonicalDatabaseDiagnostics|relationshipErrors/);
     expect(worker).toContain('relationshipErrors(');
     expect(worker).toContain('readCollections(indexedDB, ENTITY_STORES)');
     expect(databaseQueries.find(({ name }) => name === 'transactions')).toMatchObject({

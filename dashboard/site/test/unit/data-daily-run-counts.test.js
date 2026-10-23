@@ -16,6 +16,9 @@ import { ingestNormalizedJsonl, NORMALIZED_JSONL_INGESTION_VERSION } from '../..
 import { installSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
+import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
+import detailContracts from '../fixtures/detail-query-contracts.json' with { type: 'json' };
 import goldenCounts from '../fixtures/daily-run-counts.json' with { type: 'json' };
 
 const originalIndexedDB = globalThis.indexedDB;
@@ -342,6 +345,82 @@ describe('additive daily run outcome counts', () => {
     const native = await loadDatabaseQuerySources(indexedDB, {}, { queries: healthQueries, sourceNames: ['health'] });
     expect(native.health.metadata.availability).toBe('unavailable');
     expect(native.health.rows).toEqual([]);
+  });
+
+  it('serves the shipped daily chart with scoped UTC buckets, corrections, and no detail dependency', async () => {
+    const contract = detailContracts.dailyRunChart;
+    const queries = authoritativeDashboard.dashboard.queries;
+    const page = authoritativeDashboard.dashboard.pages.find(
+      (/** @type {{ id: string }} */ value) => value.id === contract.page);
+    for (const field of ['mode', 'campaign', 'engine']) {
+      expect(() => compileDashboardViewPayloadQueries(page, contract.page, {
+        queries, viewId: contract.view,
+        queryContext: { filters: { [field]: ['selected'] } }
+      })).toThrow(/Daily run counts do not support the selected/);
+    }
+    const payload = compileDashboardViewPayloadQueries(page, contract.page, {
+      queries, viewId: contract.view, evaluatedAt: '2026-10-06T12:00:00Z',
+      queryContext: {
+        filters: { organization: ['octo'], repository: ['demo'] },
+        timeWindow: { start: '2026-10-02T12:00:00Z', end: '2026-10-05T00:00:00Z' }
+      }
+    });
+    const dependencies = resolveDashboardQuerySources(payload.queries, payload.aliases);
+    expect(dependencies).toContain(contract.source);
+    expect(dependencies).not.toContain('runs');
+    const query = async () => {
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+        await processDataRequest({
+          operation: 'load-dashboard-query-sources', sources: {},
+          queries: payload.queries, sourceNames: payload.aliases
+        }));
+      expect(Object.keys(result)).toEqual(payload.aliases);
+      return result[payload.aliases[0]];
+    };
+    const dated = { ...fixture, startedAt: '2026-10-03T23:00:00Z' };
+    await writeRuns([
+      dated,
+      { ...dated, id: 'run:success', status: 'completed', conclusion: 'success' },
+      { ...dated, id: 'run:approval', conclusion: 'action-required' },
+      { ...dated, id: 'run:other', status: 'completed', conclusion: 'cancelled' },
+      { ...dated, id: 'run:failed', status: 'completed', conclusion: 'timed-out' },
+      { ...dated, id: 'run:second-workflow', workflowId: 'workflow:2',
+        workflowPath: '.github/workflows/second.md', status: 'completed', conclusion: 'failure' },
+      { ...dated, id: 'run:other-repo', repositoryId: 'repository:2', repository: 'elsewhere' },
+      { ...dated, id: 'run:other-org', repositoryId: 'repository:3', owner: 'elsewhere' },
+      { ...dated, id: 'run:lower-bound-day', startedAt: '2026-10-02T23:00:00Z' },
+      { ...dated, id: 'run:upper-bound-day', startedAt: '2026-10-05T00:00:00Z' },
+      { ...dated, id: 'run:undated', startedAt: undefined }
+    ]);
+    const initial = await query();
+    expect(initial.rows).toEqual(contract.classes.map((category) => ({
+      day: '2026-10-03', 'runtime-health': category, runs: category === 'Failed' ? 2 : 1
+    })));
+    expect(initial.rows.every((row) => Object.keys(row).sort().join() === [...contract.fields].sort().join())).toBe(true);
+    expect(initial.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'partial', 'excluded-runs': 1
+    });
+    await writeRuns([{
+      ...dated, status: 'completed', conclusion: 'failure', updatedAt: '2026-10-04T00:00:00Z'
+    }]);
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    const corrected = await query();
+    expect(corrected.rows).toEqual(contract.classes.map((category) => ({
+      day: '2026-10-03', 'runtime-health': category,
+      runs: category === 'Failed' ? 3 : category === 'Pending' ? 0 : 1
+    })));
+    const database = await openCanonicalDatabase(indexedDB);
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction('dailyRunCountState', 'readwrite');
+      transaction.objectStore('dailyRunCountState').clear();
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+    const missing = await query();
+    expect(missing.rows).toEqual([]);
+    expect(missing.metadata.availability).toBe('unavailable');
   });
 
   it('admits expired normalized run counts without changing detail retention', async () => {

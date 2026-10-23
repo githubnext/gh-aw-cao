@@ -173,35 +173,82 @@
       ]
     },
     {
-      "name": "runs-daily-conclusions",
-      "subject": "Aggregate workflow run conclusions by UTC day for the Runs stacked area graph.",
-      "objective": "Expose changes in observed run conclusions by day for investigation.",
-      "acceptance": "Count retained runs by started-at UTC day and recorded conclusion; an empty day or missing conclusion is not evidence of healthy execution or absence of activity.",
-      "from": "runs",
+      "name": "runs-daily-health-buckets",
+      "subject": "Select whole UTC start-day buckets against the requested time bounds.",
+      "from": "daily-run-counts",
       "compute": [
-        {
-          "as": "day",
-          "function": "date-day",
-          "args": [
-            {
-              "field": "started-at"
-            }
-          ]
-        }
-      ],
+        { "as": "day-midnight", "function": "concat", "args": [{ "field": "day" }, { "value": "T00:00:00Z" }] },
+        { "as": "day-ms", "function": "timestamp", "args": [{ "field": "day-midnight" }] },
+        { "as": "start-ms", "function": "timestamp", "args": [{ "context": "time-start" }] },
+        { "as": "end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "before-start", "function": "greater-than", "args": [{ "field": "start-ms" }, { "field": "day-ms" }] },
+        { "as": "before-end", "function": "greater-than", "args": [{ "field": "end-ms" }, { "field": "day-ms" }] }
+      ]
+    },
+    {
+      "name": "runs-daily-health-totals",
+      "subject": "Sum observed daily run health across the selected scope.",
+      "objective": "Keep daily activity counts independent of detail retention.",
+      "acceptance": "Sum only daily counts, never retained Runs. UTC start-day buckets are selected by midnight; sub-day totals are unsupported. Missing or undated evidence remains unavailable or partial.",
+      "from": "runs-daily-health-buckets",
+      "filter": { "predicates": [
+        { "field": "before-start", "in": [false, null] },
+        { "field": "before-end", "in": [true, null] }
+      ] },
       "aggregate": {
-        "by": [
-          "day",
-          "run-conclusion"
-        ],
+        "by": ["day"],
         "values": [
-          {
-            "field": "run",
-            "as": "runs",
-            "reducer": "count"
-          }
+          { "field": "successful", "as": "successful", "reducer": "sum" },
+          { "field": "failed", "as": "failed", "reducer": "sum" },
+          { "field": "approval", "as": "approval", "reducer": "sum" },
+          { "field": "pending", "as": "pending", "reducer": "sum" },
+          { "field": "other", "as": "other", "reducer": "sum" }
         ]
       }
+    },
+    {
+      "name": "runs-daily-successful",
+      "subject": "Observed daily successful run counts.",
+      "from": "runs-daily-health-totals",
+      "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Successful" }] }],
+      "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "successful", "as": "runs" }]
+    },
+    {
+      "name": "runs-daily-failed",
+      "subject": "Observed daily failed run counts.",
+      "from": "runs-daily-health-totals",
+      "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Failed" }] }],
+      "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "failed", "as": "runs" }]
+    },
+    {
+      "name": "runs-daily-approval",
+      "subject": "Observed daily approval-required run counts.",
+      "from": "runs-daily-health-totals",
+      "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Approval required" }] }],
+      "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "approval", "as": "runs" }]
+    },
+    {
+      "name": "runs-daily-pending",
+      "subject": "Observed daily pending run counts.",
+      "from": "runs-daily-health-totals",
+      "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Pending" }] }],
+      "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "pending", "as": "runs" }]
+    },
+    {
+      "name": "runs-daily-other",
+      "subject": "Observed daily unclassified terminal or missing-status run counts.",
+      "from": "runs-daily-health-totals",
+      "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Other" }] }],
+      "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "other", "as": "runs" }]
+    },
+    {
+      "name": "runs-daily-conclusions",
+      "subject": "Daily observed runtime health classes for the Runs chart.",
+      "objective": "Investigate daily activity independently of retained run detail.",
+      "acceptance": "Classes sum to observed dated Runs, not attempts or verified outcomes. Pending is last-observed state; Other is not success. Select whole UTC start-day buckets by midnight, not sub-day totals. Preserve partial or unavailable coverage.",
+      "from": "runs-daily-successful",
+      "union": ["runs-daily-failed", "runs-daily-approval", "runs-daily-pending", "runs-daily-other"],
+      "order-by": [{ "field": "day", "direction": "asc" }, { "field": "runtime-health", "direction": "asc" }]
     },
     {
       "name": "entity-events",
@@ -683,10 +730,10 @@
           {
             "id": "runs-last-week",
             "title": "Runs in the last week",
-            "subject": "See the daily distribution of observed run conclusions in the last seven days.",
+            "subject": "See daily observed runtime health in the last seven days.",
             "objective": "Spot changes in run activity or failures worth investigating.",
-            "acceptance": "Any apparent trend is checked against underlying runs and data completeness.",
-            "description": "Workflow run conclusions observed during the last seven days.",
+            "acceptance": "Check trends against coverage and available detail. Classes are not raw conclusions or verified outcomes; pending is last-observed state. Time bounds select UTC start-day midnights, never sub-day totals.",
+            "description": "Daily observed run health, independent of retained detail. Whole UTC start-day buckets selected by midnight; pending is last-observed state, and runtime success is not a verified outcome.",
             "data": {
               "source": "runs-daily-conclusions",
               "time": {
@@ -709,8 +756,9 @@
                 "title": "Runs"
               },
               "color": {
-                "field": "run-conclusion",
-                "type": "nominal"
+                "field": "runtime-health",
+                "type": "nominal",
+                "title": "Runtime health"
               }
             }
           },

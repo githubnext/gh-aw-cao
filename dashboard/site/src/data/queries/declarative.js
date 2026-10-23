@@ -1115,9 +1115,17 @@ function enforceLimit(count, limit, subject) {
  */
 function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
-  const aggregateProvenance = inputs.length === 1 && metadata[0]?.['aggregate-version'] === 1
-    ? Object.fromEntries(Object.entries(metadata[0]).filter(([field]) =>
-      field.startsWith('aggregate-') || ['excluded-runs', 'conflicted-runs', 'query-diagnostic'].includes(field)))
+  /** @param {SourceMetadata | undefined} value */
+  const aggregateFields = (value) => Object.fromEntries(Object.entries(value ?? {}).filter(([field]) =>
+    field.startsWith('aggregate-') || ['excluded-runs', 'conflicted-runs', 'query-diagnostic'].includes(field)));
+  const candidateProvenance = aggregateFields(metadata[0]);
+  const aggregateProvenance = metadata.length === inputs.length && candidateProvenance['aggregate-version'] === 1
+    && metadata.every((value) => {
+      const fields = aggregateFields(value);
+      return Object.keys(fields).length === Object.keys(candidateProvenance).length
+        && Object.entries(candidateProvenance).every(([field, entry]) => fields[field] === entry);
+    })
+    ? candidateProvenance
     : {};
   /** @param {'as-of'|'retrieved-at'} field */
   const oldest = (field) => metadata

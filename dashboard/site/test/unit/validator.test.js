@@ -1350,7 +1350,7 @@ describe('dashboard document validation', () => {
       encoding: {
         x: { field: 'day', type: 'temporal' },
         y: { field: 'runs', type: 'quantitative' },
-        color: { field: 'run-conclusion', type: 'nominal' }
+        color: { field: 'runtime-health', type: 'nominal' }
       }
     });
     expect(validateDashboardDocument(JSON.stringify(document)).ok).toBe(true);

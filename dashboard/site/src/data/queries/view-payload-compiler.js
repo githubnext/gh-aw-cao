@@ -586,6 +586,13 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     /** @param {string} source @param {number} inputIndex */
     const compileInput = (source, inputIndex) => {
       if (byName.has(source)) return compile(source, inputPredicates, inputTime, includeHistory);
+      if (source === 'daily-run-counts') {
+        const unsupported = inputPredicates.find((predicate) => predicate.optional
+          && !['organization', 'repository', 'workflow'].includes(String(predicate.field)));
+        if (unsupported) {
+          throw new TypeError(`Daily run counts do not support the selected "${String(unsupported.field)}" filter.`);
+        }
+      }
       if (inputPredicates.length === 0) return source;
       const inputName = `${scoped}:input-${inputIndex + 1}`;
       dependencies.push({
@@ -689,9 +696,9 @@ function predicatesBeforeQuery(definition, predicates) {
     ? new Map(definition.select.filter(isPlainObject).map((value) => [value.as ?? value.field, value.field]))
     : null;
   return predicates.flatMap((predicate) => {
-    const field = selected ? selected.get(predicate.field) : predicate.field;
+    const field = selected ? selected.get(predicate.field) ?? (predicate.optional ? predicate.field : undefined) : predicate.field;
     if (typeof field !== 'string' || computed.has(field) || joined.has(field)
-        || (groups && !groups.has(field))
+        || (groups && !groups.has(field) && !predicate.optional)
         || windows.some((window) => !Array.isArray(window.groupby) || !window.groupby.includes(field))) return [];
     return [{ ...predicate, field }];
   });
