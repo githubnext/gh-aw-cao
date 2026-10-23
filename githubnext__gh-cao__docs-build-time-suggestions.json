@@ -1,14 +1,7 @@
 {
-  "source_sha": "ba824c4529e9b3d6dbf93a2062f740ef93452e95",
+  "source_sha": "eeccbe25151c5043b7ff9849e809583851dbaee9",
   "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-22T05:39:29Z",
-      "worker_run_id": "39729007524",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs from the preceding 14 days was blocked immediately by the GitHub REST API rate limit at 2026-10-22T05:39:23Z. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, trusted cache hit/miss evidence, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the dependency installation and caching category remains next."
-    },
     {
       "evaluated_at": "2026-10-22T07:10:09Z",
       "worker_run_id": "39738224969",
@@ -692,6 +685,13 @@
       "category": "artifact transfer and Pages packaging",
       "evidence_run_ids": [],
       "outcome": "incomplete: GitHub Actions evidence collection was stopped immediately because both bounded workflow-run list requests for docs.yml and cao-dashboard.yml returned an API rate-limit error. No current evidence window or run IDs could be collected, so the required five comparable successful docs runs, workflow/job/step timing distributions, cache-hit verification, outlier disclosure, and duplicate open-issue check could not be completed. Per resource-limit policy, no further GitHub API or model work was attempted. No recommendation was made, and artifact transfer and Pages packaging remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-23T01:49:27Z",
+      "worker_run_id": "39885857412",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: GitHub Actions evidence collection was stopped immediately because the first bounded workflow-run list request for docs.yml returned an API rate-limit error. No current evidence window or run IDs could be collected, so the required five comparable successful docs runs, workflow/job/step timing distributions, trusted cache-hit verification, outlier disclosure, and duplicate open-issue check could not be completed. Per resource-limit policy, no further GitHub API or model work was attempted. No recommendation was made, and artifact transfer and Pages packaging remains the next category."
     }
   ]
 }
