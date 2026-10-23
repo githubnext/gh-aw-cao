@@ -33,7 +33,7 @@ Build dashboard experiences declaratively first. Use JavaScript only for interac
 Use `dashboard/site/src/reactive.js` for state-driven updates:
 
 - `state` owns mutable local state; use its functional setter when the next value depends on the current value.
-- `derived` computes values from reactive dependencies. Dispose it when its owner is removed.
+- `derived` computes values from reactive dependencies. Dispose it when its owner is removed, or pass `{ signal }` so aborting the owner's `AbortSignal` stops it.
 - `effect` performs the smallest DOM update needed from reactive state. Stop the handle when work is complete or the owner is removed.
 - `render(root, update, { signal }?)` renders reactive output into an isolated shadow tree and morphs it into an owned root with the fewest mutations, preserving focus, scroll position, and control state without hand-written diffing. Prefer it over a raw `effect` plus `replaceChildren` whenever a component's entire visible output is a function of its reactive state, as in `dashboard/site/src/components/animated-number.js`, `factory-station.js`, and `factory-header.js`.
 - `onCleanup` removes listeners, observers, timers, and other resources created by an effect.
@@ -53,7 +53,7 @@ Use `dashboard/site/src/reactive.js` for state-driven updates:
 
 ## Styles and Primer
 
-- Put dashboard component styles in the focused `dashboard/site/src/styles-*.js` modules composed by `styles-primer.js`; `styles.js` remains the shared minified stylesheet entry point. Preserve composition order and keep responsive and accessibility overrides last. Do not add inline styles or element-local style injection for ordinary views.
+- Put dashboard component styles in the focused `dashboard/site/src/styles-*.js` modules composed by `styles-primer.js`; `styles.js` remains the shared minified stylesheet entry point. Notification styles are the exception: `styles-notifications.js` is minified separately by `notificationStylesheet()` and injected by `notification-service.js`, not composed into `styles-primer.js`. Preserve composition order and keep responsive and accessibility overrides last. Do not add inline styles or element-local style injection for ordinary views.
 - Reuse existing classes and CSS custom properties before adding selectors or tokens.
 - Follow the established Primer visual language: system font stack, semantic canvas/foreground/border/accent/status tokens, Octicons, six-pixel control radii, restrained elevation, compact spacing, and visible focus rings.
 - Support light, dark, and explicit dashboard themes through existing semantic tokens. Do not hard-code a color where a token exists.
