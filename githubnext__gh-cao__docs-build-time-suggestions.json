@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T14:41:17Z",
-      "worker_run_id": "39797461533",
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        39795633596,
-        39792145599,
-        39790180630,
-        39789336784,
-        39788938137,
-        39788805318,
-        39788732465,
-        39787702830,
-        39785151878,
-        39782673867,
-        39781940794,
-        39779527926,
-        39775155953,
-        39773362047,
-        39772162242,
-        39771725341,
-        39770210697,
-        39767471110,
-        39765939288,
-        39764992992
-      ],
-      "outcome": "incomplete: the 2026-10-22T10:41:31Z to 2026-10-22T14:32:46Z latest-20 completed docs.yml window contained 15 successful, four skipped, and one cancelled run. The cancelled push was excluded. Trusted job and step metadata for the five longest or build-likely successful runs showed only two successful runs executed both build and deploy (both push events at distinct source SHAs); the other three freshness-checked and skipped build and deploy. This remains below the required minimum of five comparable successful builds, so workflow/job median and p90 timings, repeated cache-hit verification, and a complete scheduling/concurrency evaluation cannot be produced. No recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next."
-    },
-    {
       "evaluated_at": "2026-10-22T14:58:42Z",
       "worker_run_id": "39799752714",
       "category": "scheduling, concurrency, and avoidable rebuilds",
@@ -755,6 +727,34 @@
         40016016928
       ],
       "outcome": "incomplete: the 2026-10-23T20:01:44Z to 2026-10-23T23:32:36Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Bounded trusted job and step metadata established only three successful build-and-deploy paths in the window: workflow_run 40039164850, push 40024779826, and schedule 40018992346, across two source SHAs. The remaining inspected long-running successful entries were freshness-only paths that skipped build and deploy after queue or concurrency waits; short completed entries cannot contain the approximately 72-78 second build path observed in the three builds. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-23T23:51:27Z",
+      "worker_run_id": "40041658765",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40041469818,
+        40040264232,
+        40039211316,
+        40039164850,
+        40037228871,
+        40035689948,
+        40035174045,
+        40034330979,
+        40033195230,
+        40030833753,
+        40029180516,
+        40028915755,
+        40027585845,
+        40026212138,
+        40024779826,
+        40023686325,
+        40022023112,
+        40020443215,
+        40019016724,
+        40018992346
+      ],
+      "outcome": "incomplete: the 2026-10-23T20:24:39Z to 2026-10-23T23:45:49Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Trusted job and step metadata established only three successful build-and-deploy paths: workflow_run 40039164850, push 40024779826, and schedule 40018992346, across two source SHAs. Other potentially long successful runs freshness-checked and skipped build and deploy after queue or concurrency waits; the remaining short runs cannot contain the observed 72-75 second build path. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
