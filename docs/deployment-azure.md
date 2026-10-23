@@ -18,6 +18,8 @@ The Azure deployment runs `cao-dashboard azure-functions` from the `server/` dir
 
 ```mermaid
 flowchart LR
+  accTitle: Azure dashboard deployment boundaries
+  accDescr: The browser connects only to the Function App. The app uses GitHub OAuth, managed-identity Key Vault access and PostgreSQL. An optional operator-managed collector exports telemetry to Application Insights.
   Browser["Authorized browser"] -->|"HTTPS"| Function["Function App<br/>managed-identity ACR container"]
   Function -->|"OAuth, refresh, membership"| GitHub["GitHub OAuth + API"]
   Function -->|"managed identity"| KeyVault["Key Vault"]

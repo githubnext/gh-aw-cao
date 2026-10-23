@@ -15,11 +15,11 @@ Agentic workflows produce Actions logs. The Activity workflow collects a bounded
 snapshot into published JSONL. Consumers apply the shared model rules to build
 separate projections: SQLite supports local Go serving, agents, and command-line
 tools; IndexedDB supports static Pages in the browser; hosted Go deployments
-ingest into PostgreSQL. The diagram shows the SQLite and browser paths.
+ingest into PostgreSQL. These are independent backends, not a fallback chain.
 
 <div class="docs-theme-diagram">
-  <img class="docs-theme-diagram-light" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-cao/assets/dashboard-data-flow-light.svg">
-  <img class="docs-theme-diagram-dark" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-cao/assets/dashboard-data-flow-dark.svg">
+  <img class="docs-theme-diagram-light" alt="Activity collects workflow evidence into a snapshot. The shared canonical model feeds SQLite for local Go, CLI and agents; IndexedDB for static Pages; and PostgreSQL for hosted Go queries." src="/gh-cao/assets/dashboard-data-flow-light.svg">
+  <img class="docs-theme-diagram-dark" alt="Activity collects workflow evidence into a snapshot. The shared canonical model feeds SQLite for local Go, CLI and agents; IndexedDB for static Pages; and PostgreSQL for hosted Go queries." src="/gh-cao/assets/dashboard-data-flow-dark.svg">
 </div>
 
 SQLite and IndexedDB are rebuildable projections. Neither is the source for the

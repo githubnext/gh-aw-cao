@@ -30,6 +30,8 @@ For the normative contract, see the
 
 ```mermaid
 flowchart LR
+  accTitle: Evidence becomes advisory intelligence
+  accDescr: Runtime health, campaign contracts and operator feedback feed portfolio intelligence. Its decisions and suppressions are advisory, not execution authority.
   A[Canonical Activity evidence] --> R[Runtime health]
   I[Canonical Campaign inventory] --> C[Campaign intelligence contracts]
   R --> P[Portfolio intelligence]

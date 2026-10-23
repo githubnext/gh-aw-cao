@@ -19,8 +19,6 @@ following the campaign-specific policy fields and procedures below.
 
 Set the campaign's checked-in `enabled` field to `false` whenever authentication, routing, output quality, cost, or provenance is uncertain. Resume in `review` after correcting the issue.
 
-![A control plane promotes bounded campaigns from review to live across organization repositories.](assets/control-plane-scale.svg)
-
 ```text
 review --approve--> limited live --observe--> scheduled live
   ^                       |                         |

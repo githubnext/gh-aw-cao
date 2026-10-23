@@ -6,7 +6,6 @@ import TerminalDemo from "./TerminalDemo.astro";
 import ThemeImage from "./ThemeImage.astro";
 import HeroWorkflowSnippet from "./HeroWorkflowSnippet.astro";
 import HeroControlDiagram from "./HeroControlDiagram.astro";
-import HeroEvidenceStory from "./HeroEvidenceStory.astro";
 import HeroDecisionLoop from "./HeroDecisionLoop.astro";
 import dashboardMobileOverview from "../assets/product/cao-dashboard-mobile-overview.png";
 import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile-overview-light.png";
@@ -21,18 +20,7 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
   <HeroIntro />
 
   <div class="hero-visual">
-    <span class="hero-callout callout-health" aria-hidden="true">
-      <span class="callout-card">Workflow health<br />at a glance</span>
-      <span class="callout-line"></span>
-    </span>
-    <span class="hero-callout callout-attention" aria-hidden="true">
-      <span class="callout-card">Drill into what<br />needs attention</span>
-      <span class="callout-line"></span>
-    </span>
     <figure class="phone-preview" aria-labelledby="mobile-dashboard-preview-title">
-      <figcaption class="visually-hidden">
-        <span id="mobile-dashboard-preview-title">Central Agentic Ops mobile dashboard overview</span>
-      </figcaption>
       <div class="phone-shell">
         <span class="phone-speaker" aria-hidden="true"></span>
         <ThemeImage
@@ -45,6 +33,9 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
           class="phone-image"
         />
       </div>
+      <figcaption id="mobile-dashboard-preview-title">
+        Example Overview snapshot. Runtime signals and grader observations are not verified improvements.
+      </figcaption>
     </figure>
   </div>
 </div>
@@ -66,18 +57,6 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
     </figcaption>
     <WorkflowEcosystem />
   </figure>
-</section>
-
-<section class="product-story evidence-story" aria-labelledby="evidence-title" data-reveal data-slideshow-slide>
-  <div class="product-story-copy">
-    <p class="section-eyebrow">From visibility to investigation</p>
-    <h2 id="evidence-title">Connected evidence. <br />Focused attention.</h2>
-    <p>
-      Bring runs, costs, and outcomes together across repositories. Surface patterns across campaigns
-      so humans and agents can investigate from the same evidence.
-    </p>
-  </div>
-  <HeroEvidenceStory />
 </section>
 
 <section class="product-story terminal-story" aria-labelledby="terminal-title" data-reveal data-slideshow-slide>
@@ -147,17 +126,21 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
         decoding="async"
       />
     </picture>
-    <figcaption>Dashboard maintenance: Upgrade one repository or Upgrade all. Unknown version evidence stays explicit.</figcaption>
+    <figcaption>Example snapshot. Dashboard maintenance: Upgrade one repository or Upgrade all. Unknown version evidence stays explicit.</figcaption>
   </figure>
 </section>
 <section class="product-story decision-story" aria-labelledby="decision-title" data-reveal data-slideshow-slide>
   <div class="product-story-copy">
-    <p class="section-eyebrow">Evidence before expansion</p>
+    <span id="evidence-title"></span><span id="operational-value-title"></span>
+    <p class="section-eyebrow">Operational value</p>
     <h2 id="decision-title">Use evidence to decide what scales.</h2>
     <p>
       Review outcomes, reliability, and cost. Refine what needs work, expand what earns confidence,
       and pause what does not.
     </p>
+    <a class="hero-story-link" href="/gh-cao/operational-value-how-to/">
+      Explore operational value <span aria-hidden="true">→</span>
+    </a>
   </div>
   <HeroDecisionLoop />
 </section>
@@ -182,7 +165,7 @@ import dashboardMobileOverviewLight from "../assets/product/cao-dashboard-mobile
     <h2 id="agentic-workflows-title">Built on Agentic Workflows</h2>
     <p>
       Author workflows in Markdown. GitHub Agentic Workflows runs them in GitHub Actions with declared permissions and safe outputs.
-      CAO coordinates them as campaigns with central visibility and reviewed rollout policy.
+      CAO adds visibility and policy for explicitly integrated workflows.
     </p>
     <a class="hero-story-link" href="https://github.github.com/gh-aw/">
       Explore GitHub Agentic Workflows <span aria-hidden="true">→</span>
@@ -239,8 +222,6 @@ includes:
       --cao-page-grid-major: rgba(26, 127, 55, 0.065);
       --cao-page-glow: rgba(26, 127, 55, 0.08);
       --cao-page-secondary-glow: rgba(26, 127, 55, 0.055);
-      --cao-signal-bg: rgba(255, 255, 255, 0.92);
-      --cao-signal-border: rgba(31, 35, 40, 0.18);
       --cao-phone-bg: #d8dee4;
       --cao-phone-border: #8c959f;
       --cao-phone-inset: rgba(255, 255, 255, 0.72);
@@ -274,8 +255,6 @@ includes:
 
     :global(:root[data-theme="dark"] .content-panel:has(.hierarchy-hero)) {
       --cao-page-bg: #000000;
-      --cao-signal-bg: rgba(13, 17, 23, 0.92);
-      --cao-signal-border: rgba(240, 246, 252, 0.18);
       --cao-phone-bg: #21262d;
       --cao-phone-border: #57606a;
       --cao-phone-inset: rgba(255, 255, 255, 0.07);
@@ -395,17 +374,8 @@ includes:
       content: "";
     }
 
-    .product-image {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
     .hero-visual {
       --phone-width: clamp(14rem, 21vw, 16rem);
-      --callout-overlap: 1.25rem;
-      /* Callouts enter only after the Central Agentic Ops name finishes typing. */
-      --callout-delay: 1600ms;
       position: relative;
       isolation: isolate;
       display: grid;
@@ -420,12 +390,14 @@ includes:
       width: var(--phone-width);
       margin: 0;
       filter: drop-shadow(0 1.25rem 2.25rem var(--cao-phone-shadow));
-      animation: phone-float 7s ease-in-out infinite;
-      transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
-    .phone-preview:hover {
-      transform: translateY(-0.4rem) rotate(0.35deg);
+    .phone-preview figcaption {
+      margin-top: 1rem;
+      color: var(--cao-story-text);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      text-align: center;
     }
 
     .phone-shell {
@@ -457,124 +429,6 @@ includes:
       width: 100%;
       height: auto;
       border-radius: 1.45rem;
-    }
-
-    .hero-callout {
-      --callout-color: #3fb950;
-      position: absolute;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      color: var(--callout-color);
-    }
-
-    .callout-card {
-      width: max-content;
-      border: 1px solid color-mix(in srgb, var(--callout-color) 45%, var(--cao-signal-border));
-      border-radius: 0.55rem;
-      padding: 0.4rem 0.6rem;
-      background: var(--cao-signal-bg);
-      box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.13);
-      color: var(--cao-loop-text);
-      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0;
-      line-height: 1.25;
-      white-space: nowrap;
-      backdrop-filter: blur(12px);
-      animation: callout-card-enter 600ms cubic-bezier(0.22, 1, 0.36, 1) var(--callout-delay) both;
-    }
-
-    .callout-line {
-      position: relative;
-      width: clamp(2.5rem, 5vw, 4.5rem);
-      height: 1px;
-      background: var(--callout-color);
-      transform-origin: left;
-      animation: callout-line-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--callout-delay) + 250ms) both;
-    }
-
-    .callout-line::after {
-      position: absolute;
-      top: 50%;
-      right: -0.3rem;
-      width: 0.55rem;
-      height: 0.55rem;
-      border: 1.5px solid var(--callout-color);
-      border-radius: 50%;
-      background: var(--cao-page-bg);
-      content: "";
-      transform: translateY(-50%);
-      animation: callout-point-pulse 2.8s ease-in-out calc(var(--callout-delay) + 950ms) infinite;
-    }
-
-    .callout-health {
-      top: 42%;
-      right: calc(50% + var(--phone-width) / 2 - var(--callout-overlap));
-    }
-
-    .callout-health .callout-line {
-      width: 3rem;
-    }
-
-    .callout-attention {
-      --callout-color: #f85149;
-      top: 84%;
-      left: calc(50% + var(--phone-width) / 2 - var(--callout-overlap));
-      flex-direction: row-reverse;
-    }
-
-    .callout-attention .callout-line {
-      width: 2.5rem;
-      transform-origin: right;
-    }
-
-    .callout-attention .callout-line::after {
-      right: auto;
-      left: -0.3rem;
-    }
-
-    @keyframes phone-float {
-      0%,
-      100% {
-        translate: 0 0;
-      }
-      50% {
-        translate: 0 -0.35rem;
-      }
-    }
-
-    @keyframes callout-line-enter {
-      from {
-        opacity: 0;
-        transform: scaleX(0);
-      }
-      to {
-        opacity: 1;
-        transform: scaleX(1);
-      }
-    }
-
-    @keyframes callout-point-pulse {
-      0%,
-      100% {
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--callout-color) 0%, transparent);
-      }
-      50% {
-        box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--callout-color) 18%, transparent);
-      }
-    }
-
-    @keyframes callout-card-enter {
-      from {
-        opacity: 0;
-        transform: translateY(0.4rem) scale(0.97);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
     }
 
     .product-story {
@@ -881,31 +735,6 @@ includes:
         width: min(68vw, 15rem);
       }
 
-      .hero-callout {
-        display: flex;
-      }
-
-      .hero-callout .callout-card {
-        padding: 0.35rem 0.5rem;
-        font-size: 0.625rem;
-      }
-
-      .hero-callout .callout-line {
-        display: none;
-      }
-
-      .callout-health {
-        top: 34%;
-        right: auto;
-        left: 0;
-      }
-
-      .callout-attention {
-        top: 74%;
-        right: 0;
-        left: auto;
-      }
-
       .phone-shell {
         border-radius: 1.8rem;
         padding: 0.375rem;
@@ -975,10 +804,6 @@ includes:
         transition: none;
       }
 
-      .phone-preview,
-      .callout-card,
-      .callout-line,
-      .callout-line::after,
       .product-story::before,
       .product-shot,
       .terminal-story :global(.terminal) {
@@ -987,7 +812,6 @@ includes:
         translate: none;
       }
 
-      .phone-preview:hover,
       .product-shot:hover,
       .terminal-story :global(.terminal:hover) {
         transform: none;

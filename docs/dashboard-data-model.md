@@ -22,22 +22,23 @@ publication, retention, browser updates, and SQLite projections.
 
 ```mermaid
 erDiagram
+  accTitle: Canonical execution lineage
+  accDescr: Repositories contain workflows and execute runs. Campaign membership is optional. Each run owns Domain, Tool, Skill, Friction, Audit and Issue records. This map is an execution-lineage subset, not the complete schema.
   CAMPAIGN o|--o{ WORKFLOW : classifies
   REPOSITORY ||--o{ WORKFLOW : contains
   REPOSITORY ||--o{ RUN : executes
-  REPOSITORY ||--o{ OPERATIONAL_VALUE : measures
   WORKFLOW ||--o{ RUN : defines
-  WORKFLOW ||--o{ OPERATIONAL_VALUE_EVIDENCE : evaluates
   RUN ||--o{ DOMAIN : records
   RUN ||--o{ TOOL : invokes
+  RUN ||--o{ SKILL : activates
+  RUN ||--o{ FRICTION : records
   RUN ||--o{ AUDIT : records
   RUN ||--o{ ISSUE : creates
 ```
 
-The main path follows activity from a repository through its workflows and
-runs to four specialized run-owned record types. A Campaign may classify a
-Workflow independently of that execution hierarchy. The table below provides
-the exact identities and parent relationships.
+The map focuses on execution lineage, including all six run-owned record types.
+Campaign membership is optional. Operational-value records have separate
+repository and workflow relationships, listed with the identities below.
 
 ## Entities
 

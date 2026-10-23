@@ -34,11 +34,10 @@ See [dashboard hosting](#evidence-and-dashboard-hosting) below and
 
 ## Mental Model
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/gh-cao/assets/control-plane-mental-model-dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="/gh-cao/assets/control-plane-mental-model-light.svg">
-  <img alt="A catalog release enters a governed control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode." src="/gh-cao/assets/control-plane-mental-model-light.svg">
-</picture>
+<div class="docs-theme-diagram">
+  <img class="docs-theme-diagram-light" alt="Campaign pattern: an orchestrator and one-target worker run in the control repository. Declared outputs go to the review repository or an authorized live target." src="/gh-cao/assets/control-plane-mental-model-light.svg">
+  <img class="docs-theme-diagram-dark" alt="Campaign pattern: an orchestrator and one-target worker run in the control repository. Declared outputs go to the review repository or an authorized live target." src="/gh-cao/assets/control-plane-mental-model-dark.svg">
+</div>
 
 The diagram shows the campaign pattern. A governed standalone workflow instead
 performs its mission directly against a bounded admitted set, without an

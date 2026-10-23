@@ -35,10 +35,9 @@ test("landing page presents the product through real operational surfaces", () =
   assert.match(landingPage, /Keep track of all runs, costs, and outcomes of your GitHub Agentic Workflows across repositories\. Set execution scope and rollout policy and refine workflows in review mode so you can roll out safely and confidently\./);
   assert.match(hero, /cao-dashboard-mobile-overview\.png/);
   assert.match(hero, /cao-dashboard-mobile-overview-light\.png/);
-  assert.doesNotMatch(hero, /cao-dashboard-(?:run-history|campaign-value)|runs-story|value-story/);
+  assert.doesNotMatch(hero, /cao-dashboard-(?:run-history|campaign-value)|runs-story/);
   assert.match(hero, /ThemeImage/);
-  assert.match(hero, /@media \(max-width: 42rem\) \{[\s\S]*?\.hero-callout \{[\s\S]*?display: flex/);
-  assert.match(hero, /\.hero-callout \.callout-line \{[\s\S]*?display: none/);
+  assert.doesNotMatch(hero, /hero-callout|phone-float/);
   assert.match(hero, /Setup, authentication, and rollout/);
   assert.match(hero, /\.terminal-story \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(hero, /Roll out with confidence\./);
@@ -69,7 +68,7 @@ test("landing page presents the product through real operational surfaces", () =
   assert.doesNotMatch(terminalText, /(?<![\w-])cao\.sh|gh cao validate|gh aw run|--raw-field|integrate-cao-workflow/);
   assert.deepEqual(
     [...hero.matchAll(/<section class="product-story ([^"]+)"/g)].map(([, classes]) => classes),
-    ["dispatch-story", "evidence-story", "terminal-story", "maintenance-story", "decision-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
+    ["dispatch-story", "terminal-story", "maintenance-story", "decision-story", "snippet-story webhook-story", "snippet-story agentic-workflows-story"],
   );
   assert.match(hero, /aria-labelledby="maintenance-title" data-reveal data-slideshow-slide/);
   assert.match(hero, /Less upkeep\. Current workflows\./);
@@ -105,7 +104,7 @@ test("landing page keeps the hero and supporting copy concise", () => {
   assert.ok(title && wordCount(title) <= 8, "hero headline should stay within eight words");
   assert.ok(tagline && wordCount(tagline) <= 40, "hero tagline should stay within forty words");
   const paragraphs = [...hero.matchAll(/<p>\s*([\s\S]*?)<\/p>/g)];
-  assert.equal(paragraphs.length, 8);
+  assert.equal(paragraphs.length, 7);
   const terminalParagraph = hero.match(/id="terminal-title"[\s\S]*?<p>\s*([\s\S]*?)<\/p>/)?.[1];
   for (const [, paragraph] of paragraphs) {
     const budget = paragraph === terminalParagraph ? 60 : 30;
@@ -129,35 +128,33 @@ test("README routes detailed tasks without rebuilding their chapter structure", 
   }
 });
 
-test("evidence story identifies fictional records without presenting completed runs as accepted outcomes", () => {
-  const evidence = readFileSync("docs/components/HeroEvidenceStory.astro", "utf8");
-  assert.match(hero, /<HeroEvidenceStory \/>/);
-  assert.match(evidence, /Illustrative investigation/);
-  assert.match(evidence, /Not a product screen/);
-  assert.match(evidence, /Fictional repositories and records/);
-  assert.match(evidence, /A completed run is not an accepted outcome/);
-  assert.match(evidence, /Supporting evidence/);
-  assert.match(evidence, /Human review \+ agent investigation/);
-  assert.equal([...evidence.matchAll(/<article>/g)].length, 2);
-  assert.equal([...evidence.matchAll(/<dt>Run<\/dt>/g)].length, 2);
-  assert.equal([...evidence.matchAll(/<dt>Cost<\/dt>/g)].length, 2);
-  assert.equal([...evidence.matchAll(/<dt>Outcome<\/dt>/g)].length, 2);
-  assert.equal([...evidence.matchAll(/Awaiting review/g)].length, 2);
+test("landing keeps real snapshots without a duplicate fictional evidence board", () => {
+  assert.doesNotMatch(hero, /HeroEvidenceStory|evidence-storyboard/);
+  assert.match(hero, /Example Overview snapshot/);
+  assert.match(hero, /Runtime signals and grader observations are not verified improvements/);
+  assert.match(hero, /Example snapshot\. Dashboard maintenance/);
+  assert.match(hero, /id="evidence-title"/);
+  assert.match(hero, /id="decision-title"/);
+  assert.match(hero, /review\/live policy explicit/);
+  assert.match(hero, /Reviewed policy controls scope, enablement, and review\/live mode/);
 });
 
-test("scaling decisions retain explicit human judgment, reviewed policy, and outcome evidence", () => {
+test("the original operational-value storyboard retains evidence, human judgment, and reviewed decisions", () => {
+  const story = hero.match(/<section class="product-story decision-story"[\s\S]*?<\/section>/)?.[0];
   const decision = readFileSync("docs/components/HeroDecisionLoop.astro", "utf8");
-  assert.match(hero, /<HeroDecisionLoop \/>/);
+  assert.ok(story);
+  assert.match(story, /<HeroDecisionLoop \/>/);
   for (const stage of ["Run", "Observe", "Review", "Refine", "Expand", "Pause"]) {
     assert.ok(decision.includes(`<strong>${stage}</strong>`));
   }
-  assert.match(decision, /Explicit decision point/);
   assert.match(decision, /Human judgment\.<br \/>Reviewed policy\./);
   assert.match(decision, /Accepted outcomes\? Reliable execution\?/);
   assert.match(decision, /Cost justified by the evidence\?/);
   assert.match(decision, /Next run follows the reviewed decision/);
   assert.match(decision, /Decision framework, not automatic optimization/);
   assert.match(decision, /Successful runs alone do not demonstrate value/);
+  assert.match(story, /href="\/gh-cao\/operational-value-how-to\/"/);
+  assert.doesNotMatch(decision, /<img|<svg|<script/);
 });
 
 test("landing campaign example uses the real Dependabot manifest without granting rollout authority", () => {

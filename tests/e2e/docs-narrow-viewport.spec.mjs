@@ -26,13 +26,12 @@ const paths = [
 ];
 
 for (const width of [320, 1280]) {
-  test(`Repo Status quickstart has honest video status and working links at ${width}px`, async ({ page }) => {
+  test(`Daily Repo Status quickstart keeps bounded review steps and working links at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     expect((await page.goto("setup/quickstart/"))?.ok()).toBe(true);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Daily Repo Status quickstart");
     const content = page.locator(".sl-markdown-content");
-    await expect(content).toContainText("CAO recording not yet available");
-    await expect(content).toContainText("There is no video to play yet");
+    await expect(content).not.toContainText("Video TODO");
     await expect(content.locator("video, iframe")).toHaveCount(0);
     await expect(content).toContainText("safe_output_mode=\"review\"");
     await expect(content).toContainText("control-plane.workflows");
@@ -69,17 +68,8 @@ for (const colorScheme of ["light", "dark"]) {
       expect((await page.goto("operational-value-how-to/"))?.ok()).toBe(true);
       await expect(page.locator("html")).toHaveAttribute("data-theme", colorScheme);
       const content = page.locator(".sl-markdown-content");
-      const trail = content.getByRole("list", { name: "Five steps from a goal to evidence" });
-      await expect(trail.locator("li")).toHaveCount(5);
-      await expect(trail.locator("strong")).toHaveText([
-        "1. Define value", "2. Follow the output", "3. Locate acceptance", "4. Measure it", "5. State the limits",
-      ]);
-      await expect(trail.locator('svg[aria-hidden="true"][focusable="false"]')).toHaveCount(5);
-      for (const icon of await trail.locator("svg").all()) {
-        const bounds = await icon.boundingBox();
-        expect(bounds.width).toBeGreaterThanOrEqual(24);
-        expect(bounds.height).toBeGreaterThanOrEqual(24);
-      }
+      await expect(content.locator(".cao-value-trail")).toHaveCount(0);
+      await expect(content.locator(".mermaid")).toHaveCount(1);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("Define and measure workflow value");
       await expect(content).toContainText("Markdown, imports and precomputes");
       await expect(content).toContainText("value function");
@@ -89,7 +79,8 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(content).toContainText("compare cohorts with equal follow-up");
       await expect(content).toContainText("Unresolved work is not automatically zero or failure");
       await expect(content.locator(".mermaid svg")).toBeVisible();
-      await expect(content.locator(".mermaid svg")).toContainText("Fixed-cadence repository snapshots");
+      await expect(content.locator(".mermaid svg")).toContainText("Repository snapshots: primary outcome");
+      await expect(content.locator(".mermaid svg")).toContainText("Accepted implementation: merged PR");
       expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(width);
       for (const link of await content.locator('a[href^="/gh-cao/"]').all()) {
         const href = await link.getAttribute("href");
@@ -124,8 +115,8 @@ test("operational value beginner guide remains readable without JavaScript", asy
     const page = await context.newPage();
     expect((await page.goto("operational-value-how-to/"))?.ok()).toBe(true);
     const content = page.locator(".sl-markdown-content");
-    await expect(content.getByRole("list", { name: "Five steps from a goal to evidence" }).locator("li"))
-      .toHaveCount(5);
+    await expect(content.getByRole("heading", { name: "Define the value function", exact: true })).toBeVisible();
+    await expect(content.locator(".cao-value-trail")).toHaveCount(0);
     await expect(content).toContainText("actual first parent");
     await expect(content.getByRole("link", { name: "github/gh-aw#55785", exact: true })).toBeVisible();
     expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(320);
@@ -166,7 +157,7 @@ for (const colorScheme of ["light", "dark"]) {
     test(`documentation matches gh-aw prose typography at ${width}px in ${colorScheme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme });
       await page.setViewportSize({ width, height: 900 });
-      expect((await page.goto("architecture-at-a-glance/"))?.ok()).toBe(true);
+      expect((await page.goto("configuration/"))?.ok()).toBe(true);
       const typography = await page.evaluate(() => {
         const selectors = {
           body: ".sl-markdown-content > p",
@@ -236,15 +227,12 @@ test("getting started leads from monitoring to a separate optional campaign guid
     "Continue learning",
   ]);
   const content = page.locator(".sl-markdown-content");
-  await expect(content).toContainText("This guide sets up monitoring only.");
+  await expect(content).toContainText("Monitoring only: no campaign installation or new agentic work.");
   await expect(content).toContainText("An empty dashboard is expected.");
   await expect(content).not.toContainText("gh aw run");
   await expect(content).toContainText("gh cao GitHub CLI extension");
-  await expect(content).toContainText("repository runtime");
-  await expect(content.locator(".starlight-aside").first()).toContainText("recording not yet available");
-  expect(await content.locator(".starlight-aside").first().evaluate(element =>
-    Boolean(element.compareDocumentPosition(document.querySelector("h2#prerequisites")) & Node.DOCUMENT_POSITION_FOLLOWING),
-  )).toBe(true);
+  await expect(content).toContainText("baseline monitoring runtime and policy");
+  await expect(content).not.toContainText("recording not yet available");
   await expect(content.locator("video, iframe")).toHaveCount(0);
   for (const anchor of [
     "guided-setup-instead", "4-open-your-dashboard",
@@ -269,9 +257,9 @@ test("getting started leads from monitoring to a separate optional campaign guid
     await page.screenshot({ path: screenshot, fullPage: true });
     await testInfo.attach(`Getting started (${name})`, { path: screenshot, contentType: "image/png" });
   }
-  await content.getByRole("link", { name: "Repo Status quickstart", exact: true }).click();
+  await content.getByRole("link", { name: "Daily Repo Status quickstart", exact: true }).click();
   await expect(page).toHaveURL(/\/setup\/quickstart\/$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Repo Status quickstart");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Daily Repo Status quickstart");
 });
 
 test("CAO introduction combines purpose and operating flow and leads to architecture", async ({ page }, testInfo) => {
@@ -895,8 +883,11 @@ for (const width of [390, 1280]) {
   });
 }
 
-test("legacy authentication profile route redirects to the consolidated guide", async ({ page }) => {
+test("credential provisioning remains separate from its runtime authentication reference", async ({ page }) => {
   await page.goto("control-plane-authentication/");
+  await expect(page).toHaveURL(/\/control-plane-authentication\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Control Plane Authentication Profiles");
+  await page.locator(".sl-markdown-content").getByRole("link", { name: "Authentication", exact: true }).click();
   await expect(page).toHaveURL(/\/authentication\/$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Authentication");
 });
@@ -929,7 +920,7 @@ for (const width of [320, 390, 768, 1024]) {
   });
 }
 
-test("desktop documentation navigation links to the introduction and an empty blog", async ({ page }) => {
+test("desktop documentation navigation links to the introduction and published blog posts", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   expect((await page.goto("setup-quickstarts/"))?.ok()).toBe(true);
 
@@ -942,9 +933,11 @@ test("desktop documentation navigation links to the introduction and an empty bl
   await navigation.getByRole("link", { name: "Blog", exact: true }).click();
   await expect(page).toHaveURL(/\/blog\/$/);
   await expect(page).toHaveTitle(/Central Agentic Ops Blog/);
-  await expect(page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link"))
-    .toHaveText(["All posts", "RSS"]);
-  await expect(page.locator('main a[href*="/blog/"]')).toHaveCount(0);
+  const blogNavigation = page.getByRole("navigation", { name: "Main", exact: true });
+  await expect(blogNavigation.getByRole("link", { name: "All posts", exact: true })).toBeVisible();
+  await expect(blogNavigation.getByRole("link", { name: "RSS", exact: true })).toBeVisible();
+  await expect(page.locator("main").getByRole("link", { name: "What counts as value from agent work?", exact: true }))
+    .toBeVisible();
 });
 
 for (const colorScheme of ["light", "dark"]) {
@@ -1028,7 +1021,7 @@ for (const { name, viewport } of [
 
       if (name === "desktop" || name === "mobile") {
         await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
-        await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+        await expect.poll(() => page.locator(".maintenance-image, .phone-image").evaluateAll(
           (images) => images.every((image) => image.complete && image.naturalWidth > 0),
         )).toBe(true);
         const rolloutStory = page.locator(".terminal-story");
@@ -1124,13 +1117,13 @@ for (const { name, viewport } of [
       await expect(maintenance.getByRole("link", { name: "Maintain your control plane." }))
         .toHaveAttribute("href", "/gh-cao/operations/#update-cao");
       await page.locator(".product-shot").last().scrollIntoViewIfNeeded();
-      await expect.poll(() => page.locator(".product-image, .phone-image, .maintenance-image").evaluateAll(
+      await expect.poll(() => page.locator(".phone-image, .maintenance-image").evaluateAll(
         (images) => images.every((image) => image.complete && image.naturalWidth > 0),
       )).toBe(true);
-      const productSources = await page.locator(".product-image, .phone-image").evaluateAll(
+      const phoneSources = await page.locator(".phone-image").evaluateAll(
         (images) => images.map((image) => image.currentSrc),
       );
-      expect(productSources.every((source) => colorScheme === "light"
+      expect(phoneSources.every((source) => colorScheme === "light"
         ? source.includes("-light.")
         : !source.includes("-light."))).toBe(true);
       const maintenanceSource = await maintenance.locator(`source[data-theme-source="${colorScheme}"]`).getAttribute("srcset");
@@ -1177,21 +1170,26 @@ test("landing product media follows a manual theme change", async ({ page }) => 
   await page.emulateMedia({ colorScheme: "dark" });
   expect((await page.goto("./"))?.ok()).toBe(true);
 
-  await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+  const maintenance = page.locator(".maintenance-image");
+  await maintenance.scrollIntoViewIfNeeded();
+  await expect(maintenance).toHaveJSProperty("currentSrc",
+    await page.locator('.maintenance-board source[data-theme-source="dark"]').getAttribute("srcset"));
+  await expect.poll(() => page.locator(".phone-image").evaluateAll(
     (images) => images.every((image) => !image.currentSrc.includes("-light.")),
   )).toBe(true);
 
   await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect.poll(() => page.locator(".product-image, .phone-image").evaluateAll(
+  await expect(maintenance).toHaveJSProperty("currentSrc",
+    await page.locator('.maintenance-board source[data-theme-source="light"]').getAttribute("srcset"));
+  await expect.poll(() => page.locator(".phone-image").evaluateAll(
     (images) => images.every((image) => image.currentSrc.includes("-light.")),
   )).toBe(true);
 });
 
 const dashboardDiagramPages = [
-  { name: "view system", path: "dashboard/" },
+  { name: "campaign execution", path: "architecture/" },
   { name: "data flow", path: "dashboard-data-ingestion/" },
-  { name: "Overview components", path: "dashboard-overview-components/" },
 ];
 
 for (const { name, path } of dashboardDiagramPages) {

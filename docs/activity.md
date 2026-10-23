@@ -23,6 +23,8 @@ and the implementation under `activity/`.
 
 ```mermaid
 sequenceDiagram
+  accTitle: Activity cache publication
+  accDescr: Activity restores the previous snapshot, collects logs once, ingests SQLite and saves refreshed evidence. Consumers restore that shared snapshot instead of collecting independently.
   participant Activity as CAO Activity
   participant Cache as Actions cache
   participant Consumer as Consumer

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title description" data-visual-kind="diagram" data-visual-id="control-plane-mental-model">
-  <title id="title">Central Agentic Ops mental model</title>
-  <desc id="description">A catalog release enters a private control repository, where an orchestrator selects and dispatches work to a worker that emits declared safe outputs in review or live mode.</desc>
+  <title id="title">Campaign execution boundary</title>
+  <desc id="description">In the campaign pattern, a catalog release enters a control repository. The orchestrator and one-target worker run inside that boundary. Only declared safe outputs go to the review repository or an authorized live target.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
       <path d="M0 0L10 4L0 8Z" fill="#0969da"/>
@@ -20,9 +20,9 @@
 
   <path d="M250 260H302" fill="none" stroke="#0969da" stroke-width="3" marker-end="url(#arrow)"/>
 
-  <g data-node="private-control-repository">
+  <g data-node="control-repository">
     <rect x="320" y="120" width="560" height="320" rx="16" fill="#ffffff" stroke="#08872b" stroke-width="2" stroke-dasharray="8 6"/>
-    <text x="352" y="158" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#08872b">PRIVATE CONTROL REPOSITORY</text>
+    <text x="352" y="158" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#08872b">CONTROL REPOSITORY</text>
     <text x="352" y="185" font-family="Mona Sans, system-ui, sans-serif" font-size="16" fill="#232925">Policy, credentials, and workflow definitions stay central</text>
   </g>
 
@@ -52,9 +52,9 @@
     <rect x="940" y="160" width="220" height="264" rx="12" fill="#ffffff" stroke="#b6bfb8" stroke-width="2"/>
     <text x="1050" y="200" text-anchor="middle" font-family="Mona Sans, system-ui, sans-serif" font-size="18" font-weight="700" fill="#101411">Declared outputs</text>
     <rect x="972" y="254" width="156" height="44" rx="8" fill="#e4ebe6" stroke="#909692"/>
-    <text x="1050" y="282" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#101411">review</text>
+    <text x="1050" y="282" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#101411">Review repo</text>
     <rect x="972" y="324" width="156" height="44" rx="8" fill="#e4ebe6" stroke="#909692"/>
-    <text x="1050" y="352" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#101411">live</text>
+    <text x="1050" y="352" text-anchor="middle" font-family="Mona Sans Mono, ui-monospace, monospace" font-size="16" fill="#101411">Live target</text>
   </g>
 
   <text x="600" y="500" text-anchor="middle" font-family="Mona Sans, system-ui, sans-serif" font-size="16" fill="#232925">Each worker stays bounded to one target and the rollout mode selected by the control plane.</text>

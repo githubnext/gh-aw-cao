@@ -9,7 +9,7 @@ import { Icon } from "@astrojs/starlight/components";
       <Icon name="close" size="1.25rem" />
     </button>
   </div>
-  <div class="image-zoom-viewport">
+  <div class="image-zoom-viewport" tabindex="0" role="region" aria-label="Expanded image details">
     <img data-image-zoom-preview alt="" />
   </div>
 </dialog>
@@ -175,10 +175,10 @@ import { Icon } from "@astrojs/starlight/components";
 
   .image-zoom-viewport img {
     display: block;
-    width: 100%;
+    width: auto;
     max-width: none;
-    height: 100%;
-    object-fit: contain;
+    height: auto;
+    margin-inline: auto;
     background: var(--sl-color-bg);
   }
 

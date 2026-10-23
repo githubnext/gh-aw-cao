@@ -12,12 +12,6 @@ one bounded review and know where to find its report or no-op explanation.
 review, and workflow execution time. No campaign, orchestrator or worker
 dispatch is required.
 
-:::note[CAO recording not yet available]
-**Video TODO:** record adding Daily Repo Status, requesting one review-mode run, and
-opening its report in the control repository. There is no video to play yet;
-follow the written steps below.
-:::
-
 ## Prerequisites
 
 <span id="step-1---set-up-cao-and-monitor-one-repository"></span>

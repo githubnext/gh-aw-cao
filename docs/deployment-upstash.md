@@ -25,6 +25,8 @@ The deployment uses the existing host-neutral `serve-hosted` profile:
 
 ```mermaid
 flowchart LR
+  accTitle: Hosted dashboard with Upstash operational storage
+  accDescr: The browser connects only to the CAO container. The container authenticates with GitHub, queries canonical data in PostgreSQL and uses Upstash over TLS for separate operational state.
   Browser["Authorized browser"] -->|"HTTPS"| Host["CAO dashboard container<br/>serve-hosted"]
   Host -->|"OAuth and membership"| GitHub["GitHub OAuth + API"]
   Host -->|"PostgreSQL protocol"| Postgres["PostgreSQL<br/>dashboard entities + queries"]

@@ -1,16 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title description" data-visual-kind="diagram" data-visual-id="dashboard-data-flow">
-  <title id="title">Dashboard data flow</title>
-  <desc id="description">Agentic workflows produce Actions logs. The Activity workflow collects them into authoritative JSONL. Consumers apply the shared data model to build separate SQLite and IndexedDB projections.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title description" data-visual-kind="diagram" data-visual-id="dashboard-data-flow">
+  <title id="title">One evidence snapshot, three query backends</title>
+  <desc id="description">Activity collects workflow logs into a published JSONL snapshot. The shared canonical model feeds independent SQLite, IndexedDB and PostgreSQL projections. Local Go, CLI and agents use SQLite; static Pages queries IndexedDB in a Web Worker; hosted Go queries PostgreSQL. These backends are not a fallback chain.</desc>
   <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#59636e"/></marker></defs>
-  <rect width="1200" height="700" fill="#f6f8fa"/>
-  <g data-node="workflows"><rect x="55" y="260" width="200" height="120" rx="8" fill="#fff8c5" stroke="#9a6700" stroke-width="3"/><text x="155" y="312" text-anchor="middle" fill="#7d4e00" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Workflow logs</text><text x="155" y="344" text-anchor="middle" fill="#59636e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">GitHub Actions</text></g>
-  <path d="M255 320h65" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <g data-node="activity"><rect x="335" y="260" width="200" height="120" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="3"/><text x="435" y="312" text-anchor="middle" fill="#116329" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Activity</text><text x="435" y="344" text-anchor="middle" fill="#59636e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Collects a snapshot</text></g>
-  <path d="M535 320h65" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <g data-node="jsonl"><rect x="615" y="260" width="200" height="120" rx="8" fill="#ffffff" stroke="#59636e" stroke-width="3"/><text x="715" y="312" text-anchor="middle" fill="#1f2328" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Published JSONL</text><text x="715" y="344" text-anchor="middle" fill="#59636e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">Authoritative input</text></g>
-  <text x="890" y="248" text-anchor="middle" fill="#0550ae" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16" font-weight="600">shared data model</text>
-  <path d="M815 320h55v-100h55" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <path d="M815 320h55v100h55" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
-  <g data-node="indexeddb"><rect x="940" y="160" width="205" height="120" rx="8" fill="#ddf4ff" stroke="#0969da" stroke-width="3"/><text x="1042" y="212" text-anchor="middle" fill="#0550ae" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">Dashboard</text><text x="1042" y="244" text-anchor="middle" fill="#59636e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">IndexedDB</text></g>
-  <g data-node="sqlite"><rect x="940" y="360" width="205" height="120" rx="8" fill="#fbefff" stroke="#8250df" stroke-width="3"/><text x="1042" y="412" text-anchor="middle" fill="#6639ba" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="20" font-weight="700">CLI &amp; agents</text><text x="1042" y="444" text-anchor="middle" fill="#59636e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="16">SQLite</text></g>
+  <rect width="1200" height="650" fill="#f6f8fa"/>
+  <g font-family="Mona Sans, system-ui, sans-serif" text-anchor="middle">
+    <text x="600" y="52" fill="#1f2328" font-size="28" font-weight="700">One evidence snapshot, three query backends</text>
+    <g data-node="workflows">
+      <rect x="60" y="100" width="320" height="100" rx="8" fill="#ffffff" stroke="#59636e" stroke-width="2"/>
+      <text x="220" y="143" fill="#1f2328" font-size="24" font-weight="700">Workflow logs</text>
+      <text x="220" y="177" fill="#59636e" font-size="20">GitHub Actions</text>
+    </g>
+    <path d="M380 150h48" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <g data-node="activity">
+      <rect x="440" y="100" width="320" height="100" rx="8" fill="#ffffff" stroke="#59636e" stroke-width="2"/>
+      <text x="600" y="143" fill="#1f2328" font-size="24" font-weight="700">Activity</text>
+      <text x="600" y="177" fill="#59636e" font-size="20">Bounded collection</text>
+    </g>
+    <path d="M760 150h48" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <g data-node="jsonl">
+      <rect x="820" y="100" width="320" height="100" rx="8" fill="#ffffff" stroke="#59636e" stroke-width="2"/>
+      <text x="980" y="143" fill="#1f2328" font-size="24" font-weight="700">Published snapshot</text>
+      <text x="980" y="177" fill="#59636e" font-size="20">JSONL evidence</text>
+    </g>
+    <text x="600" y="252" fill="#59636e" font-size="22">Shared canonical model</text>
+    <path d="M980 200v90H220v48" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <path d="M600 290v48" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <path d="M980 290v48" stroke="#59636e" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <g data-node="sqlite">
+      <rect x="60" y="350" width="320" height="180" rx="8" fill="#ffffff" stroke="#0969da" stroke-width="2"/>
+      <text x="220" y="397" fill="#0550ae" font-size="28" font-weight="700">SQLite</text>
+      <text x="220" y="442" fill="#1f2328" font-size="22">Local Go, CLI and agents</text>
+      <text x="220" y="482" fill="#59636e" font-size="20">Local queries</text>
+    </g>
+    <g data-node="indexeddb">
+      <rect x="440" y="350" width="320" height="180" rx="8" fill="#ffffff" stroke="#0969da" stroke-width="2"/>
+      <text x="600" y="397" fill="#0550ae" font-size="28" font-weight="700">IndexedDB</text>
+      <text x="600" y="442" fill="#1f2328" font-size="22">Static Pages Web Worker</text>
+      <text x="600" y="482" fill="#59636e" font-size="20">Browser-local queries</text>
+    </g>
+    <g data-node="postgres">
+      <rect x="820" y="350" width="320" height="180" rx="8" fill="#ffffff" stroke="#0969da" stroke-width="2"/>
+      <text x="980" y="397" fill="#0550ae" font-size="28" font-weight="700">PostgreSQL</text>
+      <text x="980" y="442" fill="#1f2328" font-size="22">Hosted Go server</text>
+      <text x="980" y="482" fill="#59636e" font-size="20">Server-side SQL queries</text>
+    </g>
+    <text x="600" y="586" fill="#1f2328" font-size="22">Dashboard Language queries return bounded results to views.</text>
+    <text x="600" y="620" fill="#59636e" font-size="20">Independent projections, not a fallback chain.</text>
+  </g>
 </svg>

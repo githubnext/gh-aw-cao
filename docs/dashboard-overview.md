@@ -19,11 +19,6 @@ not stages in a conversion funnel.
 
 ## What Overview shows
 
-<div class="docs-theme-diagram">
-	<img class="docs-theme-diagram-light" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-cao/assets/dashboard-overview-desktop-light.svg">
-	<img class="docs-theme-diagram-dark" alt="Overview page composition with a status header, weekly rhythm, and two operational stations" src="/gh-cao/assets/dashboard-overview-desktop-dark.svg">
-</div>
-
 | Dashboard area | What it tells you | Where it leads |
 | --- | --- | --- |
 | **Status header** | Whether runs are queued or in progress and the current evidence-based status. | Runs, outputs, or operational graders when the status is unexpected. |

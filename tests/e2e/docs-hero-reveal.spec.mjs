@@ -6,6 +6,7 @@ for (const { name, viewport } of [
 ]) {
   for (const { selector, heading } of [
     { selector: ".dispatch-story", heading: "Shared work. Clear ownership." },
+    { selector: ".decision-story", heading: "Use evidence to decide what scales." },
     { selector: ".maintenance-story", heading: "Less upkeep. Current workflows." },
   ]) {
     for (const colorScheme of ["light", "dark"]) {
@@ -47,7 +48,7 @@ for (const { name, viewport } of [
 test("landing stories remain visible with reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./");
-  await expect(page.locator("[data-reveal]")).toHaveCount(5);
+  await expect(page.locator("[data-reveal]")).toHaveCount(6);
   await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
   for (const story of await page.locator("[data-reveal]").all()) {
     await expect(story).toHaveCSS("opacity", "1");
@@ -101,7 +102,7 @@ test("landing stories remain visible without JavaScript", async ({ browser, base
   try {
     const page = await context.newPage();
     await page.goto("./");
-    await expect(page.locator("[data-reveal]")).toHaveCount(5);
+    await expect(page.locator("[data-reveal]")).toHaveCount(6);
     await expect(page.locator(".maintenance-story")).toContainText("Dashboard maintenance");
     for (const story of await page.locator("[data-reveal]").all()) {
       await expect(story).toHaveCSS("opacity", "1");
@@ -114,6 +115,9 @@ test("landing stories remain visible without JavaScript", async ({ browser, base
     }
     await expect(page.locator(".agentic-workflows-story .workflow-example-card")).toHaveCount(3);
     await expect(page.locator(".agentic-workflows-story pre code")).not.toBeEmpty();
+    await expect(page.locator(".decision-loop .evidence-stages li")).toHaveCount(3);
+    await expect(page.locator(".decision-loop")).toContainText("Reviewed policy.");
+    await expect(page.locator(".decision-loop .decision-paths strong")).toHaveText(["Refine", "Expand", "Pause"]);
   } finally {
     await context.close();
   }

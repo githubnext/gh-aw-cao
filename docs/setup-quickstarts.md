@@ -72,11 +72,11 @@ cd CONTROL_REPOSITORY
 </details>
 
 <details>
-<summary>Match the recorded public-only example.</summary>
+<summary>Public-only setup example.</summary>
 
-The recording creates a **public** control with
-`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enters `OWNER/*`
-at **Repositories**, reviews the exact names, accepts public Pages, then approves
+Create a **public** control with
+`gh repo create OWNER/CONTROL_REPOSITORY --public --clone`, then enter `OWNER/*`
+at **Repositories**, review the exact names, accept public Pages, and approve
 commit-and-push. All evidence must be public. Interactive wildcards containing
 private/internal targets are rejected for public controls, not silently trimmed.
 

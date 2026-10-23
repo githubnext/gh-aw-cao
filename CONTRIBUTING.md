@@ -159,6 +159,13 @@ Follow [gh-aw's navigation](https://github.com/github/gh-aw/blob/main/docs/astro
 for shared section labels and order. Keep CAO-specific groups only where useful;
 do not add pages merely to fill an upstream category.
 
+Keep a visual only when it explains a boundary, relationship, or task better
+than the surrounding text. Prefer one canonical diagram to repeated storyboards;
+label screenshots as snapshots and examples as illustrative. Check labels
+against the current implementation, both themes, and narrow screens. Remove
+retired assets with their references. Branding variants are intentional:
+`docs/assets/social-card.svg` is the editable source for `public/social-card.png`.
+
 Use relative `.md` links between authored pages; `docs/rewrite-docs-links.mjs`
 converts them to site routes. Preserve moved section anchors or update all
 inbound references, and do not redirect a still-authored page to a different

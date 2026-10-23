@@ -18,11 +18,6 @@ answer a specific question:
 - What needs attention or a closer look?
 - Is the evidence complete and current enough to act on?
 
-<div class="docs-theme-diagram">
-	<img class="docs-theme-diagram-light" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-cao/assets/dashboard-view-system-light.svg">
-	<img class="docs-theme-diagram-dark" alt="The selected dashboard view sends a Dashboard Language query to structured data and receives results" src="/gh-cao/assets/dashboard-view-system-dark.svg">
-</div>
-
 ## How it works
 
 Every view follows the same data flow:

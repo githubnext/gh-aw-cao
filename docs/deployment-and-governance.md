@@ -15,8 +15,6 @@ Central Agentic Ops does not require a GitHub enterprise account. An organizatio
 
 The execution topology is the same in every profile. A pinned campaign is installed into a scoped control repository, which dispatches directly to enrolled targets. The profile changes who governs each runtime and which repositories its credentials and inventory can reach.
 
-![One execution topology shared by organization, multi-organization, and enterprise deployment profiles.](assets/control-plane-flow.svg)
-
 | Deployment profile | Runtime ownership | Default reach | GitHub Enterprise required |
 | --- | --- | --- | --- |
 | **Organization or OSS** | One control repository owned by the organization | Automatically discovered repositories in that organization | No |
