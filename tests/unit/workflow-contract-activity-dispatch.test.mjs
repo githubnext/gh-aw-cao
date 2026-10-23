@@ -31,21 +31,38 @@ test('manual fast collection narrows download budgets without changing scope or 
   });
 });
 
-test('fast collection preserves the history restore and exits before operational-value computation', (t) => {
+test('fast collection preserves Value history and publishes a deferred decision without acquisition', (t) => {
   const directory = mkdtempSync(path.join(tmpdir(), 'activity-fast-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const computation = step('collect', 'Compute owner-scoped operational value');
+  const computation = step('collect', 'Retain Value evidence and publish collection health');
   assert.equal(computation.env.REPORT_FAST_MODE, '${{ inputs.fast == true }}');
-  assert.match(computation.run, /cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?if \[\[ "\$REPORT_FAST_MODE" == "true" \|\| "\$REPORT_RATE_LIMITED" == "true" \|\| "\$REPORT_PUBLIC_ONLY" == "true" \]\]/);
+  const seed = path.join(directory, 'seed');
+  const shards = path.join(directory, 'shards');
+  mkdirSync(seed);
+  mkdirSync(shards);
+  writeFileSync(path.join(seed, 'operational-values-example.jsonl'), 'retained evidence\n');
+  const inventory = path.join(directory, 'inventory.json');
+  writeFileSync(inventory, JSON.stringify({ repositories: { rows: [] }, workflows: { rows: [] } }));
+  assert.match(computation.run, /cp "\$retained_values" "\$value_output"[\s\S]*?REPORT_FAST_MODE" == "true" \]\]; then reason=fast-mode/);
+  assert.equal(computation['continue-on-error'], true);
+  assert.equal(computation['timeout-minutes'], 1);
   const output = execFileSync('bash', ['-euc', computation.run], {
     cwd: root, encoding: 'utf8',
     env: {
       ...process.env, REPORT_FAST_MODE: 'true', ACTIVITY_ARTIFACT: 'example',
-      RUNNER_TEMP: directory,
-      REPORT_VALUE_SEED_SHARDS: directory, REPORT_GH_AW_LOGS_SHARDS: directory
+      RUNNER_TEMP: directory, REPORT_PUBLIC_ONLY: 'false', REPORT_RATE_LIMITED: 'false',
+      ACTIVITY_OWNER: 'github', REPORT_TARGET_REPOSITORIES_JSON: '["gh-aw"]',
+      ACTIVITY_DATABASE: path.join(directory, 'unused.sqlite'), REPORT_INVENTORY_SOURCES: inventory,
+      GITHUB_RUN_ID: '1', GITHUB_RUN_ATTEMPT: '1', GH_TOKEN: '', GITHUB_TOKEN: '',
+      REPORT_VALUE_SEED_SHARDS: seed, REPORT_GH_AW_LOGS_SHARDS: shards,
     }
   });
-  assert.match(output, /skipping new computation/);
+  assert.equal(JSON.parse(output).deferred, 1);
+  assert.equal(readFileSync(path.join(shards, 'operational-values-example.jsonl'), 'utf8'), 'retained evidence\n');
+  const health = JSON.parse(readFileSync(path.join(shards, 'workflow-values-example-collections.jsonl'), 'utf8'));
+  assert.equal(health.workflow_value_collection.reasonCode, 'fast-mode');
+  assert.equal(health.workflow_value_collection.lastAttemptAt, undefined);
+  assert.equal(JSON.parse(readFileSync(path.join(shards, 'workflow-value-local.json'), 'utf8'))[0].eligible, false);
 });
 
 test('forced recycling runs before new downloads and safely clears only disposable payloads', (t) => {

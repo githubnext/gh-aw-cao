@@ -377,8 +377,12 @@ jobs:
           if [[ -f "$health_seed" ]]; then cp "$health_seed" "$health_output"; fi
           proof_seed="$RUNNER_TEMP/cao-activity/workflow-value-workspaces/$ACTIVITY_ARTIFACT"
           proof_output="$RUNNER_TEMP/cao-activity-partial/$ACTIVITY_ARTIFACT/workflow-value-workspaces/$ACTIVITY_ARTIFACT"
-          mkdir -p "$proof_output"
-          if [[ -d "$proof_seed" ]]; then cp -R "$proof_seed/." "$proof_output/"; fi
+          proof_staging="$RUNNER_TEMP/cao-value-proof-staging/$ACTIVITY_ARTIFACT"
+          if [[ -d "$proof_seed" ]]; then
+            mkdir -p "$proof_staging" "$(dirname "$proof_output")"
+            cp -R "$proof_seed/." "$proof_staging/"
+            mv "$proof_staging" "$proof_output"
+          fi
           retained_values="$REPORT_VALUE_SEED_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           value_output="$REPORT_GH_AW_LOGS_SHARDS/operational-values-$ACTIVITY_ARTIFACT.jsonl"
           if [[ -f "$retained_values" ]]; then

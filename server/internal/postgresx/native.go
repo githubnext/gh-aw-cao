@@ -559,7 +559,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if _, err := w.tx.Exec(ctx, "SELECT cao_analyze_native()"); err != nil {
 		return State{}, fmt.Errorf("refresh native statistics: %w", err)
 	}
-	if err := w.validateCollectionDecisionReplacement(ctx); err != nil {
+	if err := w.reconcileCollectionDecisions(ctx); err != nil {
 		return State{}, err
 	}
 	if err := overlayRepositoryLifecycle(ctx, w.store.namespace, func(ctx context.Context, statement string, args ...any) error {

@@ -78,13 +78,15 @@ export function mergeWorkflowValueCollection(previous, incoming) {
   if (!previous) return incoming;
   const before = Date.parse(previous.observedAt), after = Date.parse(incoming.observedAt);
   if (before > after) return previous;
+  const next = previous.lastAttemptAt && !incoming.lastAttemptAt ? {
+    ...incoming, lastAttemptAt: previous.lastAttemptAt, lastAttemptOutcome: previous.lastAttemptOutcome,
+  } : incoming;
   const fields = ['registration', 'collector', 'state', 'reasonCode', 'policyDigest', 'lastAttemptAt', 'lastAttemptOutcome'];
-  if (before === after && fields.some(field => previous[field] !== incoming[field])) {
+  if (before === after && fields.some(field => previous[field] !== next[field])) {
     throw new TypeError('Conflicting workflow Value collection decisions at the same time');
   }
-  if (previous.lastAttemptAt && (!incoming.lastAttemptAt
-    || Date.parse(incoming.lastAttemptAt) < Date.parse(previous.lastAttemptAt))) {
+  if (previous.lastAttemptAt && Date.parse(next.lastAttemptAt) < Date.parse(previous.lastAttemptAt)) {
     throw new TypeError('Workflow Value collection attempt history regressed');
   }
-  return incoming;
+  return next;
 }

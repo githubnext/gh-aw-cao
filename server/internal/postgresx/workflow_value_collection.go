@@ -19,7 +19,22 @@ func (w *Writer) preserveCollectionDecisions(ctx context.Context) error {
 	return err
 }
 
-func (w *Writer) validateCollectionDecisionReplacement(ctx context.Context) error {
+func (w *Writer) reconcileCollectionDecisions(ctx context.Context) error {
+	presence := "incoming.present_fields"
+	for index, column := range entityTables["$workflowValueCollections"].columns {
+		if column.field == "lastAttemptAt" || column.field == "lastAttemptOutcome" {
+			presence = fmt.Sprintf("set_bit(%s,%d,1)", presence, index)
+		}
+	}
+	// An absent attempt means unknown, including after a local cache loss.
+	if _, err := w.tx.Exec(ctx, `UPDATE workflow_value_collections incoming SET
+		last_attempt_at=previous.last_attempt_at, last_attempt_outcome=previous.last_attempt_outcome,
+		present_fields=`+presence+` FROM workflow_value_collections_previous previous
+		WHERE incoming.namespace=$1 AND incoming.id=previous.id
+		AND incoming.observed_at>=previous.observed_at
+		AND incoming.last_attempt_at IS NULL AND previous.last_attempt_at IS NOT NULL`, w.store.namespace); err != nil {
+		return err
+	}
 	var invalid bool
 	err := w.tx.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM workflow_value_collections incoming

@@ -47,6 +47,37 @@ test("the installed runtime rejects unknown commands before filesystem or databa
   assertUnknownCommandsRejectBeforeIO(unpack(t), t);
 });
 
+test("the installed runtime publishes reviewed collection health without a collector or credentials", t => {
+  const root = unpack(t);
+  for (const { source, destination } of parse(readFileSync(path.join(catalog, "aw.yml"), "utf8")).resources) {
+    const target = path.join(root, destination);
+    mkdirSync(path.dirname(target), { recursive: true });
+    cpSync(path.join(catalog, source), target, { recursive: true });
+  }
+  const policy = path.join(root, "health-policy.json");
+  writeFileSync(policy, JSON.stringify({ version: 1, "gh-aw-version": "v0.93.1", "control-plane": {
+    scope: { "allowed-repositories": ["org/repo"] }, activity: { repositories: ["org/repo"] },
+    campaigns: { activity: { "workflow-values": [
+      { repository: "org/repo", workflow: "worker", collector: "not-installed.mjs" },
+    ] } },
+  } }));
+  const output = path.join(root, "health-evidence.jsonl");
+  const result = JSON.parse(execFileSync(process.execPath, [
+    "activity/workflow-values.mjs", "--root", root, "--policy", policy, "--repository", "org/repo",
+    "--output", output, "--workspace", path.join(root, "proofs"), "--defer", "api-budget",
+  ], { cwd: root, env: { PATH: "", NODE_OPTIONS: "" }, encoding: "utf8", timeout: 30000 }));
+  assert.equal(result.deferred, 1);
+  assert.equal(result.failed, 0);
+  const { workflow_value_collection: health } = JSON.parse(readFileSync(
+    path.join(root, "health-evidence-collections.jsonl"), "utf8",
+  ));
+  assert.equal(health.registration, "enabled");
+  assert.equal(health.reasonCode, "api-budget");
+  assert.equal(health.lastAttemptAt, undefined);
+  assert.equal(existsSync(output), false);
+  assert.equal(existsSync(path.join(root, "proofs")), false);
+});
+
 test("the installed runtime retains explicit ingestion and downloadable queryable evidence", async (t) => {
   const root = unpack(t);
   const database = path.join(root, "snapshot.sqlite");

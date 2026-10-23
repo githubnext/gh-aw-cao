@@ -38,9 +38,17 @@ describe('canonical workflow Value collection facts', () => {
     await expect(ingestCachedGhAwJsonl(database, JSON.stringify(conflicting), { now, payloadScope: 'conflict' })).rejects.toThrow();
     const regressed = structuredClone(fixture);
     regressed.workflow_value_collection.observedAt = '2026-10-24T00:00:00Z';
-    delete regressed.workflow_value_collection.lastAttemptAt;
-    delete regressed.workflow_value_collection.lastAttemptOutcome;
+    regressed.workflow_value_collection.lastAttemptAt = '2026-10-21T12:00:00Z';
     await expect(ingestCachedGhAwJsonl(database, JSON.stringify(regressed), { now, payloadScope: 'regression' })).rejects.toThrow();
+    const unknown = structuredClone(fixture);
+    unknown.workflow_value_collection.observedAt = '2026-10-24T00:00:00Z';
+    delete unknown.workflow_value_collection.lastAttemptAt;
+    delete unknown.workflow_value_collection.lastAttemptOutcome;
+    await ingestCachedGhAwJsonl(database, JSON.stringify(unknown), { now, payloadScope: 'unknown-attempt' });
+    const [preserved] = await readCollection(database, 'workflowValueCollections');
+    expect(preserved.observedAt).toBe(unknown.workflow_value_collection.observedAt);
+    expect(preserved.lastAttemptAt).toBe(fixture.workflow_value_collection.lastAttemptAt);
+    expect(preserved.lastAttemptOutcome).toBe(fixture.workflow_value_collection.lastAttemptOutcome);
     await maintainCanonicalDatabase(database, {
       now: now + 365 * 86400000, retentionWindowMs: 86400000, maxDatabaseBytes: Number.MAX_SAFE_INTEGER,
     });

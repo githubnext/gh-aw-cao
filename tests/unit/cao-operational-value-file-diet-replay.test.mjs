@@ -100,7 +100,7 @@ test("the real reviewed File Diet collector loads in the isolated worker and reu
     repositories: [definition.repository], output, workspace: path.join(directory, "proofs"),
     observedAt: ledger.window.endAt,
   });
-  assert.deepEqual(result, { collected: 0, skipped: 1, warnings: [] });
+  assert.deepEqual(result, { collected: 0, skipped: 1, deferred: 0, failed: 0, warnings: [] });
 });
 
 test("cold-start proof is pinned, evidence-only, bounded and validated before reuse", async t => {

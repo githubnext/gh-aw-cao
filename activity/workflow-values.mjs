@@ -4,7 +4,7 @@
 // The return value is the original schema-v2 operational_value_evidence envelope.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadPolicyFile } from '../.github/workflows/shared/policy.mjs';
@@ -155,12 +155,13 @@ export async function runWorkflowValues(options) {
   if (options.localRequest) {
     if (!options.snapshot) throw new Error('Local Value request requires a snapshot identity');
     await mkdir(path.dirname(options.localRequest), { recursive: true });
-    await writeFile(options.localRequest, JSON.stringify([{
+    await writeFile(`${options.localRequest}.pending`, JSON.stringify([{
       schemaVersion: 1, snapshot: options.snapshot, policyDigest: health.policyDigest,
       eligible: !health.activityDisabled && options.defer === 'shared-budget-unavailable',
       reason: health.activityDisabled ? 'activity-disabled' : options.defer,
       repositories: options.repositories.filter(repository => valueRepositoryInScope(policy, options.repositories, repository, true)),
     }]) + '\n', { mode: 0o600 });
+    await rename(`${options.localRequest}.pending`, options.localRequest);
   }
   const result = { collected: 0, skipped: 0, deferred: 0, failed: 0, warnings: [] };
   const fresh = [];

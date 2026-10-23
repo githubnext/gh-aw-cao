@@ -123,7 +123,7 @@ func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 	clock, _ := evidenceTime(original["observedAt"])
-	for _, scenario := range []string{"stale", "conflicting", "lost-attempt"} {
+	for _, scenario := range []string{"stale", "conflicting", "regressed-attempt"} {
 		record := maps.Clone(original)
 		switch scenario {
 		case "stale":
@@ -131,10 +131,9 @@ func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
 		case "conflicting":
 			record["reasonCode"] = "shared-budget-unavailable"
 			record["reason"] = valueCollectionReasons["shared-budget-unavailable"]
-		case "lost-attempt":
+		case "regressed-attempt":
 			record["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
-			delete(record, "lastAttemptAt")
-			delete(record, "lastAttemptOutcome")
+			record["lastAttemptAt"] = clock.Add(-48 * time.Hour).Format(time.RFC3339)
 		}
 		if err := publish(record, scenario); err == nil || !strings.Contains(err.Error(), "accepted history") {
 			t.Fatalf("%s snapshot must not overwrite accepted decisions: %v", scenario, err)
@@ -148,8 +147,23 @@ func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
 	if len(rows) != 1 || rows[0]["reason-code"] != "api-budget" || rows[0]["last-attempt-outcome"] != "failed" {
 		t.Fatalf("failed imports changed accepted health: %v", rows)
 	}
+	unknown := maps.Clone(original)
+	unknown["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
+	delete(unknown, "lastAttemptAt")
+	delete(unknown, "lastAttemptOutcome")
+	if err := publish(unknown, "unknown-attempt"); err != nil {
+		t.Fatal("unknown attempts must not erase known history or prevent ordinary publication", err)
+	}
+	sources, _, err = store.ExecuteSQLPlan(t.Context(), canonicalProjectionDefinitions(t), []string{"workflow-value-collections"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows = sources["workflow-value-collections"].Rows
+	if len(rows) != 1 || rows[0]["last-attempt-outcome"] != "failed" || rows[0]["last-attempt-at"] == nil {
+		t.Fatalf("unknown attempts erased accepted history: %v", rows)
+	}
 	disabled := maps.Clone(original)
-	disabled["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
+	disabled["observedAt"] = clock.Add(2 * time.Hour).Format(time.RFC3339)
 	disabled["registration"], disabled["state"], disabled["reasonCode"] = "disabled", "disabled", "disabled"
 	disabled["reason"] = valueCollectionReasons["disabled"]
 	delete(disabled, "collector")

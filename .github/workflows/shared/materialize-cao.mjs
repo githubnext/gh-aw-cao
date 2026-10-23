@@ -520,6 +520,7 @@ export function verifyCaoRuntime(bundle, repositoryRoot = process.cwd()) {
     activity: [
       'activity/cao.mjs',
       'activity/workflow-values.mjs',
+      'activity/workflow-value-history.mjs',
       'activity/workflow-value-status.mjs',
       'activity/local-values.mjs',
       'dashboard/site/src/data/model/operational-value-evidence.js',

@@ -633,10 +633,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 34 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 44 | Nineteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
-| Local SQLite projection | IndexedDB 43 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Canonical model | 35 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Workflow Value Collection, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 45 | Twenty canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Local SQLite projection | IndexedDB 45 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Go server Postgres sources | Canonical model 19 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -2614,7 +2614,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 44;
+const DATABASE_VERSION = 45;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2626,7 +2626,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 44 SHALL define:
+IndexedDB version 45 SHALL define:
 
 ```text
 campaigns
@@ -2641,6 +2641,7 @@ audits
 issues
 operationalValues
 operationalValueEvidence
+workflowValueCollections
 marketplacePackages
 experiments
 experimentAssignments
@@ -2964,6 +2965,9 @@ No health observation promotes outcome completeness or freshness.
 Explicit disables without a collector path SHALL remain disabled, not
 unconfigured. Newer decisions MUST NOT discard or regress a known attempt clock;
 conflicting decisions at the same observation time SHALL fail.
+An absent attempt is unknown, not proof that collection never ran. Merging a
+newer decision after cache loss SHALL retain an already known actual attempt;
+it MUST NOT synthesize one from the new decision time.
 
 Optional Value acquisition MUST NOT delay ordinary Activity publication, consume
 its protected API headroom, or hold the hosted projection lease. A separate job
