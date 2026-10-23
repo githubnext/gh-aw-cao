@@ -3231,6 +3231,37 @@ Token-optimization retention SHALL also satisfy Section 5.5.5 so an active
 intervention is not pruned before maturation and compact terminal evidence
 remains bounded.
 
+## 41.1 Resolved failure log excerpts
+
+Canonical IndexedDB and its Node.js SQLite adapter SHALL reclaim the optional
+Run `failureLog` excerpt after a later completed native success in the same
+execution Repository, Workflow, campaign/role, target, event, branch and rollout
+mode. Ordering SHALL use the first valid `startedAt`, `createdAt`, or `updatedAt`,
+then numeric GitHub run ID and attempt, as in the runtime-health contract.
+Unknown ordering or branch, missing worker target or rollout mode, unknown
+workflow role without a target association, cancellation, missing conclusions,
+and explicitly incomplete outcomes MUST NOT establish recovery.
+Lower attempts and older observations MUST NOT overwrite the retained winner.
+
+This first increment SHALL remove only the excerpt, not the Run, its failure
+signature/message, accounting, or any run-linked record. Audit summaries and
+counts, tool/domain activity, friction, safe outputs, experiment assignments,
+grader/eval observations, and intervention/comparison evidence remain subject to
+their existing retention rules. Missing excerpts MUST remain missing, not
+successful outcomes or zero diagnostic activity.
+
+Unresolved excerpts SHALL use the existing Audit detail window and whole-Run
+size cap; a separate full-detail archive explicitly using unlimited detail
+retention SHALL remain exempt. A storage-local, attempt-scoped pruning marker
+SHALL prevent replay from restoring a discarded excerpt while its Run survives,
+without suppressing a new attempt's diagnostic evidence.
+
+Maintenance SHALL use bounded Run reads and accounted writes before size-based
+Run eviction, including when source receipts are unchanged. It MUST NOT load
+run-owned evidence collections or persist statistical aggregates. Excerpt-only
+changes SHALL refresh active query results. This policy does not alter hosted
+PostgreSQL, published JSONL, or GitHub runs and artifacts.
+
 ---
 
 # 42. Search

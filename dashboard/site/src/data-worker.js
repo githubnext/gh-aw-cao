@@ -1287,7 +1287,7 @@ export function processDataRequest(request, signal) {
             onLockWait: () => progress.log(INGESTION_LOCK_WAIT_MESSAGE),
             signal
           });
-          changed ||= maintenance.deletedRecords > 0;
+          changed ||= maintenance.deletedRecords > 0 || maintenance.prunedFailureLogs > 0;
           progress.reportImportProgress(shardCount + 2 * preparationStepWeight, importSteps, 'queries');
         } else {
           progress.log('Normalizing dashboard source data.');

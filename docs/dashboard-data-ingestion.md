@@ -181,6 +181,21 @@ structural parents. The effective retention horizon is the later of the browser
 clock and the newest incoming observation, so a slow clock cannot prune
 current producer data.
 
+Browser IndexedDB and Node.js SQLite ingestion also discard a failed Run's raw
+`failureLog` excerpt once a later completed success is known in the same
+repository/workflow, target, event, branch, and rollout mode. Cancellation and
+incomplete outcomes do not prove recovery. Only the excerpt is removed: Run
+summaries, failure signatures/messages, cost and reliability facts, and all
+run-linked metric and comparison evidence keep their existing retention.
+Re-importing an older shard cannot restore a pruned excerpt for the same attempt.
+Unresolved excerpts follow the existing detail window and database size cap.
+A separate archive with `--retention-days all` preserves full detail. This does
+not prune hosted PostgreSQL, published shards, or GitHub artifacts.
+The saving is retained diagnostic bytes and reduced storage pressure, not fewer
+GitHub API calls, downloaded artifacts, or workflow executions. Cleanup itself
+adds a bounded maintenance scan when excerpts are present; no execution-time
+reduction is assumed.
+
 Every merged batch must satisfy these relationships:
 
 - Workflow to Repository

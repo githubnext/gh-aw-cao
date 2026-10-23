@@ -1,5 +1,5 @@
 import { orderRunRecords } from '../normalize/index.js';
-import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
+import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, timestampMilliseconds } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 
@@ -208,6 +208,64 @@ export function recordTimestamp(storeName, record) {
     if (Number.isFinite(milliseconds)) return milliseconds;
   }
   return null;
+}
+
+const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'startup_failure', 'stale', 'timed-out', 'timed_out']);
+
+/** @typedef {{ scope: string, timestamp: number, githubRunId: string, attempt: number }} FailureLogBoundary */
+
+/**
+ * Uses the runtime-health run order, with stricter scope matching for destructive
+ * retention. Unknown worker targets cannot establish a recovery boundary.
+ * @param {Record<string, unknown>} run
+ * @param {Record<string, unknown> | undefined} workflow
+ * @returns {FailureLogBoundary | null}
+ */
+export function failureLogBoundary(run, workflow) {
+  if (!workflow || workflow.id !== run.workflowId || workflow.repositoryId !== run.repositoryId
+      || typeof run.repositoryId !== 'string' || typeof run.workflowId !== 'string'
+      || typeof run.event !== 'string' || !run.event || run.event === 'unknown'
+      || !Number.isSafeInteger(run.attempt) || Number(run.attempt) < 1) return null;
+  const target = run.targetRepositoryId ?? run.targetRepository;
+  const knownTarget = typeof target === 'string' && target.length > 0 && target !== 'unknown';
+  const branch = run.branch ?? run.headBranch;
+  if (typeof branch !== 'string' || !branch || branch === 'unknown') return null;
+  if ((workflow.role === 'worker' || workflow.role == null || workflow.role === '' || workflow.role === 'unknown')
+      && !knownTarget) return null;
+  if ((workflow.role === 'worker' || knownTarget)
+      && (typeof run.rolloutMode !== 'string' || !run.rolloutMode || run.rolloutMode === 'unknown')) return null;
+  const timestamp = ['startedAt', 'createdAt', 'updatedAt']
+    .map((field) => timestampMilliseconds(run[field])).find((value) => value !== null);
+  const githubRunId = String(run.githubRunId ?? '');
+  if (timestamp === undefined || !/^[1-9][0-9]*$/.test(githubRunId)
+      || (typeof run.githubRunId === 'number' && !Number.isSafeInteger(run.githubRunId))) return null;
+  return {
+    scope: JSON.stringify([
+      run.repositoryId, run.workflowId, workflow.campaignId ?? null, workflow.role ?? null,
+      run.targetRepositoryId ?? null, run.targetRepository ?? null,
+      run.event, branch, run.rolloutMode ?? null
+    ]),
+    timestamp, githubRunId, attempt: Number(run.attempt)
+  };
+}
+
+/** @param {FailureLogBoundary} left @param {FailureLogBoundary} right */
+export function compareFailureLogBoundaries(left, right) {
+  return left.timestamp - right.timestamp
+    || left.githubRunId.localeCompare(right.githubRunId, undefined, { numeric: true })
+    || left.attempt - right.attempt;
+}
+
+/** @param {Record<string, unknown>} run */
+export function isFailureLogRecovery(run) {
+  return run.status === 'completed' && run.conclusion === 'success'
+    && (run.terminalOutcome == null || run.terminalOutcome === '')
+    && (run.failureKind == null || run.failureKind === '');
+}
+
+/** @param {Record<string, unknown>} run */
+export function hasFailedConclusion(run) {
+  return run.status === 'completed' && FAILURE_CONCLUSIONS.has(String(run.conclusion));
 }
 
 /**

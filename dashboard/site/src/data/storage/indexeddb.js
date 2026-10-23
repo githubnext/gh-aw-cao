@@ -179,7 +179,6 @@ const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
 const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
-const RECORD_OVERHEAD_BYTES = 512;
 const RETENTION_TIMESTAMPS = new Set([
   'runs',
   'domains',
@@ -668,14 +667,9 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   }
 }
 
-  /** @param {Record<string, unknown>} record */
-function estimatedRecordBytes(record) {
-  return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
-}
-
 /**
- * Applies retention and size limits using indexed, bounded shard cleanup.
- * Full scans are reserved for explicitly requested relationship or legacy audit repair.
+ * Applies retention and size limits using indexed shard cleanup and bounded Run pages.
+ * Full evidence scans are reserved for explicit relationship or legacy audit repair.
  *
  * @param {IDBFactory} indexedDB
  * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, repairAuditCuration?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
@@ -704,22 +698,12 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
     const defaultWindow = Number.isFinite(options.retentionWindowMs)
       ? Math.max(0, Number(options.retentionWindowMs))
       : 30 * 24 * 60 * 60 * 1000;
-    const targetBytes = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
-    let estimatedBytes = 0;
     let deletedRecords = 0;
-    let retainedRecords = 0;
     let prunedAudits = 0;
     /** @type {Map<string, Record<string, unknown>>} */
     const auditRunFacts = new Map();
-    /** @type {{ id: string, timestamp: number, bytes: number }[]} */
-    const runs = [];
     /** @type {string[]} */
     const expiredRunIds = [];
-    /** @type {Map<string, number>} */
-    const linkedBytesByRun = new Map();
-    /** @type {Map<string, number>} */
-    const linkedRecordsByRun = new Map();
-    const retainedRunIds = new Set();
     const campaignIds = new Set();
     const repositoryIds = new Set();
     /** @type {Map<string, string>} */
@@ -836,21 +820,6 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
             }
             return;
           }
-          const bytes = estimatedRecordBytes(record);
-          estimatedBytes += bytes;
-          retainedRecords += 1;
-          if (storeName === 'runs') {
-            retainedRunIds.add(id);
-            runs.push({
-              id: String(record.id),
-              timestamp: timestamp ?? Number.NEGATIVE_INFINITY,
-              bytes
-            });
-          } else if (RUN_LINKED_STORES.includes(/** @type {typeof RUN_LINKED_STORES[number]} */ (storeName))) {
-            const runId = String(record.runId);
-            linkedBytesByRun.set(runId, (linkedBytesByRun.get(runId) ?? 0) + bytes);
-            linkedRecordsByRun.set(runId, (linkedRecordsByRun.get(runId) ?? 0) + 1);
-          }
         };
         if (typeof store.openCursor !== 'function') {
           for (const record of await requestResult(store.getAll())) {
@@ -914,7 +883,6 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
             if (/** @type {Set<string>} */ (retainedIds).has(String(id))) return;
             remove();
             deletedRecords += 1;
-            retainedRecords -= 1;
           };
           if (typeof store.openCursor !== 'function') {
             for (const record of await requestResult(store.getAll())) {
@@ -939,31 +907,8 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
         }
       }
 
-      for (const runId of expiredRunIds) {
-        estimatedBytes -= linkedBytesByRun.get(runId) ?? 0;
-        retainedRecords -= linkedRecordsByRun.get(runId) ?? 0;
-      }
-      const usageTarget = Number.isFinite(options.usageBytes)
-        && Number(options.usageBytes) > options.maxDatabaseBytes
-        ? Math.floor(estimatedBytes * (options.maxDatabaseBytes / Number(options.usageBytes)) * 0.9)
-        : targetBytes;
-      const effectiveTarget = Math.min(targetBytes, usageTarget);
-      const evictedRunIds = [...expiredRunIds];
-      if (estimatedBytes > effectiveTarget) {
-        runs.sort((left, right) => left.timestamp - right.timestamp || left.id.localeCompare(right.id));
-        for (const run of runs) {
-          if (estimatedBytes <= effectiveTarget) break;
-          evictedRunIds.push(run.id);
-          estimatedBytes -= run.bytes + (linkedBytesByRun.get(run.id) ?? 0);
-          retainedRecords -= 1 + (linkedRecordsByRun.get(run.id) ?? 0);
-        }
-      }
-      for (const runId of expiredRunIds) {
-        if (retainedRunIds.has(runId)) retainedRecords -= 1;
-      }
-
-      for (let offset = 0; offset < evictedRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
-        const ids = evictedRunIds.slice(offset, offset + DEFAULT_WRITE_BATCH_SIZE);
+      for (let offset = 0; offset < expiredRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
+        const ids = expiredRunIds.slice(offset, offset + DEFAULT_WRITE_BATCH_SIZE);
         const transaction = readwriteTransaction(database, ['runs', ...RUN_LINKED_STORES]);
         const done = transactionDone(transaction);
         const runStore = transaction.objectStore('runs');
@@ -1009,8 +954,15 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
       });
       await receiptDone;
       await rebuildStorageShards(database, ENTITY_STORES);
+      const maintenance = await maintainStorageShards(database, {
+        ...options, entityStores: ENTITY_STORES, runLinkedStores: RUN_LINKED_STORES
+      });
       debug('curated canonical audits', { prunedAudits, version: AUDIT_CURATION_VERSION });
-      return { deletedRecords, estimatedBytes, retainedRecords, prunedAudits };
+      return {
+        ...maintenance,
+        deletedRecords: deletedRecords + maintenance.deletedRecords,
+        prunedAudits: prunedAudits + maintenance.prunedAudits
+      };
     } finally {
       database.close();
     }

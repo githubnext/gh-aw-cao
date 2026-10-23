@@ -213,7 +213,7 @@ export async function isAuditCurationCurrent(indexedDB) {
 async function skippedIngestion(indexedDB, options) {
   const cleanup = await maintainNormalizedJsonlDatabase(indexedDB, options);
   return {
-    updated: (cleanup?.deletedRecords ?? 0) > 0,
+    updated: (cleanup?.deletedRecords ?? 0) > 0 || (cleanup?.prunedFailureLogs ?? 0) > 0,
     skipped: true,
     committedBatches: 0,
     committedRecords: 0
@@ -539,9 +539,9 @@ async function maintainNormalizedJsonlDatabase(indexedDB, options) {
  * Runs the retention and size maintenance pass that `ingestNormalizedJsonl`
  * skips when called with `deferMaintenance`.
  *
- * Maintenance uses persisted shard accounting and indexes to visit only expired
- * records and dirty audit shards. Multi-shard callers defer it until inventory
- * and all activity shards have committed.
+ * Maintenance uses shard accounting and indexes for expiry and audit curation,
+ * and bounded Run reads for failure-log recovery. Multi-shard callers defer it
+ * until inventory and all activity shards have committed.
  * CLI callers can explicitly repair legacy audits when the curation receipt is missing.
  *
  * @param {IDBFactory} indexedDB

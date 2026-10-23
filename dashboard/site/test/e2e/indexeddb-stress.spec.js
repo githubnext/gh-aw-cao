@@ -142,3 +142,56 @@ test('native retention cleans expired shards without scanning retained entities'
   expect(measured.repeatedMs).toBeLessThan(1000);
   console.log(`Native shard retention: ${Math.round(measured.cleanupMs)}ms cleanup; ${Math.round(measured.repeatedMs)}ms unchanged`);
 });
+
+test('native retention compacts resolved logs across bounded pages and keeps replay compact', async ({ page }) => {
+  const measured = await page.evaluate(async () => {
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const batch = {
+      repositories: [{ id: 'repo:1', owner: 'octo', name: 'control' }],
+      workflows: [{ id: 'workflow:1', repositoryId: 'repo:1', role: 'orchestrator' }],
+      runs: Array.from({ length: 1007 }, (_, index) => ({
+        id: `github:run:octo/control:${index + 1}`, githubRunId: index + 1, attempt: 1,
+        repositoryId: 'repo:1', workflowId: 'workflow:1', event: 'push', branch: 'main',
+        startedAt: '2026-10-20T12:00:00Z', status: 'completed',
+        conclusion: index === 1005 ? 'success' : 'failure',
+        ...(index === 1005 ? {} : { failureLog: 'diagnostic '.repeat(200) })
+      }))
+    };
+    await storage.upsertCanonicalBatch(indexedDB, batch);
+    const original = IDBObjectStore.prototype.getAll;
+    /** @type {(number | undefined)[]} */
+    const reads = [];
+    IDBObjectStore.prototype.getAll = function (
+      /** @type {IDBValidKey | IDBKeyRange | null | undefined} */ query,
+      /** @type {number | undefined} */ count
+    ) {
+      if (this.name === 'runs') reads.push(count);
+      return original.call(this, query, count);
+    };
+    const options = { now: Date.parse('2026-10-20T13:00:00Z'), maxDatabaseBytes: Number.MAX_SAFE_INTEGER };
+    try {
+      const startedAt = performance.now();
+      const first = await storage.maintainCanonicalDatabase(indexedDB, options);
+      const durationMs = performance.now() - startedAt;
+      await storage.upsertCanonicalBatch(indexedDB, batch);
+      const replayed = await storage.maintainCanonicalDatabase(indexedDB, options);
+      IDBObjectStore.prototype.getAll = original;
+      const runs = await storage.readCollection(indexedDB, 'runs');
+      return {
+        first, replayed, durationMs, reads, runCount: runs.length,
+        logs: runs.filter((/** @type {Record<string, unknown>} */ run) => run.failureLog)
+          .map((/** @type {Record<string, unknown>} */ run) => run.githubRunId)
+      };
+    } finally {
+      IDBObjectStore.prototype.getAll = original;
+    }
+  });
+  expect(measured.first).toMatchObject({ deletedRecords: 0, prunedFailureLogs: 1005 });
+  expect(measured.replayed).toMatchObject({ deletedRecords: 0, prunedFailureLogs: 0 });
+  expect(measured.first.estimatedBytes).toBe(measured.replayed.estimatedBytes);
+  expect(measured.reads.length).toBeGreaterThan(2);
+  expect(measured.reads.every((count) => count === 1000)).toBe(true);
+  expect(measured.runCount).toBe(1007);
+  expect(measured.logs).toEqual([1007]);
+  console.log(`Native failure-log retention: ${Math.round(measured.durationMs)}ms for 1007 Runs`);
+});
