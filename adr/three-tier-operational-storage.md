@@ -270,9 +270,10 @@ support(flatten(batches₁)) = support(flatten(batches₂)) = E
 
 `flatten` concatenates batches; `support` takes their set of evidence revisions,
 discarding multiplicity. `batches₁` and `batches₂` may use different ordering,
-duplication, grouping, concurrency, and crash/retry schedules. Backend implementations refine this
-logical result under identical policies; differing defaults are not a parity
-failure. This is a safety/convergence obligation for successful imports, not a
+duplication, grouping, concurrency, and crash/retry schedules.
+Backend implementations refine this logical result under identical policies;
+differing defaults are not a parity failure. This is a safety/convergence
+obligation for successful imports, not a
 liveness guarantee under insufficient storage or invalid evidence. Golden
 fixtures and permutation/crash tests must establish these properties before
 rollout; no formal verification tool or proof is introduced by this ADR.
