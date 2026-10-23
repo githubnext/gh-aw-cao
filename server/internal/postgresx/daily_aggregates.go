@@ -74,15 +74,25 @@ func refreshDailyAggregates(ctx context.Context, exec func(context.Context, stri
 			if !exists {
 				return fmt.Errorf("unregistered daily workflow measure %s", column.field)
 			}
-			if stagedMetrics {
+			if stagedMetrics && metric != "toolCalls" && metric != "domainCalls" {
 				value = "coalesce(m." + query.SQLIdentifier(strings.TrimSuffix(column.name, "_observed_count")+"_sum") + "," + value + ")"
 				if strings.HasSuffix(column.field, "Sum") {
 					value = "coalesce(m." + name + "," + metrics[metric] + ")"
 				}
 			}
-			if strings.HasSuffix(column.field, "ObservedCount") {
+			switch {
+			case metric == "toolCalls" || metric == "domainCalls":
+				expression = value
+				if strings.HasSuffix(column.field, "ObservedCount") {
+					alias := "t"
+					if metric == "domainCalls" {
+						alias = "d"
+					}
+					expression = "coalesce(" + alias + ".observations,0)"
+				}
+			case strings.HasSuffix(column.field, "ObservedCount"):
 				expression = "CASE WHEN " + value + " IS NULL THEN coalesce(p." + name + ",0) ELSE 1 END"
-			} else {
+			default:
 				expression = "coalesce(" + value + ",p." + name + ")"
 			}
 		} else if column.field != "runCount" {
@@ -113,11 +123,11 @@ func refreshDailyAggregates(ctx context.Context, exec func(context.Context, stri
 	if stagedMetrics {
 		statement += "LEFT JOIN daily_run_metrics m ON m.namespace=r.namespace AND m.run_id=r.id "
 	}
-	statement += `LEFT JOIN (SELECT namespace,run_id,sum(calls) AS all_calls,
+	statement += `LEFT JOIN (SELECT namespace,run_id,sum(calls) AS all_calls,count(calls) AS observations,
 		sum(mcp_calls) AS calls,sum(mcp_response_bytes) AS bytes
 		FROM cao_run_evidence_contributions WHERE namespace=$1 AND source='tools' GROUP BY namespace,run_id) t
 		ON t.namespace=r.namespace AND t.run_id=r.id
-		LEFT JOIN (SELECT namespace,run_id,sum(calls) AS calls,sum(allowed_calls) AS allowed,sum(blocked_calls) AS blocked
+		LEFT JOIN (SELECT namespace,run_id,sum(calls) AS calls,count(calls) AS observations,sum(allowed_calls) AS allowed,sum(blocked_calls) AS blocked
 		FROM cao_run_evidence_contributions WHERE namespace=$1 AND source='domains' GROUP BY namespace,run_id) d ON d.namespace=r.namespace AND d.run_id=r.id `
 	statement += `WHERE r.namespace=$1 AND ` + day + ` >= $2 AND ` + day + ` < $3` + filter
 	if err := exec(ctx, statement, args...); err != nil {
@@ -196,13 +206,13 @@ func refreshDailyEvidence(ctx context.Context, exec func(context.Context, string
 		if stagedMetrics {
 			eventFrom += `LEFT JOIN daily_run_metrics m ON m.namespace=r.namespace AND m.run_id=r.id `
 		}
-		statement := `INSERT INTO cao_run_evidence_contributions AS p(namespace,source,id,run_id,day,calls,mcp_calls,mcp_response_bytes,allowed_calls,blocked_calls)
+		statement := `INSERT INTO cao_run_evidence_contributions(namespace,source,id,run_id,day,calls,mcp_calls,mcp_response_bytes,allowed_calls,blocked_calls)
 			SELECT e.namespace,'` + source.source + `',e.id,e.run_id,` + day + `,` + source.projection + `
 			FROM ` + eventFrom + `
 			WHERE ` + filter + ` AND ` + day + `>=$2 AND ` + day + `<$3
-			ON CONFLICT(namespace,source,id,day) DO UPDATE SET calls=coalesce(excluded.calls,p.calls),
-			mcp_calls=coalesce(excluded.mcp_calls,p.mcp_calls),mcp_response_bytes=coalesce(excluded.mcp_response_bytes,p.mcp_response_bytes),
-			allowed_calls=coalesce(excluded.allowed_calls,p.allowed_calls),blocked_calls=coalesce(excluded.blocked_calls,p.blocked_calls)`
+			ON CONFLICT(namespace,source,id,day) DO UPDATE SET calls=excluded.calls,
+			mcp_calls=excluded.mcp_calls,mcp_response_bytes=excluded.mcp_response_bytes,
+			allowed_calls=excluded.allowed_calls,blocked_calls=excluded.blocked_calls`
 		if err := exec(ctx, statement, args...); err != nil {
 			return fmt.Errorf("update daily %s evidence ledger: %w", source.source, err)
 		}

@@ -193,3 +193,83 @@ func TestDailyAggregateDayCorrection(t *testing.T) {
 		t.Fatalf("date correction double-counted: %d %d %v", count, total, err)
 	}
 }
+
+func TestDailyAggregateChildObservationsAndRetractions(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	ctx := t.Context()
+	now := time.Now().UTC()
+	started := aggregateCutoff(now).AddDate(0, 0, 1).Format(time.RFC3339)
+	publish := func(tools, domains []model.Row) {
+		t.Helper()
+		w, err := store.BeginIngestion(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer w.Abort(ctx)
+		nativeParents(ctx, t, w)
+		if err := w.Flush(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.tx.Exec(ctx, `UPDATE runs_stage SET started_at=$1,created_at=$1,run_at=$1`, started); err != nil {
+			t.Fatal(err)
+		}
+		for source, rows := range map[string][]model.Row{"$tools": tools, "$domains": domains} {
+			for _, row := range rows {
+				row["runId"] = "run"
+				if err := w.Append(ctx, source, row); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if _, err := w.Publish(ctx, "child-observations"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertMeasures := func(toolSum, domainSum any, toolCount, domainCount int) {
+		t.Helper()
+		var gotToolSum, gotDomainSum *float64
+		var gotToolCount, gotDomainCount, rich int
+		if err := store.db.QueryRowContext(ctx, `SELECT tool_calls_sum,domain_calls_sum,
+					tool_calls_observed_count,domain_calls_observed_count,
+					(SELECT count(*) FROM tools)+(SELECT count(*) FROM domains)
+					FROM daily_workflow_aggregates WHERE namespace=$1`, store.namespace).
+			Scan(&gotToolSum, &gotDomainSum, &gotToolCount, &gotDomainCount, &rich); err != nil {
+			t.Fatal(err)
+		}
+		for _, measure := range []struct {
+			got  *float64
+			want any
+		}{{gotToolSum, toolSum}, {gotDomainSum, domainSum}} {
+			if measure.want == nil {
+				if measure.got != nil {
+					t.Fatalf("missing sum = %v, want null", *measure.got)
+				}
+			} else if measure.got == nil || *measure.got != measure.want.(float64) {
+				t.Fatalf("sum = %v, want %v", measure.got, measure.want)
+			}
+		}
+		if gotToolCount != toolCount || gotDomainCount != domainCount || rich != 0 {
+			t.Fatalf("observations/details = %d/%d/%d, want %d/%d/0",
+				gotToolCount, gotDomainCount, rich, toolCount, domainCount)
+		}
+	}
+	publish([]model.Row{
+		{"id": "tool", "invocationCount": 3},
+		{"id": "zero", "invocationCount": 0},
+		{"id": "missing"},
+	}, []model.Row{
+		{"id": "domain", "requestCount": 4},
+		{"id": "domain-zero", "requestCount": 0},
+	})
+	assertMeasures(3.0, 4.0, 2, 2)
+	for range 2 {
+		publish([]model.Row{{"id": "tool", "invocationCount": 7}},
+			[]model.Row{{"id": "domain", "requestCount": nil}})
+		assertMeasures(7.0, 0.0, 2, 1)
+	}
+	publish([]model.Row{{"id": "tool", "invocationCount": nil}, {"id": "zero", "invocationCount": nil}},
+		[]model.Row{{"id": "domain-zero", "requestCount": nil}})
+	assertMeasures(nil, nil, 0, 0)
+	publish(nil, nil)
+	assertMeasures(nil, nil, 0, 0)
+}

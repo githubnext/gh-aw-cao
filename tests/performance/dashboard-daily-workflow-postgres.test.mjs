@@ -32,7 +32,10 @@ const query = [{
     values: [
       { field: "run-count", as: "runs", reducer: "sum" },
       { field: "aic-total-sum", as: "aic", reducer: "sum" },
-      { field: "mcp-tool-calls-sum", as: "toolCalls", reducer: "sum" },
+      { field: "tool-calls-sum", as: "toolCalls", reducer: "sum" },
+      { field: "tool-calls-observed-count", as: "toolObservations", reducer: "sum" },
+      { field: "domain-calls-sum", as: "domainCalls", reducer: "sum" },
+      { field: "domain-calls-observed-count", as: "domainObservations", reducer: "sum" },
     ],
   },
 }];
@@ -189,12 +192,15 @@ test("daily workload uses production PostgreSQL ingestion and native analytics",
       'runs',(SELECT count(*) FROM runs),'tools',(SELECT count(*) FROM tools),
       'domains',(SELECT count(*) FROM domains),'groups',(SELECT count(*) FROM daily_workflow_aggregates),
       'aic',(SELECT sum(aic_total_sum) FROM daily_workflow_aggregates),
-      'toolCalls',(SELECT sum(mcp_tool_calls_sum) FROM daily_workflow_aggregates),
-      'domainRequests',(SELECT sum(firewall_allowed_calls_sum) FROM daily_workflow_aggregates))`));
+      'toolCalls',(SELECT sum(tool_calls_sum) FROM daily_workflow_aggregates),
+      'toolObservations',(SELECT sum(tool_calls_observed_count) FROM daily_workflow_aggregates),
+      'domainRequests',(SELECT sum(domain_calls_sum) FROM daily_workflow_aggregates),
+      'domainObservations',(SELECT sum(domain_calls_observed_count) FROM daily_workflow_aggregates))`));
     assert.deepEqual(counts, {
       runs, tools: runs * 50, domains: runs * 5, groups: 10,
       aic: Math.floor(runs / 4) * 10 + (runs % 4) * (runs % 4 + 1) / 2,
-      toolCalls: runs * 50, domainRequests: runs * 5,
+      toolCalls: runs * 50, toolObservations: runs * 50,
+      domainRequests: runs * 5, domainObservations: runs * 5,
     });
     report.counts = counts;
     report.tableBytes = Number(await psql(isolated, `SELECT sum(pg_total_relation_size(c.oid))
@@ -203,7 +209,8 @@ test("daily workload uses production PostgreSQL ingestion and native analytics",
     report.native = await nativeQuery(env, schema, directory);
     assert.ok(report.native.durationMs < 10_000);
     assert.deepEqual(report.native.payload.sources["daily-workflow-benchmark"].rows, [{
-      date: day, runs, aic: counts.aic, toolCalls: runs * 50,
+      date: day, runs, aic: counts.aic, toolCalls: runs * 50, toolObservations: runs * 50,
+      domainCalls: runs * 5, domainObservations: runs * 5,
     }]);
     assert.ok(report.native.payload.metrics.operations < 1_000,
       "native aggregate query must not scale with child history");
@@ -217,6 +224,10 @@ test("daily workload uses production PostgreSQL ingestion and native analytics",
   } finally {
     await writeFile(path.join(output, `report-postgres-${full ? "full" : "sample"}.json`), `${JSON.stringify(report, null, 2)}\n`);
     console.log(JSON.stringify(report));
+    const partitions = await psql(endpoint, `SELECT format('DROP TABLE %I.%I CASCADE',n.nspname,c.relname)
+      FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='${schema}' AND c.relkind='p'`);
+    for (const statement of partitions.split("\n").filter(Boolean)) await psql(endpoint, statement);
     await psql(endpoint, `DROP SCHEMA ${schema} CASCADE`);
     await rm(directory, { recursive: true, force: true });
   }
