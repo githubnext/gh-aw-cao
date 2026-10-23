@@ -722,6 +722,27 @@ buffers or full-backend ingestion/query throughput. Backend-scale qualification
 remains required; in particular, the SQLite compatibility scan's ordered bounded
 reads are not an indexed streaming SQL execution claim.
 
+The PostgreSQL store additionally exposes `PlanStorageTiers`, using
+`server/internal/storagetiers` for bounded selection over a native readonly,
+repeatable-read transaction with the server's ordinary read timeout. It reads
+only canonical Run IDs, started/completed event timestamps, and conclusions.
+Rows need not arrive in ID order because PostgreSQL ingestion has already
+reconciled them. Since the physical partitioned primary key includes `run_at`,
+the adapter independently rejects duplicate canonical IDs across partitions
+within that same snapshot instead of guessing revision authority. Missing event
+times and timestamps outside the JavaScript Date range fail closed; SQL errors,
+cancellation, or transaction-commit failure never return a partial plan.
+
+The Go selector uses the same policy version, independent PostgreSQL capacities,
+UTF-16 ID tie order, JSON tuple escaping, two-lane hash arithmetic, outcome
+weights, inclusive event window, and census-only estimator metadata as the
+JavaScript selector. Its tests evaluate the production JavaScript planner to
+verify exact plan parity, including supplementary Unicode, controls, HTML
+characters, and line separators. This API performs no schema changes or writes
+and does not start a maintenance task, persist membership, or alter query
+routing. Duplicate checks and SQL cursor buffers remain PostgreSQL-engine work,
+not part of the bounded Go candidate-heap claim.
+
 Daily metrics use the collision-safe tuple
 `[namespace, UTC event day, repository ID, workflow ID]`. The reducer maintains
 one winning contribution per canonical Run, subtracts a superseded contribution,
