@@ -82,6 +82,40 @@ and directory listings and escaping symlinks are refused. Paths in npm Go
 commands resolve relative to `server/`. Static Pages is an explicit mode,
 never a fallback for hosted serving.
 
+### Daily agentic maintainer journeys
+
+The repository-private `dashboard-maintainer-simulation` agentic workflow runs
+daily and supports manual dispatch. It generates ten maintainer scenarios before
+testing, attempts them through Chromium on the real local Go/SQLite dashboard,
+and preserves the frozen plan, all ten outcomes, screenshots and logs in a
+14-day artifact. It files at most three deduplicated issues with reproduction
+steps and potential fixes; blocked scenarios remain incomplete, not passed.
+No campaign installation, rollout-policy change, live repository mutation, or
+production dashboard access is involved.
+
+The harness reuses `simulate-api` to obtain 36 successful historical runs for
+three fictional repositories, adds explicitly synthetic cost/tool metadata,
+and uses production normalization and SQLite ingestion. It does not exercise
+hosted OAuth/PostgreSQL, live collection, dispatch or Actions execution, and
+the snapshot does not subscribe to subsequent simulator changes. Missing
+fixture data or hosted-only capabilities are coverage limits, not defects.
+
+To prepare and start the same environment locally after installing the root and
+dashboard dependencies:
+
+```sh
+mkdir -p .tmp/maintainer-simulation
+go -C server build -o "$PWD/.tmp/maintainer-simulation/cao-dashboard" ./cmd/cao-dashboard
+node scripts/maintainer-simulation.mjs prepare
+node scripts/maintainer-simulation.mjs serve
+```
+
+Read `.tmp/maintainer-simulation/environment.json` for the browser URL and
+fixture limits. The two servers bind only to `127.0.0.1` (ports 18443 and 18081);
+Ctrl-C stops both. Preparation reuses the Pages artifact builder only to
+produce the snapshot/assets; the dashboard is served with the `server-http`
+bootstrap and Go query API, not as a Pages/IndexedDB application.
+
 ## Local GitHub bootstrap integration
 
 Run `npm run test:integration:bootstrap` from the repository root with Go,
