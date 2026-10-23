@@ -4331,8 +4331,10 @@ The implementation SHALL be guided by the following rules:
 # 72. Request-scoped Overview aggregates
 
 Overview counts and time series SHALL be computed on demand by the declarative
-query engine in the data worker from canonical records. Ingestion SHALL NOT
-persist daily aggregate records or metadata. Queries MUST preserve the
+query engine in the data worker from canonical records. The additive daily
+run-count layer in §72.2 is the only persisted daily projection; computation
+results and other daily metrics SHALL NOT be persisted under this exception.
+Queries MUST preserve the
 requested time window, UTC day semantics, and source-quality metadata.
 Distinct counts MUST NOT be approximated by summing daily distinct counts.
 
@@ -4345,6 +4347,58 @@ addition to `byRepository`, `byWorkflow`, and `byConclusion`; `event` is a
 queryable string key path. This path is selected from the declarative query
 shape, not the query name. Unsupported shapes execute the canonical query
 without reading any derived aggregate store.
+
+## 72.2 Additive daily run counts
+
+The `daily-run-counts` source is a separate, versioned projection of observed
+logical Runs, keyed by namespace, UTC execution-start date, Repository ID, and
+Workflow ID. Namespace is implicit in a scoped browser or SQLite database and
+explicit in hosted storage. It SHALL NOT change canonical Run fields, existing
+detail storage, or detail-retention policy.
+
+The source exposes `day`, `organization`, `repository`, `workflow`, `total`,
+`successful`, `failed`, `approval`, `pending`, and `other`. Counters SHALL be
+nonnegative integers. `successful` means conclusion `success`; `failed` means
+`failure`, `startup-failure`, `stale`, or `timed-out`; `approval` means
+`action-required`. An otherwise unclassified Run is `pending` only when status
+is present and not `completed`; the remainder is `other`. These five counters
+SHALL sum to `total`. Runtime success SHALL NOT imply accepted outcomes or
+operational value. Pending counts describe last-observed state, not a live
+execution census.
+
+Each logical Run SHALL have one compact contribution receipt independent of
+retained detail. A reconciled replacement SHALL atomically subtract the previous
+contribution, add the replacement, and replace its receipt. Replays SHALL have
+zero net effect; attempt changes SHALL NOT add another logical Run. Date and
+Workflow corrections SHALL move contributions between keys. Detail eviction
+SHALL NOT subtract contributions or delete receipts. Writes and backfill SHALL
+preserve existing canonical records and retention settings.
+
+Only a valid observed execution-start timestamp can assign a UTC day. Undated
+evidence SHALL be excluded and reported as incomplete, never attributed to import
+time. Exactness means exact counts for admitted, reconciled evidence, not proof
+of complete upstream collection. Missing projection state SHALL be unavailable,
+not a fabricated empty or zero population.
+
+`workflow-runtime-health-summary` SHALL sum the six counters at
+organization/Repository/Workflow grain through the production query boundary.
+It SHALL NOT union daily totals with retained Runs or fall back to detail when
+the source is unavailable. The existing workflow route element owns metric
+labels rather than declarative encodings; its metadata-only presentation SHALL
+label these as daily observations, distinguish partial coverage, and retain the
+separate usage-telemetry window. It SHALL NOT derive counts or query data.
+Only supported dimensions and complete-day predicates
+are eligible; sub-day filters, arbitrary Run predicates, distinct counts,
+costs, token usage, and ordered incident evidence remain on their existing
+sources. No other query is implicitly routed to the new layer.
+
+This initial layer retains admitted dated counts and receipts without adding a
+new expiry policy. Three-week aggregate rollover, weekly partitions, sampling,
+hot-tier limits, and full scope-level evidence reconciliation from the
+[three-tier proposal](../adr/three-tier-operational-storage.md) remain separate
+work. Existing databases cannot reconstruct already-evicted history: backfill
+coverage SHALL describe available evidence rather than claim historical
+completeness.
 
 ## 72.10 Data-worker heap budgets
 

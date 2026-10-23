@@ -9,12 +9,16 @@ const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).
 assert.deepEqual(program.diagnostics, []);
 const tables = new Map();
 const documentation = new Map();
+const dailyTables = new Map();
 const parents = new Map();
 const partitioned = new Set();
 let evidenceFactFields;
 let webhookStatusFields;
 navigateProgram(program, {
   model(model) {
+    if (getNamespaceFullName(model.namespace) === 'Cao.Postgres.Daily') {
+      dailyTables.set(model.name, new Map([...model.properties].map(([name, property]) => [name, property.type.name])));
+    }
     if (getNamespaceFullName(model.namespace) === 'Cao.Postgres.Runtime' && model.name === 'webhookStatus') {
       webhookStatusFields = new Set(model.properties.keys());
     }
@@ -36,6 +40,20 @@ navigateProgram(program, {
 });
 const definitions = JSON.parse(readFileSync(new URL('../../dashboard/site/src/data/queries/database.json', import.meta.url)));
 const records = ['$domains', '$tools', '$skills', '$friction', '$audits', '$issues'];
+
+test('daily outcome counts are an independent additive typed storage extension', () => {
+  assert.deepEqual([...dailyTables.keys()].sort(), ['dailyRunCountState', 'dailyRunCounts', 'runCountContributions']);
+  const columns = dailyTables.get('dailyRunCounts');
+  for (const field of ['total', 'successful', 'failed', 'approval', 'pending', 'other']) {
+    assert.equal(columns.get(field), 'int64');
+  }
+  const extension = readFileSync(new URL('../internal/postgresx/daily-schema.sql', import.meta.url), 'utf8');
+  const native = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  assert.match(extension, /PRIMARY KEY \(namespace, id\)/);
+  assert.match(extension, /UNIQUE \(namespace, day, repository_id, workflow_id\)/);
+  assert.doesNotMatch(extension, /REFERENCES|PARTITION BY|JSONB?|ON DELETE/);
+  assert.doesNotMatch(native, /daily_run_counts|run_count_contributions|cao_daily_contract/);
+});
 
 function inputFields(definition) {
   const derived = new Set();

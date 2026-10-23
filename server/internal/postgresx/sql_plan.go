@@ -264,6 +264,9 @@ func (r *readTransaction) ExecuteSQLPlanWithOptions(ctx context.Context, definit
 }
 
 func (r *readTransaction) rootMetadata(ctx context.Context, name string) (model.Metadata, error) {
+	if name == dailySource || name == "$dailyRunCounts" {
+		return r.dailyMetadata(ctx)
+	}
 	var availability, completeness, freshness string
 	var asOf, retrieved sql.NullTime
 	err := r.tx.QueryRowContext(ctx, `SELECT availability,completeness,freshness,as_of,retrieved_at FROM cao_quality

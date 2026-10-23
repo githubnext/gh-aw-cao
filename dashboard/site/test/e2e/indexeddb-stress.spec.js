@@ -93,6 +93,65 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
   });
 });
 
+test('production data worker preserves daily health and coverage after detail eviction', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const { normalize } = await import(`${location.origin}/src/data/normalize/index.js`);
+    const fragment = await (await fetch('/dashboard-fragments/workflow-runs.json')).json();
+    const query = fragment.queries.find((/** @type {{ name: string }} */ value) =>
+      value.name === 'workflow-runtime-health-summary');
+    const worker = new Worker(`${location.origin}/src/data-worker.js`, { type: 'module' });
+    const queryHealth = () => /** @type {Promise<import('../../src/presenter.js').LogicalSourceInput>} */ (new Promise((resolve, reject) => {
+      worker.onmessage = (event) => {
+        if (event.data.id !== 'daily-health') return;
+        if (event.data.error) reject(new Error(event.data.error));
+        else resolve(event.data.data['workflow-runtime-health-summary']);
+      };
+      worker.onerror = (event) => reject(new Error(event.message));
+      worker.postMessage({
+        id: 'daily-health', operation: 'load-dashboard-query-sources',
+        sources: {}, queries: [query], sourceNames: ['workflow-runtime-health-summary']
+      });
+    }));
+    try {
+      const run = {
+        id: 'run:count', repositoryId: 'repository:count', workflowId: 'workflow:count',
+        owner: 'octo', repository: 'demo', workflowPath: '.github/workflows/worker.md',
+        startedAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T01:00:00Z',
+        status: 'in_progress', conclusion: null, attempt: 1
+      };
+      await storage.upsertCanonicalBatch(indexedDB, { ...normalize([]), runs: [run] },
+        { validateRelationships: false });
+      const pending = await queryHealth();
+      await storage.upsertCanonicalBatch(indexedDB, {
+        ...normalize([]), runs: [{
+          ...run, startedAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-03T00:00:00Z',
+          status: 'completed', conclusion: 'failure'
+        }]
+      }, { validateRelationships: false });
+      const maintenance = await storage.maintainCanonicalDatabase(indexedDB, {
+        now: Date.parse('2026-10-23T00:00:00Z'), maxDatabaseBytes: 0
+      });
+      const corrected = await queryHealth();
+      return {
+        pending, corrected, maintenance,
+        detailCount: (await storage.readCollection(indexedDB, 'runs')).length,
+        daily: (await storage.readCollections(indexedDB, ['dailyRunCounts'])).dailyRunCounts
+      };
+    } finally {
+      worker.terminate();
+    }
+  });
+  expect(result.pending.rows).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
+  expect(result.corrected.rows).toEqual([expect.objectContaining({ total: 1, pending: 0, failed: 1 })]);
+  expect(result.corrected.metadata).toMatchObject({
+    'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'complete'
+  });
+  expect(result.daily).toEqual([expect.objectContaining({ day: '2026-10-02', total: 1, failed: 1 })]);
+  expect(result.detailCount).toBe(0);
+  expect(result.maintenance.protectedBytes).toBeGreaterThan(0);
+});
+
 test('native retention cleans expired shards without scanning retained entities', async ({ page }) => {
   const measured = await page.evaluate(async () => {
     const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);

@@ -3420,6 +3420,19 @@ re-ingest authoritative inputs when changing the physical contract. Existing
 `<table>_wYYYYMMDD` weekly layouts are rejected without conversion; rebuild
 canonical storage in a fresh schema or database. Never drop
 operational audit/queue state if it shares the old database.
+
+The daily run-count layer is a separately generated additive extension, not a
+replacement native detail contract. To add it to an existing compatible database,
+run owner-only `database bootstrap --store canonical --namespace NAMESPACE` with
+the deployment's owner credentials, then apply the updated
+`server/postgres/canonical-grants.sql` grants. Runtime does not create its tables;
+without the extension, `daily-run-counts` is unavailable while existing detail
+queries remain usable. Its independent receipts preserve daily counts when detail
+expires. Initial backfill can cover only still-retained runs, not previously
+evicted history. Counts use UTC run-start dates, exclude undated evidence with
+incomplete coverage, and retain all admitted dates in this initial implementation;
+no new detail-retention, sampling, or aggregate-expiry policy is enabled.
+
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.

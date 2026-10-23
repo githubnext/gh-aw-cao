@@ -4,6 +4,7 @@ import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
+import { DAILY_RUN_COUNT_STORES } from '../model/daily-run-counts.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
@@ -322,6 +323,11 @@ async function backupDatabase(filename, checkedAt) {
  * @param {DoctorTransaction[]} transactions
  */
 function writeCanonicalDatabase(connection, batch, transactions) {
+  // Detail repair cannot reconstruct receipts for runs already detail-evicted.
+  const protectedCounts = connection.prepare(`
+    SELECT store_name, record_key, value FROM __idb_records
+    WHERE database_name = ? AND store_name IN (?, ?, ?)
+  `).all(DATABASE_NAME, ...DAILY_RUN_COUNT_STORES);
   for (const table of ['__idb_records', '__idb_indexes', '__idb_stores']) {
     const query = sql`DELETE FROM ${identifier(table)} WHERE database_name = ${DATABASE_NAME}`;
     connection.prepare(query.text).run(...query.values);
@@ -346,6 +352,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   const insertRecord = connection.prepare(`
     INSERT INTO __idb_records (database_name, store_name, record_key, value) VALUES (?, ?, ?, ?)
   `);
+  for (const row of protectedCounts) {
+    insertRecord.run(DATABASE_NAME, row.store_name, row.record_key, row.value);
+  }
   /** @type {Map<string, import('./shards.js').Shard>} */
   const shards = new Map();
   const totals = { id: 'totals', bytes: 0, count: 0 };

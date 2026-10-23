@@ -35,12 +35,13 @@ export async function $onEmit(context) {
   const inventoryContract = JSON.parse(readFileSync(new URL('../../dashboard/site/src/data/queries/ingestion.json', import.meta.url)));
   const tables = [];
   const systems = [];
+  const extensions = [];
   const children = [];
   const parents = new Map();
   navigateProgram(context.program, {
     model(model) {
       const namespace = getNamespaceFullName(model.namespace);
-      if (!['Cao.Postgres', 'Cao.Postgres.Inputs', 'Cao.Postgres.Storage', 'Cao.Postgres.Runtime'].includes(namespace)) return;
+      if (!['Cao.Postgres', 'Cao.Postgres.Inputs', 'Cao.Postgres.Storage', 'Cao.Postgres.Runtime', 'Cao.Postgres.Daily'].includes(namespace)) return;
       const columns = [];
       for (const property of model.properties.values()) {
         if (property.type.kind === 'Model' && property.type.name === 'Array') {
@@ -84,7 +85,8 @@ export async function $onEmit(context) {
         columns.push({ field: property.name, name: snake(property.name), kind: kind[0], sql: kind[1], required: !property.optional });
       }
       const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model) };
-      if (namespace === 'Cao.Postgres.Storage') systems.push(table);
+      if (namespace === 'Cao.Postgres.Daily') extensions.push(table);
+      else if (namespace === 'Cao.Postgres.Storage') systems.push(table);
       else {
         table.runtime = namespace === 'Cao.Postgres.Runtime' || model.name === 'marketplacePackages';
         table.canonical = namespace === 'Cao.Postgres' && !table.runtime;
@@ -195,4 +197,16 @@ ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
   go.push('}', '');
   await emitFile(context.program, { path: `${context.emitterOutputDir}/schema.sql`, content: `${statements.join('\n\n')}\n` });
   await emitFile(context.program, { path: `${context.emitterOutputDir}/schema.gen.go`, content: go.join('\n') });
+  const extensionSQL = ['-- Generated from server/spec/daily-counts.tsp. Do not edit.',
+    'CREATE TABLE IF NOT EXISTS cao_daily_contract (digest TEXT PRIMARY KEY);'];
+  for (const table of extensions) {
+    const constraints = ['PRIMARY KEY (namespace, id)'];
+    if (table.collection === 'dailyRunCounts') {
+      constraints.push('UNIQUE (namespace, day, repository_id, workflow_id)',
+        'CHECK (total >= 0 AND successful >= 0 AND failed >= 0 AND approval >= 0 AND pending >= 0 AND other >= 0)',
+        'CHECK (total = successful + failed + approval + pending + other)');
+    }
+    extensionSQL.push(`CREATE TABLE IF NOT EXISTS ${table.name} (\n${table.columns.map((c) => `  ${c.name} ${c.sql}${c.required ? ' NOT NULL' : ''}`).join(',\n')},\n  ${constraints.join(',\n  ')}\n);`);
+  }
+  await emitFile(context.program, { path: `${context.emitterOutputDir}/daily-schema.sql`, content: `${extensionSQL.join('\n\n')}\n` });
 }

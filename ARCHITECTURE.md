@@ -1402,8 +1402,13 @@ not authorize cross-repository evidence access.
   and emit bounded, versioned results; they do not create authority or convert
   runtime success into verified outcomes or operational value.
 - Overview counters use IndexedDB-native counts or request-scoped declarative
-  queries over canonical records. No daily aggregate or computation-result
-  projection is persisted. Failure clustering and audit diagnosis execute in
+  queries over canonical records. A separate daily run-count projection and
+  compact per-Run contribution receipts support explicitly migrated additive
+  health queries; receipts survive detail eviction and replacement updates
+  subtract old contributions before adding new ones atomically. Its dimensions
+  are namespace, UTC run-start date, repository, and workflow. Existing detail
+  storage and retention are unchanged; other daily metrics and computation-result
+  projections are not persisted. Failure clustering and audit diagnosis execute in
   bounded, selected-partition queries. Runtime facts evaluate orchestrators first
   and enumerate worker targets only when orchestration is eligible. Worker facts
   use one evaluation partition per target so success on one target cannot mask

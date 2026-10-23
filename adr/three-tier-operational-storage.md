@@ -5,14 +5,16 @@
 Proposed — 2026-10-23.
 
 This record proposes an architectural direction and implementation gates. It
-does not implement retention, migrate queries, authorize a rollout, or claim that
-the acceptance criteria below already pass.
+does not authorize a rollout or claim that the acceptance criteria below already
+pass. The separately specified [daily run-count layer](../specs/dashboard-data.md#722-additive-daily-run-counts)
+implements an initial additive slice and migrates `workflow-runtime-health-summary`;
+it does not implement the remaining metrics, sampling, or tier-retention policy.
 
 In particular, this proposal conflicts with the current
 [dashboard data specification](../specs/dashboard-data.md): Section 5 retains
-all available browser Run summaries, and Section 72 prohibits persisted daily
-aggregates. Those contracts remain authoritative until a separately reviewed
-implementation updates them. The PostgreSQL contract currently partitions run
+all available browser Run summaries, and Section 72 permits only the separately
+specified daily run-count projection, not the full aggregate tier below. Those
+contracts remain authoritative. The PostgreSQL contract currently partitions run
 detail daily; this proposal adds weekly **aggregate** partitions, not weekly
 run-detail partitions. Existing Operational Value evidence retention and
 operational audit, queue, authentication, and coordination storage are outside

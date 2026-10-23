@@ -1115,6 +1115,10 @@ function enforceLimit(count, limit, subject) {
  */
 function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
+  const aggregateProvenance = inputs.length === 1 && metadata[0]?.['aggregate-version'] === 1
+    ? Object.fromEntries(Object.entries(metadata[0]).filter(([field]) =>
+      field.startsWith('aggregate-') || ['excluded-runs', 'conflicted-runs', 'query-diagnostic'].includes(field)))
+    : {};
   /** @param {'as-of'|'retrieved-at'} field */
   const oldest = (field) => metadata
     .map((value) => value?.[field])
@@ -1125,6 +1129,7 @@ function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
     !input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable'
   ));
   return {
+    ...aggregateProvenance,
     'source-id': `${name}-query`,
     'source-kind': 'derived',
     'as-of': /** @type {string} */ (oldest('as-of')) ?? new Date(0).toISOString(),

@@ -1,0 +1,412 @@
+import 'fake-indexeddb/auto';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  CANONICAL_DATABASE_SCHEMA, DATABASE_NAME, DATABASE_VERSION, ENTITY_STORES,
+  deleteCanonicalDatabase, maintainCanonicalDatabase, openCanonicalDatabase,
+  readCollection, readCollections, recordTransaction, upsertCanonicalBatch
+} from '../../src/data/storage/indexeddb.js';
+import { dailyRunCountContribution, protectedRunCountBytes } from '../../src/data/model/daily-run-counts.js';
+import { normalize } from '../../src/data/normalize/index.js';
+import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
+import { queryDatabaseSources, loadDatabaseQuerySources } from '../../src/data/queries/database.js';
+import { processDataRequest } from '../../src/data-worker.js';
+import { ingestNormalizedJsonl, NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
+import { installSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
+import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
+import { authoritativeDashboard } from '../authoritative-dashboard.js';
+import goldenCounts from '../fixtures/daily-run-counts.json' with { type: 'json' };
+
+const originalIndexedDB = globalThis.indexedDB;
+const originalIDBKeyRange = globalThis.IDBKeyRange;
+const directories = /** @type {string[]} */ ([]);
+const now = Date.parse('2026-10-23T12:00:00Z');
+const fixture = {
+  id: 'run:1', repositoryId: 'repository:1', workflowId: 'workflow:1',
+  owner: 'octo', repository: 'demo', workflowPath: '.github/workflows/worker.md',
+  startedAt: '2026-10-01T23:30:00-02:00', status: 'in_progress',
+  conclusion: null, attempt: 1, updatedAt: '2026-10-02T02:00:00Z'
+};
+const healthQueries = [{
+  name: 'health', from: 'daily-run-counts',
+  aggregate: {
+    by: ['organization', 'repository', 'workflow'],
+    values: ['total', 'successful', 'failed', 'approval', 'pending', 'other']
+      .map((field) => ({ field, as: field, reducer: 'sum' }))
+  }
+}];
+
+/** @param {Record<string, unknown>[]} runs @param {IDBFactory} [factory] */
+async function writeRuns(runs, factory = indexedDB) {
+  return upsertCanonicalBatch(factory, { ...normalize([]), runs }, { validateRelationships: false });
+}
+
+async function counts() {
+  return (await readCollections(indexedDB, ['dailyRunCounts'])).dailyRunCounts;
+}
+
+beforeEach(async () => {
+  await deleteCanonicalDatabase(indexedDB);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  globalThis.indexedDB = originalIndexedDB;
+  globalThis.IDBKeyRange = originalIDBKeyRange;
+  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+});
+
+describe('additive daily run outcome counts', () => {
+  it.each(goldenCounts.cases)('matches shared cross-backend golden case: $name', async (scenario) => {
+    for (const records of scenario.writes) {
+      await writeRuns(records.map((record) => ({ ...goldenCounts.runDefaults, ...record })));
+    }
+    if (scenario.stateMode) {
+      const database = await openCanonicalDatabase(indexedDB);
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('dailyRunCountState', 'readwrite');
+        const store = transaction.objectStore('dailyRunCountState');
+        if (scenario.stateMode === 'missing') store.clear();
+        else store.put({ id: 'daily-run-counts', status: null });
+        transaction.oncomplete = () => resolve(undefined);
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+    }
+    const source = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(source.rows).toEqual(scenario.expectedRows);
+    if (scenario.expectedAvailability) expect(source.metadata.availability).toBe(scenario.expectedAvailability);
+    else expect(source.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted',
+      completeness: scenario.excludedRuns ? 'partial' : 'complete',
+      'excluded-runs': scenario.excludedRuns ?? 0
+    });
+  });
+
+  it('matches every mutually exclusive runtime health class and uses UTC start dates only', () => {
+    for (const [conclusion, status, category] of [
+      ['success', 'queued', 'successful'],
+      ...['failure', 'startup-failure', 'stale', 'timed-out'].map((value) => [value, 'completed', 'failed']),
+      ['action-required', 'queued', 'approval'], ['cancelled', 'queued', 'pending'],
+      [null, 'in_progress', 'pending'], ['unknown', '', 'other'], [null, 'completed', 'other']
+    ]) {
+      const row = dailyRunCountContribution({ ...fixture, conclusion, status });
+      expect(row).toMatchObject({ day: '2026-10-02', total: 1, [String(category)]: 1 });
+      expect(['successful', 'failed', 'approval', 'pending', 'other']
+        .reduce((sum, field) => sum + Number(/** @type {Record<string, unknown>} */ (row)[field]), 0)).toBe(1);
+    }
+    for (const startedAt of [undefined, null, '', 'invalid', '2026-10-02']) {
+      expect(dailyRunCountContribution({ ...fixture, startedAt })).toBeNull();
+    }
+  });
+
+  it('replays at zero delta and replaces pending with completed from the same canonical merged run', async () => {
+    await writeRuns([{ ...fixture, inputTokens: 123 }]);
+    await writeRuns([fixture]);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
+    await writeRuns([{
+      ...fixture, conclusion: 'failure', status: 'completed', updatedAt: '2026-10-02T03:00:00Z'
+    }]);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 1, pending: 0, failed: 1 })]);
+    expect((await readCollection(indexedDB, 'runs'))[0].inputTokens).toBe(123);
+    const receipt = (await readCollections(indexedDB, ['runCountContributions'])).runCountContributions[0];
+    expect(receipt.run.inputTokens).toBeUndefined();
+    expect(receipt.run.status).toBe('completed');
+    expect(CANONICAL_SCHEMA_VERSION).toBe(34);
+    expect(DATABASE_VERSION).toBe(45);
+    expect(ENTITY_STORES).not.toContain('dailyRunCounts');
+    expect(ENTITY_STORES).not.toContain('runCountContributions');
+  });
+
+  it('accounts protected receipt and daily bytes incrementally without making them detail-evictable', async () => {
+    await writeRuns([fixture, { ...fixture, id: 'run:2' }]);
+    const usage = async () => {
+      const records = await readCollections(indexedDB, ['runCountContributions', 'dailyRunCounts', 'dailyRunCountState']);
+      const state = records.dailyRunCountState[0];
+      const bytes = (/** @type {Record<string, unknown>[]} */ rows) => rows.reduce((sum, row) =>
+        sum + new TextEncoder().encode(JSON.stringify(row)).byteLength + 512, 0);
+      expect(state.receiptBytes).toBe(bytes(records.runCountContributions));
+      expect(state.dailyBytes).toBe(bytes(records.dailyRunCounts));
+      expect(state.receiptCount).toBe(records.runCountContributions.length);
+      expect(state.dailyBucketCount).toBe(records.dailyRunCounts.length);
+      return protectedRunCountBytes(state);
+    };
+    const initial = await usage();
+    await writeRuns([fixture]);
+    expect(await usage()).toBe(initial);
+    await writeRuns([{
+      ...fixture, startedAt: '2026-10-05T00:00:00Z', updatedAt: '2026-10-06T00:00:00Z'
+    }]);
+    const corrected = await usage();
+    expect(corrected).toBeGreaterThan(initial);
+    const maintenance = await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    expect(maintenance.estimatedBytes).toBeGreaterThanOrEqual(corrected);
+    expect(await usage()).toBe(corrected);
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+  });
+
+  it('moves corrected dates, repositories and workflows without retaining the obsolete bucket', async () => {
+    await writeRuns([fixture]);
+    await writeRuns([{
+      ...fixture, repositoryId: 'repository:2', workflowId: 'workflow:2', repository: 'other',
+      workflowPath: '.github/workflows/other.md', startedAt: '2026-10-03T00:00:00Z',
+      updatedAt: '2026-10-04T00:00:00Z', conclusion: 'success', status: 'completed'
+    }]);
+    expect(await counts()).toEqual([expect.objectContaining({
+      id: JSON.stringify(['2026-10-03', 'repository:2', 'workflow:2']),
+      repository: 'other', total: 1, successful: 1, pending: 0
+    })]);
+  });
+
+  it('preserves receipt facts through detail eviction and fences stale attempts and timestamps', async () => {
+    await writeRuns([{
+      ...fixture, attempt: 2, conclusion: 'success', status: 'completed',
+      updatedAt: '2026-10-03T00:00:00Z'
+    }]);
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 1, successful: 1 })]);
+    await writeRuns([fixture]);
+    await writeRuns([{
+      id: fixture.id, attempt: 2, status: 'queued', updatedAt: '2026-10-02T00:00:00Z'
+    }]);
+    await writeRuns([{ id: fixture.id, attempt: 2, status: 'queued' }]);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 1, successful: 1, pending: 0 })]);
+    expect((await readCollection(indexedDB, 'runs'))[0]).toEqual({
+      id: fixture.id, attempt: 2, status: 'queued'
+    });
+  });
+
+  it('diagnoses undated runs without fabricating dates and admits a later dated correction', async () => {
+    await writeRuns([{ ...fixture, startedAt: undefined }]);
+    expect(await counts()).toEqual([]);
+    const missing = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(missing.metadata).toMatchObject({ completeness: 'partial', 'excluded-runs': 1 });
+    await writeRuns([{ ...fixture, updatedAt: '2026-10-03T00:00:00Z' }]);
+    const present = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(present.metadata).toMatchObject({ completeness: 'complete', 'excluded-runs': 0 });
+    expect(present.rows).toEqual([expect.objectContaining({ total: 1 })]);
+  });
+
+  it('does not carry a previous attempt conclusion into a higher-attempt partial run', async () => {
+    await writeRuns([{ ...fixture, status: 'completed', conclusion: 'success' }]);
+    await writeRuns([{
+      id: fixture.id, attempt: 2, status: 'queued', startedAt: '2026-10-04T00:00:00Z'
+    }]);
+    expect(await counts()).toEqual([expect.objectContaining({
+      day: '2026-10-04', total: 1, successful: 0, pending: 1
+    })]);
+  });
+
+  it('selects equal-explicit-revision conflicts deterministically and marks incomplete', async () => {
+    const failed = { ...fixture, status: 'completed', conclusion: 'failure' };
+    const successful = { ...fixture, status: 'completed', conclusion: 'success' };
+    await writeRuns([failed]);
+    await writeRuns([successful]);
+    const first = await counts();
+    await deleteCanonicalDatabase(indexedDB);
+    await writeRuns([successful]);
+    await writeRuns([failed]);
+    expect(await counts()).toEqual(first);
+    expect((await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'].metadata)
+      .toMatchObject({ completeness: 'partial', 'conflicted-runs': 1 });
+    await deleteCanonicalDatabase(indexedDB);
+    await writeRuns([failed, successful]);
+    expect(await counts()).toEqual(first);
+    expect((await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'].metadata)
+      .toMatchObject({ completeness: 'partial', 'conflicted-runs': 1 });
+    await writeRuns([{ ...failed, updatedAt: '2026-10-05T00:00:00Z' }]);
+    expect((await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'].metadata)
+      .toMatchObject({ completeness: 'complete', 'conflicted-runs': 0 });
+  });
+
+  it('rolls back canonical run, contribution and bucket changes together on a count write failure', async () => {
+    await writeRuns([fixture]);
+    const before = await readCollections(indexedDB, ['runs', 'dailyRunCounts', 'runCountContributions', 'dailyRunCountState']);
+    const put = IDBObjectStore.prototype.put;
+    vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(/** @this {IDBObjectStore} */ function (record, key) {
+      if (this.name === 'dailyRunCounts') throw new DOMException('injected count failure', 'QuotaExceededError');
+      return put.call(this, record, key);
+    });
+    await expect(writeRuns([{
+      ...fixture, conclusion: 'failure', status: 'completed', updatedAt: '2026-10-03T00:00:00Z'
+    }])).rejects.toThrow('injected count failure');
+    expect(await readCollections(indexedDB, ['runs', 'dailyRunCounts', 'runCountContributions', 'dailyRunCountState']))
+      .toEqual(before);
+  });
+
+  it('upgrades v44 additively with bounded cursors and byte-identical retained detail', async () => {
+    const runs = Array.from({ length: 502 }, (_, index) => ({ ...fixture, id: `run:${index}` }));
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, 44);
+      request.onupgradeneeded = () => {
+        for (const [name, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+          if (['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'].includes(name)) continue;
+          const store = request.result.createObjectStore(name, { keyPath: definition.keyPath });
+          for (const [index, keyPath] of Object.entries(definition.indexes)) store.createIndex(index, keyPath);
+          if (name === 'runs') for (const run of runs) store.put(run);
+          if (name === 'transactions') store.put({ id: 'old-receipt', kind: 'test', createdAt: fixture.updatedAt });
+        }
+      };
+      request.onsuccess = () => { request.result.close(); resolve(undefined); };
+      request.onerror = () => reject(request.error);
+    });
+    const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put');
+    const database = await openCanonicalDatabase(indexedDB);
+    database.close();
+    expect(getAll).not.toHaveBeenCalled();
+    expect(put.mock.instances.filter((store) => /** @type {IDBObjectStore} */ (store).name === 'runs')).toHaveLength(0);
+    expect(await readCollection(indexedDB, 'runs')).toEqual([...runs].sort((a, b) => a.id.localeCompare(b.id)));
+    expect((await readCollections(indexedDB, ['transactions'])).transactions).toHaveLength(1);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 502, pending: 502 })]);
+    const source = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(source.metadata).toMatchObject({ completeness: 'partial', 'aggregate-coverage': 'retained-v44' });
+  });
+
+  it('serves the worker production source and native summed query after detail expiry', async () => {
+    await writeRuns([fixture, {
+      ...fixture, id: 'run:2', status: 'completed', conclusion: 'failure'
+    }]);
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'load-dashboard-query-sources', sources: {},
+      queries: healthQueries, sourceNames: ['health']
+    }));
+    expect(result.health.rows).toEqual([{
+      organization: 'octo', repository: 'demo', workflow: fixture.workflowPath,
+      total: 2, successful: 0, failed: 1, approval: 0, pending: 1, other: 0
+    }]);
+  });
+
+  it('composes the shipped workflow health query through the worker after corrections and detail deletion', async () => {
+    const queries = authoritativeDashboard.dashboard.queries;
+    expect(queries.find((/** @type {{ name: string }} */ query) => query.name === 'workflow-runtime-health-summary').from).toBe('daily-run-counts');
+    const query = async () => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+      await processDataRequest({
+        operation: 'load-dashboard-query-sources',
+        sources: { runs: { rows: [], metadata: {
+          'coverage-start': '2026-10-22T00:00:00Z', 'coverage-end': '2026-10-23T00:00:00Z',
+          completeness: 'complete'
+        } } },
+        queries, sourceNames: ['workflow-runtime-health-summary']
+      })
+    )['workflow-runtime-health-summary'];
+    await writeRuns([fixture, { ...fixture, id: 'run:undated', startedAt: undefined }]);
+    const initial = await query();
+    expect(initial.rows).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
+    expect(initial.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'partial', 'excluded-runs': 1
+    });
+    expect(initial.metadata['coverage-start']).toBeUndefined();
+    expect(initial.metadata['coverage-end']).toBeUndefined();
+    expect(initial.metadata['query-diagnostic']).toContain('missing start/identity facts');
+    await writeRuns([{
+      ...fixture, startedAt: '2026-10-03T00:00:00Z', status: 'completed', conclusion: 'failure',
+      updatedAt: '2026-10-04T00:00:00Z'
+    }, {
+      ...fixture, id: 'run:undated', startedAt: '2026-10-04T00:00:00Z',
+      status: 'completed', conclusion: 'success', updatedAt: '2026-10-05T00:00:00Z'
+    }]);
+    expect((await counts()).map((row) => row.day).sort()).toEqual(['2026-10-03', '2026-10-04']);
+    const corrected = await query();
+    expect(corrected.rows).toEqual([{
+      organization: 'octo', repository: 'demo', workflow: fixture.workflowPath,
+      total: 2, successful: 1, failed: 1, approval: 0, pending: 0, other: 0
+    }]);
+    expect(corrected.metadata).toMatchObject({
+      'aggregate-version': 1, completeness: 'complete', 'excluded-runs': 0
+    });
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    const evicted = await query();
+    expect(evicted.rows).toEqual(corrected.rows);
+    expect(evicted.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'complete'
+    });
+  });
+
+  it('fails closed for absent state in direct and native production queries', async () => {
+    await writeRuns([fixture]);
+    const database = await openCanonicalDatabase(indexedDB);
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction('dailyRunCountState', 'readwrite');
+      transaction.objectStore('dailyRunCountState').clear();
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+    const direct = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(direct.metadata.availability).toBe('unavailable');
+    expect(direct.rows).toEqual([]);
+    const native = await loadDatabaseQuerySources(indexedDB, {}, { queries: healthQueries, sourceNames: ['health'] });
+    expect(native.health.metadata.availability).toBe('unavailable');
+    expect(native.health.rows).toEqual([]);
+  });
+
+  it('admits expired normalized run counts without changing detail retention', async () => {
+    const header = {
+      kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION,
+      ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION, phase: 'runs', records: 1
+    };
+    const payload = `${JSON.stringify(header)}\n${JSON.stringify({
+      kind: 'record', collection: 'runs', record: {
+        ...fixture, startedAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T01:00:00Z'
+      }
+    })}\n`;
+    async function* chunks() { yield payload; }
+    await ingestNormalizedJsonl(indexedDB, chunks(), {
+      payloadIdentity: 'old-run', payloadScope: 'old', now,
+      retentionWindowMsByStore: { runs: 30 * 86400000 }
+    });
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect(await counts()).toEqual([expect.objectContaining({ day: '2025-01-01', total: 1 })]);
+  });
+
+  it('persists the same receipt layer in SQLite and protects it from doctor detail repair', async () => {
+    const directory = mkdtempSync(join(process.cwd(), '.daily-count-test-'));
+    directories.push(directory);
+    const filename = join(directory, 'dashboard.sqlite');
+    const factory = installSqliteIndexedDB(filename);
+    await writeRuns([fixture], factory);
+    await maintainCanonicalDatabase(factory, { now, maxDatabaseBytes: 0 });
+    const before = await readCollections(factory, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState']);
+    await recordTransaction(factory, { id: 'expire', kind: 'test', createdAt: '2000-01-01T00:00:00Z' });
+    const repaired = await doctorSqliteDatabase(filename, { now });
+    expect(repaired.healthy).toBe(true);
+    expect(await readCollections(factory, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'])).toEqual(before);
+    await writeRuns([fixture], factory);
+    expect((await readCollections(factory, ['dailyRunCounts'])).dailyRunCounts)
+      .toEqual([expect.objectContaining({ total: 1, pending: 1 })]);
+  });
+
+  it('backfills a v44 Activity SQLite snapshot through bounded reads without losing its detail', async () => {
+    const directory = mkdtempSync(join(process.cwd(), '.daily-count-test-'));
+    directories.push(directory);
+    const factory = installSqliteIndexedDB(join(directory, 'dashboard.sqlite'));
+    await new Promise((resolve, reject) => {
+      const request = factory.open(DATABASE_NAME, 44);
+      request.onupgradeneeded = () => {
+        for (const [name, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+          if (['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'].includes(name)) continue;
+          const store = request.result.createObjectStore(name, { keyPath: definition.keyPath });
+          for (const [index, keyPath] of Object.entries(definition.indexes)) store.createIndex(index, keyPath);
+          if (name === 'runs') for (let index = 0; index < 251; index += 1) {
+            store.put({ ...fixture, id: `run:${index}` });
+          }
+        }
+      };
+      request.onsuccess = () => { request.result.close(); resolve(undefined); };
+      request.onerror = () => reject(request.error);
+    });
+    const database = await openCanonicalDatabase(factory);
+    database.close();
+    expect(await readCollection(factory, 'runs')).toHaveLength(251);
+    const rows = (await readCollections(factory, ['dailyRunCounts'])).dailyRunCounts;
+    expect(rows).toEqual([expect.objectContaining({ total: 251, pending: 251 })]);
+    const source = (await queryDatabaseSources(factory, {}, ['daily-run-counts']))['daily-run-counts'];
+    expect(source.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'retained-v44', completeness: 'partial'
+    });
+  });
+});

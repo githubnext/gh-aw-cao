@@ -189,6 +189,9 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if err := writer.stageAdmittedRuns(ctx); err != nil {
 		return fail(err)
 	}
+	if err := writer.reconcileDaily(ctx); err != nil {
+		return fail(err)
+	}
 	for _, source := range tableNames() {
 		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
 		if err != nil {
@@ -544,6 +547,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		}
 	}
 	if err := w.restoreValuePublications(ctx); err != nil {
+		return State{}, err
+	}
+	if err := w.reconcileDaily(ctx); err != nil {
 		return State{}, err
 	}
 	// Autovacuum cannot analyze uncommitted replacement rows or partitioned parents.

@@ -10,6 +10,8 @@ import { CANONICAL_SCHEMA_VERSION } from '../model/schema.js';
 import { normalize } from '../normalize/index.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import {
+  admitExpiredRunCounts,
+  admitExpiredRunCountsWithConnection,
   maintainCanonicalDatabase,
   openCanonicalDatabase,
   readRecord,
@@ -40,8 +42,8 @@ import { AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION } from '../model/
 
 const debug = createDebug('data:ingestion');
 
-const DASHBOARD_SOURCE_INGESTION_VERSION = 9;
-export const GH_AW_JSONL_INGESTION_VERSION = 14;
+const DASHBOARD_SOURCE_INGESTION_VERSION = 10;
+export const GH_AW_JSONL_INGESTION_VERSION = 15;
 export const NORMALIZED_JSONL_INGESTION_VERSION = 5;
 const MIN_NORMALIZED_JSONL_SCHEMA_VERSION = 17;
 const PRE_EVIDENCE_INGESTION_VERSION = 3;
@@ -175,6 +177,7 @@ export async function isNormalizedJsonlCurrent(indexedDB, options) {
   return receipt?.kind === 'ingest-normalized-jsonl'
     && receipt.payloadHash === options.payloadIdentity
     && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+    && receipt.dailyRunCountsVersion === 1
     && receipt.retentionProfile === retentionProfile(options)
     && (options.expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
 }
@@ -195,6 +198,7 @@ export async function normalizedJsonlCurrentShards(indexedDB, shards) {
     return receipt?.kind === 'ingest-normalized-jsonl'
       && receipt.payloadHash === payloadIdentity
       && receipt.ingestionVersion === NORMALIZED_JSONL_INGESTION_VERSION
+      && receipt.dailyRunCountsVersion === 1
       && receipt.retentionProfile === retentionProfile(options)
       && (expectedPhase !== 'runs' || Number.isSafeInteger(receipt.rawRuns));
   });
@@ -273,6 +277,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     batch[storeName] = (incoming[storeName] ?? []).filter((record) =>
       !isExpiredCanonicalRecord(storeName, record, options));
   }
+  await admitExpiredRunCounts(indexedDB, (incoming.runs ?? [])
+    .filter((record) => isExpiredCanonicalRecord('runs', record, options)));
   if (options.preserveRepositoryRecords || options.preserveWorkflowCampaignMappings) {
     batch = {
       ...batch,
@@ -346,6 +352,8 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
       options.signal?.throwIfAborted();
       const reduced = capCanonicalBatchSize(batch, Math.floor(estimateCanonicalBatchBytes(batch) * 0.5));
       if (reduced.runs.length === batch.runs.length) throw error;
+      const retainedRunIds = new Set(reduced.runs.map((run) => run.id));
+      await admitExpiredRunCounts(indexedDB, batch.runs.filter((run) => !retainedRunIds.has(run.id)));
       await maintainCanonicalDatabase(indexedDB, {
         now: options.now,
         retentionWindowMs: options.retentionWindowMs,
@@ -726,6 +734,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           parsedRecords += 1;
           const record = pruneCanonicalRecord(collection, /** @type {Record<string, unknown>} */ (envelope.record));
           if (isExpiredCanonicalRecord(collection, record, options)) {
+            if (collection === 'runs') await admitExpiredRunCountsWithConnection(database, [record]);
             expiredRecords += 1;
             return;
           }
@@ -765,6 +774,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           payloadScope: options.payloadScope,
           payloadHash: options.payloadIdentity,
           ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
+          dailyRunCountsVersion: 1,
           records: Number(metadata.sourceRecords ?? 0),
           committedRecords,
           rawRuns,

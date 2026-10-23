@@ -3159,9 +3159,9 @@
     },
     {
       "id": "workflow-runtime-health-summary",
-      "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
-      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
-      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
+      "subject": "Sum daily runtime conclusion counts for the selected workflow.",
+      "objective": "Inspect observed dated runs independently of retained detail.",
+      "acceptance": "Sum by organization/repository/workflow without adding detail; successful, failed, approval, pending, and other sum to total. Dates use UTC run start; undated evidence is incomplete and missing projection is unavailable. Pending is last-observed state, success is not a verified outcome, and sub-day filters are unsupported.",
       "description": "",
       "parameters": [
         {
@@ -3170,7 +3170,7 @@
         }
       ],
       "sources": [
-        "runs"
+        "daily-run-counts"
       ],
       "used-by-pages": [
         "workflow-runtime"
@@ -3179,7 +3179,7 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "runs"
+          "daily-run-counts"
         ]
       }
     },

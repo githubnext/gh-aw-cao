@@ -38,6 +38,7 @@ type Store struct {
 	config              *pgx.ConnConfig
 	namespace           string
 	linkedRetentionDays int
+	dailyCounts         bool
 	stopMaintenance     context.CancelFunc
 	maintenanceDone     sync.WaitGroup
 }
@@ -125,6 +126,10 @@ func openConfig(ctx context.Context, config *pgx.ConnConfig, provision bool, nam
 		return nil, fmt.Errorf("postgres storage contract check failed: %w", err)
 	}
 	if provision {
+		if err := initializeDailyCounts(ctx, db); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("provision daily outcome capability: %w", err)
+		}
 		if err := initializeStatistics(ctx, db); err != nil {
 			_ = db.Close()
 			return nil, fmt.Errorf("provision native statistics capability: %w", err)
@@ -141,6 +146,17 @@ func openConfig(ctx context.Context, config *pgx.ConnConfig, provision bool, nam
 		return nil, err
 	}
 	store := &Store{db: db, config: config.Copy(), namespace: namespace, linkedRetentionDays: linkedRetention}
+	store.dailyCounts, err = dailyCapability(ctx, db)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	if store.dailyCounts {
+		if err := store.backfillDailyOnce(ctx); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+	}
 	if !provision {
 		if err := store.checkProvisionedPartitions(ctx, time.Now(), retention, linkedRetention); err != nil {
 			_ = db.Close()

@@ -539,7 +539,7 @@ describe('database table ingestion and queries', () => {
     await expect(readTransactions(indexedDB)).resolves.toEqual([
       expect.objectContaining({
         kind: 'ingest-dashboard-sources',
-        ingestionVersion: 9,
+        ingestionVersion: 10,
         payloadHash: expect.stringMatching(/^[a-f0-9]{64}$/)
       }),
       expect.objectContaining({ kind: 'audit-curation', version: 1 })

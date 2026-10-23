@@ -94,7 +94,7 @@ func storeVersion(ctx context.Context, tx *sql.Tx) error {
 	if err := tx.QueryRowContext(ctx, `SELECT version FROM __idb_databases WHERE name=?`, dashboardquery.DatabaseName).Scan(&version); err != nil {
 		return err
 	}
-	if version != dashboardquery.DatabaseVersion {
+	if version != dashboardquery.DatabaseVersion && version != 44 {
 		return fmt.Errorf("unsupported canonical SQLite database version %d; expected %d", version, dashboardquery.DatabaseVersion)
 	}
 	return nil
@@ -137,6 +137,7 @@ func (r *reader) State(ctx context.Context) (dashboardstore.State, error) {
 		return dashboardstore.State{}, err
 	}
 	state := dashboardstore.State{Counts: map[string]int{}, EvaluatedAt: time.Unix(0, 0).UTC()}
+	dailyStores := map[string]bool{}
 	hash := sha256.New()
 	_, _ = fmt.Fprintf(hash, "schema:%d:", dashboardquery.DatabaseVersion)
 	rows, err := r.tx.QueryContext(ctx, `SELECT name FROM __idb_stores WHERE database_name=? ORDER BY name`, dashboardquery.DatabaseName)
@@ -153,6 +154,12 @@ func (r *reader) State(ctx context.Context) (dashboardstore.State, error) {
 			if canonicalCollection(name) {
 				state.Counts["$"+name] = 0
 				_, _ = fmt.Fprintf(hash, "%d:%s", len(name), name)
+			} else if dailyCollection(name) {
+				dailyStores[name] = true
+				_, _ = fmt.Fprintf(hash, "%d:%s", len(name), name)
+				if name == "dailyRunCounts" {
+					state.Counts["daily-run-counts"] = 0
+				}
 			}
 		}
 		return rows.Err()
@@ -175,6 +182,19 @@ func (r *reader) State(ctx context.Context) (dashboardstore.State, error) {
 			var name, key, value, observed string
 			if err := rows.Scan(&name, &key, &value, &observed); err != nil {
 				return err
+			}
+			if dailyCollection(name) {
+				if !dailyStores[name] {
+					return errors.New("SQLite daily records refer to an undeclared object store")
+				}
+				for _, part := range []string{name, key, value} {
+					_, _ = fmt.Fprintf(hash, "%d:%s", len(part), part)
+				}
+				if name == "dailyRunCounts" {
+					state.Counts["daily-run-counts"]++
+					state.Ready = true
+				}
+				continue
 			}
 			if !canonicalCollection(name) {
 				continue
@@ -208,6 +228,10 @@ func (r *reader) State(ctx context.Context) (dashboardstore.State, error) {
 
 func canonicalCollection(name string) bool {
 	return name == "transactions" || name == "marketplacePackages" || postgresx.IsCanonicalCollection(name)
+}
+
+func dailyCollection(name string) bool {
+	return name == "dailyRunCounts" || name == "runCountContributions" || name == "dailyRunCountState"
 }
 
 func cloneState(state dashboardstore.State) dashboardstore.State {

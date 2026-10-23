@@ -46,3 +46,26 @@ func TestRecordStringComparisonDoesNotAllocate(t *testing.T) {
 		t.Fatalf("incorrect or allocating UTF-16 comparison: order=%d allocations=%g", order, allocations)
 	}
 }
+
+func TestDailyRunCountsRejectInvalidAggregateRows(t *testing.T) {
+	valid := func() map[string]any {
+		return map[string]any{"day": "2026-01-02", "organization": "octo", "repository": "api", "workflow": ".github/workflows/test.md",
+			"total": float64(1), "successful": float64(1), "failed": float64(0), "approval": float64(0), "pending": float64(0), "other": float64(0)}
+	}
+	if err := validateDailyRunCounts(valid()); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		field string
+		value any
+	}{
+		{"total", float64(2)}, {"successful", 0.5}, {"failed", float64(-1)}, {"other", "0"}, {"pending", nil},
+		{"day", "2026-02-30"}, {"organization", ""}, {"workflow", nil},
+	} {
+		row := valid()
+		row[test.field] = test.value
+		if err := validateDailyRunCounts(row); err == nil {
+			t.Fatalf("accepted invalid %s=%v", test.field, test.value)
+		}
+	}
+}

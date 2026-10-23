@@ -200,6 +200,30 @@ func snapshotInputs(definition query.Definition) []string {
 }
 
 func (r *reader) source(ctx context.Context, name string, state dashboardstore.State, options dashboardstore.ExecutionOptions, fields snapshotFields) (model.Source, error) {
+	if name == "daily-run-counts" || name == "$dailyRunCounts" {
+		read := dashboardquery.ReadDailyRunCounts
+		if name == "$dailyRunCounts" {
+			read = dashboardquery.ReadDailyRunCountRecords
+		}
+		rows, available, undated, err := read(ctx, r.tx, maxSnapshotInputRows, maxSnapshotWorkingBytes)
+		if err != nil {
+			return model.Source{}, err
+		}
+		metadata := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
+		if available {
+			metadata["availability"], metadata["completeness"] = "available", "partial"
+			if len(rows) == 0 {
+				metadata["availability"] = "empty"
+			}
+			metadata["undated-run-count"] = undated
+			metadata["retention"] = "all-admitted-dated-observations"
+		}
+		result := make([]model.Row, len(rows))
+		for index, row := range rows {
+			result[index] = model.Row(row)
+		}
+		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
+	}
 	if postgresx.IsRuntimeSource(name) && options.Runtime != nil {
 		return options.Runtime(ctx, name)
 	}

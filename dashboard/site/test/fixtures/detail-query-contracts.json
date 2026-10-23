@@ -56,6 +56,11 @@
     { "page": "campaign-detail", "id": "campaign-readme", "sources": ["campaign-readme-details"], "route": { "campaign": "selected" } },
     { "page": "marketplace-package", "id": "marketplace-package-readme", "sources": ["marketplace-package-detail"], "route": { "package-source": "selected-package" } }
   ],
+  "workflowHealth": {
+    "query": "workflow-runtime-health-summary",
+    "source": "daily-run-counts",
+    "fields": ["organization", "repository", "workflow", "total", "successful", "failed", "approval", "pending", "other"]
+  },
   "temporalPanelFields": ["campaign", "value-workflow", "series-repository", "plot-title", "plot-window-start-ms", "plot-window-end-ms", "operational-value-definition", "operational-value-name", "operational-value-unit", "operational-value-direction", "plot-evidence-mode", "plot-comparison-note", "metric", "metric-key", "metric-name", "metric-kind", "metric-group", "series"],
   "views": [
     {

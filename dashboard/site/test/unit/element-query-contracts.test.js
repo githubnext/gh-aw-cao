@@ -34,6 +34,11 @@ const inputs = sources({
     { ...identity, run: 'queued', 'run-conclusion': 'unknown', 'run-status': 'queued' },
     { ...identity, run: 'running', 'run-conclusion': 'unknown', 'run-status': 'in-progress' }
   ],
+  'daily-run-counts': [
+    { ...identity, repository: 'other', day: '2026-10-01', total: 999, successful: 999, failed: 0, approval: 0, pending: 0, other: 0 },
+    { ...identity, day: '2026-10-01', total: 6, successful: 1, failed: 4, approval: 1, pending: 0, other: 0 },
+    { ...identity, day: '2026-10-02', total: 6, successful: 0, failed: 0, approval: 0, pending: 2, other: 4 }
+  ],
   usage: [
     { ...identity, repository: 'other', run: 'unrelated', aic: 999 },
     { ...identity, run: 'one', aic: 2.5 }, { ...identity, run: 'two', aic: 7.5 }
@@ -91,6 +96,9 @@ describe('bounded element query contracts', () => {
     const entry = contract.elementViews.find((entry) => entry.id === 'workflow-runtime-route');
     if (!entry) throw new Error('Missing workflow runtime contract');
     const payload = compile(entry, entry.route);
+    const healthQuery = dashboard.queries.find((/** @type {{ name: string }} */ query) => query.name === contract.workflowHealth.query);
+    expect(healthQuery.from).toBe(contract.workflowHealth.source);
+    expect(dashboardQueryOutputFields(healthQuery, () => contract.workflowHealth.fields)).toEqual(contract.workflowHealth.fields);
     const result = execute(payload);
     expect(result[payload.aliases[1]].rows).toEqual([{
       ...identity, total: 12, successful: 1, failed: 4, approval: 1, pending: 2, other: 4
@@ -98,7 +106,7 @@ describe('bounded element query contracts', () => {
     expect(result[payload.aliases[2]].rows).toEqual([{ ...identity, aic: 10, 'telemetry-count': 2 }]);
     const unavailable = execute(payload, {
       ...inputs,
-      runs: { source: 'runs', rows: [], metadata: { ...metadata, availability: 'unavailable' } }
+      'daily-run-counts': { source: 'daily-run-counts', rows: [], metadata: { ...metadata, availability: 'unavailable' } }
     });
     expect(unavailable[payload.aliases[1]].metadata.availability).toBe('unavailable');
   });
@@ -141,7 +149,11 @@ describe('bounded element query contracts', () => {
       const initialRoot = rendered.querySelector('[data-route-view]');
       request.options.onUpdate(execute(payload, {
         ...inputs,
-        runs: { ...inputs.runs, rows: [...inputs.runs.rows, { ...identity, run: 'new', 'run-conclusion': 'success' }] }
+        'daily-run-counts': {
+          ...inputs['daily-run-counts'],
+          rows: [...inputs['daily-run-counts'].rows,
+            { ...identity, day: '2026-10-03', total: 1, successful: 1, failed: 0, approval: 0, pending: 0, other: 0 }]
+        }
       }));
       await vi.waitFor(() => expect(rendered.querySelector('.workflow-health-total')?.textContent).toBe('13runs'));
       expect(rendered.querySelector('[data-route-view]')).not.toBe(initialRoot);

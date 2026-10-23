@@ -398,6 +398,7 @@ export const TABLE_VALUES = [
   'grader-observations',
   'evals',
   'eval-observations',
+  'daily-run-counts',
   'usage',
   'mcp-calls',
   'mcp-servers',
@@ -464,6 +465,7 @@ export const TABLE_VALUES = [
 ];
 
 export const TABLE_FIELDS = {
+  'daily-run-counts': ['day', 'organization', 'repository', 'workflow', 'total', 'successful', 'failed', 'approval', 'pending', 'other'],
   'routing-aggregates': [
     'routing-aggregate-version', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-link', 'engine',
     'routing-run-key', 'observed-at', 'pick', 'unknown-pick-model', 'routing-dashboard-link',

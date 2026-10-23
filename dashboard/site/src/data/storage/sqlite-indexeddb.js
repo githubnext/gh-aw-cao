@@ -331,6 +331,7 @@ class SqliteIDBOpenRequest extends SqliteIDBRequest {
     super();
     this.onblocked = null;
     this.onupgradeneeded = null;
+    this.transaction = /** @type {SqliteIDBTransaction | null} */ (null);
   }
 }
 
@@ -607,30 +608,35 @@ class SqliteIDBTransaction {
   /**
    * @param {SqliteIDBDatabase} database
    * @param {string[]} storeNames
-   * @param {'readonly' | 'readwrite'} mode
+   * @param {'readonly' | 'readwrite' | 'versionchange'} mode
    */
   constructor(database, storeNames, mode) {
     this.database = database;
     this.storeNames = new Set(storeNames);
     this.mode = mode;
     this.error = null;
-    this.onabort = null;
-    this.oncomplete = null;
-    this.onerror = null;
+    this.onabort = /** @type {(() => void) | null} */ (null);
+    this.oncomplete = /** @type {(() => void) | null} */ (null);
+    this.onerror = /** @type {(() => void) | null} */ (null);
     this.active = true;
     this.aborted = false;
     if (mode === 'readwrite') database.connection.exec('BEGIN IMMEDIATE;');
     database.activeTransactions.add(this);
-    setImmediate(() => this.finish());
+    if (mode !== 'versionchange') setImmediate(() => this.finish());
   }
 
   /** @param {string} name */
   objectStore(name) {
     const storeName = String(name);
-    if (!this.storeNames.has(storeName)) {
+    if (this.mode !== 'versionchange' && !this.storeNames.has(storeName)) {
       throw new Error(`Object store is outside this transaction: ${storeName}`);
     }
     return this.database.objectStore(storeName, this);
+  }
+
+  /** @param {'abort' | 'complete' | 'error'} name @param {() => void} listener */
+  addEventListener(name, listener) {
+    this[`on${name}`] = listener;
   }
 
   /** @param {() => any} operation */
@@ -695,6 +701,7 @@ class SqliteIDBDatabase {
     this.version = version;
     this.activeTransactions = /** @type {Set<SqliteIDBTransaction>} */ (new Set());
     this.closeRequested = false;
+    this.upgradeTransaction = /** @type {SqliteIDBTransaction | null} */ (null);
   }
 
   get objectStoreNames() {
@@ -723,7 +730,7 @@ class SqliteIDBDatabase {
       INSERT INTO __idb_stores (database_name, name, key_path)
       VALUES (?, ?, ?)
     `).run(this.name, storeName, JSON.stringify(keyPath));
-    return new SqliteIDBObjectStore(this, storeName, keyPath);
+    return new SqliteIDBObjectStore(this, storeName, keyPath, this.upgradeTransaction);
   }
 
   /** @param {string} name */
@@ -887,15 +894,21 @@ export class SqliteIndexedDBFactory {
               `).run(databaseName);
             }
             request.result = database;
+            database.upgradeTransaction = new SqliteIDBTransaction(database, [], 'versionchange');
+            request.transaction = database.upgradeTransaction;
             emit(request, 'onupgradeneeded', {
               target: request,
               oldVersion,
               newVersion: requestedVersion
             });
+            if (database.upgradeTransaction.error) throw database.upgradeTransaction.error;
             connection.prepare(`
               UPDATE __idb_databases SET version = ? WHERE name = ?
             `).run(requestedVersion, databaseName);
             connection.exec('COMMIT;');
+            database.upgradeTransaction.finish();
+            database.upgradeTransaction = null;
+            request.transaction = null;
           } catch (error) {
             connection.exec('ROLLBACK;');
             throw error;

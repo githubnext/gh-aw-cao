@@ -1,4 +1,5 @@
 import { relationshipErrors } from '../model/schema.js';
+import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, readProtectedRunCountBytes, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
@@ -18,7 +19,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 44;
+export const DATABASE_VERSION = 45;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 
@@ -56,7 +57,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 export const TRANSACTION_STORE = 'transactions';
-export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE, STORAGE_SHARD_STORE]);
+export const DATABASE_STORES = /** @type {const} */ ([...ENTITY_STORES, TRANSACTION_STORE, STORAGE_SHARD_STORE, ...DAILY_RUN_COUNT_STORES]);
 export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
  * string, { keyPath: string, indexes: Record<string, string | string[]> }
  * >} */ ({
@@ -155,7 +156,10 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
   storageShards: {
     keyPath: 'id',
     indexes: {}
-  }
+  },
+  dailyRunCounts: { keyPath: 'id', indexes: {} },
+  runCountContributions: { keyPath: 'id', indexes: {} },
+  dailyRunCountState: { keyPath: 'id', indexes: {} }
 });
 for (const storeName of ENTITY_STORES) {
   if (Object.hasOwn(RETENTION_TIMESTAMP_FIELDS, storeName)) {
@@ -308,6 +312,8 @@ function transactionDone(transaction) {
  * @param {string | string[]} storeNames
  */
 function readwriteTransaction(database, storeNames) {
+  storeNames = typeof storeNames === 'string' ? [storeNames] : storeNames;
+  if (storeNames.includes('runs')) storeNames = [...new Set([...storeNames, ...DAILY_RUN_COUNT_STORES])];
   try {
     return database.transaction(storeNames, 'readwrite', { durability: 'relaxed' });
   } catch (error) {
@@ -353,13 +359,18 @@ function createIndex(store, name, keyPath) {
   store.createIndex(name, keyPath);
 }
 
-/** @param {IDBDatabase} database */
-function createSchema(database) {
+/** @param {IDBDatabase} database @param {boolean} [backfill] */
+function createSchema(database, backfill = false) {
   for (const [storeName, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+    if (database.objectStoreNames.contains(storeName)) continue;
     const store = database.createObjectStore(storeName, { keyPath: definition.keyPath });
     for (const [indexName, keyPath] of Object.entries(definition.indexes)) {
       createIndex(store, indexName, keyPath);
     }
+    if (storeName === 'dailyRunCountState') store.put({
+      id: DAILY_RUN_COUNT_STATE_ID, status: backfill ? 'backfilling' : 'ready',
+      coverage: backfill ? 'retained-v44' : 'admitted', excludedRuns: 0, conflictedRuns: 0
+    });
   }
 }
 
@@ -524,7 +535,9 @@ export function openCanonicalDatabase(indexedDB) {
           event: 'open-upgrade-completed', openId, elapsedMs: elapsed()
         }));
       }
-      if (event.oldVersion < DATABASE_VERSION) {
+      if (event.oldVersion === 44) {
+        createSchema(database, true);
+      } else if (event.oldVersion < DATABASE_VERSION) {
         // Canonical data is a derived cache. Rebuild incompatible identities and
         // schemas from authoritative dashboard inputs instead of migrating them.
         debug('upgrading database schema', name, { from: event.oldVersion, to: DATABASE_VERSION });
@@ -567,7 +580,10 @@ export function openCanonicalDatabase(indexedDB) {
       // `close` fires only when the browser closes the connection abnormally,
       // for example after backing-store corruption or when site data is cleared.
       database.onclose = () => debug({ event: 'connection-closed-abnormally', openId });
-      resolve(database);
+      backfillDailyRunCounts(database).then(() => resolve(database), (error) => {
+        database.close();
+        reject(error);
+      });
     };
     request.onerror = () => {
       settle();
@@ -590,6 +606,64 @@ export function openCanonicalDatabase(indexedDB) {
       reject(new Error('Opening canonical dashboard data was blocked'));
     };
   });
+}
+
+/**
+ * Upgrade work is cursor-paged and never rewrites a detail record. A v44
+ * cache cannot recover already-evicted runs, so its coverage remains partial.
+ * @param {IDBDatabase} database
+ */
+export async function backfillDailyRunCounts(database) {
+  if (!database.objectStoreNames.contains('dailyRunCountState')) return;
+  const initial = await requestResult(database.transaction('dailyRunCountState')
+    .objectStore('dailyRunCountState').get(DAILY_RUN_COUNT_STATE_ID));
+  if (initial?.status !== 'backfilling') return;
+  let more = true;
+  while (more) {
+    const transaction = readwriteTransaction(database, ['runs', ...DAILY_RUN_COUNT_STORES]);
+    const done = transactionDone(transaction);
+    try {
+      const states = transaction.objectStore('dailyRunCountState');
+      const state = await requestResult(states.get(DAILY_RUN_COUNT_STATE_ID));
+      if (state?.status !== 'backfilling') {
+        await done;
+        return;
+      }
+      /** @type {Record<string, unknown>[]} */
+      const records = [];
+      const runs = transaction.objectStore('runs');
+      const range = state.after === undefined ? undefined : IDBKeyRange.lowerBound(state.after, true);
+      if (typeof runs.openCursor !== 'function') {
+        records.push(...await requestResult(runs.getAll(range, 250)));
+        more = records.length === 250;
+      } else await new Promise((resolve, reject) => {
+        const request = runs.openCursor(range);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (!cursor || records.length === 250) {
+            more = Boolean(cursor);
+            resolve(undefined);
+          } else {
+            records.push(cursor.value);
+            cursor.continue();
+          }
+        };
+      });
+      for (const record of records) await reconcileDailyRunCounts(transaction, record);
+      const latest = await requestResult(states.get(DAILY_RUN_COUNT_STATE_ID));
+      states.put({
+        ...latest, after: records.at(-1)?.id ?? state.after,
+        status: more ? 'backfilling' : 'ready'
+      });
+      commitTransaction(transaction);
+      await done;
+    } catch (error) {
+      try { transaction.abort(); } catch { /* Already completed. */ }
+      await done.catch(() => undefined);
+      throw error;
+    }
+  }
 }
 
 /**
@@ -668,6 +742,39 @@ export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   }
 }
 
+/**
+ * Admits count facts whose detail is intentionally outside its retention window.
+ * This never resurrects expired detail or modifies its retention timestamps.
+ * @param {IDBDatabase} database
+ * @param {Record<string, unknown>[]} records
+ */
+export async function admitExpiredRunCountsWithConnection(database, records) {
+  for (let offset = 0; offset < records.length; offset += 250) {
+    const transaction = readwriteTransaction(database, [...DAILY_RUN_COUNT_STORES]);
+    const done = transactionDone(transaction);
+    try {
+      for (const record of records.slice(offset, offset + 250)) await reconcileDailyRunCounts(transaction, record);
+      commitTransaction(transaction);
+      await done;
+    } catch (error) {
+      try { transaction.abort(); } catch { /* Already completed. */ }
+      await done.catch(() => undefined);
+      throw error;
+    }
+  }
+}
+
+/** @param {IDBFactory} indexedDB @param {Record<string, unknown>[]} records */
+export async function admitExpiredRunCounts(indexedDB, records) {
+  if (records.length === 0) return;
+  const database = await openCanonicalDatabase(indexedDB);
+  try {
+    await admitExpiredRunCountsWithConnection(database, records);
+  } finally {
+    database.close();
+  }
+}
+
   /** @param {Record<string, unknown>} record */
 function estimatedRecordBytes(record) {
   return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
@@ -729,6 +836,7 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
     const referencedRepositoryIds = new Set();
     const database = await openCanonicalDatabase(indexedDB);
     try {
+      estimatedBytes += await readProtectedRunCountBytes(database);
       const referencedAudits = new Set();
       for (const storeName of ['graderObservations', 'evalObservations', 'experimentAssignments']) {
         options.signal?.throwIfAborted();
@@ -1029,7 +1137,7 @@ export async function readCanonicalBatch(indexedDB) {
 /**
  * Reads multiple stores through one connection and one readonly transaction.
  * @param {IDBFactory} indexedDB
- * @param {readonly typeof ENTITY_STORES[number][]} storeNames
+ * @param {readonly typeof DATABASE_STORES[number][]} storeNames
  */
 export async function readCollections(indexedDB, storeNames) {
   const startedAt = monotonicNow();

@@ -284,6 +284,15 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 		var rows []map[string]any
 		var err error
 		switch {
+		case source == "daily-run-counts":
+			canonicalRead, otherCanonicalRead = true, true
+			var available bool
+			var undated int64
+			rows, available, undated, err = dashboardquery.ReadDailyRunCounts(ctx, db, 500_000, 1<<30)
+			if err == nil && !available {
+				err = nativeErrorf("Daily run counts are not available in this snapshot; download or rebuild an aggregate-capable snapshot")
+			}
+			evidenceClocks["undated-run-count"] = undated
 		case strings.HasPrefix(source, "$"):
 			canonicalRead = true
 			otherCanonicalRead = otherCanonicalRead || source != "$operationalValueEvidence"
@@ -356,6 +365,9 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 		if instant, present := evidenceClocks[field]; present && !otherCanonicalRead {
 			metadata[field] = instant
 		}
+	}
+	if undated, present := evidenceClocks["undated-run-count"]; present {
+		metadata["undated-run-count"] = undated
 	}
 	if len(resolved) > 0 {
 		values := map[string]any{}
