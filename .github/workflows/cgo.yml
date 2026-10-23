@@ -266,6 +266,10 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     services:
       redis:
         image: redis:8.2-alpine
@@ -319,23 +323,43 @@ jobs:
           npm --prefix server/spec ci
       - name: Go tests with Redis and Postgres
         # Memory-pressure tests measure the whole Redis node, not one namespace.
-        run: go -C server test -p 1 ./...
+        # Daily partition fixtures make a single package exceed Go's 10m budget.
+        # Partition unique test names, including example and fuzz seed coverage.
+        env:
+          TEST_SHARD: ${{ matrix.shard }}
+          TEST_SHARD_COUNT: ${{ strategy.job-total }}
+        run: |
+          set -euo pipefail
+          pattern=$(go -C server test -p 1 -list '^(Test|Example|Fuzz)' ./... |
+            awk -v shard="$TEST_SHARD" -v count="$TEST_SHARD_COUNT" '
+              /^(Test|Example|Fuzz)[[:alnum:]_]*$/ && !seen[$0]++ {
+                if (ordinal++ % count == shard) {
+                  printf "%s%s", separator, $0
+                  separator = "|"
+                }
+              }')
+          test -n "$pattern"
+          go -C server test -p 1 -run "^($pattern)$" ./...
       - name: Build dashboard and server
+        if: matrix.shard == 0
         run: |
           npm run dashboard:server:build
           mkdir -p .tmp
           go -C server build -o ../.tmp/cao-dashboard ./cmd/cao-dashboard
       - name: Bootstrap dashboard integration storage
+        if: matrix.shard == 0
         env:
           CAO_DATABASE_ADMIN_URL: ${{ env.CAO_POSTGRES_URL }}
         run: |
           .tmp/cao-dashboard database bootstrap --store canonical --namespace "$CAO_OPERATIONAL_NAMESPACE"
           .tmp/cao-dashboard database bootstrap --store operational --namespace "$CAO_OPERATIONAL_NAMESPACE"
       - name: Install Chromium
+        if: matrix.shard == 0
         run: |
           sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
           npx playwright install --with-deps chromium
       - name: Verify deployed shards populate dashboard views
+        if: matrix.shard == 0
         env:
           DASHBOARD_SERVER_COMMAND: >-
             ${{ github.workspace }}/.tmp/cao-dashboard serve
@@ -347,7 +371,7 @@ jobs:
             --database-queries ${{ github.workspace }}/dashboard/site/src/data/queries/database.json
         run: npm run test:e2e:dashboard-server
       - name: Upload integration traces
-        if: always()
+        if: always() && matrix.shard == 0
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dashboard-server-integration

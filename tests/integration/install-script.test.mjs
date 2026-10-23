@@ -19,6 +19,25 @@ async function run(command, args, options, input) {
   return result;
 }
 
+async function publicReleaseMetadata() {
+  const responses = {};
+  for (let page = 1; ; page++) {
+    const endpoint = `repos/githubnext/gh-cao/releases?per_page=100&page=${page}`;
+    const { stdout } = await run("gh", ["api", endpoint]);
+    const releases = JSON.parse(stdout);
+    assert.ok(Array.isArray(releases), "GitHub must return a release list");
+    responses[`https://api.github.com/${endpoint}`] = releases;
+    const release = releases.find((item) => item.draft === false && /^v\d+\.\d+\.\d+$/.test(item.tag_name));
+    if (release) {
+      const endpoint = `repos/githubnext/gh-cao/releases/tags/${release.tag_name}`;
+      const { stdout } = await run("gh", ["api", endpoint]);
+      responses[`https://api.github.com/${endpoint}`] = JSON.parse(stdout);
+      return responses;
+    }
+    assert.equal(releases.length, 100, "a published CAO release is required");
+  }
+}
+
 test("streamed installer installs real public tools with unusable cross-organization credentials", {
   timeout: 360_000,
 }, async (t) => {
@@ -29,13 +48,42 @@ test("streamed installer installs real public tools with unusable cross-organiza
   const bin = path.join(root, "bin");
   const consumer = path.join(root, "control");
   const log = path.join(root, "control-requests.log");
+  const metadata = path.join(root, "public-release-metadata.json");
+  const metadataLog = path.join(root, "metadata-requests.log");
   const catalogSource = path.join(root, "catalog with spaces '\"; $()");
   await Promise.all([config, bin, consumer].map((directory) => mkdir(directory, { recursive: true })));
   await symlink(catalog, catalogSource, "dir");
   const { stdout: executable } = await run("which", ["gh"]);
   assert.ok(path.isAbsolute(executable.trim()), "GitHub CLI must be installed");
+  const { stdout: curlExecutable } = await run("which", ["curl"]);
+  assert.ok(path.isAbsolute(curlExecutable.trim()), "curl must be installed");
 
-  // Only control-repository identity/sign-in are simulated; downloads and both extensions are real.
+  // Snapshot public metadata with the harness credential, not the installer's
+  // unusable credentials or the shared runner IP's exhausted anonymous API quota.
+  // All asset downloads and both installed extensions remain real.
+  const responses = await publicReleaseMetadata();
+  await writeFile(metadata, JSON.stringify(responses));
+  const curl = path.join(bin, "curl");
+  await writeFile(curl, `#!/usr/bin/env node
+const { appendFileSync, readFileSync } = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const args = process.argv.slice(2);
+const url = args.find((arg) => arg.startsWith("https://api.github.com/"));
+if (url) {
+  if (args[0] !== "--disable" || args.some((arg) => /authorization/i.test(arg))) {
+    throw new Error("Public metadata requests must ignore curlrc and omit credentials");
+  }
+  const responses = JSON.parse(readFileSync(process.env.CAO_INSTALLER_METADATA, "utf8"));
+  if (!Object.hasOwn(responses, url)) throw new Error("Unexpected public metadata request: " + url);
+  appendFileSync(process.env.CAO_INSTALLER_METADATA_LOG, url + "\\n");
+  process.stdout.write(JSON.stringify(responses[url]));
+} else {
+  const result = spawnSync(process.env.CAO_INSTALLER_CURL, args, { stdio: "inherit" });
+  if (result.error) throw result.error;
+  process.exit(result.status ?? 1);
+}
+`);
+  await chmod(curl, 0o755);
   const gh = path.join(bin, "gh");
   await writeFile(gh, `#!/usr/bin/env bash
 set -euo pipefail
@@ -83,6 +131,9 @@ exec "$CAO_INSTALLER_GH" "$@"
     GH_NO_EXTENSION_UPDATE_NOTIFIER: "1",
     CI: "true",
     CAO_INSTALLER_GH: executable.trim(),
+    CAO_INSTALLER_CURL: curlExecutable.trim(),
+    CAO_INSTALLER_METADATA: metadata,
+    CAO_INSTALLER_METADATA_LOG: metadataLog,
     CAO_INSTALLER_CONTROL_LOG: log,
   });
   await run("git", ["init", "--quiet", consumer], { env });
@@ -107,6 +158,7 @@ exec "$CAO_INSTALLER_GH" "$@"
   assert.equal(await readFile(path.join(config, "hosts.yml"), "utf8"), hosts);
   assert.equal(await readFile(path.join(home, ".curlrc"), "utf8"), curlrc);
   assert.match(await readFile(log, "utf8"), /auth status\n[\s\S]*repo view --json nameWithOwner/);
+  assert.deepEqual((await readFile(metadataLog, "utf8")).trim().split("\n"), Object.keys(responses));
   for (const bundle of ["activity", "dashboard"]) {
     await run(process.execPath, [".github/workflows/shared/materialize-cao.mjs", "verify", bundle], { cwd: consumer, env });
   }

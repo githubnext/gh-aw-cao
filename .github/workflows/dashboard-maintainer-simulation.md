@@ -43,6 +43,7 @@ safe-outputs:
   create-issue:
     title-prefix: "[maintainer-simulation] "
     deduplicate-by-title: true
+    expires: 14d
     max: 3
   upload-artifact:
     max-uploads: 1

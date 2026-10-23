@@ -78,6 +78,7 @@ test("daily maintainer workflow confines findings to bounded issue safe outputs"
   assert.equal(configuration.permissions.contents, "read");
   assert.equal(configuration["safe-outputs"]["create-issue"].max, 3);
   assert.equal(configuration["safe-outputs"]["create-issue"]["deduplicate-by-title"], true);
+  assert.equal(configuration["safe-outputs"]["create-issue"].expires, "14d");
   assert.equal(configuration["safe-outputs"]["create-pull-request"], undefined);
   assert.equal(configuration["safe-outputs"]["dispatch-workflow"], undefined);
   assert.match(source, /exactly ten/);

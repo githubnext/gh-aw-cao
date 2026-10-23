@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, posix } from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { parse } from "yaml";
 import { root, workflow } from "./workflow-contract.helpers.mjs";
@@ -105,6 +106,66 @@ test("Go dashboard integration bootstraps both stores in the runtime namespace",
   assert.match(runtime.env.DASHBOARD_SERVER_COMMAND, /--redis-namespace "\$CAO_OPERATIONAL_NAMESPACE"/);
   assert.equal(job.env.CAO_DATABASE_ADMIN_URL, undefined);
   assert.equal(runtime.env.CAO_DATABASE_ADMIN_URL, undefined);
+});
+
+test("Go dashboard integration shards complete test coverage across isolated services", () => {
+  const job = parse(workflow("cgo.yml")).jobs["redis-dashboard-integration"];
+  assert.deepEqual(job.strategy.matrix, { shard: [0, 1, 2, 3] });
+  assert.equal(job.strategy["fail-fast"], false);
+  assert.ok(job.services.postgres);
+  assert.ok(job.services.redis);
+  const tests = job.steps.find((step) => step.name === "Go tests with Redis and Postgres");
+  assert.deepEqual(tests.env, {
+    TEST_SHARD: "${{ matrix.shard }}",
+    TEST_SHARD_COUNT: "${{ strategy.job-total }}",
+  });
+  assert.match(tests.run, /set -euo pipefail/);
+  assert.match(tests.run, /test -n "\$pattern"/);
+  assert.match(tests.run, /go -C server test -p 1 -run "\^\(\$pattern\)\$" \.\/\.\.\./);
+  assert.doesNotMatch(tests.run, /-timeout|-short|-skip/);
+  assert.equal(tests["continue-on-error"], undefined);
+  assert.equal(tests.if, undefined);
+  for (const name of [
+    "Build dashboard and server", "Bootstrap dashboard integration storage",
+    "Install Chromium", "Verify deployed shards populate dashboard views",
+  ]) {
+    assert.equal(job.steps.find((step) => step.name === name).if, "matrix.shard == 0", name);
+  }
+  assert.equal(job.steps.find((step) => step.name === "Upload integration traces").if,
+    "always() && matrix.shard == 0");
+
+  const names = ["TestOne", "TestTwo", "ExampleQuery", "FuzzParser", "TestThree", "TestFour"];
+  const output = [...names.slice(0, 2), "ok example/first", ...names, "ok example/second"].join("\n");
+  const selected = new Map(names.map((name) => [name, 0]));
+  const mock = [
+    "go() {",
+    '  if [[ "$*" == *" -list "* ]]; then printf "%s\\n" "$MOCK_LIST";',
+    '  else printf "%s\\n" "$7"; fi',
+    "}",
+  ].join("\n");
+  for (const shard of job.strategy.matrix.shard) {
+    const result = spawnSync("bash", ["-c", `${mock}\n${tests.run}`], {
+      encoding: "utf8",
+      env: { ...process.env, MOCK_LIST: output, TEST_SHARD: String(shard), TEST_SHARD_COUNT: "4" },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const pattern = new RegExp(result.stdout.trim());
+    for (const name of names) {
+      if (pattern.test(name)) selected.set(name, selected.get(name) + 1);
+      assert.equal(pattern.test(`${name}Suffix`), false);
+    }
+  }
+  assert.deepEqual([...selected.values()], names.map(() => 1));
+  const empty = spawnSync("bash", ["-c", `${mock}\n${tests.run}`], {
+    encoding: "utf8",
+    env: { ...process.env, MOCK_LIST: "ok example/empty", TEST_SHARD: "0", TEST_SHARD_COUNT: "4" },
+  });
+  assert.notEqual(empty.status, 0);
+  const failed = spawnSync("bash", ["-c", `go() { return 23; }\n${tests.run}`], {
+    encoding: "utf8",
+    env: { ...process.env, TEST_SHARD: "0", TEST_SHARD_COUNT: "4" },
+  });
+  assert.equal(failed.status, 23);
 });
 
 test("Go extension quality checks cover root-module sources and lint configuration", () => {

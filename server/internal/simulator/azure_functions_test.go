@@ -165,6 +165,9 @@ func (f *setupAzureFunctions) build(source string) error {
 	}
 	f.env = setupAzureEnvironment(setupAzureToolEnvironment("PATH", "HOME", "TMPDIR"), map[string]string{
 		"OTEL_SDK_DISABLED": "true", "CAO_POSTGRES_URL": f.dsn,
+		// Snapshot refresh assertions need fresh reads, not the production
+		// five-minute query cache admitted when CI queries exceed 100 ms.
+		"CAO_QUERY_CACHE_DISABLED":    "true",
 		"DEBUG":                       "cao:functions:startup",
 		"CAO_POLICY_PATH":             filepath.Join(source, ".github/workflows/cao.azure.json"),
 		"CAO_DATABASE_QUERIES":        queryPath,
