@@ -1,35 +1,7 @@
 {
-  "source_sha": "39f7cd5f4aef95d1818599e7de00374487c947c2",
-  "next_category": "artifact transfer and Pages packaging",
+  "source_sha": "2cdd72a6cffa34d107ca408c504fd04b63498353",
+  "next_category": "scheduling, concurrency, and avoidable rebuilds",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-22T10:38:35Z",
-      "worker_run_id": "39764364379",
-      "category": "scheduling, concurrency, and avoidable rebuilds",
-      "evidence_run_ids": [
-        39764300628,
-        39762835542,
-        39759930474,
-        39758702029,
-        39758545939,
-        39757338484,
-        39755536983,
-        39752322608,
-        39751161246,
-        39750815094,
-        39748555421,
-        39747881979,
-        39744803453,
-        39743524194,
-        39741068212,
-        39740939750,
-        39740182351,
-        39738616859,
-        39738539133,
-        39737890136
-      ],
-      "outcome": "incomplete: the 2026-10-22T07:03:29Z to 2026-10-22T10:35:57Z latest-20 window contained 16 successful and four skipped completed docs.yml runs, with no failed or cancelled runs. Only three successful runs executed the build-and-deploy path (all push events, across three source SHAs), below the required minimum of five comparable successful builds; the other thirteen successful runs completed only the schedule-freshness path. Run/job metadata for the boundary schedule confirmed build and deploy were skipped. Required median/p90 workflow, queue, build, deploy, dashboard, and scheduling measurements and repeated cache verification therefore cannot be completed. No recommendation was made and the scheduling, concurrency, and avoidable rebuilds category remains next."
-    },
     {
       "evaluated_at": "2026-10-22T11:37:46Z",
       "worker_run_id": "39771716094",
@@ -734,6 +706,34 @@
         39887150030
       ],
       "outcome": "no-op: the 2026-10-23T02:00:12Z to 2026-10-23T05:49:54Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Five successful build-and-deploy paths were comparable (three workflow_run, one push, and one schedule, across three source SHAs): median/p90 end-to-end 101/111.6 seconds, initial queue 4/9.4 seconds, queue-excluded execution 96/106.2 seconds, build job 71/76.8 seconds, and deploy job 11/11.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. Dependency installation was 20/23.2 seconds, Astro generation 14/14.6 seconds, reusable-dashboard restoration 1/2 seconds, and Pages artifact upload 3/3 seconds. Bounded trusted logs verified identical-key 301 MiB npm package-cache hits and approximately 3 MiB reusable-dashboard-cache hits on all five comparable builds; step metadata showed all five skipped dashboard lookup and artifact fallback. The latest five successful dashboard producer workflows had median/p90 end-to-end 26/33.2 seconds and build jobs 14/16.2 seconds; dashboard dependency installation was 2/3.6 seconds, dashboard assembly 2/2 seconds, artifact upload 2/2 seconds, and cache publication 6/7.2 seconds. Reuse is already effective: eliminating the 1-second median docs restore would save about 1% of median queue-excluded execution, while the complete producer path is isolated, only 26 seconds median, and runs for fresh activity snapshots. No concrete correctness- and freshness-preserving reusable-dashboard change can reasonably save 60 seconds or at least 14.4 seconds (15% of median docs execution), so no actionable recommendation was made and the category advanced."
+    },
+    {
+      "evaluated_at": "2026-10-23T06:34:16Z",
+      "worker_run_id": "39911934538",
+      "category": "artifact transfer and Pages packaging",
+      "evidence_run_ids": [
+        39909245373,
+        39909132292,
+        39907916424,
+        39907754438,
+        39906678928,
+        39905561225,
+        39905537147,
+        39903475793,
+        39902750666,
+        39902484892,
+        39901826702,
+        39900445281,
+        39898153337,
+        39896843545,
+        39895217766,
+        39895144358,
+        39893837040,
+        39892817541,
+        39892116066,
+        39890304784
+      ],
+      "outcome": "no-op: the 2026-10-23T02:34:26Z to 2026-10-23T06:06:08Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Five successful build-and-deploy paths were comparable (two push, two workflow_run, and one schedule, across three source SHAs): median/p90 end-to-end 105/132.2 seconds, initial queue or concurrency wait 7/21.2 seconds, queue-excluded execution 102/112.6 seconds, build job 75/90.6 seconds, and deploy job 11/11.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows had median/p90 end-to-end 26/33.2 seconds and build jobs 14/16.2 seconds. Dependency installation was 22/24.6 seconds, Astro generation 14/15 seconds, reusable-dashboard restoration 1/2 seconds, and Pages artifact upload 3/3 seconds. Bounded trusted logs verified identical-key 301 MiB npm package-cache hits and approximately 3 MiB reusable-dashboard-cache hits on all five comparable builds; step metadata showed all five skipped dashboard artifact fallback. Each Pages package was approximately 8.26 MB. Packaging was only 2.9% of median queue-excluded execution, and even eliminating the 3-second upload would save neither 60 seconds nor 15%. Dashboard producer artifact upload was 2 seconds and cache-job artifact download was 0-2 seconds. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. The newest push waited 28 seconds before its build job, but this was disclosed as queue/concurrency time rather than attributed to packaging."
     }
   ]
 }
