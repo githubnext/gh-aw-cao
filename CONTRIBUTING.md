@@ -155,6 +155,10 @@ Keep one procedural home per task: [setup](docs/setup-quickstarts.md),
 their distinct decisions and caveats, linking to shared procedures instead of
 copying them.
 
+Follow [gh-aw's navigation](https://github.com/github/gh-aw/blob/main/docs/astro.config.mjs)
+for shared section labels and order. Keep CAO-specific groups only where useful;
+do not add pages merely to fill an upstream category.
+
 Use relative `.md` links between authored pages; `docs/rewrite-docs-links.mjs`
 converts them to site routes. Preserve moved section anchors or update all
 inbound references, and do not redirect a still-authored page to a different

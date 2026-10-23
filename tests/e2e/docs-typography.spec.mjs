@@ -14,7 +14,6 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(title).toHaveCSS("font-family", /"Mona Sans"/);
       expect(await page.evaluate(() => document.fonts.check('16px "Mona Sans"'))).toBe(true);
       await expect(page.locator(".sl-markdown-content h2").first()).toHaveCSS("margin-top", "48px");
-      await expect(page.locator(".sl-markdown-content h3").first()).toHaveCSS("margin-top", "32px");
       const titleBounds = await title.boundingBox();
       const proseBounds = await prose.boundingBox();
       expect(titleBounds.x).toBeCloseTo(proseBounds.x, 0);
@@ -64,6 +63,9 @@ for (const colorScheme of ["light", "dark"]) {
       await expect(activeSection).toHaveCSS("font-weight", "600");
       await expect(activeSection).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
       await expect(activeSection).toHaveCSS("text-decoration-line", "none");
+
+      expect((await page.goto("dashboard/"))?.ok()).toBe(true);
+      await expect(page.locator(".sl-markdown-content h3").first()).toHaveCSS("margin-top", "32px");
     });
   }
 }

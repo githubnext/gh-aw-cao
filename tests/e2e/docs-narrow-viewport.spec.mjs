@@ -200,25 +200,29 @@ for (const colorScheme of ["light", "dark"]) {
   }
 }
 
-test("Setup navigation follows the user journey without duplicate authentication pages", async ({ page }) => {
+test("Setup navigation separates onboarding from gallery examples and authentication reference", async ({ page }) => {
   expect((await page.goto("getting-started/"))?.ok()).toBe(true);
 
   const introductionGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Introduction$/ }).locator("..");
   await expect(introductionGroup.getByRole("link")).toHaveText([
     "What is Central Agentic Ops?",
-    "How does CAO work?",
-    "From outcome to execution",
     "Architecture",
   ]);
 
   const setupGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Setup$/ }).locator("..");
   await expect(setupGroup.getByRole("link")).toHaveText([
-    "Quickstart: install and monitor",
-    "Daily Repo Status (optional)",
-    "Add a campaign (optional)",
-    "CAO commands",
-    "Authentication",
+    "Quick Start",
+    "Provision Credentials",
+    "Setup Compatibility",
+    "Set Up the Admission Gate",
+    "CLI Commands",
   ]);
+
+  const galleryGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Gallery$/ }).locator("..");
+  await expect(galleryGroup.getByRole("link")).toHaveText(["Campaign Catalog", "Daily Repo Status"]);
+  const referenceGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Reference$/ }).locator("..");
+  await expect(referenceGroup.getByRole("link", { name: "Authentication", exact: true }))
+    .toHaveAttribute("href", "/gh-cao/authentication/");
 });
 
 test("getting started leads from monitoring to a separate optional campaign guide", async ({ page }, testInfo) => {
@@ -381,15 +385,30 @@ test("architecture retains authority and evidence boundaries without a duplicate
   }
 });
 
-test("primary navigation keeps task guides without duplicate maintenance or reference menus", async ({ page }) => {
+test("primary navigation follows gh-aw categories without duplicating CAO content", async ({ page }, testInfo) => {
   await page.goto("dashboard/");
   const sidebar = page.locator("#starlight__sidebar");
+  await expect(sidebar.locator("summary")).toHaveText([
+    "Introduction", "Setup", "Gallery", "Guides", "Dashboard", "Reference", "Troubleshooting",
+  ]);
+  await expect(sidebar.locator('.top-level a[href^="/gh-cao/"]')).toHaveCount(42);
   await expect(sidebar.getByText("Maintain", { exact: true })).toHaveCount(0);
   await expect(sidebar.getByText("Views", { exact: true })).toHaveCount(0);
-  await expect(sidebar.getByRole("link", { name: "Local worker debugging", exact: true }))
+  const troubleshooting = sidebar.locator("summary").filter({ hasText: /^Troubleshooting$/ }).locator("..");
+  await expect(troubleshooting).toHaveJSProperty("open", false);
+  const emergencyStop = sidebar.getByRole("link", { name: "Emergency Stop", exact: true });
+  await expect(emergencyStop).toBeVisible();
+  await expect(emergencyStop.locator("xpath=ancestor::details")).toHaveCount(0);
+  await expect(emergencyStop).toHaveAttribute("href", "/gh-cao/operations/#emergency-stop");
+  await troubleshooting.locator("summary").click();
+  await expect(troubleshooting.getByRole("link", { name: "Local Worker Debugging", exact: true }))
     .toHaveAttribute("href", "/gh-cao/local-debugging/");
-  await expect(sidebar.getByRole("link", { name: "Emergency stop", exact: true }))
-    .toHaveAttribute("href", "/gh-cao/operations/#emergency-stop");
+  const guides = sidebar.locator("summary").filter({ hasText: /^Guides$/ }).locator("..");
+  for (const route of ["operation-patterns", "rollout-and-routing", "operational-value-how-to", "deployment", "agent-plugin"]) {
+    await expect(guides.locator(`a[href="/gh-cao/${route}/"]`)).toHaveCount(1);
+  }
+  await expect(sidebar.getByRole("link", { name: "Sample Dashboard", exact: true }))
+    .toHaveAttribute("href", "/gh-cao/cao/");
   for (const route of [
     "how-cao-works", "deployment-actions-github-app", "deployment-actions-pat",
     "dashboard-language-specification", "dashboard-view-catalog",
@@ -399,6 +418,24 @@ test("primary navigation keeps task guides without duplicate maintenance or refe
   const content = page.locator(".sl-markdown-content");
   for (const route of ["dashboard-language-specification", "dashboard-view-catalog", "dashboard-overview"]) {
     await expect(content.locator(`a[href="/gh-cao/${route}/"]`)).toHaveCount(1);
+  }
+
+  await troubleshooting.locator("summary").click();
+  await page.evaluate(() => document.fonts.ready);
+  for (const [name, viewport] of [
+    ["desktop", { width: 1280, height: 900 }],
+    ["mobile", { width: 390, height: 844 }],
+  ]) {
+    await page.setViewportSize(viewport);
+    if (viewport.width < 800) {
+      await page.getByRole("button", { name: "Menu", exact: true }).click();
+    }
+    await expect(sidebar).toBeVisible();
+    await sidebar.locator("summary").first().scrollIntoViewIfNeeded();
+    expect(await page.locator("html").evaluate(element => element.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+    const screenshot = testInfo.outputPath(`cao-navigation-${name}.png`);
+    await page.screenshot({ path: screenshot });
+    await testInfo.attach(`CAO navigation (${name})`, { path: screenshot, contentType: "image/png" });
   }
 });
 
@@ -924,22 +961,21 @@ for (const colorScheme of ["light", "dark"]) {
   });
 }
 
-test("sidebar groups Dashboard documentation by reader task", async ({ page }) => {
+test("sidebar groups CAO-specific dashboard and intelligence documentation together", async ({ page }) => {
   expect((await page.goto("dashboard/"))?.ok()).toBe(true);
 
   const dashboardGroup = page.locator('nav[aria-label="Main"] summary').filter({ hasText: /^Dashboard$/ }).locator("..");
   await expect(dashboardGroup.locator(":scope > summary")).toHaveText("Dashboard");
   await expect(dashboardGroup.locator(":scope > ul > li > a")).toHaveText([
-    "At a glance",
-    "Data ingestion",
-    "Data model",
-    "Language",
-    "Language specification",
-    "View catalog",
+    "Overview",
+    "Intelligence",
+    "Runtime Health",
+    "Portfolio Decisions",
+    "Data Ingestion",
+    "Data Model",
+    "Dashboard Language",
   ]);
-  const viewsGroup = dashboardGroup.locator(":scope > ul > li > details");
-  await expect(viewsGroup.locator(":scope > summary")).toHaveText("Views");
-  await expect(viewsGroup.getByRole("link")).toHaveText(["Overview", "Overview components"]);
+  await expect(dashboardGroup.locator("details")).toHaveCount(0);
 });
 
 for (const { name, viewport } of [
