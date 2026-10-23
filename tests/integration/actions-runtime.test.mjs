@@ -39,8 +39,9 @@ test("signed gateway delivery runs compiled AWI and CAO samples in Docker", { ti
     assert.deepEqual(report.unhandled, []);
     assert.ok(report.requests.every(request => request.method === "GET"));
     const info = JSON.parse(readFileSync(join(output, "artifacts/activation/aw_info.json"), "utf8"));
-    assert.equal(info.dry_run, true);
+    assert.equal(info.dry_run === true, name === "sample");
     assert.equal(info.staged, true);
+    assert.equal(info.context.items[0].url, event.client_payload.aw_context.webhook.deliveries[0].payload.url);
     const agent = JSON.parse(readFileSync(join(output, "artifacts/agent/agent_output.json"), "utf8"));
     assert.equal(agent.items.length, 1);
     assert.equal(agent.items[0].type, "create_issue");
@@ -77,9 +78,11 @@ test("signed gateway delivery runs compiled AWI and CAO samples in Docker", { ti
   const sampleLock = join(workspace, ".github/workflows/sample.lock.yml"), original = readFileSync(sampleLock, "utf8");
   for (const [name, replacement, message] of [
     ["live", original.replace('"dry_run":true', '"dry_run":false'), /Only dry-run locks/],
+    ["unstaged", original.replaceAll('GH_AW_SAFE_OUTPUTS_STAGED: "true"', 'GH_AW_SAFE_OUTPUTS_STAGED: "false"'), /unconditionally staged/],
     ["inference", original.replaceAll("GH_AW_SAMPLES:", "NO_SAMPLES:"), /Compiled sample replay is required/],
     ["unsupported-action", original.replaceAll("actions/checkout@", "unapproved/action@"), /Unsupported or unpinned action/],
   ]) {
+    assert.notEqual(replacement, original, `${name} must alter the compiled fixture`);
     writeFileSync(sampleLock, replacement);
     assert.throws(() => simulate({ workspace, workflow: ".github/workflows/sample.lock.yml", event,
       output: join(directory, name), upstream, tools }), message);

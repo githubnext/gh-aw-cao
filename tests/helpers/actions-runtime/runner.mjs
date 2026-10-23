@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parse } from "yaml";
 import { condition, evaluate, interpolate } from "./expressions.mjs";
 import { githubAPI } from "./github-api.mjs";
+import { sampleWorkflow } from "./workflow.mjs";
 
 // Samples spawn their own stdio safe-output server. These compiled infrastructure
 // steps cannot contribute to sample execution and must never start real inference.
@@ -163,14 +163,7 @@ async function executeStep(step, input, env, context, workspace, log) {
 async function run() {
   const config = JSON.parse(await readFile("/fixture/simulator.json", "utf8"));
   const lock = await readFile(beneath("/fixture", config.workflow), "utf8");
-  const metadata = JSON.parse(/^# gh-aw-metadata: (.+)$/m.exec(lock)?.[1] || "{}");
-  const manifest = JSON.parse(/^# gh-aw-manifest: (.+)$/m.exec(lock)?.[1] || "{}");
-  const workflow = parse(lock);
-  if (!metadata.dry_run || manifest.threat_detection?.mode !== "disabled") throw new Error("Only dry-run locks with detection disabled are supported");
-  const executions = Object.values(workflow.jobs).flatMap(job => job.steps?.filter(step => step.id === "agentic_execution") || []);
-  if (!executions.length || executions.some(step => !step.env?.GH_AW_SAMPLES || !step.run?.includes('/gh-aw/actions/apply_samples.cjs"'))) {
-    throw new Error("Compiled sample replay is required");
-  }
+  const workflow = sampleWorkflow(lock, { allowStaged: config.workflow === ".github/workflows/cao.lock.yml" });
   if (workflow.defaults) throw new Error("Workflow defaults are unsupported");
   for (const job of Object.values(workflow.jobs)) {
     if (job.strategy || job.services || job.container || job.uses || job.environment || job.defaults || !job.steps) {
@@ -207,7 +200,7 @@ async function run() {
           workflow_sha: config.sha, sha: config.sha, ref: "refs/heads/main", ref_name: "main",
           actor: event.sender.login, triggering_actor: event.sender.login, run_id: "1", run_attempt: "1",
           event_name: config.eventName, event, job: id, token: "simulator-not-a-real-token",
-          workspace, server_url: "https://github.com", api_url: api.url,
+          workspace, server_url: "https://github.com", api_url: "https://api.github.com",
         };
         const context = {
           github, runner: { temp, tool_cache: "/tmp/tool-cache", debug: "0", os: "Linux", arch: process.arch === "arm64" ? "ARM64" : "X64" },
@@ -234,7 +227,8 @@ async function run() {
           GITHUB_WORKFLOW: github.workflow, GITHUB_WORKFLOW_REF: github.workflow_ref, GITHUB_WORKFLOW_SHA: config.sha,
           GITHUB_SHA: config.sha, GITHUB_REF: github.ref, GITHUB_REF_NAME: "main", GITHUB_RUN_ID: "1", GITHUB_RUN_ATTEMPT: "1",
           GITHUB_ACTOR: github.actor, GITHUB_TRIGGERING_ACTOR: github.actor, GITHUB_EVENT_NAME: config.eventName,
-          GITHUB_EVENT_PATH: `${temp}/event.json`, GITHUB_API_URL: api.url, GITHUB_SERVER_URL: github.server_url,
+          GITHUB_EVENT_PATH: `${temp}/event.json`, GITHUB_API_URL: github.api_url, GITHUB_SERVER_URL: github.server_url,
+          SIMULATOR_GITHUB_API_URL: api.url,
           GITHUB_TOKEN: github.token, GH_TOKEN: github.token, ...stringify(context.env),
           GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: `${temp}/home/.gitconfig`, GIT_TERMINAL_PROMPT: "0",
         };
