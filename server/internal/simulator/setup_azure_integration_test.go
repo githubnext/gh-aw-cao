@@ -18,6 +18,11 @@ import (
 )
 
 func TestCAOSetupAzureIntegration(t *testing.T) {
+	testCAOSetupAzureIntegration(t, "successful deployment", "plan drift", "provisioning failure")
+}
+
+func testCAOSetupAzureIntegration(t *testing.T, scenarios ...string) {
+	t.Helper()
 	if os.Getenv("CAO_SETUP_AZURE_INTEGRATION") != "1" {
 		t.Skip("run npm run test:integration:setup-azure to exercise setup with GitHub and Azure simulators")
 	}
@@ -41,17 +46,26 @@ func TestCAOSetupAzureIntegration(t *testing.T) {
 	buildEnvironment := setupAzureEnvironment(setupAzureToolEnvironment("PATH", "HOME", "TMPDIR", "GOPATH", "GOMODCACHE", "GOCACHE", "CGO_ENABLED", "SDKROOT", "DEVELOPER_DIR"), map[string]string{
 		"GOPROXY": "off", "GOSUMDB": "off", "GOVCS": "*:off", "GOTOOLCHAIN": "local", "GOENV": "off", "GOFLAGS": "-mod=readonly",
 	})
-	bootstrapRun(t, ctx, catalog, buildEnvironment, "go", "build", "-mod=readonly", "-o", binary, "./cmd/gh-cao")
+	bootstrapRun(t, ctx, catalog, buildEnvironment, "go", "build", "-mod=readonly", "-ldflags=-X main.version=v0.0.1", "-o", binary, "./cmd/gh-cao")
 	runtimeFiles := setupRuntimeFixtureFiles(t, catalog)
 	storage := startSetupAzurite(t, ctx)
-	for _, scenario := range []string{"successful deployment", "plan drift", "provisioning failure"} {
+	for _, scenario := range scenarios {
 		t.Run(scenario, func(t *testing.T) {
-			f := newSetupFixture(t, ctx, root, catalog, binary, runtimeFiles)
+			journey := scenario == "private farm journey"
+			fixtureFiles := runtimeFiles
+			if journey {
+				fixtureFiles = nil
+			}
+			f := newSetupFixture(t, ctx, root, catalog, binary, fixtureFiles)
 			api := newAzureSetupAPI(t, catalog, storage)
+			oauth := newSetupAzureOAuth()
 			adapter, endpoint := installAzureCLIAdapter(t, api)
 			proxy, ca := bootstrapProxy(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Host == setupAzureHost || r.Host == setupAzureSCM {
 					api.serveIngress(w, r)
+					return
+				}
+				if oauth.serveHTTP(w, r) {
 					return
 				}
 				f.api.ServeHTTP(w, r)
@@ -80,13 +94,20 @@ func TestCAOSetupAzureIntegration(t *testing.T) {
 				t.Fatal(err)
 			}
 			setupWrite(t, f.policyPath(), policy)
-			f.assertSuccess(t, f.run(t, ctx, ""), []string{"platform/control"}, "workflow-token")
-			f.assertRequests(t, ctx, "POST", false)
+			if journey {
+				setupAzurePrivateFarm(t, ctx, f, catalog, binary)
+			} else {
+				f.assertSuccess(t, f.run(t, ctx, ""), []string{"platform/control"}, "workflow-token")
+				f.assertRequests(t, ctx, "POST", false)
+			}
 			configuredPolicy, githubState := setupRead(t, f.policyPath()), f.state(t)
 			setupWrite(t, filepath.Join(f.checkout, ".github/workflows/cao.azure.json"),
 				[]byte(`{"extends":"cao.json","control-plane":{"web":{"host":{"target":{"module":"azure-functions"},"operational-store":{"backend":"postgres"}}}}}`))
-			if scenario == "successful deployment" {
+			if scenario == "successful deployment" || journey {
 				api.functions = newSetupAzureFunctions(t, ctx)
+				if journey {
+					api.functions.proxy, api.functions.ca = proxy, ca
+				}
 			}
 			config := filepath.Join(f.checkout, ".github/cao/deploy-azure.json")
 			setupWrite(t, config, setupAzureConfig(t))
@@ -129,9 +150,18 @@ func TestCAOSetupAzureIntegration(t *testing.T) {
 			failure := map[string]string{"plan drift": "azure plan drift detected", "provisioning failure": "database provision failed before ingestion"}[scenario]
 			apply := slices.Concat(common, []string{"--apply", "--plan-file", planPath, "--source-dir", catalog,
 				"--repo-dir", f.checkout, "--empty-evidence", "--receipt", receiptPath, "--timeout", "2m"})
+			if journey {
+				api.snapshot = true
+				snapshot := setupAzureFarmSnapshot(t, 1)
+				apply = slices.Concat(common, []string{"--apply", "--plan-file", planPath, "--source-dir", catalog,
+					"--repo-dir", f.checkout, "--snapshot-dir", snapshot, "--receipt", receiptPath, "--timeout", "2m"})
+			}
 			runSetupAzure(t, ctx, f, failure, apply...)
 			if failure == "" {
 				assertSetupAzureReceipt(t, ctx, api, receiptPath, plan)
+				if journey {
+					assertSetupAzureFarmJourney(t, ctx, api.functions, oauth, proxy, ca)
+				}
 				api.functions.assertShutdown(t, ctx)
 				before := setupRead(t, receiptPath)
 				runSetupAzure(t, ctx, f, "already exists", apply...)

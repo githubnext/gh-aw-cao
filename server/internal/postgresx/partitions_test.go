@@ -5,37 +5,47 @@ import (
 	"time"
 )
 
-func TestWeekStart(t *testing.T) {
+func TestDayStart(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		at   time.Time
 		want time.Time
 	}{
 		{
-			name: "monday unchanged",
+			name: "midnight unchanged",
 			at:   time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
 			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name: "mid-week truncates to preceding monday",
+			name: "midday truncates to same day",
 			at:   time.Date(2024, time.January, 3, 15, 30, 0, 0, time.UTC),
-			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(2024, time.January, 3, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name: "sunday belongs to the prior monday's week",
+			name: "last second stays on same day",
 			at:   time.Date(2024, time.January, 7, 23, 59, 59, 0, time.UTC),
-			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(2024, time.January, 7, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			name: "non-UTC input is normalized before truncation",
 			at:   time.Date(2024, time.January, 2, 1, 0, 0, 0, time.FixedZone("UTC-5", -5*60*60)),
-			want: time.Date(2024, time.January, 1, 0, 0, 0, 0, time.UTC),
+			want: time.Date(2024, time.January, 2, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "positive offset crosses UTC year",
+			at:   time.Date(2024, time.January, 1, 1, 0, 0, 0, time.FixedZone("UTC+2", 2*60*60)),
+			want: time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "leap day",
+			at:   time.Date(2024, time.February, 29, 23, 59, 59, 999, time.UTC),
+			want: time.Date(2024, time.February, 29, 0, 0, 0, 0, time.UTC),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := weekStart(tt.at)
+			got := dayStart(tt.at)
 			if !got.Equal(tt.want) || got.Location() != time.UTC {
-				t.Fatalf("weekStart(%v) = %v, want %v", tt.at, got, tt.want)
+				t.Fatalf("dayStart(%v) = %v, want %v", tt.at, got, tt.want)
 			}
 		})
 	}

@@ -186,7 +186,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.match(source, /Astro preview performs the base-path routing/);
   assert.match(source, /WCAG 2\.2 Level AA/);
   assert.match(source, /playwright-cli` is a pre-installed CLI binary already on `PATH`/);
-  assert.match(source, /never call `missing_tool` for it based on assumption alone/);
+  assert.match(source, /never call `report_missing_tool` for it based on assumption alone/);
   assert.match(source, /node_modules\/\.bin\/playwright install chromium/);
   assert.match(source, /Node Playwright package launch preflight/);
   assert.match(source, /preflight-node\.log/);
@@ -209,7 +209,7 @@ test("SelfCare accessibility checker audits the served docs site with axe-core e
   assert.doesNotMatch(source, /^\s+(create-issue|add-comment|create-discussion|push-to-pull-request-branch):/m);
   assert.match(compiled, /docs\/styles\/\*\.css/);
   assert.match(compiled, /docs\/components\/\*\.astro/);
-  assert.match(compiled, /"tools":\["create_pull_request","missing_data","missing_tool","noop","report_incomplete"\]/);
+  assert.match(compiled, /"tools":\["create_pull_request","noop","report_incomplete","report_missing_data","report_missing_tool"\]/);
 });
 
 test("docs diagram generator creates one validated theme-aware SVG pair", () => {

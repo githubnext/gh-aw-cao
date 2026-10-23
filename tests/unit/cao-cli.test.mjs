@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { commandHandlers } from "../../activity/commands/index.mjs";
 import * as caoApi from "../../activity/cao.mjs";
+import { assertUnknownCommandsRejectBeforeIO } from "../helpers/cao-unknown-commands.mjs";
 
 const executeFile = promisify(execFile);
 const campaignJsonUrl = new URL("../../package.json", import.meta.url);
@@ -13,6 +14,10 @@ const campaignJson = JSON.parse(
   await readFile(campaignJsonUrl, "utf8"),
 );
 const cao = fileURLToPath(new URL(campaignJson.bin.cao, campaignJsonUrl));
+
+test("unknown commands reject before filesystem, database, or stdin activity", (t) => {
+  assertUnknownCommandsRejectBeforeIO(fileURLToPath(new URL("../../", import.meta.url)), t);
+});
 
 test("preserves CAO public exports from their focused implementation modules", async () => {
   const exportsByModule = {
@@ -75,6 +80,29 @@ test("retains registered workflow-agent evidence APIs independently of the opera
   assert.match(help, /supported evidence APIs for agents inside agentic workflows/);
   assert.match(help, /node activity\/cao\.mjs <command>/);
   assert.match(help, /without building or installing gh cao/);
+});
+
+test("Node usage inventories exactly the registered runtime commands", async () => {
+  const help = await caoApi.runCli(["--help"]);
+  const usage = help.slice(0, help.indexOf("Query local CAO data"));
+  const advertised = new Set([...usage.matchAll(/^  cao ([\w-]+)(?: |$)/gm)].map((match) => match[1]));
+  assert.deepEqual([...advertised].sort(), [...commandHandlers.keys()].sort());
+});
+
+test("help distinguishes supported manual artifact import from active ingestion and packaging", async () => {
+  const help = await caoApi.runCli(["--help"]);
+  const manual = help.slice(help.indexOf("Manual artifact import"), help.indexOf("Query local CAO data"));
+  assert.match(manual, /supported; not used by the Activity or Dashboard pipelines/);
+  assert.match(manual, /^  cao ingest .*--context CONTEXT_JSON --logs LOG_DIRECTORY/m);
+  assert.match(manual, /explicit ingest command remains supported/);
+  assert.match(manual, /only the old positional CONTEXT_JSON LOG_DIRECTORY form is retired/);
+  const pipeline = help.slice(help.indexOf("Active ingestion and packaging:"), help.indexOf("Collections:"));
+  assert.match(pipeline, /compact-jsonl compacts collected raw JSONL shards per repository/);
+  assert.match(pipeline, /hash-payloads normalizes and consolidates raw shards/);
+  assert.match(pipeline, /ingest-jsonl imports raw JSONL or normalized run\/record shards into SQLite/);
+  for (const command of ["ingest", "ingest-jsonl", "compact-jsonl", "hash-payloads"]) {
+    assert.equal(typeof commandHandlers.get(command), "function", `${command} must remain supported`);
+  }
 });
 
 test("quickstart is not registered or advertised by the Node CLI", async () => {

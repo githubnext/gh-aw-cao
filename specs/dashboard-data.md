@@ -662,6 +662,12 @@ Go server data profile SHALL:
 * provide no legacy conversion, backfill, old-layout import, or dual-format
   canonical storage path; incompatible database layouts require a fresh
   database rebuilt from authoritative deployed inputs;
+* partition Runs and their run-owned records into matching UTC calendar days;
+  owner maintenance SHALL provision retained history, the current day, and 28
+  upcoming days, and expire only whole days ending at or before each configured
+  retention cutoff, dropping linked partitions before their Runs; runtime
+  SHALL validate the provisioned window without DDL, and weekly layouts SHALL
+  require fresh canonical storage without removing operational audit history;
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
 * keep Postgres and Redis credentials exclusively in the Go process; use Redis

@@ -34,6 +34,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Test real public downloads with unusable cross-organization tokens
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: npm run test:integration:installer
 
   agent-plugin:

@@ -126,7 +126,7 @@ func runSQLiteDatabaseAction(ctx context.Context, path, action string) (int64, e
 func runDatabaseAction(ctx context.Context, dsn, kind, namespace, action string) (int64, error) {
 	if kind == "canonical" {
 		// New validates the immutable canonical contract, provisions the full
-		// historical/upcoming window, and retires expired weekly partitions.
+		// historical/upcoming window, and retires expired daily partitions.
 		store, err := postgresx.NewWithNamespace(ctx, dsn, namespace)
 		if err != nil {
 			return 0, err

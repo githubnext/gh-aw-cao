@@ -20,7 +20,7 @@ func TestNativeOperationsPolicy(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			policy := map[string]any{
-				"version": 1, "gh-aw-version": "v0.92.6",
+				"version": 1, "gh-aw-version": "v0.93.1",
 				"control-plane": map[string]any{
 					"scope":      map[string]any{"allowed-owners": []string{"acme"}},
 					"operations": map[string]any{"audit": tt.fields},
@@ -35,7 +35,7 @@ func TestNativeOperationsPolicy(t *testing.T) {
 
 func TestNativeOperationWorkflowConflict(t *testing.T) {
 	policy := map[string]any{
-		"version": 1, "gh-aw-version": "v0.92.6",
+		"version": 1, "gh-aw-version": "v0.93.1",
 		"control-plane": map[string]any{
 			"operations": map[string]any{"audit": map[string]any{}},
 			"campaigns": map[string]any{"maintenance": map[string]any{

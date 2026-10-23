@@ -82,6 +82,40 @@ and directory listings and escaping symlinks are refused. Paths in npm Go
 commands resolve relative to `server/`. Static Pages is an explicit mode,
 never a fallback for hosted serving.
 
+### Daily agentic maintainer journeys
+
+The repository-private `dashboard-maintainer-simulation` agentic workflow runs
+daily and supports manual dispatch. It generates ten maintainer scenarios before
+testing, attempts them through Chromium on the real local Go/SQLite dashboard,
+and preserves the frozen plan, all ten outcomes, screenshots and logs in a
+14-day artifact. It files at most three deduplicated issues with reproduction
+steps and potential fixes; blocked scenarios remain incomplete, not passed.
+No campaign installation, rollout-policy change, live repository mutation, or
+production dashboard access is involved.
+
+The harness reuses `simulate-api` to obtain 36 successful historical runs for
+three fictional repositories, adds explicitly synthetic cost/tool metadata,
+and uses production normalization and SQLite ingestion. It does not exercise
+hosted OAuth/PostgreSQL, live collection, dispatch or Actions execution, and
+the snapshot does not subscribe to subsequent simulator changes. Missing
+fixture data or hosted-only capabilities are coverage limits, not defects.
+
+To prepare and start the same environment locally after installing the root and
+dashboard dependencies:
+
+```sh
+mkdir -p .tmp/maintainer-simulation
+go -C server build -o "$PWD/.tmp/maintainer-simulation/cao-dashboard" ./cmd/cao-dashboard
+node scripts/maintainer-simulation.mjs prepare
+node scripts/maintainer-simulation.mjs serve
+```
+
+Read `.tmp/maintainer-simulation/environment.json` for the browser URL and
+fixture limits. The two servers bind only to `127.0.0.1` (ports 18443 and 18081);
+Ctrl-C stops both. Preparation reuses the Pages artifact builder only to
+produce the snapshot/assets; the dashboard is served with the `server-http`
+bootstrap and Go query API, not as a Pages/IndexedDB application.
+
 ## Local GitHub bootstrap integration
 
 Run `npm run test:integration:bootstrap` from the repository root with Go,
@@ -130,7 +164,9 @@ is opt-in outside its dedicated npm command and CI job.
 real `gh cao setup`/GitHub CLI processes against the same strict loopback
 `BootstrapAPI`. Interactive cases reuse `tests/helpers/terminal.mjs` (Linux
 `script` or macOS `python3`); Node.js is a test-driver dependency, not a native
-setup dependency. The existing Go Extension CI setup job runs this suite.
+setup dependency. The Go Extension CI setup job runs this full suite only on
+path-matched pushes to `main`, not pull requests. PRs retain the extension quality,
+unit, build, smoke, and authenticated doctor checks.
 
 The topology matrix covers public/private GitHub.com controls and
 private/internal GHE.com controls, public/private/internal/mixed targets where
@@ -154,7 +190,8 @@ See [setup combinations and live gaps](../docs/setup-compatibility.md).
 
 Run `npm run test:integration:setup-azure` with Go 1.27.3 or newer on PATH, Git, GitHub CLI, the
 policy-pinned gh-aw prerequisite, and Docker installed. The Go Extension CI
-setup job runs this command alongside the GitHub-only setup suite. It uses the
+setup job runs this command alongside the GitHub-only setup suite on path-matched
+pushes to `main`, not pull requests. It uses the
 same digest-pinned official Azurite image as `scripts/azure-local/azure-local.sh`,
 with a disposable account, loopback-only dynamic port, and automatic cleanup.
 Prerequisites must already be local: run `go mod download`,
@@ -1397,7 +1434,7 @@ npm run test:integration:actions-simulator
 # Equivalent without Node/npm (also suitable for a GitHub Actions run step):
 go -C server test -race ./internal/simulator ./internal/admission \
   ./internal/webhookgateway ./cmd/cao-webhook-gateway \
-  -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestGitHubSimulator(Gateway|Discovery)SQLite)' \
+  -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestIssueServiceSimulator($|HTTP|GatewaySQLite)|TestGitHubSimulator(Gateway|Discovery)SQLite)' \
   -count=1 -timeout=2m -v
 ```
 
@@ -1477,6 +1514,42 @@ The Go CI `actions-simulator-postgres` job supplies a health-checked local
 Postgres 16 service on a dynamically allocated port and runs this integration
 with the race detector on pull requests and pushes. It uses no deployed service,
 GitHub credential, or live GitHub API.
+
+### Local Jira, Linear, and Azure DevOps issue webhooks
+
+Run just the self-contained issue-service simulator and gateway integration:
+
+```bash
+npm run test:integration:issue-services
+```
+
+`simulator.NewIssueService("jira" | "linear" | "azure-devops")` creates an
+ephemeral receive secret and synthetic tenant/resource identities.
+`Delivery(id, issueNumber, activity, timestamp)` deterministically generates
+native opened, edited, closed, reopened, labeled, unlabeled, and deleted issue
+payloads; Azure DevOps also supports restored work items. Updates contain native
+before/after evidence, including Azure revision IDs distinct from work item IDs.
+`DeliverWebhook` signs Jira and Linear HMAC deliveries or supplies Azure service
+hook Basic authentication, using the same exact numeric-loopback-only transport
+as the Actions simulator. Proxy settings and redirects cannot escape it.
+
+These are webhook protocol simulators, not full issue-service API emulators.
+Provider-shaped HTTPS resource URLs are inert payload references and are never
+fetched. No Jira, Linear, Azure DevOps, or GitHub account, token, external
+callback, service container, or deployed service is required. All fixtures,
+listeners, secrets, and SQLite state are test-owned and cleaned up afterward.
+The ordinary local Actions integration command and Go CI also run these suites.
+
+The gateway tests discover compiled external declarations from the local GitHub
+API simulator, intersect them with independent receiver enrollment, and exercise
+the production ingress, durable queue, live destination authorization, worker,
+and GitHub compiler dispatcher. They verify every supported lifecycle activity,
+provider-isolated batching, canonical resource URLs and filter evidence, native
+authentication failures, tenant/collection/resource mismatches, Linear timestamp
+freshness, replay deduplication across restart, minimal persisted/dispatched
+payloads, and cancellation when the discovered workflow changes.
+The PostgreSQL command above runs the same gateway suite against isolated local
+PostgreSQL state; it is optional for the fully self-contained SQLite command.
 
 ### Discovered agentic workflows, webhooks, and dispatch
 
@@ -3312,32 +3385,40 @@ owning entity tables. No canonical JSON/JSONB or serialized documents are
 stored, and canonical scalar rows are not copied into generic source/value
 tables.
 `runs` and its run-owned records (including sessions and their events) use
-matching UTC Monday-to-Monday PostgreSQL RANGE partitions. `run_at` uses the
+matching UTC midnight-to-midnight PostgreSQL RANGE partitions named
+`<table>_dYYYYMMDD`. `run_at` uses the
 run's `createdAt`, then `startedAt`, `completedAt`, or `updatedAt`; records
 without any of these use ingestion time. Linked records inherit their run's
-partition timestamp. PostgreSQL routes parent-table inserts; missing weeks
+partition timestamp. PostgreSQL routes parent-table inserts; missing days
 fail closed rather than creating partitions during ingestion. The separately
 scheduled owner-run `database maintain --store canonical` checks existing
-partitions, creates any missing current and four future weeks first, and removes complete
-run weeks older than `CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
+partitions, creates any missing current and 28 future days first, and removes complete
+run days ending at or before the cutoff set by
+`CAO_POSTGRES_RUN_RETENTION_DAYS` (default 30, allowed 7–3650).
 Run-linked tables (audits, domains, eval observations, experiment assignments,
 friction, grader observations, issues, skills, and tools) independently expire
-complete weekly shards older than `CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7,
-allowed 7 up to the run retention). A partial week remains until the entire
+complete daily shards ending at or before the cutoff set by
+`CAO_POSTGRES_LINKED_RETENTION_DAYS` (default 7,
+allowed 7 up to the run retention). A partial cutoff day remains until the entire
 shard is past its cutoff. Maintenance detaches and drops linked shards before
 expired run shards, updating affected source counts and revisions. Repeated maintenance
 is a no-op when partitions are already present and none have expired. Run it
 at least daily and before restarting after downtime; runtime startup checks the
 full provisioned window but never repairs it. Alert on missed maintenance before
-the four-week runway expires. Choose a window
+the 28-day runway expires. Choose a window
 that covers all authoritative run timestamps before ingestion; historical linked
 records outside the linked window are skipped while their retained runs are
-still ingested.
+still ingested. For a seven-day window for both runs and detail, explicitly set
+both retention variables to `7`; existing defaults and overrides are unchanged.
+Whole-day expiry can retain less than one extra day at the maintenance instant;
+schedule lag can extend physical retention further.
 
 Owner-run `database bootstrap --store canonical` initializes the schema and its
-partitions. Runtime opens it without DDL. There is no old-layout detection,
-conversion, backfill, or backward-compatible import. Use a new database and
-re-ingest authoritative inputs when changing the physical contract; never drop
+partitions. Runtime opens it without DDL. There is no old-layout conversion,
+backfill, or backward-compatible import. Use a new database and
+re-ingest authoritative inputs when changing the physical contract. Existing
+`<table>_wYYYYMMDD` weekly layouts are rejected without conversion; rebuild
+canonical storage in a fresh schema or database. Never drop
 operational audit/queue state if it shares the old database.
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.

@@ -308,7 +308,11 @@ SQLite file. The local adapter stores IndexedDB metadata and JSON records in
 tables are an emulation detail, not canonical entity tables. The browser
 continues to use native IndexedDB.
 
-Ingest an extracted gh-aw log directory with its run context:
+### Manual artifact import
+
+`cao ingest` is a supported manual importer for an extracted gh-aw artifact
+directory and its run context. It is not used by the Activity or Dashboard
+pipelines and is not deprecated:
 
 ```bash
 cao ingest \
@@ -317,7 +321,35 @@ cao ingest \
   --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
 ```
 
-Alternatively, ingest schema-v2 JSONL produced by `gh aw logs`:
+The positional form `node activity/cao.mjs CONTEXT_JSON LOG_DIRECTORY` is no
+longer supported. Unknown commands, including two-argument calls, fail with a
+usage error before reading inputs, creating temporary files, or opening SQLite.
+Use `node activity/cao.mjs ingest --context FILE --logs DIRECTORY` instead.
+
+Explicit `ingest` persists its SQLite projection at `--database FILE`, defaulting
+to `.cao/gh-aw-logs.sqlite`, and emits `{result, counts}` as JSON. It does not
+emit the retired `{result, runs, records}` envelope or delete the database after
+returning. Query the prepared database separately for canonical records.
+
+By default, explicit ingestion retains runs for 30 days and run-linked detail
+for seven days. The retired positional form kept all runs and seven-day detail
+in a disposable database. To retain that history policy with explicit ingestion,
+pass `--retention-days 7 --run-retention-days all`; database lifecycle remains
+the caller's responsibility. Use `--retention-days all --run-retention-days all`
+when historical detail must also be retained.
+
+### Active JSONL pipeline
+
+The Activity and Dashboard pipelines use `compact-jsonl`, `hash-payloads`,
+and `ingest-jsonl`. Collection compacts raw cached shards per repository with
+`compact-jsonl` and imports them into collection-scoped SQLite with `ingest-jsonl`.
+Indexing uses `hash-payloads` to normalize and consolidate raw evidence into
+run/record shards, `ingest-jsonl` to build the published SQLite projection,
+and `hash-payloads` again to produce the final payload checksum manifest.
+`hash-payloads` is therefore a normalization and packaging command, not just
+a checksum utility.
+
+To import schema-v2 JSONL produced by `gh aw logs` manually:
 
 ```bash
 cao ingest-jsonl \
@@ -326,6 +358,8 @@ cao ingest-jsonl \
 ```
 
 Pass `--context CONTEXT_JSON` when JSONL `github_api_rate_limit` records should become canonical Audits. Without an owning collection Repository, Workflow, and Run, those records remain unmapped.
+
+### Download and query a snapshot
 
 Download the JSONL and SQLite projection published by the deployed CAO Pages site:
 

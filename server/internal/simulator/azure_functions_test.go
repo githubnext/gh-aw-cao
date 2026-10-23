@@ -26,6 +26,7 @@ import (
 type setupAzureFunctions struct {
 	ctx                            context.Context
 	directory, source, binary, dsn string
+	proxy, ca                      string
 	env                            []string
 	handler                        http.Handler
 	client                         *http.Client
@@ -140,6 +141,14 @@ func (f *setupAzureFunctions) build(source string) error {
 		return errors.New("Functions image must launch cao-dashboard azure-functions")
 	}
 	f.source = source
+	queries, err := root.ReadFile("dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		return err
+	}
+	queryPath := filepath.Join(f.directory, "database-queries.json")
+	if err := os.WriteFile(queryPath, queries, 0o600); err != nil { // #nosec G703 -- fixed test-owned durable image input.
+		return err
+	}
 	command := exec.CommandContext(f.ctx, "go", "build", "-mod=readonly", "-o", f.binary, "./cmd/cao-dashboard") // #nosec G204,G702 -- fixed build command in the exact isolated ACR context.
 	command.Dir = filepath.Join(source, "server")
 	command.Env = setupAzureEnvironment(setupAzureToolEnvironment("PATH", "HOME", "TMPDIR", "GOPATH", "GOMODCACHE", "GOCACHE", "CGO_ENABLED", "SDKROOT", "DEVELOPER_DIR"),
@@ -156,9 +165,12 @@ func (f *setupAzureFunctions) build(source string) error {
 	}
 	f.env = setupAzureEnvironment(setupAzureToolEnvironment("PATH", "HOME", "TMPDIR"), map[string]string{
 		"OTEL_SDK_DISABLED": "true", "CAO_POSTGRES_URL": f.dsn,
+		// Snapshot refresh assertions need fresh reads, not the production
+		// five-minute query cache admitted when CI queries exceed 100 ms.
+		"CAO_QUERY_CACHE_DISABLED":    "true",
 		"DEBUG":                       "cao:functions:startup",
 		"CAO_POLICY_PATH":             filepath.Join(source, ".github/workflows/cao.azure.json"),
-		"CAO_DATABASE_QUERIES":        filepath.Join(source, "dashboard/site/src/data/queries/database.json"),
+		"CAO_DATABASE_QUERIES":        queryPath,
 		"CAO_AZURE_DASHBOARD_QUERIES": filepath.Join(source, "dashboard/site/dashboard.json"),
 		"CAO_AZURE_SITE_DIRECTORY":    site, "CAO_AZURE_ALLOWED_HOSTS": setupAzureHost,
 		"REDIS_NAMESPACE": "azure-dashboard", "CAO_OPERATIONAL_NAMESPACE": "azure-dashboard-operational",
@@ -167,6 +179,12 @@ func (f *setupAzureFunctions) build(source string) error {
 		"CAO_GITHUB_ALLOWED_ORGS": "platform", "CAO_GITHUB_REDIRECT_URL": "https://" + setupAzureHost + "/auth/callback",
 		"HTTPS_PROXY": "http://127.0.0.1:1", "HTTP_PROXY": "http://127.0.0.1:1",
 	})
+	if f.proxy != "" {
+		f.env = setupAzureEnvironment(f.env, map[string]string{
+			"HTTPS_PROXY": f.proxy, "HTTP_PROXY": f.proxy, "SSL_CERT_FILE": f.ca,
+			"NO_PROXY": "", "no_proxy": "",
+		})
+	}
 	return nil
 }
 
@@ -180,8 +198,14 @@ func (f *setupAzureFunctions) runJob(job string) error {
 			{"database", "bootstrap", "--store", "operational", "--namespace", "azure-dashboard-operational"},
 		}
 	} else {
-		commands = [][]string{{"ingest", "--source", filepath.Join(f.source, "server/azure/empty-data"), "--redis-namespace", "azure-dashboard",
-			"--database-queries", filepath.Join(f.source, "dashboard/site/src/data/queries/database.json")}}
+		source := filepath.Join(f.source, "server/azure/empty-data")
+		if _, err := os.Stat(filepath.Join(f.source, "cao-deploy-evidence")); err == nil { // #nosec G703 -- fixed child of the isolated reviewed ACR context.
+			source = filepath.Join(f.source, "cao-deploy-evidence")
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+		commands = [][]string{{"ingest", "--source", source, "--redis-namespace", "azure-dashboard",
+			"--database-queries", filepath.Join(f.directory, "database-queries.json")}}
 	}
 	for _, args := range commands {
 		command := exec.CommandContext(f.ctx, f.binary, args...) // #nosec G204,G702 -- test-built binary and fixed provisioning/ingestion arguments.

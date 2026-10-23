@@ -275,7 +275,7 @@ func testAzureApplySetup(t *testing.T) (*fakeAzureApply, deployAzureDeps, string
 	}
 	fake.calls = nil
 	repo := t.TempDir()
-	writeTestFile(t, filepath.Join(repo, ".github", "workflows", "cao.json"), `{"version":1,"gh-aw-version":"v0.92.6","control-plane":{"campaigns":{}}}`)
+	writeTestFile(t, filepath.Join(repo, ".github", "workflows", "cao.json"), `{"version":1,"gh-aw-version":"v0.93.1","control-plane":{"campaigns":{}}}`)
 	writeTestFile(t, filepath.Join(repo, ".github", "workflows", "cao.azure.json"), `{"extends":"cao.json","control-plane":{"web":{"host":{"target":{"module":"azure-functions"},"operational-store":{"backend":"postgres"}}}}}`)
 	return fake, deps, configPath, planPath, deployAzureApplyOptions{
 		SourceDir: "development-source", RepoDir: repo, EmptyEvidence: true, ReceiptPath: filepath.Join(t.TempDir(), "receipt.json"),

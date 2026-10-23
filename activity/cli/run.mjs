@@ -9,7 +9,7 @@ import { commandHandlers } from '../commands/index.mjs';
 import { sqliteRetention } from '../sqlite-retention.mjs';
 import { DAY_MS, UsageError, parseOptions, rawQueryFromStdin, option, rejectUnknownOptions, ttlDays, retentionWindowMs, runRetentionWindowMs, runTtlDays } from './options.mjs';
 import { DEFAULT_COMPACTED_JSONL_SHARD_BYTES, auditJsonlDirectory, compactJsonlShards } from './jsonl.mjs';
-import { databaseCounts, ingestGhAwLogDirectory, ingestJsonlShardDirectory, ingestNormalizedShardDirectories, ingestJsonlFile, createDatabase, runLegacyIngestion } from './ingestion.mjs';
+import { databaseCounts, ingestGhAwLogDirectory, ingestJsonlShardDirectory, ingestNormalizedShardDirectories, ingestJsonlFile, createDatabase } from './ingestion.mjs';
 import { downloadDeployedDashboardData } from './download.mjs';
 import { hashActivityPayloads } from './payloads.mjs';
 import { activityWorkflowStats } from './activity-stats.mjs';
@@ -19,8 +19,6 @@ import { discoverWorkflows, pruneDashboardFile, analyzeDashboardComplexityFile }
 
 // Commands whose first argument may be an identifier instead of an option.
 const POSITIONAL_COMMANDS = new Set(['dashboard-complexity', 'pages', 'query-info', 'query', 'prompt']);
-
-const COMMANDS = new Set(commandHandlers.keys());
 
 const RETIRED_OPERATOR_COMMANDS = new Map([
   ['init', 'gh cao init'],
@@ -41,9 +39,6 @@ export async function runCli(arguments_, input = process.stdin, { signal } = {})
   if (!command || command === '--help' || command === 'help') return USAGE;
   if (command === 'doctor') throw new UsageError('Unknown command: doctor; use repair-database for SQLite backup, repair, and retention');
   if (command === 'quickstart') throw new UsageError(`Unknown command: ${command}`);
-  if (!COMMANDS.has(command) && arguments_.length === 2) {
-    return runLegacyIngestion(command, rawOptionArguments[0]);
-  }
   const handler = commandHandlers.get(command);
   if (!handler) throw new UsageError(`Unknown command: ${command}`);
   const optionArguments = [...rawOptionArguments];

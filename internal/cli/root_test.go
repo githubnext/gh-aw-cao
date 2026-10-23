@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -18,6 +20,8 @@ func TestCommands(t *testing.T) {
 		{"version flag", []string{"--version"}, "gh cao version test\n"},
 		{"version command", []string{"version"}, "gh cao version test\n"},
 		{"doctor help", []string{"doctor", "--help"}, "gh cao doctor"},
+		{"init help", []string{"init", "--help"}, "does not install runtime files, configure Pages or credentials"},
+		{"setup help", []string{"setup", "--help"}, "No prior init or installer"},
 		{"evidence help", []string{"evidence", "--help"}, "gh cao evidence"},
 		{"release evidence help", []string{"evidence", "release", "--help"}, "gh cao evidence release"},
 	}
@@ -41,6 +45,45 @@ func TestCommands(t *testing.T) {
 				t.Fatalf("unexpected stderr: %s", &stderr)
 			}
 		})
+	}
+}
+
+func TestCommandReferenceCoversRegisteredOperatorCommands(t *testing.T) {
+	data, err := os.ReadFile("../../docs/cao-cli.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, reference, found := strings.Cut(string(data), "| Surface | Commands | Execution |")
+	if !found {
+		t.Fatal("command reference table missing")
+	}
+	reference, _, found = strings.Cut(reference, "\n\n")
+	if !found {
+		t.Fatal("command reference table end missing")
+	}
+	documented := map[string]bool{}
+	for _, match := range regexp.MustCompile("`([^`]+)`").FindAllStringSubmatch(reference, -1) {
+		documented[strings.Fields(match[1])[0]] = true
+	}
+	for _, command := range NewRootCommand("test").Commands() {
+		if !documented[command.Name()] {
+			t.Errorf("registered operator command %q missing from command reference", command.Name())
+		}
+	}
+	root := NewRootCommand("test")
+	var output bytes.Buffer
+	root.SetOut(&output)
+	root.SetArgs([]string{"--help"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	for _, summary := range []string{
+		"Optionally initialize local policy only, without runtime or remote setup",
+		"Prepare monitoring runtime, policy, Pages, scope, and authentication",
+	} {
+		if !strings.Contains(output.String(), summary) {
+			t.Errorf("root help missing %q", summary)
+		}
 	}
 }
 

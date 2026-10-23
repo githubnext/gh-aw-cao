@@ -134,7 +134,7 @@ for (const role of ["orchestrator", "standalone"]) {
         GITHUB_WORKFLOW_REF: `acme/control/.github/workflows/${standalone ? "fleet-audit" : "dependabot"}.lock.yml@main`,
       }, "echo 'GitHub must not be called for invalid inventory limits' >&2; exit 99",
       standalone ? JSON.stringify({
-        version: 1, "gh-aw-version": "v0.92.6",
+        version: 1, "gh-aw-version": "v0.93.1",
         "control-plane": { workflows: { "fleet-audit": {} } },
       }) : controlPolicy(), effectiveOverrides);
 

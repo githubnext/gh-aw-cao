@@ -63,6 +63,11 @@ func newDiscoverySimulator(t *testing.T, storage func(*testing.T, wg.QueueOption
 		t.Fatal(err)
 	}
 	lock := append(append([]byte("# gh-aw-manifest: "), data...), []byte("\nname: synthetic-agentic-workflow\n")...)
+	return newDiscoverySimulatorWithManifest(t, storage, lock)
+}
+
+func newDiscoverySimulatorWithManifest(t *testing.T, storage func(*testing.T, wg.QueueOptions) simulatorStorage, lock []byte) *discoverySimulator {
+	t.Helper()
 	api, err := simulator.NewGatewayAPI(map[string][]byte{".github/workflows/test.lock.yml": lock})
 	if err != nil {
 		t.Fatal(err)

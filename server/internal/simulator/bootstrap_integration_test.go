@@ -47,23 +47,7 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 	const release = "v0.0.1"
 	binary := filepath.Join(root, "gh-cao")
 	bootstrapRun(t, ctx, catalog, nil, "go", "build", "-mod=readonly", "-ldflags=-X main.version="+release, "-o", binary, "./cmd/gh-cao")
-	executable, err := os.ReadFile(binary) // #nosec G304 -- binary just built in t.TempDir.
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Only the native platform is executable. Other assets satisfy the release
-	// completeness contract but are never downloaded.
-	assets := map[string][]byte{}
-	for _, platform := range []string{"darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe"} {
-		assets["gh-cao-"+platform] = []byte("unused platform fixture")
-	}
-	assets["gh-cao-"+runtime.GOOS+"-"+runtime.GOARCH] = executable
-	var checksums strings.Builder
-	for name, content := range assets {
-		fmt.Fprintf(&checksums, "%x  %s\n", sha256.Sum256(content), name)
-	}
-	assets["checksums.txt"] = []byte(checksums.String())
-	api := NewBootstrapAPI(release, assets)
+	api := NewBootstrapAPI(release, bootstrapReleaseAssets(t, binary))
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
@@ -209,6 +193,22 @@ func TestCAOBootstrapIntegration(t *testing.T) {
 		t.Errorf("Pages was created %d times, want exactly once", count)
 	}
 	t.Logf("real installer, release verification, repository creation, setup and Git publication completed through %d simulated requests", len(api.Requests))
+}
+
+func bootstrapReleaseAssets(t *testing.T, binary string) map[string][]byte {
+	t.Helper()
+	executable := setupRead(t, binary)
+	assets := map[string][]byte{}
+	for _, platform := range []string{"darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64", "windows-amd64.exe", "windows-arm64.exe"} {
+		assets["gh-cao-"+platform] = []byte("unused platform fixture")
+	}
+	assets["gh-cao-"+runtime.GOOS+"-"+runtime.GOARCH] = executable
+	var checksums strings.Builder
+	for name, content := range assets {
+		fmt.Fprintf(&checksums, "%x  %s\n", sha256.Sum256(content), name)
+	}
+	assets["checksums.txt"] = []byte(checksums.String())
+	return assets
 }
 
 func bootstrapRun(t *testing.T, ctx context.Context, directory string, environment []string, name string, args ...string) string {

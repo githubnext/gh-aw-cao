@@ -15,7 +15,7 @@ const policy = {
 const request = { version: 1, operation: "audit", targets: ["acme/one", "acme/two"], mode: "review", destination: "acme/control" };
 const envelope = () => resolveEnvelope(policy, request, binding).envelope;
 const document = operations => ({
-  version: 1, "gh-aw-version": "v0.92.6",
+  version: 1, "gh-aw-version": "v0.93.1",
   "control-plane": { scope: { "allowed-owners": ["acme"] }, operations },
 });
 

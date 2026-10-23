@@ -146,10 +146,9 @@ func TestPostgresProvisioningRequiredBeforeRuntime(t *testing.T) {
 		t.Fatal("runtime created a namespace")
 	}
 	// Missing an upcoming partition is detected before serving, not when
-	// ingestion first crosses that week. Owner maintenance repairs the window.
+	// ingestion first crosses that day. Owner maintenance repairs the window.
 	future := time.Now().UTC().AddDate(0, 0, 21)
-	monday := future.AddDate(0, 0, -(int(future.Weekday())+6)%7)
-	partition := pgx.Identifier{f.schema, "runs_w" + monday.Format("20060102")}.Sanitize()
+	partition := pgx.Identifier{f.schema, "runs_d" + future.Format("20060102")}.Sanitize()
 	if _, err := f.admin.ExecContext(ctx, "DROP TABLE "+partition+" CASCADE"); err != nil {
 		t.Fatal(err)
 	}

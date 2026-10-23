@@ -33,7 +33,7 @@ func setupBootstrapGH(t *testing.T, failure string, calls *[]string) ghExecutor 
 		case strings.Contains(call, "/commits/v1.2.3"):
 			return revision, "", nil
 		case strings.Contains(call, "/contents/aw.yml?ref="+revision):
-			return "min-version: v0.92.6\n", "", nil
+			return "min-version: v0.93.1\n", "", nil
 		case call == "aw version":
 			if !installed {
 				return "", "unknown command aw", errors.New("missing")
@@ -41,10 +41,10 @@ func setupBootstrapGH(t *testing.T, failure string, calls *[]string) ghExecutor 
 			if failure == "old gh-aw" {
 				return "v0.92.0", "", nil
 			}
-			return "v0.92.6", "", nil
+			return "v0.93.1", "", nil
 		case call == "extension list":
 			return "", "", nil
-		case call == "extension install github/gh-aw --pin v0.92.6":
+		case call == "extension install github/gh-aw --pin v0.93.1":
 			installed = true
 			return "", "", nil
 		case call == "aw add githubnext/gh-cao@v1.2.3 --no-security-scanner --no-gitattributes":
@@ -119,7 +119,7 @@ func TestSetupBootstrapsFreshControlCheckout(t *testing.T) {
 			}
 			control := nativeSetupMap(policy["control-plane"])
 			scope, _ := nativeSetupStrings(nativeSetupMap(control["scope"])["allowed-repositories"])
-			if !reflect.DeepEqual(scope, []string{"org/control"}) || len(nativeSetupMap(control["campaigns"])) != 0 || policy["gh-aw-version"] != "v0.92.6" {
+			if !reflect.DeepEqual(scope, []string{"org/control"}) || len(nativeSetupMap(control["campaigns"])) != 0 || policy["gh-aw-version"] != "v0.93.1" {
 				t.Fatalf("unexpected initial authority: %#v", policy)
 			}
 			before, _ := os.ReadFile(policyPath)
@@ -202,7 +202,7 @@ func TestSetupInstallsOnlyMissingGHAW(t *testing.T) {
 	if _, err := nativeSetupControl(nativeSetupTestCommand(), setupBootstrapGH(t, "missing gh-aw", &calls), nil); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.Join(calls, "\n"), "extension install github/gh-aw --pin v0.92.6") {
+	if !strings.Contains(strings.Join(calls, "\n"), "extension install github/gh-aw --pin v0.93.1") {
 		t.Fatal("missing gh-aw was not installed at the catalog minimum")
 	}
 }
@@ -216,7 +216,7 @@ func TestSetupProgressPrecedesSlowOperations(t *testing.T) {
 	progress := map[string]string{
 		"release view ":                  "Fetching CAO release...",
 		"aw version":                     "Checking gh-aw...",
-		"extension install":              "Installing gh-aw v0.92.6...",
+		"extension install":              "Installing gh-aw v0.93.1...",
 		"aw add ":                        "Preparing CAO workflows...",
 		"release download ":              "Downloading and verifying CAO runtime...",
 		"attestation verify":             "Downloading and verifying CAO runtime...",
@@ -251,7 +251,7 @@ func TestSetupProgressPrecedesSlowOperations(t *testing.T) {
 		"Checking CAO runtime...",
 		"Fetching CAO release...",
 		"Checking gh-aw...",
-		"Installing gh-aw v0.92.6...",
+		"Installing gh-aw v0.93.1...",
 		"Preparing CAO workflows...",
 		"Downloading and verifying CAO runtime...",
 		"Adding CAO runtime files...",
