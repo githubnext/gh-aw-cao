@@ -1,0 +1,1 @@
+/usr/lib/postgresql/16/bin/postgres "-D" "/home/runner/work/gh-cao/gh-cao/.work/sampling/postgres" "-h" "127.0.0.1" "-p" "55439" "-k" "/home/runner/work/gh-cao/gh-cao/.work/sampling"

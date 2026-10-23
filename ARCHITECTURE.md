@@ -189,6 +189,18 @@ volatile memory adapter for an explicitly acknowledged single-process server.
 The PostgreSQL operational adapter implements durable
 deployment-scoped services in separate `cao_operational_*` tables. Operational
 adapters never store dashboard entities or execute dashboard queries.
+
+The independent `statistical-runs` query projection selects a deterministic,
+seven-day, date/outcome-stratified sample from the current canonical snapshot.
+Selection belongs to the data worker and server query/storage boundary, before
+consumer predicates, with separate backend capacities and explicit frame/weight
+metadata. It does not change exact sources, retention, or Operational Value.
+The Models & Agents composition chart describes sampled observations rather
+than population shares; its cost/token summaries continue using exact retained
+runs. Persisted sampled bundles, hot eviction, and daily aggregates from the
+three-tier storage proposal remain separate work; this projection cannot recover
+evicted evidence or reduce canonical storage/downloads.
+
 The Go server is the unified local and hosted dashboard serving runtime.
 `npm run dev` and `npm run dashboard:local` build the site and invoke `serve`
 against a verified cached SQLite snapshot; `serve-hosted` retains the reviewed

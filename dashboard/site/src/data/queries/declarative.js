@@ -1115,6 +1115,7 @@ function enforceLimit(count, limit, subject) {
  */
 function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
+  const statisticalFrame = metadata.find((value) => value?.['statistical-frame'])?.['statistical-frame'];
   /** @param {'as-of'|'retrieved-at'} field */
   const oldest = (field) => metadata
     .map((value) => value?.[field])
@@ -1125,6 +1126,7 @@ function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
     !input.source || !Array.isArray(input.source.rows) || input.source.metadata?.availability === 'unavailable'
   ));
   return {
+    ...(statisticalFrame ? { 'statistical-frame': statisticalFrame, 'sample-frame': statisticalFrame } : {}),
     'source-id': `${name}-query`,
     'source-kind': 'derived',
     'as-of': /** @type {string} */ (oldest('as-of')) ?? new Date(0).toISOString(),

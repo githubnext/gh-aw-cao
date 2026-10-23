@@ -1,0 +1,327 @@
+package dashboardquery
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const StatisticalVersion = "canonical-snapshot-bottom-k-v1"
+const StatisticalSeed = "cao-statistical-v1"
+const StatisticalPostgresCapacity = 64000
+const StatisticalSQLiteCapacity = 8000
+const StatisticalIndexedDBCapacity = 16000
+const StatisticalMaxInputRows = 200000
+const StatisticalMaxInputBytes = 256 << 20
+
+type StatisticalOptions struct {
+	Context   context.Context
+	Watermark string
+	Capacity  int
+	Complete  bool
+	Seed      string
+	HotIDs    map[string]bool
+}
+
+var statisticalTimestamp = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$`)
+var statisticalIdentity = regexp.MustCompile(`^github:run:[^/:]+/[^:]+:[^:]+$`)
+
+func statisticalInstant(value any) (time.Time, bool) {
+	text, ok := value.(string)
+	if !ok || strings.HasPrefix(text, "0000-") || !statisticalTimestamp.MatchString(text) {
+		return time.Time{}, false
+	}
+	instant, err := time.Parse(time.RFC3339Nano, text)
+	return instant.Truncate(time.Millisecond), err == nil
+}
+
+// CanonicalStatisticalWatermark supplies a stable snapshot clock when published
+// quality does not carry one. An empty/undated snapshot has no admissible clock.
+func CanonicalStatisticalWatermark(rows []map[string]any) string {
+	var latest time.Time
+	for _, row := range rows {
+		for _, field := range []string{"startedAt", "createdAt", "completedAt", "updatedAt"} {
+			if at, valid := statisticalInstant(row[field]); valid && at.After(latest) {
+				latest = at
+			}
+		}
+	}
+	if latest.IsZero() {
+		return ""
+	}
+	return latest.UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+// StatisticalPriority uses length-prefixed UTF-8, independent of ingestion order.
+func StatisticalPriority(identity, seed string) string {
+	if seed == "" {
+		seed = StatisticalSeed
+	}
+
+	return statisticalDigest([]string{StatisticalVersion, seed, identity})
+}
+
+func statisticalDigest(parts []string) string {
+	hash := sha256.New()
+	for _, part := range parts {
+		_ = binary.Write(hash, binary.BigEndian, uint32(len(part)))
+		_, _ = hash.Write([]byte(part))
+	}
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// StatisticalMembership omits evidence detail from the independent join root.
+func StatisticalMembership(rows []map[string]any) []map[string]any {
+	result := make([]map[string]any, len(rows))
+	for index, row := range rows {
+		member := map[string]any{"id": row["id"], "organization": row["owner"], "repository": row["repository"], "run": String(row["githubRunId"])}
+		for field, value := range row {
+			if strings.HasPrefix(field, "statistical-") {
+				member[field] = value
+			}
+		}
+		result[index] = member
+	}
+	return result
+}
+
+func statisticalFailure(outcome string) bool {
+	return slices.Contains([]string{"failure", "timed_out", "action_required", "startup_failure"}, outcome)
+}
+
+func statisticalAllocation(counts map[string]int, capacity int) map[string]int {
+	total := 0
+	for _, count := range counts {
+		total += count
+	}
+	budget := min(total, capacity)
+	type quota struct {
+		key       string
+		remainder int
+	}
+	quotas := []quota{}
+	result := map[string]int{}
+	left := budget
+	for key, count := range counts {
+		allocation, remainder := 0, 0
+		if total > 0 {
+			allocation, remainder = budget*count/total, budget*count%total
+		}
+		result[key] = allocation
+		left -= allocation
+		quotas = append(quotas, quota{key, remainder})
+	}
+	slices.SortFunc(quotas, func(a, b quota) int {
+		if a.remainder != b.remainder {
+			return b.remainder - a.remainder
+		}
+		return strings.Compare(a.key, b.key)
+	})
+	for _, quota := range quotas {
+		if left <= 0 {
+			break
+		}
+		result[quota.key]++
+		left--
+	}
+	return result
+}
+
+// SampleStatisticalRuns freezes a candidate frame over the current snapshot.
+// It is not a persisted reservoir and makes no claim about discarded history.
+func SampleStatisticalRuns(rows []map[string]any, options StatisticalOptions) ([]map[string]any, map[string]any, error) {
+	ctx := options.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	if len(rows) > StatisticalMaxInputRows {
+		return nil, nil, errors.New("statistical candidate frame exceeds input row budget")
+	}
+	watermark, ok := statisticalInstant(options.Watermark)
+	if !ok {
+		return nil, nil, errors.New("statistical sampling requires an explicit canonical UTC watermark")
+	}
+	if options.Capacity < 0 || options.Capacity > 100000 {
+		return nil, nil, errors.New("invalid statistical capacity")
+	}
+	if options.Seed == "" {
+		options.Seed = StatisticalSeed
+	}
+	start := watermark.Add(-7 * 24 * time.Hour)
+	type candidate struct {
+		row      map[string]any
+		priority string
+		variants map[string]bool
+	}
+	identities := map[string]candidate{}
+	invalid, conflicts, incomplete, hotExcluded := 0, 0, 0, 0
+	inputBytes := 0
+	for _, row := range rows {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		id, ok := row["id"].(string)
+		if !ok || !statisticalIdentity.MatchString(id) {
+			invalid++
+			continue
+		}
+		content, err := json.Marshal(row)
+		if err != nil {
+			return nil, nil, err
+		}
+		inputBytes += len(content)
+		if inputBytes > StatisticalMaxInputBytes {
+			return nil, nil, errors.New("statistical candidate frame exceeds working byte budget")
+		}
+		prior, exists := identities[id]
+		variants := prior.variants
+		if variants == nil {
+			variants = map[string]bool{}
+		}
+		variants[string(content)] = true
+		if !exists {
+			identities[id] = candidate{row: row, variants: variants}
+		}
+	}
+	for _, candidate := range identities {
+		conflicts += len(candidate.variants) - 1
+	}
+	groups := map[string][]candidate{}
+	quarantined := 0
+	for id, candidate := range identities {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		if len(candidate.variants) > 1 {
+			quarantined++
+			continue
+		}
+		if candidate.row["status"] != "completed" {
+			incomplete++
+			continue
+		}
+		at, ok := statisticalInstant(candidate.row["startedAt"])
+		if !ok {
+			at, ok = statisticalInstant(candidate.row["createdAt"])
+		}
+		outcome, hasOutcome := candidate.row["conclusion"].(string)
+		if !ok || !hasOutcome || outcome == "" {
+			invalid++
+			continue
+		}
+		if at.Before(start) || !at.Before(watermark) {
+			continue
+		}
+		if options.HotIDs[id] {
+			hotExcluded++
+			continue
+		}
+		if !statisticalFailure(outcome) && !slices.Contains([]string{"success", "cancelled", "skipped", "neutral", "stale"}, outcome) {
+			outcome = "other"
+		}
+		key := at.UTC().Format("2006-01-02") + "/" + outcome
+		groups[key] = append(groups[key], candidate)
+	}
+	counts, failures := map[string]int{}, map[string]int{}
+	population := 0
+	keys := []string{}
+	for key, candidates := range groups {
+		counts[key] = len(candidates)
+		population += len(candidates)
+		keys = append(keys, key)
+		if statisticalFailure(strings.Split(key, "/")[1]) {
+			failures[key] = len(candidates)
+		}
+	}
+	reserve := statisticalAllocation(failures, (options.Capacity+9)/10)
+	reserved := 0
+	residual := map[string]int{}
+	for key, count := range counts {
+		reserved += reserve[key]
+		residual[key] = count - reserve[key]
+	}
+	remainder := statisticalAllocation(residual, options.Capacity-reserved)
+	valid := options.Complete && invalid == 0 && conflicts == 0
+	estimable := valid
+	selected := []map[string]any{}
+	strata := []map[string]any{}
+	slices.Sort(keys)
+	for _, key := range keys {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		candidates := groups[key]
+		n, k := len(candidates), reserve[key]+remainder[key]
+		estimable = estimable && k > 0
+		if k > 0 {
+			for index := range candidates {
+				if err := ctx.Err(); err != nil {
+					return nil, nil, err
+				}
+				candidates[index].priority = StatisticalPriority(candidates[index].row["id"].(string), options.Seed)
+			}
+			slices.SortFunc(candidates, func(a, b candidate) int {
+				if order := strings.Compare(a.priority, b.priority); order != 0 {
+					return order
+				}
+				return strings.Compare(a.row["id"].(string), b.row["id"].(string))
+			})
+		}
+		for _, candidate := range candidates[:k] {
+			row := map[string]any{}
+			for field, value := range candidate.row {
+				if !strings.HasPrefix(field, "statistical-") {
+					row[field] = value
+				}
+			}
+			row["statistical-stratum"], row["statistical-priority"] = key, candidate.priority
+			row["statistical-population"], row["statistical-allocation"], row["statistical-weight-valid"] = n, k, valid
+			if valid {
+				row["statistical-probability"], row["statistical-weight"] = float64(k)/float64(n), float64(n)/float64(k)
+			}
+			selected = append(selected, row)
+		}
+		var cutoff any
+		if k > 0 {
+			cutoff = candidates[k-1].priority
+		}
+		strata = append(strata, map[string]any{"stratum": key, "population": n, "allocation": k, "cutoff": cutoff})
+	}
+	frame := map[string]any{
+		"version": StatisticalVersion, "seed": options.Seed,
+		"watermark-policy": "explicit",
+		"watermark":        watermark.UTC().Format("2006-01-02T15:04:05.000Z"),
+		"window-start":     start.UTC().Format("2006-01-02T15:04:05.000Z"),
+		"population":       "canonical-snapshot-completed-runs", "capacity": options.Capacity,
+		"timestamp-field": "startedAt-or-createdAt", "identity-field": "id",
+		"allocation-policy":        "largest-remainder-failure-reserve-v1",
+		"failure-reserve-fraction": 0.1, "failure-reserve-allocation": reserved,
+		"selection-stage":      "before-consumer-filter",
+		"hot-exclusion-policy": "explicit-identities-only", "hot-exclusion-default": 0,
+		"input-count": len(rows), "population-count": population, "selected-count": len(selected),
+		"invalid-count": invalid, "incomplete-count": incomplete, "duplicate-conflicts": conflicts,
+		"quarantined-count": quarantined, "hot-excluded-count": hotExcluded, "weight-valid": valid, "full-population-estimable": estimable,
+		"input-row-limit": StatisticalMaxInputRows, "input-byte-limit": StatisticalMaxInputBytes,
+		"strata": strata,
+	}
+	frameParts := []string{StatisticalVersion, options.Seed, "frame", frame["watermark"].(string), strconv.Itoa(options.Capacity), strconv.FormatBool(valid)}
+	for _, stratum := range strata {
+		cutoff, _ := stratum["cutoff"].(string)
+		frameParts = append(frameParts, stratum["stratum"].(string), strconv.Itoa(stratum["population"].(int)), strconv.Itoa(stratum["allocation"].(int)), cutoff)
+	}
+	for _, row := range selected {
+		frameParts = append(frameParts, row["id"].(string), row["statistical-priority"].(string), row["statistical-stratum"].(string))
+	}
+	frame["frame-id"] = "sha256:" + statisticalDigest(frameParts)
+	return selected, frame, nil
+}

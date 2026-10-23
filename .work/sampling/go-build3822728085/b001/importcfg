@@ -1,0 +1,7 @@
+# import config
+packagefile os=/home/runner/.cache/go-build/9e/9edab6d8c639284e167dfadf59732a2f5331c4618cf3069dd420d1ea4dca6951-d
+packagefile reflect=/home/runner/.cache/go-build/f3/f3478cfe753cefb8aa1eb10450b0b1c9e1328ab759c4763a21bab25006fd0761-d
+packagefile testing=/home/runner/.cache/go-build/25/2556f1f2f2a8c925e554fde5acb96c378f26cc932649c89e6b83eb17456d6be2-d
+packagefile testing/internal/testdeps=/home/runner/.cache/go-build/f3/f3d6595b664f81c61896df6cc28ea25eeba6f2618443be15462abccc658c9e5d-d
+packagefile runtime=/home/runner/.cache/go-build/2c/2cbdc26e510f5cfa1828131a4c05283e752a396e8f152d7a2263e309d1b4dcba-d
+packagefile github.com/githubnext/gh-cao/server/internal/sqlitex=/home/runner/work/gh-cao/gh-cao/.work/sampling/go-build3822728085/b132/_pkg_.a

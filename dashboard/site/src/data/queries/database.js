@@ -30,6 +30,7 @@ import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
 import { operationalValueEvidenceMetadata, operationalValueEvidenceRows } from '../model/operational-value-evidence.js';
 import { incrementalAggregate } from './incremental-aggregate.js';
+import { canonicalStatisticalWatermark, sampleStatisticalRuns, STATISTICAL_INPUT_LIMITS } from './statistical-sample.js';
 
 const debugDatabase = createDebug('database');
 const monotonicNow = () => globalThis.performance?.now() ?? Date.now();
@@ -104,7 +105,12 @@ function executeDatabaseQuery(queryName, inputs, sources, metadataSource, budget
           ...(queryName === 'operational-value-evidence'
             ? { ...result.metadata, 'source-id': queryName, 'source-kind': 'database-query' }
             : queryMetadata(DIRECT_EVIDENCE_SOURCES.has(queryName) ? {} : sources, metadataSource, queryName, true)),
-          availability: result.rows.length > 0 ? 'available' : 'empty'
+          availability: result.rows.length > 0 ? 'available' : 'empty',
+          ...(queryName.startsWith('statistical-') && inputs.$statisticalMembership
+            ? {
+                'statistical-frame': inputs.$statisticalMembership.metadata['statistical-frame'],
+                'sample-frame': inputs.$statisticalMembership.metadata['statistical-frame']
+              } : {})
         }
   });
 }
@@ -1181,7 +1187,7 @@ function queryStores(name) {
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
  * @param {string[]} sourceNames
- * @param {{ onMetrics?: (metrics: { databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] }) => void }} [options]
+ * @param {{ onMetrics?: (metrics: { databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] }) => void, checkpoint?: () => void }} [options]
  */
 export async function queryDatabaseSources(indexedDB, logicalSources, sourceNames, options = {}) {
   const startedAt = monotonicNow();
@@ -1191,6 +1197,12 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   const requested = new Set(sourceNames);
   const databaseRequested = resolveDashboardQuerySources(databaseQueries, requested)
     .filter((name) => databaseQueryIndex.has(name) && !Object.hasOwn(SYNTHETIC_SOURCE_FIELDS, name));
+  const statisticalRequested = databaseRequested.some((name) => name.startsWith('statistical-'));
+  if (statisticalRequested) {
+    options.checkpoint?.();
+    const counts = await countCollections(indexedDB, ['runs']);
+    if (counts.runs > STATISTICAL_INPUT_LIMITS.rows) throw new Error('Statistical candidate frame exceeds input row budget');
+  }
   const stores = [...new Set(databaseRequested.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
   const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
@@ -1204,6 +1216,35 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
   ]);
   const databaseMs = monotonicNow() - databaseStartedAt;
   const sources = namedSources(logicalSources);
+  /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */
+  let statisticalMembership;
+  if (statisticalRequested) {
+    const rawRuns = /** @type {import('../../presenter.js').LogicalSourceInput | undefined} */ (sources.runs);
+    const runMetadata = queryMetadata(sources, 'runs', 'runs', rawRuns?.metadata?.availability !== 'unavailable');
+    try {
+      const sample = await sampleStatisticalRuns(collections.runs ?? [], {
+        watermark: runMetadata['as-of'] || canonicalStatisticalWatermark(collections.runs ?? []),
+        complete: runMetadata.completeness === 'complete'
+          && runMetadata.availability !== 'unavailable',
+        checkpoint: options.checkpoint
+      });
+      sample.frame['watermark-policy'] = runMetadata['as-of'] ? 'recorded-run-as-of' : 'canonical-run-max';
+      statisticalMembership = {
+        source: '$statisticalMembership',
+        rows: sample.rows.map((row) => ({
+          id: row.id, organization: row.owner, repository: row.repository, run: String(row.githubRunId),
+          ...Object.fromEntries(Object.entries(row).filter(([field]) => field.startsWith('statistical-')))
+        })),
+        metadata: { ...runMetadata, 'statistical-frame': sample.frame }
+      };
+    } catch (error) {
+      if (error instanceof DashboardQueryCancelledError) throw error;
+      statisticalMembership = {
+        source: '$statisticalMembership', rows: [],
+        metadata: { ...runMetadata, availability: 'unavailable', error: String(error) }
+      };
+    }
+  }
   /** @type {Record<string, import('../../presenter.js').LogicalSourceInput>} */
   const result = {};
   /** @type {Map<string, import('../../presenter.js').LogicalSourceInput>} */
@@ -1233,6 +1274,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     visiting.add(name);
     const inputs = Object.fromEntries(queryInputNames(definition).map((input) => {
       if (!input.startsWith('$')) return [input, resolveSource(input)];
+      if (input === '$statisticalMembership' && statisticalMembership) return [input, statisticalMembership];
       const store = input.slice(1);
       if (!Object.hasOwn(collections, store) && store !== 'transactions') {
         throw new Error(`Canonical query "${name}" requires an undeclared store: ${store}`);
@@ -1292,7 +1334,7 @@ export async function loadDatabaseQuerySources(indexedDB, sources, options = {})
   const declared = dashboardQueryIndex(queries);
   const required = resolveDashboardQuerySources(queries, remaining, nativeNames)
     .filter((name) => !nativeNames.has(name) && !declared.has(name));
-  const database = await queryDatabaseSources(indexedDB, sources, required);
+  const database = await queryDatabaseSources(indexedDB, sources, required, { checkpoint: () => budget.checkpoint() });
   return {
     ...Object.fromEntries(sourceNames.filter((name) => nativeNames.has(name) || !declared.has(name)).map((name) => [
       name, native[name] ?? database[name]

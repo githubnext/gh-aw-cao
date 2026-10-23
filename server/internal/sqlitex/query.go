@@ -200,6 +200,48 @@ func snapshotInputs(definition query.Definition) []string {
 }
 
 func (r *reader) source(ctx context.Context, name string, state dashboardstore.State, options dashboardstore.ExecutionOptions, fields snapshotFields) (model.Source, error) {
+	if name == "$statisticalMembership" {
+		rows, err := dashboardquery.ReadCollectionFields(ctx, r.tx, "runs",
+			[]string{"id", "owner", "repository", "githubRunId", "startedAt", "createdAt", "completedAt", "updatedAt", "status", "conclusion"},
+			dashboardquery.StatisticalMaxInputRows, dashboardquery.StatisticalMaxInputBytes)
+		if err != nil {
+			return model.Source{}, err
+		}
+		// Unlike exact-source presentation clocks, sampling never falls back to
+		// the server's evaluation time when the recorded clock is absent.
+		quality := r.store.metadata["$runs"]
+		watermark, _ := quality["as-of"].(string)
+		policy := "recorded-run-as-of"
+		if watermark == "" {
+			watermark, policy = dashboardquery.CanonicalStatisticalWatermark(rows), "canonical-run-max"
+		}
+		if watermark == "" {
+			return model.Source{Source: name, Rows: []model.Row{}, Metadata: model.Metadata{
+				"source-id": name, "availability": "unavailable", "completeness": "unknown",
+				"error": "statistical sampling requires a recorded canonical watermark",
+			}}, nil
+		}
+		selected, frame, err := dashboardquery.SampleStatisticalRuns(rows, dashboardquery.StatisticalOptions{
+			Context:   ctx,
+			Watermark: watermark, Capacity: dashboardquery.StatisticalSQLiteCapacity,
+			Complete: quality["completeness"] == "complete" && quality["availability"] != "unavailable",
+		})
+		if err != nil {
+			return model.Source{}, err
+		}
+		frame["watermark-policy"] = policy
+		members := dashboardquery.StatisticalMembership(selected)
+		result := make([]model.Row, len(members))
+		for index, member := range members {
+			result[index] = model.Row(member)
+		}
+		metadata := model.Metadata{"source-id": name, "as-of": watermark, "completeness": quality["completeness"],
+			"freshness": quality["freshness"], "availability": "available", "statistical-frame": frame}
+		if quality["availability"] == "unavailable" {
+			metadata["availability"] = "unavailable"
+		}
+		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
+	}
 	if postgresx.IsRuntimeSource(name) && options.Runtime != nil {
 		return options.Runtime(ctx, name)
 	}

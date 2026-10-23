@@ -131,6 +131,9 @@ components:
   dashboard_data:
     path: dashboard/site/src/data/
     responsibility: normalize, persist, and declaratively query canonical browser data in a Web Worker, including separately keyed run-linked experiment assignments, grader observations, and eval observations
+  statistical_run_projection:
+    path: dashboard/site/src/data/queries/
+    responsibility: independently select a deterministic seven-day date/outcome-stratified sample of the current canonical snapshot inside worker and server query/storage boundaries before consumer filters; expose frame and valid-weight metadata with backend-specific capacities without changing exact sources, retention, Operational Value, or canonical storage; persisted sampled bundles, hot eviction, and daily aggregates remain separate work
   marketplace_registry_policy:
     path: .github/workflows/cao.json
     responsibility: define ordered campaign package registries, resolver cache policy, and secret references without secret values

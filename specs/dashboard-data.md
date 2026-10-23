@@ -639,6 +639,57 @@ The implementation profile defined by this specification is:
 | Go server Postgres sources | Canonical model 19 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
+### 5.1.1 Independent statistical run projection
+
+`statistical-runs` is a separate, bounded statistical query layer over the current
+canonical snapshot. It SHALL NOT replace `runs`, change existing Run or linked
+detail retention, evict evidence, or create daily aggregates. This is the
+incremental sampling portion of
+[the three-tier proposal](../adr/three-tier-operational-storage.md), not an
+implementation of its hot-tier eviction, persisted sample bundles, daily
+contributions, or online reservoir.
+
+Selection SHALL execute inside the canonical worker/storage query boundary, or
+the server's pinned query transaction, before consumer filters, joins, grouping,
+or pagination. All consumers of a snapshot and sampling policy SHALL use the
+same frame. UI code SHALL NOT reconstruct a sample from view rows.
+
+The frame SHALL use a recorded logical UTC watermark, never query wall-clock
+time. A recorded Run-source `as-of` takes precedence. Without it, the greatest
+valid recorded Run `startedAt`, `completedAt`, or `updatedAt` MAY define a
+`canonical-run-max` watermark; the frame SHALL label that policy explicitly.
+Neither import time nor query time is a fallback. Without either recorded clock,
+the source SHALL be unavailable rather than an exact empty result.
+Eligible records are terminal canonical Runs with a valid execution
+timestamp in `[watermark - seven days, watermark)`. Pending, undated, and
+unreconciled conflicting identities SHALL NOT become completed sample members.
+Canonical Run identities, not attempts or mutable metrics, determine seeded,
+versioned SHA-256 priorities. Strata are execution UTC date and outcome.
+Selection SHALL use deterministic proportional largest-remainder allocation,
+with a bounded ten-percent failure reserve and stable identity tie-breaking.
+Statistical capacities are independent: PostgreSQL 64,000; SQLite 8,000;
+IndexedDB 16,000. Explicit hot-identity exclusions MAY narrow the frame; this
+increment leaves the exact layer unchanged and does not infer a hot census.
+
+The source SHALL retain ordinary Run fields and expose its sampling frame,
+watermark, covered interval, candidate and selected counts, per-stratum
+populations/allocations, and weight validity. Inclusion probability is `k/N`
+and expansion weight is `N/k` only for a complete, frozen, valid frame of
+available canonical evidence. This does not attest complete upstream collection.
+Missing or conflicting evidence SHALL invalidate unsupported weights; strata
+allocated zero records SHALL preclude a full-population estimate. There is no
+expiration-without-refill probability claim: the projection is reconstructed
+from the current snapshot rather than maintained as an online reservoir.
+
+The Models & Agents sample-composition query consumes `statistical-runs`. Its
+counts and chart shares SHALL describe the unweighted sample only, explicitly
+not population totals or model shares; failure reserves can change composition.
+Exact usage summaries, AIC/token statistics, operational totals, failure
+sequences, Run routes, and Operational Value queries SHALL retain their existing
+sources. Additional migrations require their own acceptance/weighting review.
+This projection cannot preserve detail already removed by canonical retention
+and does not reduce the underlying canonical storage or shard download volume.
+
 ## 5.2 Go server profile
 
 Go SHALL be the serving runtime for local SQLite, hosted PostgreSQL, and explicit
