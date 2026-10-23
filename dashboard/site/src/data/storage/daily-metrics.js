@@ -235,11 +235,19 @@ export function completeMetricScope(state, scope) {
     if (value.retiredAt !== null && value.retiredAt < cutoffTime) delete next.contributions[key];
     else if (value.metric.day < cutoff && value.retiredAt === null) value.retiredAt = scope.watermark;
   }
-  for (const value of [...winners.values()].sort((left, right) => compareCanonicalStrings(left.id, right.id))) {
-    const key = canonicalJson([value.id]);
-    const previous = next.contributions[key];
-    if (previous && compareRunPrecedence(previous.precedence, value.precedence) >= 0) continue;
+  const replacements = [...winners.values()]
+    .sort((left, right) => compareCanonicalStrings(left.id, right.id))
+    .filter((value) => {
+      const previous = next.contributions[canonicalJson([value.id])];
+      return !previous || compareRunPrecedence(previous.precedence, value.precedence) < 0;
+    });
+  // Remove all superseded values first so valid corrections cannot transiently overflow.
+  for (const value of replacements) {
+    const previous = next.contributions[canonicalJson([value.id])];
     if (previous && previous.retiredAt === null) applyContribution(next.dailyMetrics, previous, -1);
+  }
+  for (const value of replacements) {
+    const key = canonicalJson([value.id]);
     if (value.metric.day >= cutoff) {
       applyContribution(next.dailyMetrics, value, 1);
       next.contributions[key] = value;

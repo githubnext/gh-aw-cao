@@ -314,4 +314,36 @@ describe('correction-safe daily metric commit candidates', () => {
     expect(first.dailyMetrics).toEqual(second.dailyMetrics);
     expect(Object.values(first.dailyMetrics)[0].measures.conclusions).toEqual({ failure: 1 });
   });
+
+  it('subtracts every superseded measurement before adding replacements that could transiently overflow', () => {
+    const measures = (/** @type {number} */ value) => ({
+      aicTotal: value, inputTokens: value, outputTokens: value
+    });
+    const initial = completeMetricScope(createMetricLedger(NAMESPACE, WATERMARK), scope([
+      run('a', measures(0)),
+      run('b', measures(Number.MAX_VALUE))
+    ]));
+    const original = canonicalJson(initial);
+    const corrections = [
+      run('a', { ...measures(Number.MAX_VALUE), observedAt: '2026-10-21T13:00:00Z' }),
+      run('b', { ...measures(0), observedAt: '2026-10-21T13:00:00Z' })
+    ];
+    const corrected = completeMetricScope(initial, scope(corrections));
+    const replayed = completeMetricScope(createMetricLedger(NAMESPACE, WATERMARK), scope(corrections));
+    expect(corrected.dailyMetrics).toEqual(replayed.dailyMetrics);
+    expect(completeMetricScope(initial, scope([...corrections].reverse()))).toEqual(corrected);
+    for (const field of /** @type {const} */ (['aicTotal', 'inputTokens', 'outputTokens'])) {
+      expect(Object.values(corrected.dailyMetrics)[0].measures[field])
+        .toMatchObject({ count: 2, sum: Number.MAX_VALUE });
+    }
+    expect(completeMetricScope(corrected, scope(corrections))).toEqual(corrected);
+    expect(canonicalJson(initial)).toBe(original);
+
+    const overflowing = [
+      corrections[0],
+      run('b', { ...measures(Number.MAX_VALUE), observedAt: '2026-10-21T13:00:00Z' })
+    ];
+    expect(() => completeMetricScope(initial, scope(overflowing))).toThrow(/sum overflow/);
+    expect(canonicalJson(initial)).toBe(original);
+  });
 });

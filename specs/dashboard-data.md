@@ -701,6 +701,10 @@ include Run and conclusion counts and measured count/sum pairs for `aicTotal`,
 `inputTokens`, and `outputTokens`; missing/null measurements do not become zero.
 Decimal-string accumulators make sums independent of correction and batch
 ordering; public numeric sums round only after exact decimal accumulation.
+Within a completed scope, all superseded contributions are subtracted before
+replacement contributions are added, so intermediate totals cannot overflow
+when the final non-negative measurements remain representable. An overflowing
+final numeric sum rejects the entire commit candidate without mutating inputs.
 These are execution-evidence metrics, not verification or operational-value
 outcomes.
 
