@@ -822,6 +822,61 @@ a **commit candidate**: an adapter MUST transactionally persist contributions,
 daily metrics, and checkpoint before discarding staging or pruning canonical
 evidence. In-memory completion is not proof of a durable transaction.
 
+`metric-staging.js` adds opt-in persistent staging for native IndexedDB and the
+SQLite IndexedDB adapter. The deployment-scoped `gh-aw-cao-metric-staging`
+database is separate from canonical query stores, so staged raw observations
+cannot appear as canonical dashboard evidence. Each immutable scope declaration
+is keyed by `[namespace, scope ID]`; shards by `[namespace, scope ID, shard ID]`.
+A write atomically stores one shard with its received-shard and observation
+counts, acknowledges only transaction completion, and requests strict IndexedDB
+durability without a relaxed-cache fallback. SQLite uses its ordinary
+`BEGIN IMMEDIATE` / commit transaction and synchronous defaults. Concurrent
+SQLite writers may fail with lock contention and must retry the identical shard;
+receipt counts must never be inferred from a failed write.
+
+Exact shard retries preserve receipt counts, regardless of JSON object insertion
+order or observation order. Changing a scope's watermark or declared membership,
+changing a shard's content, non-finite/non-JSON observations, or exceeding the
+existing scope/shard limits rejects without replacing prior evidence. Recovery
+reads only the explicitly declared shards, requires a complete consistent receipt
+set, and materializes at most 100,000 observations per scope. Native browser
+reload and SQLite new-process tests cover acknowledged recovery; injected aborts
+and process exit before commit cover rollback. These are transactional recovery
+tests, not a claim that browser storage survives eviction or hardware failure.
+
+The same isolated database exposes `beginStoredMetricLedger`,
+`readStoredMetricLedger`, and `completeStoredMetricScope`. Ledger metadata freezes
+the initial logical watermark and source-authority map. Contributions and daily
+metrics are separate namespace-indexed rows, never a single full-ledger blob.
+Completion reads a complete scope and a committed ledger, then performs async
+digest/reduction outside the write transaction. Its final strict transaction
+checks that the ledger's monotonically increasing revision is unchanged,
+applies changed metric/contribution rows and retention deletions, advances the
+checkpoint, records the scope's completion receipt, and deletes that scope's raw
+staged shards. All of those changes commit or roll back together. A failed
+reduction, replay requirement, or revision conflict leaves staging and the
+previous checkpoint intact. There is no automatic retry from stale state:
+`MetricLedgerConflictError` requires an explicit reload and retry.
+
+Completed scopes retain a compact receipt; repeat completion returns the original
+receipt without applying contributions again, even after newer scopes commit.
+Their raw shards cannot be restaged under the same scope identity. Initialization
+retries never reset advanced ledgers, and changes to bootstrap watermark or
+source authority reject. Namespace row counts and a repeated revision check
+reject incomplete or cross-process inconsistent SQLite reads: the compatibility
+adapter does not itself start a readonly SQLite snapshot transaction. Ledger
+reads and reductions still materialize the retained namespace; no bounded
+enterprise-scale ledger-memory or ingestion-throughput claim is made.
+
+Persistent staging and ledger completion are not yet called by importers.
+Abandoned-scope cleanup, completion-receipt retention, production replay/completion
+proofs, and PostgreSQL persistence remain required before enabling production
+staging. The isolated ledger transaction cannot atomically mutate the separate
+canonical database; a future importer must prove a committed checkpoint before
+any detail pruning, with recoverable ordering rather than cross-database atomicity
+claims. Neither canonical database retention nor dashboard query routing is
+changed by these opt-in APIs.
+
 Activation remains blocked on durable, crash-safe scope staging and atomic
 checkpoint integration in all three canonical adapters; correction/replay and
 import-completion validation against authoritative data; generated TypeSpec

@@ -78,6 +78,55 @@ test('native Web Crypto compact metrics require replay for content-only conflict
   expect(result).toMatchObject({ retry: true, rejected: true, unchanged: true, detailRemoved: true, parity: true });
 });
 
+test('native metric staging recovers across reload without publishing incomplete scopes', async ({ page }) => {
+  await page.goto('https://dashboard.test/');
+  const partial = await page.evaluate(async () => {
+    const metrics = await import(`${location.origin}/src/data/storage/metric-staging.js`);
+    await metrics.beginStoredMetricScope(indexedDB, {
+      id: 'reload', namespace: 'native-staging', watermark: 0, expectedShards: ['a', 'b']
+    });
+    await metrics.stageStoredMetricShard(indexedDB, {
+      namespace: 'native-staging', scopeId: 'reload', shardId: 'a', runs: [{
+        id: 'one', repositoryId: 'repo', workflowId: 'workflow',
+        startedAt: '1970-01-01T00:00:00Z', observedAt: '1970-01-01T00:00:00Z', aicTotal: 0.1
+      }]
+    });
+    try {
+      await metrics.readStoredMetricScope(indexedDB, { namespace: 'native-staging', scopeId: 'reload' });
+      return false;
+    } catch (error) {
+      if (!(error instanceof Error) || !error.message.includes('incomplete')) throw error;
+      return true;
+    }
+  });
+  expect(partial).toBe(true);
+  await page.reload();
+  const result = await page.evaluate(async () => {
+    const metrics = await import(`${location.origin}/src/data/storage/metric-staging.js`);
+    const receipt = await metrics.stageStoredMetricShard(indexedDB, {
+      namespace: 'native-staging', scopeId: 'reload', shardId: 'b', runs: []
+    });
+    const restored = await metrics.readStoredMetricScope(indexedDB, { namespace: 'native-staging', scopeId: 'reload' });
+    await metrics.beginStoredMetricLedger(indexedDB, { namespace: 'native-staging', watermark: 0 });
+    const committed = await metrics.completeStoredMetricScope(indexedDB, { namespace: 'native-staging', scopeId: 'reload' });
+    return { receipt, restored, committed };
+  });
+  expect(result.receipt).toMatchObject({ receivedShards: 2, observations: 1 });
+  expect(result.restored.shards['["a"]'][0]).toMatchObject({ id: 'one', aicTotal: 0.1 });
+  expect(result.restored.shards['["b"]']).toEqual([]);
+  expect(result.committed.revision).toBe(1);
+  await page.reload();
+  const saved = await page.evaluate(async () => {
+    const metrics = await import(`${location.origin}/src/data/storage/metric-staging.js`);
+    const ledger = await metrics.readStoredMetricLedger(indexedDB, 'native-staging');
+    const retry = await metrics.completeStoredMetricScope(indexedDB, { namespace: 'native-staging', scopeId: 'reload' });
+    return { ledger, retry };
+  });
+  expect(saved.retry).toEqual(result.committed);
+  expect(saved.ledger.revision).toBe(1);
+  expect(Object.values(saved.ledger.ledger.dailyMetrics)[0].measures.aicTotal.sum).toBe(0.1);
+});
+
 test('native IndexedDB persists a large mixed reconciliation across connections', async ({ page }) => {
   test.slow();
   const result = await page.evaluate(async () => {

@@ -6,7 +6,7 @@ import {
 
 const MAX_SCOPE_SHARDS = 4096;
 const MAX_SHARD_RUNS = 1000;
-const MAX_SCOPE_RUNS = 100_000;
+export const MAX_SCOPE_RUNS = 100_000;
 export const COMPACT_METRIC_PRECEDENCE = 'sha256-replay-v1';
 const ADDITIVE_FIELDS = /** @type {const} */ ([
   'aicTotal', 'inputTokens', 'outputTokens'
