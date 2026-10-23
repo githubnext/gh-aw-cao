@@ -1,35 +1,7 @@
 {
   "source_sha": "4bba11091b9047b7c1ab1a7d734f3464312899ea",
-  "next_category": "Astro documentation generation",
+  "next_category": "reusable dashboard generation",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-22T09:41:25Z",
-      "worker_run_id": "39756955713",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [
-        39755536983,
-        39752322608,
-        39751161246,
-        39750815094,
-        39748555421,
-        39747881979,
-        39744803453,
-        39743524194,
-        39741068212,
-        39740939750,
-        39740182351,
-        39738616859,
-        39738539133,
-        39737890136,
-        39735183655,
-        39735080585,
-        39733283762,
-        39731549885,
-        39731540630,
-        39730270205
-      ],
-      "outcome": "no-op: the 2026-10-22T05:49:57Z to 2026-10-22T09:27:28Z latest-20 window contained 15 successful and five skipped completed docs.yml runs, with no failed or cancelled runs. Five successful builds were comparable (four push and one schedule, across five source SHAs): median/p90 end-to-end 235/500.4 seconds, initial queue or concurrency wait 4/213.8 seconds, queue-excluded execution 149/324.6 seconds, build job 111/298.2 seconds, and deploy job 27/42.8 seconds. docs.yml has no dashboard job because dashboard generation is reusable work in cao-dashboard.yml; the latest five successful dashboard producer workflows were 310/751 seconds median/p90 end-to-end and their build jobs were 291/730.8 seconds. Docs reusable-dashboard restoration was 3/3.6 seconds and Pages artifact upload was 13/13.6 seconds. A bounded log read of the newest build verified a 315 MB npm package-cache hit and a 61 MB reusable dashboard-cache hit; trusted step metadata showed all five builds skipped dashboard artifact fallback. Packaging was 8.7% of median queue-excluded execution, and even eliminating the 13-second median upload would save neither 60 seconds nor 15%. No correctness-preserving artifact-transfer or Pages-packaging change met the actionability threshold, so the category advanced. Runs 39738616859 and 39731549885 waited 299 and 86 seconds for concurrency, and runs 39738616859 and 39738539133 had 198- and 249-second npm-ci outliers despite cache hits; these were disclosed rather than attributed to packaging."
-    },
     {
       "evaluated_at": "2026-10-22T09:57:02Z",
       "worker_run_id": "39759038025",
@@ -713,6 +685,34 @@
         39875839437
       ],
       "outcome": "no-op: the 2026-10-23T00:04:23Z to 2026-10-23T04:02:10Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Eight successful build-and-deploy paths were comparable (three push, three workflow_run, and two schedule, across five source SHAs): median/p90 end-to-end 92.5/102.2 seconds, initial queue 3.5/4 seconds, queue-excluded execution 88.5/97.5 seconds, build job 71/74.3 seconds, and deploy job 9.5/12.3 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows had median/p90 end-to-end 26/30.2 seconds and build jobs 15/16.6 seconds. Dependency installation was 18.5/24.6 seconds, Astro generation 13/15 seconds, reusable-dashboard restoration 1/2 seconds, and Pages upload 2/3 seconds. Bounded trusted logs verified identical-key 301 MiB npm package-cache hits and approximately 3 MiB reusable-dashboard-cache hits on the five newest comparable builds; step metadata showed all eight builds skipped dashboard artifact fallback. Although npm ci was 20.9% of median queue-excluded execution, setup-node's package cache was already consistently effective, and the observed 12-26 second npm ci range does not identify a concrete correctness-preserving change expected to save 60 seconds or at least 13.3 seconds (15%). Caching node_modules would bypass npm ci clean-install semantics and transfer a similarly large platform-specific tree. No actionable dependency installation or caching recommendation met the threshold, so the category advanced."
+    },
+    {
+      "evaluated_at": "2026-10-23T04:44:49Z",
+      "worker_run_id": "39901611120",
+      "category": "Astro documentation generation",
+      "evidence_run_ids": [
+        39901826702,
+        39900445281,
+        39898153337,
+        39896843545,
+        39895217766,
+        39895144358,
+        39893837040,
+        39892817541,
+        39892116066,
+        39890304784,
+        39890234174,
+        39887150030,
+        39886562082,
+        39885657839,
+        39883349660,
+        39881032022,
+        39881010395,
+        39880490722,
+        39880474107,
+        39879130766
+      ],
+      "outcome": "no-op: the 2026-10-23T00:36:35Z to 2026-10-23T04:43:31Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Seven successful build-and-deploy paths were comparable (three workflow_run, two schedule, and two push, across four source SHAs): median/p90 end-to-end 90/102.6 seconds, initial queue 4/4 seconds, queue-excluded execution 86/99 seconds, build job 70/73.8 seconds, and deploy job 9/10.8 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful producer workflows had median/p90 end-to-end 26/30.2 seconds and build jobs 15/16.6 seconds. Dependency installation was 16/23.4 seconds, Astro generation 12/15 seconds, reusable-dashboard restoration 1/2 seconds, and Pages upload 2/3 seconds. Bounded trusted logs verified identical-key 301 MiB npm package-cache hits and approximately 3 MiB reusable-dashboard-cache hits on five representative builds; step metadata showed all seven builds skipped dashboard artifact fallback. Astro generation was 14.0% of median queue-excluded execution, and eliminating it entirely would save only 12 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving Astro change met the threshold, so the category advanced. Checkout remained the largest repeated pre-build step at 24/27.2 seconds, but it is outside the evaluated category and does not meet the actionability threshold."
     }
   ]
 }
