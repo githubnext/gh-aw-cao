@@ -93,15 +93,22 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
   });
 });
 
-test('production data worker preserves daily health and chart coverage after detail eviction', async ({ page }) => {
+test('production data worker preserves daily health and repository chart coverage after detail eviction', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
     const { normalize } = await import(`${location.origin}/src/data/normalize/index.js`);
     const fragment = await (await fetch('/dashboard-fragments/workflow-runs.json')).json();
     const inventory = await (await fetch('/dashboard-fragments/inventory.json')).json();
+    const repositories = await (await fetch('/dashboard-fragments/repositories.json')).json();
+    const { compileDashboardViewPayloadQueries } = await import(`${location.origin}/src/data/queries/view-payload-compiler.js`);
+    const repositoryPage = repositories.pages.find((/** @type {{ id: string }} */ value) => value.id === 'repositories');
     const query = fragment.queries.find((/** @type {{ name: string }} */ value) =>
       value.name === 'workflow-runtime-health-summary');
     const worker = new Worker(`${location.origin}/src/data-worker.js`, { type: 'module' });
+    const repositoryPayload = compileDashboardViewPayloadQueries(repositoryPage.definition, 'repositories', {
+      queries: [...inventory.queries, ...repositories.queries], viewId: 'repositories-runs',
+      evaluatedAt: '2026-10-15T00:00:00Z'
+    });
     const queryHealth = () => /** @type {Promise<Record<string, import('../../src/presenter.js').LogicalSourceInput>>} */ (new Promise((resolve, reject) => {
       worker.onmessage = (event) => {
         if (event.data.id !== 'daily-health') return;
@@ -111,8 +118,8 @@ test('production data worker preserves daily health and chart coverage after det
       worker.onerror = (event) => reject(new Error(event.message));
       worker.postMessage({
         id: 'daily-health', operation: 'load-dashboard-query-sources',
-        sources: {}, queries: [...inventory.queries, query],
-        sourceNames: ['workflow-runtime-health-summary', 'runs-daily-conclusions']
+        sources: {}, queries: [...inventory.queries, query, ...repositoryPayload.queries],
+        sourceNames: ['workflow-runtime-health-summary', 'runs-daily-conclusions', ...repositoryPayload.aliases]
       });
     }));
     try {
@@ -122,7 +129,10 @@ test('production data worker preserves daily health and chart coverage after det
         startedAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T01:00:00Z',
         status: 'in_progress', conclusion: null, attempt: 1
       };
-      await storage.upsertCanonicalBatch(indexedDB, { ...normalize([]), runs: [run] },
+      await storage.upsertCanonicalBatch(indexedDB, {
+        ...normalize([]), runs: [run],
+        repositories: [{ id: 'repository:count', owner: 'octo', name: 'demo' }]
+      },
         { validateRelationships: false });
       const pending = await queryHealth();
       await storage.upsertCanonicalBatch(indexedDB, {
@@ -143,15 +153,41 @@ test('production data worker preserves daily health and chart coverage after det
       await storage.upsertCanonicalBatch(indexedDB, { ...normalize([]), runs: [run] },
         { validateRelationships: false });
       const rolled = await queryHealth();
+      const database = await storage.openCanonicalDatabase(indexedDB);
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('dailyRunCountState', 'readwrite');
+        transaction.objectStore('dailyRunCountState').clear();
+        transaction.oncomplete = () => resolve(undefined);
+        transaction.onerror = () => reject(transaction.error);
+      });
+      database.close();
+      const unavailable = await queryHealth();
       return {
-        pending, corrected, maintenance, detailCount, daily, rolled,
+        pending, corrected, maintenance, detailCount, daily, rolled, unavailable,
+        repositoryAlias: repositoryPayload.aliases[0],
         receipts: (await storage.readCollections(indexedDB, ['runCountContributions'])).runCountContributions.length
       };
     } finally {
       worker.terminate();
     }
   });
-  expect(Object.keys(result.corrected).sort()).toEqual(['runs-daily-conclusions', 'workflow-runtime-health-summary']);
+  expect(Object.keys(result.corrected).sort()).toEqual([result.repositoryAlias, 'runs-daily-conclusions', 'workflow-runtime-health-summary'].sort());
+  for (const source of [result.pending, result.corrected]) {
+    expect(source[result.repositoryAlias].rows).toEqual([
+      expect.objectContaining({ repository: 'octo/demo', runs: 1 })
+    ]);
+    expect(source[result.repositoryAlias].metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted'
+    });
+  }
+  expect(result.rolled[result.repositoryAlias].rows).toEqual([
+    expect.objectContaining({ repository: 'octo/demo', runs: 0 })
+  ]);
+  expect(result.rolled[result.repositoryAlias].metadata['aggregate-retention-start']).toBe('2026-10-12');
+  expect(result.unavailable[result.repositoryAlias].rows).toEqual([]);
+  expect(result.unavailable[result.repositoryAlias].metadata).toMatchObject({
+    availability: 'unavailable', 'aggregate-version': 1, 'aggregate-coverage': 'absent'
+  });
   expect(result.rolled['workflow-runtime-health-summary'].rows).toEqual([]);
   expect(result.rolled['runs-daily-conclusions'].rows).toEqual([]);
   expect(result.rolled['workflow-runtime-health-summary'].metadata['aggregate-retention-start']).toBe('2026-10-12');

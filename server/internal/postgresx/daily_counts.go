@@ -410,7 +410,8 @@ func dailySQLSource(namespace string, available, raw bool) query.SQLRelation {
 
 func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, error) {
 	available, err := dailyCapability(ctx, r.tx)
-	metadata := model.Metadata{"source-id": dailySource, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
+	metadata := model.Metadata{"source-id": dailySource, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown",
+		"aggregate-version": 1, "aggregate-time-grain": "utc-run-start-day", "aggregate-coverage": "absent"}
 	if err != nil || !available {
 		return metadata, err
 	}
@@ -444,5 +445,6 @@ func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, er
 	metadata["aggregate-retention-watermark"] = metadata["watermark"]
 	metadata["aggregate-retention-start"] = metadata["retention-cutoff"]
 	metadata["backfill-coverage"] = "available-evidence-only"
+	metadata["aggregate-coverage"] = "available-evidence-only"
 	return metadata, nil
 }

@@ -135,6 +135,9 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 			return err
 		}
 		metrics.QueryCount++
+		if postgresx.ComposeMetadata(definitions, roots, definition.Name)["availability"] == "unavailable" {
+			rows = nil
+		}
 		if err := retain(definition.Name, rows); err != nil {
 			return err
 		}
@@ -211,21 +214,34 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 		if err != nil {
 			return model.Source{}, err
 		}
-		metadata := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
+		metadata := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown",
+			"aggregate-version": 1, "aggregate-time-grain": "utc-run-start-day", "aggregate-coverage": "absent"}
 		if available {
 			metadata["availability"], metadata["completeness"] = "available", "partial"
 			if len(rows) == 0 {
 				metadata["availability"] = "empty"
 			}
 			metadata["undated-run-count"] = undated
+			metadata["excluded-runs"] = undated
 			metadata["retention"] = "all-admitted-dated-observations"
 			states, err := dashboardquery.ReadCollectionFields(ctx, r.tx, "dailyRunCountState",
-				[]string{"id", "retentionCutoff", "retentionWatermark"}, 1, 64<<10)
+				[]string{"id", "coverage", "excludedRuns", "conflictedRuns", "retentionCutoff", "retentionWatermark"}, 1, 64<<10)
 			if err != nil {
 				return model.Source{}, err
 			}
 			for _, dailyState := range states {
-				if dailyState["id"] != "daily-run-counts" || dailyState["retentionCutoff"] == nil {
+				if dailyState["id"] != "daily-run-counts" {
+					continue
+				}
+				if dailyState["coverage"] != nil {
+					metadata["aggregate-coverage"] = dailyState["coverage"]
+				}
+				for field, key := range map[string]string{"excluded-runs": "excludedRuns", "conflicted-runs": "conflictedRuns"} {
+					if dailyState[key] != nil {
+						metadata[field] = dailyState[key]
+					}
+				}
+				if dailyState["retentionCutoff"] == nil {
 					continue
 				}
 				cutoff, ok := dailyState["retentionCutoff"].(string)

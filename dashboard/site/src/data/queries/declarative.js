@@ -667,7 +667,8 @@ function compileDashboardQuery(name, index, sources, defects, budget, compiled, 
     for (const input of queryInputNames(definition)) {
       const precomputed = sources[input];
       if (index.has(input)
-          && (!precomputed || precomputed.metadata?.availability === 'unavailable')) {
+          && (!precomputed || (precomputed.metadata?.availability === 'unavailable'
+            && precomputed.metadata?.['aggregate-version'] !== 1))) {
         compile(input);
       }
     }
@@ -719,6 +720,7 @@ export function executeDashboardQuery(definition, sources, defect, budget) {
  */
 function materializeDashboardQuery(definition, sources, defect, budget) {
   const inputs = queryInputNames(definition).map((name) => ({ name, source: sources[name] }));
+  const preserveJoinedAggregate = Boolean(definition.joins?.length) && !definition.union?.length;
   const startedAt = queryTimestamp();
   const startingOperations = budget.operations;
   let status = 'available';
@@ -731,7 +733,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     if (rejected) {
       status = 'unavailable';
       failure = rejected;
-      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), rejected);
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0, new Set(), preserveJoinedAggregate), rejected);
     }
     // Union branches are additive: an unavailable branch must not hide the
     // rows produced by the remaining branches. This keeps aggregate views,
@@ -739,7 +741,9 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     // unavailable.
     const requiredInputs = new Set([
       definition.from,
-      ...(definition.joins ?? []).filter((join) => join.type !== 'left').map((join) => join.source)
+      ...(definition.joins ?? []).filter((join) => join.type !== 'left'
+        // Daily projections cannot turn unavailable count evidence into left-join zeros.
+        || sources[join.source]?.metadata?.['aggregate-version'] === 1).map((join) => join.source)
     ]);
     const optionalInputs = new Set((definition.joins ?? [])
       .filter((join) => join.type === 'left' && !requiredInputs.has(join.source))
@@ -763,7 +767,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
         && upstream.source.length <= 256
         && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?::[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*$/.test(upstream.source)
         ? upstream.source : unavailable.name;
-      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0), failure, rootSource);
+      return unavailableResult(definition, composedMetadata(definition.name, inputs, 0, new Set(), preserveJoinedAggregate), failure, rootSource);
     }
 
     const effectiveSources = { ...sources };
@@ -780,7 +784,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     return {
       source: definition.name,
       rows,
-      metadata: composedMetadata(definition.name, inputs, rows.length, optionalInputs)
+      metadata: composedMetadata(definition.name, inputs, rows.length, optionalInputs, preserveJoinedAggregate)
     };
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
@@ -795,7 +799,7 @@ function materializeDashboardQuery(definition, sources, defect, budget) {
     status = 'unavailable';
     return unavailableResult(
       definition,
-      composedMetadata(definition.name, inputs, 0),
+      composedMetadata(definition.name, inputs, 0, new Set(), preserveJoinedAggregate),
       failure
     );
   } finally {
@@ -1105,22 +1109,25 @@ function enforceLimit(count, limit, subject) {
 
 /**
  * Composes provenance, freshness, completeness, and availability across every
- * input source. Unavailable left-join inputs degrade completeness without
- * hiding rows retained from the primary source.
+ * input source. Ordinary unavailable left joins degrade completeness; daily
+ * count joins require their projection and retain its provenance on enrichment.
  * @param {string} name
  * @param {Array<{ name: string, source?: LogicalSourceInput }>} inputs
  * @param {number} rowCount
  * @param {Set<string>} [optionalInputs]
+ * @param {boolean} [preserveJoinedAggregate]
  * @returns {SourceMetadata}
  */
-function composedMetadata(name, inputs, rowCount, optionalInputs = new Set()) {
+function composedMetadata(name, inputs, rowCount, optionalInputs = new Set(), preserveJoinedAggregate = false) {
   const metadata = inputs.map((input) => input.source?.metadata).filter(Boolean);
   /** @param {SourceMetadata | undefined} value */
   const aggregateFields = (value) => Object.fromEntries(Object.entries(value ?? {}).filter(([field]) =>
     field.startsWith('aggregate-') || ['excluded-runs', 'conflicted-runs', 'query-diagnostic'].includes(field)));
-  const candidateProvenance = aggregateFields(metadata[0]);
+  const aggregateMetadata = preserveJoinedAggregate
+    ? metadata.filter((value) => value?.['aggregate-version'] !== undefined) : metadata;
+  const candidateProvenance = aggregateFields(aggregateMetadata[0]);
   const aggregateProvenance = metadata.length === inputs.length && candidateProvenance['aggregate-version'] === 1
-    && metadata.every((value) => {
+    && aggregateMetadata.every((value) => {
       const fields = aggregateFields(value);
       return Object.keys(fields).length === Object.keys(candidateProvenance).length
         && Object.entries(candidateProvenance).every(([field, entry]) => fields[field] === entry);

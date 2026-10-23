@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -373,14 +374,62 @@ func composeMetadata(definitions []query.Definition, roots map[string]model.Meta
 		for _, source := range definition.Union {
 			result = mergeMetadata(result, composeMetadata(definitions, roots, source, visiting), false)
 		}
+		inputs := []model.Metadata{result}
 		for _, join := range definition.Joins {
-			result = mergeMetadata(result, composeMetadata(definitions, roots, join.Source, visiting), join.Type == "left")
+			right := composeMetadata(definitions, roots, join.Source, visiting)
+			inputs = append(inputs, right)
+			result = mergeMetadata(result, right, join.Type == "left" && !dailyAggregateMetadata(right))
+		}
+		if len(definition.Joins) > 0 && len(definition.Union) == 0 {
+			var provenance model.Metadata
+			consistent := true
+			for _, input := range inputs {
+				if input["aggregate-version"] == nil {
+					continue
+				}
+				fields := aggregateMetadataFields(input)
+				if provenance == nil {
+					provenance = fields
+				} else if !reflect.DeepEqual(provenance, fields) {
+					consistent = false
+				}
+			}
+			for field := range aggregateMetadataFields(result) {
+				delete(result, field)
+			}
+			if consistent && dailyAggregateMetadata(provenance) {
+				for field, value := range provenance {
+					result[field] = value
+				}
+				// Inventory quality cannot erase the known partial coverage of counts.
+				for _, input := range inputs {
+					if input["completeness"] == "partial" {
+						result["completeness"] = "partial"
+					}
+				}
+			}
 		}
 		return result
 	}
+
 	// No arbitrary source-name or legacy logical-source fallback is admitted.
 	return model.Metadata{"source-id": strings.TrimSpace(name), "availability": "unavailable", "completeness": "unknown", "freshness": "unknown"}
 }
+
+func dailyAggregateMetadata(metadata model.Metadata) bool {
+	return fmt.Sprint(metadata["aggregate-version"]) == "1"
+}
+
+func aggregateMetadataFields(metadata model.Metadata) model.Metadata {
+	fields := model.Metadata{}
+	for field, value := range metadata {
+		if strings.HasPrefix(field, "aggregate-") || field == "excluded-runs" || field == "conflicted-runs" || field == "query-diagnostic" {
+			fields[field] = value
+		}
+	}
+	return fields
+}
+
 func unquoteSQLName(name string) string {
 	if len(name) >= 2 && name[0] == '"' && name[len(name)-1] == '"' {
 		return name[1 : len(name)-1]

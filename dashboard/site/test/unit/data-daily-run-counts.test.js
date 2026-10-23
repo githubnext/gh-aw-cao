@@ -20,6 +20,7 @@ import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-
 import { resolveDashboardQuerySources } from '../../src/data/queries/declarative.js';
 import detailContracts from '../fixtures/detail-query-contracts.json' with { type: 'json' };
 import goldenCounts from '../fixtures/daily-run-counts.json' with { type: 'json' };
+import repositoryContract from '../fixtures/repository-run-inventory-contract.json' with { type: 'json' };
 
 const originalIndexedDB = globalThis.indexedDB;
 const originalIDBKeyRange = globalThis.IDBKeyRange;
@@ -527,6 +528,83 @@ describe('additive daily run outcome counts', () => {
     const native = await loadDatabaseQuerySources(indexedDB, {}, { queries: healthQueries, sourceNames: ['health'] });
     expect(native.health.metadata.availability).toBe('unavailable');
     expect(native.health.rows).toEqual([]);
+  });
+
+  it.each(['indexeddb', 'sqlite'])('serves repository daily inventory with scoped UTC buckets and fail-closed coverage in %s', async (backend) => {
+    if (backend === 'sqlite') {
+      const directory = mkdtempSync(join(process.cwd(), '.repository-count-test-'));
+      directories.push(directory);
+      installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
+    }
+    const queries = authoritativeDashboard.dashboard.queries;
+    const page = authoritativeDashboard.dashboard.pages.find(
+      (/** @type {{ id: string }} */ value) => value.id === repositoryContract.page).definition;
+    for (const field of ['mode', 'campaign', 'engine', 'rollout-mode']) {
+      expect(() => compileDashboardViewPayloadQueries(page, repositoryContract.page, {
+        queries, viewId: repositoryContract.view,
+        queryContext: { filters: { [field]: ['selected'] } }
+      })).toThrow(/Daily run counts do not support the selected/);
+    }
+    const compile = (repository = 'octo/demo') => compileDashboardViewPayloadQueries(page, repositoryContract.page, {
+      queries, viewId: repositoryContract.view, evaluatedAt: '2026-10-06T12:00:00Z',
+      queryContext: {
+        filters: { organization: ['octo'], repository: [repository], workflow: [fixture.workflowPath] },
+        timeWindow: { start: '2026-10-02T12:00:00Z', end: '2026-10-05T00:00:00Z' }
+      }
+    });
+    const query = async (repository = 'octo/demo') => {
+      const payload = compile(repository);
+      expect(resolveDashboardQuerySources(payload.queries, payload.aliases).filter(
+        (name) => ['runs', 'repositories', 'daily-run-counts'].includes(name)).sort())
+        .toEqual(repositoryContract.canonicalSources);
+      const result = /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (
+        await processDataRequest({
+          operation: 'load-dashboard-query-sources', sources: {},
+          queries: payload.queries, sourceNames: payload.aliases
+        }));
+      expect(Object.keys(result)).toEqual(payload.aliases);
+      return result[payload.aliases[0]];
+    };
+    await upsertCanonicalBatch(indexedDB, {
+      ...normalize([]), repositories: [
+        { id: fixture.repositoryId, owner: 'octo', name: 'demo' },
+        { id: 'repository:2', owner: 'octo', name: 'elsewhere' },
+        { id: 'repository:3', owner: 'elsewhere', name: 'demo' }
+      ]
+    });
+    const dated = { ...fixture, startedAt: '2026-10-03T23:30:00-02:00' };
+    await writeRuns([
+      dated,
+      { ...dated, id: 'run:other-workflow', workflowId: 'workflow:2', workflowPath: 'second.md' },
+      { ...dated, id: 'run:other-repo', repositoryId: 'repository:2', repository: 'elsewhere' },
+      { ...dated, id: 'run:other-org', repositoryId: 'repository:3', owner: 'elsewhere' },
+      { ...dated, id: 'run:lower-day', startedAt: '2026-10-02T23:00:00Z' },
+      { ...dated, id: 'run:upper-day', startedAt: '2026-10-05T00:00:00Z' },
+      { ...dated, id: 'run:undated', startedAt: undefined }
+    ]);
+    const initial = await query();
+    expect(initial).toMatchObject({ rows: [expect.objectContaining({ repository: 'octo/demo', runs: 1 })] });
+    expect(initial.metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'partial', 'excluded-runs': 1
+    });
+    expect((await query('octo/elsewhere')).rows).toEqual([
+      expect.objectContaining({ repository: 'octo/elsewhere', runs: 1 })
+    ]);
+    await writeRuns([{ ...dated, attempt: 2, updatedAt: '2026-10-05T01:00:00Z' }]);
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect((await query()).rows).toEqual(initial.rows);
+    const database = await openCanonicalDatabase(indexedDB);
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction('dailyRunCountState', 'readwrite');
+      transaction.objectStore('dailyRunCountState').clear();
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+    const missing = await query();
+    expect(missing.metadata).toMatchObject({ availability: 'unavailable', 'aggregate-coverage': 'absent' });
+    expect(missing.rows).toEqual([]);
   });
 
   it('serves the shipped daily chart with scoped UTC buckets, corrections, and no detail dependency', async () => {

@@ -168,3 +168,90 @@ func TestDailyCountsOldSnapshotUnavailable(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRepositoryRunInventoryDailyAvailability(t *testing.T) {
+	var definitions []query.Definition
+	for _, path := range []string{
+		"../../../dashboard/site/src/data/queries/database.json",
+		"../../../dashboard/site/src/agent/queries.generated.json",
+	} {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var batch []query.Definition
+		if err := json.Unmarshal(content, &batch); err != nil {
+			t.Fatal(err)
+		}
+		definitions = append(definitions, batch...)
+	}
+	for _, status := range []string{"absent", "backfilling", "ready", "empty"} {
+		t.Run(status, func(t *testing.T) {
+			path := testutil.SQLiteSnapshot(t, map[string][]model.Row{
+				"repositories": {{"id": "repo", "owner": "octo", "name": "api"}},
+			})
+			db, err := sql.Open("sqlite", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"dailyRunCounts", "runCountContributions", "dailyRunCountState"} {
+				if _, err := db.ExecContext(t.Context(), `INSERT INTO __idb_stores VALUES(?,?,'id')`, dashboardquery.DatabaseName, name); err != nil {
+					t.Fatal(err)
+				}
+			}
+			records := map[string]model.Row{}
+			if status != "absent" {
+				ready := status
+				if status == "empty" {
+					ready = "ready"
+				}
+				records["dailyRunCountState"] = model.Row{"id": "daily-run-counts", "status": ready, "coverage": "retained-v44", "retentionCutoff": "2026-10-05"}
+			}
+			if status != "empty" {
+				records["dailyRunCounts"] = model.Row{"id": "daily", "day": "2026-10-20", "repositoryId": "repo", "workflowId": "workflow",
+					"owner": "octo", "repository": "api", "workflowPath": ".github/workflows/test.md",
+					"total": 7, "successful": 7, "failed": 0, "approval": 0, "pending": 0, "other": 0}
+			}
+			for name, record := range records {
+				key, _ := json.Marshal(record["id"])
+				content, _ := json.Marshal(record)
+				if _, err := db.ExecContext(t.Context(), `INSERT INTO __idb_records VALUES(?,?,?,?)`, dashboardquery.DatabaseName, name, string(key), string(content)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_ = db.Close()
+			store, err := Open(t.Context(), path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = store.Close() }()
+			if err := store.WithReadTransaction(t.Context(), func(ctx context.Context, r dashboardstore.Reader) error {
+				sources, _, err := r.ExecuteSQLPlan(ctx, definitions, []string{"repository-run-inventory"})
+				if err != nil {
+					return err
+				}
+				source := sources["repository-run-inventory"]
+				if status == "absent" || status == "backfilling" {
+					if len(source.Rows) != 0 || source.Metadata["availability"] != "unavailable" {
+						t.Fatalf("unavailable daily evidence fabricated inventory zeros: %+v", source)
+					}
+				} else {
+					want := float64(7)
+					if status == "empty" {
+						want = 0
+					}
+					if len(source.Rows) != 1 || source.Rows[0]["runs"] != want || source.Metadata["completeness"] != "partial" ||
+						source.Metadata["aggregate-retention-start"] != "2026-10-05" {
+						t.Fatalf("daily inventory lost counts or coverage: %+v", source)
+					}
+				}
+				if source.Metadata["aggregate-version"] != 1 {
+					t.Fatalf("inventory lost aggregate identity: %+v", source.Metadata)
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

@@ -3091,29 +3091,48 @@
       }
     },
     {
-      "id": "repository-observed-run-counts",
-      "subject": "Count distinct retained run IDs by repository without importing event evidence.",
-      "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
-      "acceptance": "Group by organization and repository coordinate and count distinct retained run IDs, not attempts; missing runs remain missing evidence and global scope and time filters still apply.",
+      "id": "repository-daily-run-buckets",
+      "subject": "Select repository run counts by whole UTC start-day buckets.",
+      "objective": "Keep count selection independent of retained Run detail.",
+      "acceptance": "Use UTC midnight and request bounds, matching the Runs daily chart; do not fabricate sub-day totals or missing days.",
       "description": "",
       "parameters": [],
       "sources": [
-        "runs"
+        "daily-run-counts"
       ],
       "used-by-pages": [],
       "execution": {
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "runs"
+          "daily-run-counts"
+        ]
+      }
+    },
+    {
+      "id": "repository-observed-run-counts",
+      "subject": "Count observed logical Runs by repository from persistent daily buckets.",
+      "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
+      "acceptance": "Sum daily totals, not attempts or retained detail. Select whole UTC start-day buckets by midnight and preserve partial or unavailable coverage.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "repository-daily-run-buckets"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
         ]
       }
     },
     {
       "id": "repository-run-inventory",
-      "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
+      "subject": "Registered repositories and observed daily logical Run counts.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
-      "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
+      "acceptance": "Keep top 100 identities and drill links with stable count and repository ordering. Zero means no admitted dated Runs in selected UTC buckets, not inactivity. Preserve partial coverage; unavailable daily evidence must not produce zeros. Table keeps full inventory.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -3127,8 +3146,8 @@
         "local": true,
         "backend": "sqlite",
         "requirements": [
-          "repositories",
-          "runs"
+          "daily-run-counts",
+          "repositories"
         ]
       }
     },

@@ -1055,11 +1055,30 @@
       ]
     },
     {
+      "name": "repository-daily-run-buckets",
+      "subject": "Select repository run counts by whole UTC start-day buckets.",
+      "objective": "Keep count selection independent of retained Run detail.",
+      "acceptance": "Use UTC midnight and request bounds, matching the Runs daily chart; do not fabricate sub-day totals or missing days.",
+      "from": "daily-run-counts",
+      "compute": [
+        { "as": "day-midnight", "function": "concat", "args": [{ "field": "day" }, { "value": "T00:00:00Z" }] },
+        { "as": "day-ms", "function": "timestamp", "args": [{ "field": "day-midnight" }] },
+        { "as": "start-ms", "function": "timestamp", "args": [{ "context": "time-start" }] },
+        { "as": "end-ms", "function": "timestamp", "args": [{ "context": "time-end" }] },
+        { "as": "before-start", "function": "greater-than", "args": [{ "field": "start-ms" }, { "field": "day-ms" }] },
+        { "as": "before-end", "function": "greater-than", "args": [{ "field": "end-ms" }, { "field": "day-ms" }] }
+      ]
+    },
+    {
       "name": "repository-observed-run-counts",
-      "subject": "Count distinct retained run IDs by repository without importing event evidence.",
+      "subject": "Count observed logical Runs by repository from persistent daily buckets.",
       "objective": "Supply the run-volume chart without computing activity health, ingestion coverage, or workflow costs.",
-      "acceptance": "Group by organization and repository coordinate and count distinct retained run IDs, not attempts; missing runs remain missing evidence and global scope and time filters still apply.",
-      "from": "runs",
+      "acceptance": "Sum daily totals, not attempts or retained detail. Select whole UTC start-day buckets by midnight and preserve partial or unavailable coverage.",
+      "from": "repository-daily-run-buckets",
+      "filter": { "predicates": [
+        { "field": "before-start", "in": [false, null] },
+        { "field": "before-end", "in": [true, null] }
+      ] },
       "compute": [
         {
           "as": "repository-coordinate",
@@ -1073,14 +1092,14 @@
       ],
       "aggregate": {
         "by": ["organization", "repository-coordinate"],
-        "values": [{ "field": "run", "as": "runs", "reducer": "distinct-count" }]
+        "values": [{ "field": "total", "as": "runs", "reducer": "sum" }]
       }
     },
     {
       "name": "repository-run-inventory",
-      "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
+      "subject": "Registered repositories and observed daily logical Run counts.",
       "objective": "Compare repository execution volume and choose repositories for drill-down.",
-      "acceptance": "Keep up to 100 repository identities and drill links, ordered by run count descending with repository tie-breaks. Zero means no retained runs, not proof of inactivity; preserve unavailable and partial evidence. The Table view retains the full inventory.",
+      "acceptance": "Keep top 100 identities and drill links with stable count and repository ordering. Zero means no admitted dated Runs in selected UTC buckets, not inactivity. Preserve partial coverage; unavailable daily evidence must not produce zeros. Table keeps full inventory.",
       "from": "repository-activity-preview",
       "joins": [
         {
@@ -1222,11 +1241,11 @@
         "views": [
           {
             "id": "repositories-runs",
-            "title": "Runs by repository",
-            "subject": "Registered repositories and distinct retained workflow run IDs in the selected horizon.",
+            "title": "Observed daily runs by repository",
+            "subject": "Registered repositories and observed daily logical Run counts.",
             "objective": "Compare repository execution volume and choose repositories for drill-down.",
-            "acceptance": "Show up to 100 repositories by run count descending with stable repository tie-breaks and drill links. Include zero retained runs without claiming inactivity; distinguish empty, partial, and unavailable evidence.",
-            "description": "Distinct retained runs per repository in the selected horizon, ranked by count directly from inventory and run evidence without waiting for imported event coverage. Shows up to 100 repositories; the Table view lists the full inventory. Zero means no retained runs, not confirmed inactivity.",
+            "acceptance": "Show top 100 repositories with stable ties and drill links. Count logical Runs, not attempts, in whole UTC start-day buckets selected by midnight. Preserve partial and unavailable coverage; zero is not inactivity. Table retains full inventory.",
+            "description": "Observed logical Runs, not attempts, summed across whole UTC start-day buckets selected by midnight, independently of retained detail. Partial coverage is not complete history; unavailable daily evidence is not zero. Shows up to 100 repositories; Table lists the full inventory with retained-detail metrics.",
             "data": {
               "source": "repository-run-inventory",
               "order-by": [
@@ -1241,7 +1260,7 @@
             "empty-message": "No repositories were retained in the current inventory.",
             "encoding": {
               "x": { "field": "repository", "type": "nominal", "title": "Repository" },
-              "y": { "field": "runs", "type": "quantitative", "title": "Runs" },
+              "y": { "field": "runs", "type": "quantitative", "title": "Observed daily runs" },
               "href": { "field": "repository-link", "type": "nominal" }
             }
           },

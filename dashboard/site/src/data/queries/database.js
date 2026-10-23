@@ -1270,7 +1270,9 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       const state = collections.dailyRunCountState?.find((record) => record.id === DAILY_RUN_COUNT_STATE_ID);
       const metadata = dailyRunCountMetadata(state);
       if (metadata.availability === 'unavailable') {
-        return unavailableResult(definition, queryMetadata(sources, name, name, false),
+        return unavailableResult(definition, /** @type {import('../../presenter.js').SourceMetadata} */ ({
+          ...queryMetadata(sources, name, name, false), ...metadata
+        }),
           String(metadata['query-diagnostic']));
       }
       sources.dailyRunCounts = { metadata };

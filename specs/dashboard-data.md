@@ -4528,6 +4528,17 @@ Selected context filters outside organization, Repository, and Workflow SHALL
 fail the daily-chart request explicitly rather than silently include unselected
 Runs; in particular the projection cannot answer rollout-mode selections.
 
+`repository-run-inventory` SHALL preserve registered Repository identities,
+drill links, stable top-100 ordering, and the separate full Table inventory,
+while summing `repository-observed-run-counts` from the same daily UTC buckets.
+Counts describe logical Runs, not attempts or retained-detail volume. Scope
+filters SHALL reach the daily join, including explicit rejection of unsupported
+dimensions. A daily aggregate joined to inventory SHALL retain its aggregate
+provenance and partial coverage; unavailable aggregate evidence SHALL fail the
+query rather than become left-join zeros. Zero counts mean no admitted dated
+Runs in the selected buckets, not confirmed inactivity. Repository usage and
+Table metrics SHALL remain on their existing sources.
+
 Only supported dimensions and complete-day predicates
 are eligible; sub-day filters, arbitrary Run predicates, distinct counts,
 costs, token usage, and ordered incident evidence remain on their existing

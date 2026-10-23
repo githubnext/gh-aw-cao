@@ -8,7 +8,7 @@ This record proposes an architectural direction and implementation gates. It
 does not authorize a rollout or claim that the acceptance criteria below already
 pass. The separately specified [daily run-count layer](../specs/dashboard-data.md#722-additive-daily-run-counts)
 implements an initial additive slice, migrates `workflow-runtime-health-summary`
-and the Runs daily chart, and applies three-week logical aggregate eviction with
+the Runs daily chart, and the repository run-volume chart, and applies three-week logical aggregate eviction with
 replay fencing across browser IndexedDB, Activity SQLite, and hosted PostgreSQL.
 It does not implement the remaining metrics, sampling, hot-tier limits, or
 native weekly aggregate partitions.
@@ -585,7 +585,8 @@ statistical context for older retained examples, never an exact population.
 | `workflow-runs.json`: `workflow-runtime-health-summary`, `workflow-runtime-usage-summary`, `workflow-failure-trend` | Aggregate candidates; pending state and usage-record counts require their own exact contribution semantics. |
 | `workflow-runs.json`: `entity-runs`, `workflow-runs`, `workflow-reports`, `outcome-route-record` | Detail/dedicated outcome evidence; preserve route keys and retained execution links. |
 | `repositories.json`: `entity-workflow-run-totals`, `repository-run-totals`; `shared-inventory.json`: `repository-aic-totals` | Aggregate candidates for additive counts and cost; retain declaration joins. |
-| `repositories.json`: `repository-run-identities`, `repository-import-totals`, `repository-runs`, `repository-run-inventory` | Detail/mixed: import coverage and run identity must not become sampled population counts. |
+| `repositories.json`: `repository-run-inventory`, `repository-observed-run-counts` | Migrated chart-only count branch: logical Runs in selected whole UTC start-day buckets, with inventory links and aggregate coverage; the Table and usage queries remain unchanged. |
+| `repositories.json`: `repository-run-identities`, `repository-import-totals`, `repository-runs` | Detail/mixed: import coverage and run identity must not become sampled population counts. |
 | `shared-events.json`: `event-base`, `audit-event-runs`, `domain-event-runs`, `tool-event-runs`, `issue-event-runs`, `event-runs`, `run-import-status` | Detail: exact retained-event/import diagnostics, with bounded recent coverage. |
 | `shared-events.json`: `workflow-run-totals`, `workflow-aic-run-totals`, `workflow-aic-totals` | Aggregate candidates with explicit run-versus-telemetry denominators. |
 | `shared-inventory.json`: `repository-run-statistics`, `campaign-workflow-execution-totals` | Mixed: exact supported counters plus structural inventory; unsupported grouping remains blocked. |

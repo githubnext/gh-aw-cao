@@ -580,7 +580,10 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const includeHistory = retainedHistory || (isPlainObject(definition.time) && definition.time.range === 'all');
     // Option queries scope their input rows before projecting distinct values.
     const inputScoped = scopeInput && name === sourceName;
-    const inputPredicates = (inputScoped ? outputPredicates : predicatesBeforeQuery(definition, outputPredicates))
+    // Daily scope must reach the count branch before inventory's top-N limit.
+    const dailyCounts = resolveDashboardQuerySources(definitions, [name]).includes('daily-run-counts');
+    const inputPredicates = (inputScoped ? outputPredicates : predicatesBeforeQuery(
+      dailyCounts ? { ...definition, limit: undefined } : definition, outputPredicates))
       .filter((predicate) => !includeHistory || predicate.field !== '@time');
     const retainedPredicates = inputScoped ? [] : outputPredicates;
     /** @param {string} source @param {number} inputIndex */
@@ -609,7 +612,16 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const compiledJoins = Array.isArray(definition.joins)
       ? definition.joins.map((join) => (
           isPlainObject(join) && typeof join.source === 'string'
-            ? { ...join, source: compile(join.source, joinKeyPredicates(join, inputPredicates), inputTime, includeHistory) }
+            ? { ...join, source: compile(join.source, [
+                ...joinKeyPredicates(join, inputPredicates),
+                ...(resolveDashboardQuerySources(definitions, [join.source]).includes('daily-run-counts')
+                  ? inputPredicates.filter((predicate) => predicate.optional).map((/** @type {Record<string, unknown>} */ predicate) => (
+                      predicate.field === 'repository' && Array.isArray(predicate.in)
+                        ? { ...predicate, in: predicate.in.map((value) => typeof value === 'string'
+                          ? value.slice(value.indexOf('/') + 1) : value) }
+                        : predicate
+                    )) : [])
+              ], inputTime, includeHistory) }
             : join
         ))
       : undefined;
