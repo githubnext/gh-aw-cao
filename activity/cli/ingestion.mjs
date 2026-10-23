@@ -82,12 +82,10 @@ export async function ingestJsonlShardDirectory(indexedDB, shardDirectory, optio
     debug('ingested shard %s: committedRecords=%d', name, result.committedRecords ?? 0);
     shards.push({ shard: name, skipped: Boolean(result.skipped), committedRecords: result.committedRecords ?? 0 });
   }
-  if (!await isAuditCurationCurrent(indexedDB)) {
-    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
-      ...options, repairAuditCuration: true
-    });
-    updated ||= maintenance.deletedRecords > 0;
-  }
+  const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
+    ...options, repairAuditCuration: !await isAuditCurationCurrent(indexedDB)
+  });
+  updated ||= maintenance.deletedRecords > 0 || maintenance.prunedFailureLogs > 0;
   return { ...totals, updated, committedRecords, shards };
 }
 
@@ -146,14 +144,12 @@ export async function ingestNormalizedShardDirectories(indexedDB, directories, o
     );
   }
   const auditCurationCurrent = await isAuditCurationCurrent(indexedDB);
-  if (updated || !auditCurationCurrent) {
-    const maintenanceStartedAt = Date.now();
-    const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
-      ...options, repairAuditCuration: !updated && !auditCurationCurrent
-    });
-    updated ||= maintenance.deletedRecords > 0;
-    debug('applied deferred canonical maintenance durationMs=%d', Date.now() - maintenanceStartedAt);
-  }
+  const maintenanceStartedAt = Date.now();
+  const maintenance = await finalizeNormalizedJsonlIngestion(indexedDB, {
+    ...options, repairAuditCuration: !updated && !auditCurationCurrent
+  });
+  updated ||= maintenance.deletedRecords > 0 || maintenance.prunedFailureLogs > 0;
+  debug('applied deferred canonical maintenance durationMs=%d', Date.now() - maintenanceStartedAt);
   return { updated, committedRecords, shards };
 }
 

@@ -123,6 +123,7 @@ type valueRecord struct {
 type parsedOutput struct {
 	definitions []definition
 	values      []valueRecord
+	deferred    []string
 }
 
 type envelope struct {
@@ -224,6 +225,7 @@ func Collect(ctx context.Context, config Config) (Result, error) {
 			continue
 		}
 		values = append(values, envelopes(entry.campaign, current.values)...)
+		result.Warnings = append(result.Warnings, current.deferred...)
 		if len(current.definitions) > 0 {
 			activeIDs[entry.campaign] = map[string]struct{}{}
 			for _, item := range current.definitions {
@@ -596,6 +598,18 @@ func parseOutput(content []byte, source string, repositories []string) (parsedOu
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &header); err != nil {
 			return output, fmt.Errorf("%s:%d emitted invalid JSON: %w", source, line, err)
+		}
+		if header.Kind == "operational_value_deferred" {
+			var record struct {
+				WorkflowSlug string `json:"workflowSlug"`
+				Reason       string `json:"reason"`
+			}
+			if err := json.Unmarshal(scanner.Bytes(), &record); err != nil ||
+				!slugPattern.MatchString(record.WorkflowSlug) || strings.TrimSpace(record.Reason) == "" || len(record.Reason) > 1024 {
+				return output, errors.New("invalid operational value deferral")
+			}
+			output.deferred = append(output.deferred, record.WorkflowSlug+": "+record.Reason)
+			continue
 		}
 		if header.Kind == "operational_value_definition" {
 			var record definitionRecord

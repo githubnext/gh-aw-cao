@@ -104,8 +104,11 @@ revisions. Reuse that fixed definition for subsequent evaluations.
 
 To keep it current, the skill automatically stages its exact registration after the frozen function
 and bounded collector pass verification; no separate enable step is needed.
-Review, commit and deploy the policy and collector together. The existing collection cycle
-refreshes only opted-in, in-scope workflows at their fixed cadence. Failures
+Review, commit and deploy the policy and collector together. Activity shows its
+real collection health even before a first capture. Recurring remote acquisition
+remains deferred until shared API budgets can be enforced; registration alone
+does not guarantee fresh measurements. Bounded local-only computations run
+separately without holding up ordinary publication. Failures and deferrals
 keep the last capture; disabling collection keeps history. For a one-time
 hosted upload, use `gh cao value publish ... --server URL --input REPORT-evidence.jsonl`;
 uploading alone does not enable collection.

@@ -17,6 +17,7 @@ export const ENTITY_COLLECTIONS = [
   'issues',
   'operationalValues',
   'operationalValueEvidence',
+  'workflowValueCollections',
   'experiments',
   'experimentAssignments',
   'graders',
@@ -53,7 +54,7 @@ export const USAGE = `Usage:
   cao mcp [--database FILE] [--dashboard FILE] [--host HOST] [--port PORT]
   cao computation intelligence [--database FILE] [--inventory FILE] [--campaign SLUG] [--previous FILE] [--feedback FILE]
   cao computation runtime-health [--database FILE] [--inventory FILE] [--campaign SLUG] [--diagnose]
-  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT]
+  cao operational-value [--database FILE] [--root DIRECTORY] [--output FILE] [--timestamp TIME] [--repository OWNER/REPO] [--campaign SLUG] [--retention-days DAYS|all] [--history-campaign SLUG] [--max-github-api-rate-limit LIMIT] [--local-only]
   cao cluster-problems [--database FILE] [--root DIRECTORY] [--timestamp TIME]
   cao repair-database [--database FILE] [--ttl-days DAYS|all] [--run-ttl-days DAYS|all]
     Mutates SQLite: backs up before repairs and prunes expired/orphaned records, even without corruption.

@@ -1,11 +1,15 @@
-import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
+import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, timestampMilliseconds } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
 import { DAILY_RUN_COUNT_STORES, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCounts, reconcileRunCountRecord } from '../model/daily-run-counts.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import {
   auditCurationRunFacts, discardAudit, AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION
 } from '../model/audit-curation.js';
-import { recordTimestamp, RETENTION_TIMESTAMPS, retentionWindowForStore } from './retention.js';
+import {
+  compareFailureLogBoundaries, failureLogBoundary, hasFailedConclusion, isFailureLogRecovery,
+  recordTimestamp, RETENTION_TIMESTAMPS, retentionWindowForStore
+} from './retention.js';
 import { createDebug } from '../../debug.js';
 
 const debug = createDebug('data:retention');
@@ -14,8 +18,8 @@ const TOTALS_ID = 'totals';
 const BATCH_SIZE = 1000;
 const DAY_MS = 86400000;
 
-/** @typedef {{ shard: string, timestamp: number, bytes: number }} StorageMetadata */
-/** @typedef {{ id: string, storeName?: string, day?: number, bytes: number, count: number, dirty?: boolean, runId?: string, auditId?: string }} Shard */
+/** @typedef {{ shard: string, timestamp: number, bytes: number, failureLogPruned?: boolean }} StorageMetadata */
+/** @typedef {{ id: string, storeName?: string, day?: number, bytes: number, count: number, dirty?: boolean, runId?: string, auditId?: string, failureLogs?: boolean }} Shard */
 
 /** @template T @param {IDBRequest<T>} request @returns {Promise<T>} */
 function result(request) {
@@ -42,8 +46,8 @@ export function withoutStorageMetadata(record) {
   return canonical;
 }
 
-/** @param {string} storeName @param {Record<string, unknown>} record */
-export function withStorageMetadata(storeName, record) {
+/** @param {string} storeName @param {Record<string, unknown>} record @param {boolean} [failureLogPruned] */
+export function withStorageMetadata(storeName, record, failureLogPruned = false) {
   const stored = { ...record };
   delete stored._storage;
   const timestamp = recordTimestamp(storeName, stored) ?? -Number.MAX_SAFE_INTEGER;
@@ -54,9 +58,25 @@ export function withStorageMetadata(storeName, record) {
     _storage: {
       shard: `${storeName}:${day}`,
       timestamp,
-      bytes: new TextEncoder().encode(JSON.stringify(stored)).byteLength + 512
+      bytes: new TextEncoder().encode(JSON.stringify(stored)).byteLength + 512,
+      ...(failureLogPruned ? { failureLogPruned: true } : {})
     }
   };
+}
+
+/** @param {Record<string, unknown> | undefined} existing @param {Record<string, unknown>} incoming */
+function mergeStoredRun(existing, incoming) {
+  if (existing && Number.isSafeInteger(existing.attempt) && Number(existing.attempt) > 0) {
+    if (!Number.isSafeInteger(incoming.attempt) || Number(incoming.attempt) < Number(existing.attempt)) return existing;
+    const before = timestampMilliseconds(existing.observedAt);
+    const after = timestampMilliseconds(incoming.observedAt);
+    if (existing.attempt === incoming.attempt && before !== null && after !== null && before > after) return existing;
+  }
+  const merged = mergeCanonicalRun(existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(incoming));
+  const pruned = metadata(incoming).failureLogPruned === true
+    || (existing?.attempt === merged.attempt && existing && metadata(existing).failureLogPruned === true);
+  if (pruned) delete merged.failureLog;
+  return withStorageMetadata('runs', merged, Boolean(pruned));
 }
 
 /** @param {Record<string, unknown>} record @returns {StorageMetadata} */
@@ -91,15 +111,17 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       if (reconciled.conflict) runCountConflicts.add(String(record.id));
     }
     unique.set(String(record.id), previous && storeName === 'runs'
-      ? withStorageMetadata(storeName, mergeCanonicalRun(
-          withoutStorageMetadata(previous), withoutStorageMetadata(record)
-        ))
+      ? mergeStoredRun(previous, record)
       : previous && EVIDENCE_DEFINITION_STORES.has(storeName)
       ? withStorageMetadata(storeName, mergeEvidenceDefinition(
           withoutStorageMetadata(previous), withoutStorageMetadata(record)
         ))
       : previous && storeName === 'operationalValueEvidence'
       ? withStorageMetadata(storeName, mergeOperationalValueEvidence(
+          withoutStorageMetadata(previous), withoutStorageMetadata(record)
+        ))
+      : previous && storeName === 'workflowValueCollections'
+      ? withStorageMetadata(storeName, mergeWorkflowValueCollection(
           withoutStorageMetadata(previous), withoutStorageMetadata(record)
         ))
       : record);
@@ -112,6 +134,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   /** @type {string[]} */
   const dirtyRuns = [];
   const dirtyAudits = new Set();
+  let failureLogs = false;
   const referencesAudits = ['experimentAssignments', 'graderObservations', 'evalObservations'].includes(storeName);
   /** @param {Record<string, unknown>} record @param {number} sign */
   const account = (record, sign) => {
@@ -137,11 +160,13 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       dirtyAudits.add(existing.auditId);
     }
     if (storeName === 'runs' && existing) {
-      const incomingRun = withoutStorageMetadata(record);
-      const merged = mergeCanonicalRun(withoutStorageMetadata(existing), incomingRun);
-      if (merged !== incomingRun) record = withStorageMetadata(storeName, merged);
+      record = mergeStoredRun(existing, record);
     } else if (storeName === 'operationalValueEvidence') {
       record = withStorageMetadata(storeName, mergeOperationalValueEvidence(
+        existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
+      ));
+    } else if (storeName === 'workflowValueCollections') {
+      record = withStorageMetadata(storeName, mergeWorkflowValueCollection(
         existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
       ));
     } else if (EVIDENCE_DEFINITION_STORES.has(storeName)) {
@@ -155,6 +180,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       }, runCountConflicts.has(String(record.id)));
     }
     account(record, 1);
+    if (storeName === 'runs' && typeof record.failureLog === 'string' && record.failureLog.length > 0) failureLogs = true;
     if (storeName === 'runs' && existing && JSON.stringify(auditCurationRunFacts(existing))
         !== JSON.stringify(auditCurationRunFacts(record))) dirtyRuns.push(String(record.id));
     store.put(record);
@@ -164,7 +190,8 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   const changes = [...deltas.values()];
   const existing = await Promise.all([TOTALS_ID, ...changes.map(({ id }) => id)]
     .map((id) => result(shards.get(id))));
-  const totals = /** @type {Shard} */ (existing[0] ?? { id: TOTALS_ID, bytes: 0, count: 0 });
+  const totals = /** @type {Shard} */ (existing[0] ?? { id: TOTALS_ID, bytes: 0, count: 0, failureLogs: false });
+  if (failureLogs) totals.failureLogs = true;
   changes.forEach((delta, index) => {
     const previous = /** @type {Shard | undefined} */ (existing[index + 1]);
     const next = {
@@ -222,7 +249,8 @@ async function readShards(database, options) {
       .objectStore(STORAGE_SHARD_STORE).getAll(range, BATCH_SIZE)));
     if (rows.some((shard) => typeof shard.id !== 'string' || !Number.isFinite(shard.bytes)
         || shard.bytes < 0 || !Number.isInteger(shard.count) || shard.count < 0
-        || (shard.storeName !== undefined && !Number.isFinite(shard.day)))) {
+      || (shard.failureLogs !== undefined && typeof shard.failureLogs !== 'boolean')
+      || (shard.storeName !== undefined && !Number.isFinite(shard.day)))) {
       throw new Error('Canonical storage shard accounting is invalid; rebuild the derived database');
     }
     shards.push(...rows);
@@ -334,6 +362,84 @@ async function curateDirtyAudits(database, shards, options) {
 }
 
 /**
+ * Reads bounded Run batches only when excerpts may exist. No run-owned evidence
+ * is read or deleted. Legacy totals without the hint get one discovery pass.
+ * @param {IDBDatabase} database
+ * @param {Shard[]} shards
+ * @param {Parameters<import('./indexeddb.js').maintainCanonicalDatabase>[1]} options
+ */
+async function pruneFailureLogs(database, shards, options) {
+  if (shards.find(({ id }) => id === TOTALS_ID)?.failureLogs === false) return 0;
+  const windowMs = retentionWindowForStore('audits', options);
+  if (windowMs === Number.MAX_SAFE_INTEGER) return 0;
+  /** @type {Map<string, import('./retention.js').FailureLogBoundary>} */
+  const successes = new Map();
+  /** @type {Map<string, Record<string, unknown> | undefined>} */
+  const workflows = new Map();
+  const logShards = new Set();
+  /** @type {IDBKeyRange | undefined} */
+  let range;
+  for (;;) {
+    options.signal?.throwIfAborted();
+    const transaction = database.transaction(['runs', 'workflows']);
+    const done = completed(transaction);
+    const rows = await result(transaction.objectStore('runs').getAll(range, BATCH_SIZE));
+    const ids = [...new Set(rows.map((run) => String(run.workflowId)))].filter((id) => !workflows.has(id));
+    const definitions = await Promise.all(ids.map((id) => result(transaction.objectStore('workflows').get(id))));
+    ids.forEach((id, index) => workflows.set(id, definitions[index]));
+    await done;
+    for (const run of rows) {
+      if (typeof run.failureLog === 'string' && run.failureLog.length > 0) logShards.add(metadata(run).shard);
+      if (!isFailureLogRecovery(run)) continue;
+      const point = failureLogBoundary(run, workflows.get(String(run.workflowId)));
+      const previous = point && successes.get(point.scope);
+      if (point && (!previous || compareFailureLogBoundaries(point, previous) > 0)) successes.set(point.scope, point);
+    }
+    if (rows.length < BATCH_SIZE) break;
+    range = IDBKeyRange.lowerBound(rows.at(-1)?.id, true);
+  }
+  let pruned = 0;
+  let retained = false;
+  const horizon = (options.now ?? Date.now()) - windowMs;
+  for (const shard of shards.filter(({ id }) => logShards.has(id))) {
+    let range = IDBKeyRange.bound([Number(shard.day) * DAY_MS], [(Number(shard.day) + 1) * DAY_MS], false, true);
+    for (;;) {
+      options.signal?.throwIfAborted();
+      const page = await write(database, ['runs'], async (transaction) => {
+        const rows = await result(transaction.objectStore('runs').index('byStorageTimestamp').getAll(range, BATCH_SIZE));
+        const updates = [];
+        for (const run of rows) {
+          if (typeof run.failureLog !== 'string' || run.failureLog.length === 0) continue;
+          const point = failureLogBoundary(run, workflows.get(String(run.workflowId)));
+          const success = point && successes.get(point.scope);
+          const resolved = hasFailedConclusion(run) && point && success
+            && compareFailureLogBoundaries(point, success) < 0;
+          if (!resolved && metadata(run).timestamp >= horizon) {
+            retained = true;
+            continue;
+          }
+          const compact = withoutStorageMetadata(run);
+          delete compact.failureLog;
+          updates.push(withStorageMetadata('runs', compact, true));
+        }
+        await writeAccountedRecords(transaction, 'runs', updates);
+        return { rows, pruned: updates.length };
+      });
+      pruned += page.pruned;
+      if (page.rows.length < BATCH_SIZE) break;
+      const last = page.rows.at(-1);
+      range = IDBKeyRange.bound([metadata(last).timestamp, last.id], [(Number(shard.day) + 1) * DAY_MS], true, true);
+    }
+  }
+  await write(database, [], async (transaction) => {
+    const store = transaction.objectStore(STORAGE_SHARD_STORE);
+    const totals = await result(store.get(TOTALS_ID));
+    if (totals) store.put({ ...totals, failureLogs: retained });
+  });
+  return pruned;
+}
+
+/**
  * @param {IDBDatabase} database
  * @param {Parameters<import('./indexeddb.js').maintainCanonicalDatabase>[1] & {
  * entityStores: readonly string[], runLinkedStores: readonly string[]
@@ -379,6 +485,7 @@ export async function maintainStorageShards(database, options) {
   shards = await readShards(database, options);
   const prunedAudits = await curateDirtyAudits(database, shards, options);
   deletedRecords += prunedAudits;
+  const prunedFailureLogs = await pruneFailureLogs(database, shards, options);
   const readTotals = async () => /** @type {Shard} */ (
     await result(database.transaction(STORAGE_SHARD_STORE).objectStore(STORAGE_SHARD_STORE).get(TOTALS_ID))
       ?? { id: TOTALS_ID, bytes: 0, count: 0 }
@@ -407,10 +514,10 @@ export async function maintainStorageShards(database, options) {
   await receiptDone;
   debug({
     event: 'maintained-storage-shards', durationMs: Math.round(performance.now() - startedAt),
-    shardCount: shards.length, deletedRecords, prunedAudits,
+    shardCount: shards.length, deletedRecords, prunedAudits, prunedFailureLogs,
     estimatedBytes: totals.bytes + protectedBytes, protectedBytes, retainedRecords: totals.count
   });
-  return { deletedRecords, prunedAudits, estimatedBytes: totals.bytes + protectedBytes, protectedBytes, retainedRecords: totals.count };
+  return { deletedRecords, prunedAudits, prunedFailureLogs, estimatedBytes: totals.bytes + protectedBytes, protectedBytes, retainedRecords: totals.count };
 }
 
 /**
@@ -431,7 +538,8 @@ export async function rebuildStorageShards(database, entityStores) {
         // Remove before accounting so rebuilding cannot subtract obsolete totals.
         for (const record of records) store.delete(record.id);
         await writeAccountedRecords(transaction, storeName,
-          records.map((record) => withStorageMetadata(storeName, record)));
+          records.map((record) => withStorageMetadata(storeName, record,
+            /** @type {StorageMetadata | undefined} */ (record._storage)?.failureLogPruned === true)));
       });
       if (records.length < BATCH_SIZE) break;
       range = IDBKeyRange.lowerBound(records.at(-1)?.id, true);

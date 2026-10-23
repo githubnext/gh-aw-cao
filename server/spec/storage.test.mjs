@@ -74,7 +74,7 @@ function inputFields(definition) {
 
 test('TypeSpec declares exactly one root table per canonical dashboard collection', () => {
   assert.deepEqual([...tables.keys()].sort(), [
-    '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues', '$operationalValueEvidence',
+    '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues', '$operationalValueEvidence', '$workflowValueCollections',
     '$marketplacePackages', '$experiments', '$experimentAssignments',
     '$graders', '$graderObservations', '$evals', '$evalObservations'
   ].sort());
@@ -144,6 +144,9 @@ test('native table fields cover database projections and joins without speculati
   required.get('$runs').add('repositoryId'); // Cross-parent canonical integrity.
   // This input normalizes the packet and its typed child values, not root columns.
   required.set('$operationalValueEvidence', new Set(tables.get('$operationalValueEvidence')));
+  for (const field of ['schemaVersion', 'repository', 'workflowId']) {
+    required.get('$workflowValueCollections').add(field); // Versioned producer identity and parent integrity.
+  }
   for (const definition of definitions) {
     if (definition.from === '$operationalValueEvidence') continue;
     const sources = [definition.from];

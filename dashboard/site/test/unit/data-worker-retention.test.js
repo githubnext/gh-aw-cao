@@ -2,7 +2,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
-import { DATABASE_NAME, readTransactions } from '../../src/data/storage/indexeddb.js';
+import { normalize } from '../../src/data/normalize/index.js';
+import { DATABASE_NAME, readTransactions, upsertCanonicalBatch } from '../../src/data/storage/indexeddb.js';
 
 const metadata = { 'as-of': '2026-09-09T05:00:00Z', 'artifact-generation': 'generation-a' };
 
@@ -253,6 +254,47 @@ describe('canonical dashboard worker retention updates', () => {
       reportActivation: true
     });
     expect((await settled((message) => message.id === 6))?.data).toMatchObject({ changed: false });
+    expect(jsonlRequests).toHaveLength(4);
+
+    await upsertCanonicalBatch(indexedDB, {
+      ...normalize([]),
+      repositories: [{ id: 'repo:retention', owner: 'octo', name: 'control' }],
+      workflows: [{ id: 'workflow:retention', repositoryId: 'repo:retention', role: 'orchestrator',
+        path: '.github/workflows/test.md' }],
+      runs: ['failure', 'success'].map((conclusion, index) => ({
+        id: `github:run:octo/control:${index + 1}`, githubRunId: index + 1, attempt: 1,
+        repositoryId: 'repo:retention', workflowId: 'workflow:retention',
+        owner: 'octo', repository: 'control', workflowPath: '.github/workflows/test.md',
+        event: 'push', branch: 'main', status: 'completed', conclusion,
+        startedAt: `2026-09-09T23:0${index}:00Z`,
+        ...(index === 0 ? { failureLog: 'resolved diagnostic excerpt' } : {})
+      }))
+    });
+    const failureContext = { ...context, queries: [{
+      name: 'failure-excerpts', from: 'runs', select: [{ field: 'failure-log' }]
+    }] };
+    dispatch({
+      id: 10, operation: 'load-dashboard-query-sources', sources: {},
+      sourceNames: ['failure-excerpts'], queries: failureContext.queries
+    });
+    expect(JSON.stringify(await settled((message) => message.id === 10))).toContain('resolved diagnostic excerpt');
+    dispatch({
+      operation: 'subscribe-canonical-dashboard', subscriptionId: 'failures',
+      sourceNames: ['failure-excerpts'], context: failureContext
+    });
+    const previousFailures = await settled((message) => message.subscriptionId === 'failures');
+    dispatch({
+      id: 9, operation: 'load-canonical-dashboard',
+      sourceUrl: 'https://dashboard.example/payload-hashes.json',
+      sourceNames: ['failure-excerpts'], context: failureContext, reportActivation: true
+    });
+    expect((await settled((message) => message.id === 9))?.data).toMatchObject({ changed: true });
+    const failures = await settled((message) => message.subscriptionId === 'failures'
+      && Number(message.revision) > Number(previousFailures?.revision));
+    expect(failures).toMatchObject({
+      data: { 'failure-excerpts': { rows: [{}, {}, {}] } }
+    });
+    expect(JSON.stringify(failures)).not.toContain('resolved diagnostic excerpt');
     expect(jsonlRequests).toHaveLength(4);
 
     globalThis.fetch = /** @type {typeof fetch} */ (async (input) => {

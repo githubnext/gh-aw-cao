@@ -13,7 +13,7 @@ export function runOperationalValueCommand({
   rejectUnknownOptions,
   UsageError,
 }) {
-  rejectUnknownOptions(options, ["database", "root", "output", "timestamp", "repository", "retention-days", "max-github-api-rate-limit", "campaign", "history-campaign"]);
+  rejectUnknownOptions(options, ["database", "root", "output", "timestamp", "repository", "retention-days", "max-github-api-rate-limit", "campaign", "history-campaign", "local-only"]);
   const repositories = options.repository === undefined
     ? []
     : Array.isArray(options.repository) ? options.repository : [options.repository];
@@ -47,6 +47,7 @@ export function runOperationalValueCommand({
     timestamp: option(options, "timestamp", false) || new Date().toISOString(),
     repositories,
     rateLimitReserve: operationalValueReserve(option(options, "max-github-api-rate-limit", false), UsageError),
+    localOnly: options["local-only"] === "true",
     retentionWindow: retentionWindow ?? OPERATIONAL_VALUE_RETENTION_MS,
     signal,
   });

@@ -15,7 +15,7 @@ import (
 )
 
 const DatabaseName = "gh-aw-cao-dashboard-data"
-const DatabaseVersion = 45
+const DatabaseVersion = 46
 
 // ReadDailyRunCounts reads only the independently retained aggregate store.
 // An absent store is unavailable, not an authoritative empty history.

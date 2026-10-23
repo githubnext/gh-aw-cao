@@ -267,6 +267,25 @@ test('fragment merging moves authoritative shards and removes superseded restore
   assert.equal(await readFile(path.join(root, 'workflow-value-workspaces', 'octo', 'identity', 'proof.json'), 'utf8'), '{"original":true}\n');
 });
 
+test('optional local request corruption does not block fragments or discard accepted local evidence', async (t) => {
+  const { root, shards } = await fixture(t);
+  const fragments = path.join(root, 'fragments');
+  const first = await fragment(fragments, 'octo', 'one.jsonl', [run(1)]);
+  const second = await fragment(fragments, 'other', 'two.jsonl', [run(2)]);
+  const request = { schemaVersion: 1, snapshot: '1-1', eligible: false, repositories: ['octo/api'] };
+  await writeFile(path.join(path.dirname(first), 'workflow-value-local.json'), JSON.stringify([request]));
+  await writeFile(path.join(path.dirname(second), 'workflow-value-local.json'), '{interrupted');
+  const retained = jsonl([{ kind: 'operational_value', operational_value: {
+    campaign: 'example', repository: 'octo/api', value_id: 'worker.count', value: 0,
+    timestamp: '2026-10-20T12:00:00Z',
+  } }]);
+  await writeFile(path.join(shards, 'operational-values-local.jsonl'), retained);
+  assert.deepEqual(await mergeActivityFragments(fragments, root), { fragments: 2, shards: 2 });
+  assert.deepEqual(JSON.parse(await readFile(path.join(shards, 'workflow-value-local.json'), 'utf8')), [request]);
+  assert.equal(await readFile(path.join(shards, 'operational-values-local.jsonl'), 'utf8'), retained);
+  assert.ok((await readdir(shards)).includes('two.jsonl'));
+});
+
 test('fragment merging accepts a direct single-owner layout and an explicitly empty snapshot', async (t) => {
   const { root, shards } = await fixture(t);
   const first = await fragment(root, 'direct', 'one.jsonl', [run(1)]);

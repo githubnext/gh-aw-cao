@@ -283,6 +283,7 @@ describe('canonical IndexedDB', () => {
       'storageShards',
       'tools',
       'transactions',
+      'workflowValueCollections',
       'workflows'
     ]);
     expect(database.transaction('repositories').objectStore('repositories').keyPath).toBe('id');
@@ -439,6 +440,7 @@ describe('canonical IndexedDB', () => {
       'storageShards',
       'tools',
       'transactions',
+      'workflowValueCollections',
       'workflows'
     ]);
     expect(await readCollection(indexedDB, 'repositories')).toEqual([]);
@@ -509,6 +511,7 @@ describe('canonical IndexedDB', () => {
       'storageShards',
       'tools',
       'transactions',
+      'workflowValueCollections',
       'workflows'
     ]);
     expect([...database.objectStoreNames]).not.toContain('packages');

@@ -40,7 +40,7 @@ Audit retains typed routing identifiers,
 classifier labels, request identities, sub-agent ownership, token classes,
 per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
 free-form errors/reasons, raw tool payloads or content-derived hashes.
-Canonical schema 34 and IndexedDB version 44 invalidate older browser projections;
+Canonical schema 35 and IndexedDB version 45 invalidate older browser projections;
 hosted PostgreSQL deployments require a fresh schema with the generated Audit
 and Run aggregate columns. Inventory (`model.inventory`) and generic proxy
 (`firewall.event`) rows SHALL NOT be retained, including replayed cached
@@ -633,10 +633,10 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 34 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 44 | Nineteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
-| Local SQLite projection | IndexedDB 43 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
-| Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
+| Canonical model | 35 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Workflow Value Collection, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
+| Browser IndexedDB | 45 | Twenty canonical entity stores, `transactions`, and disposable `storageShards` accounting |
+| Local SQLite projection | IndexedDB 45 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Go server Postgres sources | Canonical model 19 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
 ## 5.2 Go server profile
@@ -2614,7 +2614,7 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 44;
+const DATABASE_VERSION = 45;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
@@ -2626,7 +2626,7 @@ rows.
 
 # 27. Object Stores
 
-IndexedDB version 44 SHALL define:
+IndexedDB version 45 SHALL define:
 
 ```text
 campaigns
@@ -2641,6 +2641,7 @@ audits
 issues
 operationalValues
 operationalValueEvidence
+workflowValueCollections
 marketplacePackages
 experiments
 experimentAssignments
@@ -2888,14 +2889,15 @@ with policy. The skill SHALL stage registration automatically only after the
 frozen function and bounded collector pass verification, preserving existing
 registrations and explicit `enabled: false` disables. Function presence alone
 SHALL NOT grant execution authority or enroll a repository.
-The existing Activity or hosted collection cycle SHALL intersect
+An admitted collection SHALL intersect
 that selection with effective repository collection scope and the frozen
 cadence. It SHALL preserve reusable immutable proof and actual capture/cutoff
 timestamps. Collection failure SHALL retain the previous accepted evidence,
 not advance freshness or fabricate zero. Disable SHALL stop future acquisition
 without deleting retained history. Navigation, report publication and workflow
 discovery SHALL NOT infer opt-in. No per-workflow schedule or model assessment
-is required for continued measurement.
+is required for continued measurement. The health-first admission and deferral
+contract in section 31.3 governs automatic acquisition.
 
 The single logical source `operational-value-evidence` SHALL purely normalize
 these originals. Every row SHALL expose `report-id`, `organization`,
@@ -2929,6 +2931,103 @@ All selection, grouping, totals, comparisons, movement, attention and report
 presentation SHALL be Dashboard Language queries over these factual rows,
 re-executed within the active abort-scoped worker subscription. No navigation
 handler SHALL fetch saved reports or acquire missing evidence.
+
+## 31.3 Workflow Value collection health
+
+Canonical schema 35 SHALL retain `workflowValueCollections`, independently of
+`operationalValueEvidence`: one current bounded record per exact repository and
+workflow filename stem. A schema-v2 `workflow_value_collection` JSONL envelope
+SHALL carry the record through the ordinary Activity adapter, normalized
+publication, browser IndexedDB, local SQLite and hosted PostgreSQL paths.
+Registration and health are collection facts, not outcome measurements or
+authorization to execute a target workflow.
+
+The producer SHALL resolve the reviewed policy within effective Activity scope.
+It SHALL publish `registration` (`enabled`, `disabled`, or `unconfigured`),
+the confined collector path when configured (optional for an explicit disable), a policy digest, the actual
+decision `observedAt`, `state`, `reasonCode` and a bounded non-sensitive reason.
+States are `unconfigured`, `disabled`, `never-captured`, `deferred`, `failed`
+and `available`. Unconfigured requires an observed workflow and an explicit
+policy check; absent reports or absent collection records do not establish it.
+Never-captured describes the absence of an accepted capture in the retained
+collection history, not a claim about unavailable historical archives.
+The latest decision replaces its registration, collector, state, reason and
+policy facts; stale imports MUST NOT roll them back. Actual attempt history is
+an independently reconciled fact, not an optional field overwrite. Health records
+retain structural parents without requiring a Run. Decision and attempt clocks
+SHALL use UTC with millisecond precision or coarser; equivalent timestamp
+spellings SHALL compare as instants and normalize without discarding precision.
+
+`lastAttemptAt` and `lastAttemptOutcome`, when present, SHALL describe an actual
+collector process invocation, including a cadence check. Deferral before
+invocation MUST NOT advance them. Disabled or removed registrations preserve
+recorded attempts and accepted evidence. Last successful evidence capture and
+cutoff SHALL come from original accepted packets, never the decision timestamp.
+The `workflow-value-collections` logical source and declarative Value views SHALL
+keep these clocks separate and show registration health before a first report.
+No health observation promotes outcome completeness or freshness.
+Explicit disables without a collector path SHALL remain disabled, not
+unconfigured. Decision and attempt reconciliation SHALL independently retain
+the greatest authoritative timestamp. An older decision may supply a later
+known attempt without restoring older registration or policy facts. An older
+attempt MUST NOT replace a newer known attempt, even when carried by a newer
+decision. Conflicting decision facts at the same decision time, or conflicting
+outcomes for the same attempt time, SHALL fail rather than select by arrival.
+An absent attempt is unknown, not proof that collection never ran. Merging a
+newer decision after cache loss SHALL retain an already known actual attempt;
+it MUST NOT synthesize one from the new decision time.
+For nonconflicting evidence, replay, permutation and regrouping SHALL produce
+the same decision and attempt facts in browser, SQLite and hosted storage.
+This bounded current-fact contract does not introduce a complete event ledger,
+historical conflict quarantine, or the proposed three-tier storage policy.
+
+Optional Value acquisition MUST NOT delay ordinary Activity publication, consume
+its protected API headroom, or hold the hosted projection lease. A separate job
+or process alone does not isolate GitHub quota. The existing recurring
+subprocess collectors do not participate in shared, per-request REST, search and
+GraphQL admission; automatic Activity and hosted cycles SHALL therefore publish
+health and retain evidence without invoking remote acquisition. Observed API exhaustion,
+fast mode and public-only mode retain their precise deferral reasons; otherwise
+the decision SHALL name unavailable shared-budget enforcement. No quota probe,
+token mint, historical seed, retry loop or backfill is needed to publish that
+decision. Explicit operator evaluation and evidence publication remain separate.
+
+This deferral SHALL NOT disable bounded cache-only or deterministic local
+computations. An independent optional lane MAY compute against an already
+published, policy-matched eligible Activity snapshot, without target credentials,
+quota probes, downloads, automatic backfill, or remote collector execution.
+Only the reviewed local-only-capable standard adapter may run there; older or
+custom adapters that cannot enforce that contract SHALL defer. Modules must
+explicitly declare their local capability; other modules may reuse exact,
+version-matched retained observations but SHALL NOT acquire missing inputs.
+Existing fast, public-only and API-limited snapshot gates SHALL remain intact.
+
+Actions SHALL complete Activity publication before starting the optional local
+workflow. A later Activity snapshot may import its validated, bounded results.
+The hosted worker SHALL use its own single-owner lease and a verified private
+snapshot, not the projection lease or a long-held core evidence lock. Computation
+SHALL be bounded to two minutes per batch and thirty seconds per adapter.
+Local output and retained imports SHALL remain within 16 MiB; the hosted private
+snapshot SHALL remain within 256 MiB with individual inputs bounded to 16 MiB.
+An optional result import failure MUST retain accepted evidence without failing
+ordinary Activity publication.
+Completed local results SHALL wait for the next ordinary projection, not create
+a compute/publication retry loop. Computation SHALL use a frozen copy of policy.
+A final short publication rechecks enrollment and compares the completed input
+generation, manifest, policy and retained-result identity with the computation's
+starting state. Changed inputs or accepted evidence SHALL defer publication,
+not overwrite concurrent work. Optional Actions imports SHALL reject conflicting
+measurements at the same observation identity without changing retained evidence.
+Failure, timeout or withdrawal MUST NOT replace accepted evidence or hold up
+ordinary Activity publication. These bounds do not claim isolation from unrelated
+host CPU/I/O consumers, Actions transport requests, or external API consumers.
+
+Resuming automatic acquisition requires request-accounted shared admission,
+protected core headroom and bounded requests, elapsed time and concurrency,
+including other work sharing the credential. Expensive historical acquisition
+requires a separately bounded explicit action. Immutable facts may be reused
+only under the frozen contract; old mutable observations MUST NOT become current
+merely by replaying retained proof.
 
 ---
 
@@ -3230,6 +3329,37 @@ collected.
 Token-optimization retention SHALL also satisfy Section 5.5.5 so an active
 intervention is not pruned before maturation and compact terminal evidence
 remains bounded.
+
+## 41.1 Resolved failure log excerpts
+
+Canonical IndexedDB and its Node.js SQLite adapter SHALL reclaim the optional
+Run `failureLog` excerpt after a later completed native success in the same
+execution Repository, Workflow, campaign/role, target, event, branch and rollout
+mode. Ordering SHALL use the first valid `startedAt`, `createdAt`, or `updatedAt`,
+then numeric GitHub run ID and attempt, as in the runtime-health contract.
+Unknown ordering or branch, missing worker target or rollout mode, unknown
+workflow role without a target association, cancellation, missing conclusions,
+and explicitly incomplete outcomes MUST NOT establish recovery.
+Lower attempts and older observations MUST NOT overwrite the retained winner.
+
+This first increment SHALL remove only the excerpt, not the Run, its failure
+signature/message, accounting, or any run-linked record. Audit summaries and
+counts, tool/domain activity, friction, safe outputs, experiment assignments,
+grader/eval observations, and intervention/comparison evidence remain subject to
+their existing retention rules. Missing excerpts MUST remain missing, not
+successful outcomes or zero diagnostic activity.
+
+Unresolved excerpts SHALL use the existing Audit detail window and whole-Run
+size cap; a separate full-detail archive explicitly using unlimited detail
+retention SHALL remain exempt. A storage-local, attempt-scoped pruning marker
+SHALL prevent replay from restoring a discarded excerpt while its Run survives,
+without suppressing a new attempt's diagnostic evidence.
+
+Maintenance SHALL use bounded Run reads and accounted writes before size-based
+Run eviction, including when source receipts are unchanged. It MUST NOT load
+run-owned evidence collections or persist statistical aggregates. Excerpt-only
+changes SHALL refresh active query results. This policy does not alter hosted
+PostgreSQL, published JSONL, or GitHub runs and artifacts.
 
 ---
 

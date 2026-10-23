@@ -1,151 +1,278 @@
 package collect
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/githubnext/gh-cao/server/internal/ingest"
 	"github.com/githubnext/gh-cao/server/internal/operationalvalue"
-	"github.com/githubnext/gh-cao/server/internal/postgresx"
 )
 
-// CollectWorkflowValues uses the existing projection driver's tick even when a
-// quiet repository produced no new run artifacts. The projection lease excludes
-// snapshot replacement and another collector; this is not a second scheduler.
-func (p Projector) CollectWorkflowValues(ctx context.Context) (int64, error) {
-	if p.Data == nil || p.Leases == nil || p.CatalogRoot == "" || p.PolicyPath == "" || p.Tokens == nil {
-		return 0, nil
+const localValueLockName = "value-local"
+const localValueAttemptKey = "collect:value-local-attempt"
+
+var ErrLocalValueBusy = errors.New("a local Value computation is already running")
+
+func (p Projector) refreshWorkflowValueHealth(ctx context.Context) error {
+	if p.CatalogRoot == "" || p.PolicyPath == "" || p.Enrollment.Metadata == nil {
+		return nil
+	}
+	repositories, err := p.enrolledRepositories(ctx)
+	if err != nil {
+		return err
+	}
+	if len(repositories) == 0 {
+		return nil
+	}
+	return operationalvalue.WriteCollectionHealth(ctx, operationalvalue.Config{
+		Root: p.CatalogRoot, NodeBinary: p.node(), Repositories: repositories,
+		Environment: collectionEnvironment(p.GitHubAPIURL), WorkerTimeout: 30 * time.Second,
+	}, p.PolicyPath, p.Lake.Directory)
+}
+
+// CollectLocalValues never acquires a target credential or the projection lease.
+// Its immutable snapshot and computation are disposable; only a short final
+// publication shares the evidence lock with core collection and erasure.
+func (p Projector) CollectLocalValues(ctx context.Context) error {
+	if p.Leases == nil || p.State == nil || p.CatalogRoot == "" || p.PolicyPath == "" {
+		return nil
 	}
 	token, err := operationToken()
 	if err != nil {
-		return 0, err
+		return err
 	}
-	acquired, err := p.Leases.TryLock(ctx, projectionLockName, token, p.lockTTL())
+	acquired, err := p.Leases.TryLock(ctx, localValueLockName, token, 3*time.Minute)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	if !acquired {
-		return 0, ErrProjectionBusy
+		return ErrLocalValueBusy
 	}
 	defer func() {
 		release, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cancel()
-		_ = p.Leases.Unlock(release, projectionLockName, token)
+		_ = p.Leases.Unlock(release, localValueLockName, token)
 	}()
-	ctx, cancel := context.WithTimeout(ctx, p.timeout())
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	return p.refreshWorkflowValues(ctx)
-}
-
-// Recurring rich packets use the same reviewed Node producer as Activity and
-// the same atomic publication boundary as manual uploads, never HTTP sessions.
-func (p Projector) refreshWorkflowValues(ctx context.Context) (revision int64, err error) {
-	if p.CatalogRoot == "" || p.PolicyPath == "" || p.Tokens == nil {
-		return revision, nil
+	generation, err := p.State.OperationalState(ctx, projectionCompletedKey)
+	if err != nil || len(generation) == 0 {
+		return err
+	}
+	attempted, err := p.State.OperationalState(ctx, localValueAttemptKey)
+	if err != nil || bytes.Equal(generation, attempted) {
+		return err
+	}
+	// One bounded attempt per published input, not a per-workflow retry loop.
+	if err := p.State.SetOperationalState(ctx, localValueAttemptKey, generation); err != nil {
+		return err
+	}
+	workspace, err := os.MkdirTemp("", "cao-local-value-")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(workspace) }()
+	if err := copyLocalValueSnapshot(ctx, p.Lake, workspace); err != nil {
+		return err
+	}
+	policy, err := readLocalValueFile(ctx, p.PolicyPath, 1<<20)
+	if err != nil {
+		return err
+	}
+	policyPath := filepath.Join(workspace, "cao.json")
+	if err := os.WriteFile(policyPath, policy, 0o600); err != nil {
+		return err
+	}
+	output := filepath.Join(workspace, "operational-values.jsonl")
+	revision, err := readLocalValueRevision(ctx, workspace, policyPath, output)
+	if err != nil {
+		return err
 	}
 	config := operationalvalue.Config{
-		Root: p.CatalogRoot, NodeBinary: p.node(), GitHubBinary: p.GitHubBinary,
-		ObservedAt: time.Now().UTC(), Environment: collectionEnvironment(p.GitHubAPIURL),
+		Root: p.CatalogRoot, NodeBinary: p.node(), Output: output,
+		Database:    filepath.Join(workspace, "activity.sqlite"),
+		Environment: collectionEnvironment(p.GitHubAPIURL), WorkerTimeout: 2 * time.Minute,
 	}
-	entries, err := operationalvalue.WorkflowRegistrations(ctx, config, p.PolicyPath)
-	if err != nil || len(entries) == 0 {
-		return revision, err
+	if err := operationalvalue.ComputeLocalSnapshot(ctx, config, policyPath, workspace, strconv.Itoa(p.windowDays())); err != nil {
+		return err
 	}
-	repositories, err := p.enrolledRepositories(ctx)
+	return p.publishLocalValues(ctx, output, generation, revision)
+}
+
+func (p Projector) publishLocalValues(ctx context.Context, output string, generation []byte, revision localValueRevision) error {
+	content, err := readLocalValueFile(ctx, output, 16<<20)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil || len(content) > 16<<20 {
+		return errors.New("local Value output is unreadable or exceeds its byte budget")
+	}
+	publication, stop := context.WithTimeout(ctx, 2*time.Second)
+	defer stop()
+	unlock, err := p.Lake.lockEvidence(publication)
 	if err != nil {
-		return revision, err
+		return err
+	}
+	defer unlock()
+	currentGeneration, err := p.State.OperationalState(publication, projectionCompletedKey)
+	if err != nil {
+		return err
+	}
+	current, err := readLocalValueRevision(publication, p.Lake.Directory, p.PolicyPath, p.Lake.operationalValuesPath())
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(generation, currentGeneration) || current != revision {
+		return errors.New("local Value publication deferred: its input, policy, or accepted evidence changed")
+	}
+	repositories, err := p.enrolledRepositories(publication)
+	if err != nil {
+		return err
 	}
 	enrolled := map[string]bool{}
 	for _, repository := range repositories {
 		enrolled[strings.ToLower(repository)] = true
 	}
-	workspace := filepath.Join(p.Lake.Directory, "workflow-value-workspaces")
-	if err := os.MkdirAll(workspace, 0o700); err != nil {
-		return revision, err
+	if err := operationalvalue.FilterRepositories(output, func(repository string) bool { return enrolled[repository] }); err != nil {
+		return err
 	}
-	scratch, err := os.MkdirTemp(workspace, ".projection-")
+	content, err = readLocalValueFile(publication, output, 16<<20)
 	if err != nil {
-		return revision, err
+		return err
 	}
-	defer func() { _ = os.RemoveAll(scratch) }()
-	config.Database = filepath.Join(scratch, "activity.sqlite")
-	retention := strconv.Itoa(p.windowDays())
-	if err := p.run(ctx, []string{
-		filepath.Join(p.CatalogRoot, "activity", "cao.mjs"), "ingest-jsonl",
-		"--database", config.Database, "--runs-dir", p.Lake.RunsDirectory(),
-		"--records-dir", p.Lake.RecordsDirectory(), "--retention-days", retention,
-		"--run-retention-days", retention,
-	}); err != nil {
-		return revision, err
+	previous, err := readLocalValueFile(publication, p.Lake.operationalValuesPath(), 16<<20)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-	grouped := map[string][]operationalvalue.WorkflowRegistration{}
-	for _, entry := range entries {
-		if enrolled[strings.ToLower(entry.Repository)] {
-			grouped[strings.ToLower(entry.Repository)] = append(grouped[strings.ToLower(entry.Repository)], entry)
-		}
+	if bytes.Equal(content, previous) {
+		return nil
 	}
-	for repository, registrations := range grouped {
-		installation, err := p.Enrollment.InstallationFor(ctx, repository)
-		if err != nil || installation <= 0 {
-			return revision, errors.New("workflow Value repository installation is unavailable")
-		}
-		reserve, err := p.rateLimitReserve(ctx, installation)
-		if err != nil {
+	// The next ordinary projection publishes this result. Value must not create
+	// a compute -> projection -> compute retry loop on incomplete local evidence.
+	return WriteFileAtomic(p.Lake.operationalValuesPath(), content)
+}
+
+type localValueRevision struct {
+	policy, manifest, values [sha256.Size]byte
+}
+
+func readLocalValueRevision(ctx context.Context, directory, policy, values string) (localValueRevision, error) {
+	var revision localValueRevision
+	for _, input := range []struct {
+		filename string
+		limit    int64
+		optional bool
+		digest   *[sha256.Size]byte
+	}{
+		{policy, 1 << 20, false, &revision.policy},
+		{filepath.Join(directory, "payload-hashes.json"), 1 << 20, false, &revision.manifest},
+		{values, 16 << 20, true, &revision.values},
+	} {
+		content, err := readLocalValueFile(ctx, input.filename, input.limit)
+		if err != nil && (!input.optional || !errors.Is(err, os.ErrNotExist)) {
 			return revision, err
 		}
-		token, err := p.Tokens.InstallationToken(ctx, installation)
-		if err != nil {
-			return revision, err
-		}
-		previous := []byte{}
-		for _, entry := range registrations {
-			packet, err := p.Data.ReadOperationalValue(ctx, repository, entry.Workflow)
-			if errors.Is(err, postgresx.ErrValueNotFound) || errors.Is(err, postgresx.ErrValueParentMissing) {
-				continue
-			}
-			if err != nil {
-				return revision, err
-			}
-			content, err := json.Marshal(map[string]any{
-				"schema_version": 2, "kind": "operational_value_evidence", "operational_value_evidence": packet,
-			})
-			if err != nil {
-				return revision, err
-			}
-			previous = append(previous, content...)
-			previous = append(previous, '\n')
-		}
-		previousPath := filepath.Join(scratch, "previous.jsonl")
-		if err := os.WriteFile(previousPath, previous, 0o600); err != nil {
-			return revision, err
-		}
-		config.Repositories = []string{repository}
-		config.RateLimitReserve = reserve
-		config.Environment = append(collectionEnvironment(p.GitHubAPIURL),
-			"GH_TOKEN="+token, "CAO_OPERATIONAL_VALUE_GH_TOKEN="+token,
-			"CAO_GITHUB_API_MIN_REMAINING="+strconv.Itoa(reserve))
-		config.RedactValues = []string{token}
-		packets, warnings, err := operationalvalue.CollectWorkflows(ctx, config, p.PolicyPath, workspace, previousPath)
-		if err != nil {
-			projectorLog.Printf("workflow Value acquisition failed; retaining accepted evidence")
-			continue
-		}
-		if len(warnings) > 0 {
-			projectorLog.Printf("workflow Value acquisition incomplete count=%d", len(warnings))
-		}
-		for _, packet := range packets {
-			publication, err := p.Data.PublishOperationalValue(ctx, packet)
-			if err != nil {
-				projectorLog.Printf("workflow Value publication rejected; retaining accepted evidence")
-			} else if publication.Updated {
-				revision = publication.Revision
-			}
-		}
+		*input.digest = sha256.Sum256(content)
 	}
 	return revision, nil
+}
+
+func copyLocalValueSnapshot(ctx context.Context, lake Lake, destination string) error {
+	content, err := readLocalValueFile(ctx, lake.ManifestPath(), 1<<20)
+	if err != nil {
+		return err
+	}
+	var manifest ingest.Manifest
+	if err := json.Unmarshal(content, &manifest); err != nil {
+		return err
+	}
+	var names []string
+	for name := range manifest {
+		if (strings.HasPrefix(name, "gh-aw-logs-runs/") || strings.HasPrefix(name, "gh-aw-logs-records/")) &&
+			strings.HasSuffix(name, ".jsonl") {
+			if filepath.ToSlash(filepath.Clean(name)) != name || filepath.IsAbs(name) {
+				return errors.New("local Value snapshot contains an unsafe path")
+			}
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	names = append(names, "gh-aw-logs-shards/workflow-value-local.json")
+	var total int64
+	for _, name := range names {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		source := filepath.Join(lake.Directory, filepath.FromSlash(name))
+		info, err := os.Lstat(source)
+		if err != nil || !info.Mode().IsRegular() || info.Size() > 16<<20 {
+			return errors.New("local Value snapshot contains an invalid or oversized file")
+		}
+		if total+info.Size() > 256<<20 {
+			return errors.New("local Value snapshot exceeds its byte budget")
+		}
+		content, err := readLocalValueFile(ctx, source, min(16<<20, 256<<20-total))
+		if err != nil {
+			return err
+		}
+		total += int64(len(content))
+		target := filepath.Join(destination, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(target, content, 0o600); err != nil {
+			return err
+		}
+	}
+	if err := os.WriteFile(filepath.Join(destination, "payload-hashes.json"), content, 0o600); err != nil {
+		return err
+	}
+	if _, _, _, err := ingest.ValidateManifest(destination); err != nil {
+		return fmt.Errorf("local Value input changed during snapshotting: %w", err)
+	}
+	retained, err := readLocalValueFile(ctx, lake.operationalValuesPath(), 16<<20)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(destination, "operational-values.jsonl"), retained, 0o600)
+}
+
+func readLocalValueFile(ctx context.Context, path string, maxBytes int64) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxBytes {
+		return nil, errors.New("local Value input is not a bounded regular file")
+	}
+	file, err := os.Open(path) // #nosec G304 -- confined snapshot or private output path, size checked before reading.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	content, err := io.ReadAll(io.LimitReader(file, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, errors.New("local Value input grew beyond its byte budget")
+	}
+	return content, ctx.Err()
 }

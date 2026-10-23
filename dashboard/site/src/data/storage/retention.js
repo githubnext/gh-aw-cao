@@ -1,7 +1,8 @@
 import { orderRunRecords } from '../normalize/index.js';
-import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
+import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, timestampMilliseconds } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 
 const debugRetention = createDebug('retention');
 
@@ -43,6 +44,7 @@ const STORES = /** @type {const} */ ([
   'issues',
   'operationalValues',
   'operationalValueEvidence',
+  'workflowValueCollections',
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
@@ -180,6 +182,7 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     runs: batch.runs.filter((record) => !evictedRuns.has(String(record.id))),
     operationalValues: batch.operationalValues ?? [],
     operationalValueEvidence: batch.operationalValueEvidence ?? [],
+    workflowValueCollections: batch.workflowValueCollections ?? [],
     marketplacePackages: batch.marketplacePackages ?? [],
     experiments: batch.experiments ?? [],
     graders: batch.graders ?? [],
@@ -208,6 +211,64 @@ export function recordTimestamp(storeName, record) {
     if (Number.isFinite(milliseconds)) return milliseconds;
   }
   return null;
+}
+
+const FAILURE_CONCLUSIONS = new Set(['failure', 'startup-failure', 'startup_failure', 'stale', 'timed-out', 'timed_out']);
+
+/** @typedef {{ scope: string, timestamp: number, githubRunId: string, attempt: number }} FailureLogBoundary */
+
+/**
+ * Uses the runtime-health run order, with stricter scope matching for destructive
+ * retention. Unknown worker targets cannot establish a recovery boundary.
+ * @param {Record<string, unknown>} run
+ * @param {Record<string, unknown> | undefined} workflow
+ * @returns {FailureLogBoundary | null}
+ */
+export function failureLogBoundary(run, workflow) {
+  if (!workflow || workflow.id !== run.workflowId || workflow.repositoryId !== run.repositoryId
+      || typeof run.repositoryId !== 'string' || typeof run.workflowId !== 'string'
+      || typeof run.event !== 'string' || !run.event || run.event === 'unknown'
+      || !Number.isSafeInteger(run.attempt) || Number(run.attempt) < 1) return null;
+  const target = run.targetRepositoryId ?? run.targetRepository;
+  const knownTarget = typeof target === 'string' && target.length > 0 && target !== 'unknown';
+  const branch = run.branch ?? run.headBranch;
+  if (typeof branch !== 'string' || !branch || branch === 'unknown') return null;
+  if ((workflow.role === 'worker' || workflow.role == null || workflow.role === '' || workflow.role === 'unknown')
+      && !knownTarget) return null;
+  if ((workflow.role === 'worker' || knownTarget)
+      && (typeof run.rolloutMode !== 'string' || !run.rolloutMode || run.rolloutMode === 'unknown')) return null;
+  const timestamp = ['startedAt', 'createdAt', 'updatedAt']
+    .map((field) => timestampMilliseconds(run[field])).find((value) => value !== null);
+  const githubRunId = String(run.githubRunId ?? '');
+  if (timestamp === undefined || !/^[1-9][0-9]*$/.test(githubRunId)
+      || (typeof run.githubRunId === 'number' && !Number.isSafeInteger(run.githubRunId))) return null;
+  return {
+    scope: JSON.stringify([
+      run.repositoryId, run.workflowId, workflow.campaignId ?? null, workflow.role ?? null,
+      run.targetRepositoryId ?? null, run.targetRepository ?? null,
+      run.event, branch, run.rolloutMode ?? null
+    ]),
+    timestamp, githubRunId, attempt: Number(run.attempt)
+  };
+}
+
+/** @param {FailureLogBoundary} left @param {FailureLogBoundary} right */
+export function compareFailureLogBoundaries(left, right) {
+  return left.timestamp - right.timestamp
+    || left.githubRunId.localeCompare(right.githubRunId, undefined, { numeric: true })
+    || left.attempt - right.attempt;
+}
+
+/** @param {Record<string, unknown>} run */
+export function isFailureLogRecovery(run) {
+  return run.status === 'completed' && run.conclusion === 'success'
+    && (run.terminalOutcome == null || run.terminalOutcome === '')
+    && (run.failureKind == null || run.failureKind === '');
+}
+
+/** @param {Record<string, unknown>} run */
+export function hasFailedConclusion(run) {
+  return run.status === 'completed' && FAILURE_CONCLUSIONS.has(String(run.conclusion));
 }
 
 /**
@@ -279,7 +340,8 @@ function upsertRecords(
         }
       }
       records.set(id, storeName === 'operationalValueEvidence'
-        ? mergeOperationalValueEvidence(records.get(id), record) : EVIDENCE_DEFINITION_STORES.has(storeName)
+        ? mergeOperationalValueEvidence(records.get(id), record) : storeName === 'workflowValueCollections'
+        ? mergeWorkflowValueCollection(records.get(id), record) : EVIDENCE_DEFINITION_STORES.has(storeName)
         ? mergeEvidenceDefinition(records.get(id), record) : record);
     }
     merged[storeName] = records;
@@ -343,6 +405,10 @@ function pruneOrphans(merged) {
     if (!repositories.has(String(record.repositoryId))
       || workflows.get(String(record.workflowId))?.repositoryId !== record.repositoryId) merged.operationalValueEvidence.delete(id);
   }
+  for (const [id, record] of merged.workflowValueCollections) {
+    if (!repositories.has(String(record.repositoryId))
+      || workflows.get(String(record.workflowId))?.repositoryId !== record.repositoryId) merged.workflowValueCollections.delete(id);
+  }
   if (orphanedRunCount > 0) debugRetention({ event: 'orphans-pruned', orphanedRunCount });
 }
 
@@ -360,6 +426,7 @@ function collectUnreferencedParents(merged, incoming) {
   const referencedWorkflows = new Set([
     ...[...merged.runs.values()].map((run) => String(run.workflowId)),
     ...[...merged.operationalValueEvidence.values()].map((packet) => String(packet.workflowId)),
+    ...[...merged.workflowValueCollections.values()].map((record) => String(record.workflowId)),
     ...['experiments', 'graders', 'evals'].flatMap((store) =>
       [...merged[store].values()].map((record) => String(record.workflowId)))
   ]);
@@ -370,7 +437,8 @@ function collectUnreferencedParents(merged, incoming) {
     ...[...merged.workflows.values()].map((workflow) => String(workflow.repositoryId)),
     ...[...merged.runs.values()].map((run) => String(run.repositoryId)),
     ...[...merged.operationalValues.values()].map((value) => String(value.repositoryId)),
-    ...[...merged.operationalValueEvidence.values()].map((value) => String(value.repositoryId))
+    ...[...merged.operationalValueEvidence.values()].map((value) => String(value.repositoryId)),
+    ...[...merged.workflowValueCollections.values()].map((value) => String(value.repositoryId))
   ]);
   for (const [id] of merged.repositories) {
     if (!incomingRepositories.has(id) && !referencedRepositories.has(id)) merged.repositories.delete(id);

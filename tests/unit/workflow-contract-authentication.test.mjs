@@ -478,15 +478,19 @@ test("CAO Activity workflow-token API reserves fit its standard 1000-request quo
   const steps = activity.jobs.collect.steps;
   const logs = steps.find(({ name }) => name === "Download owner-scoped agentic workflow logs");
   const inventory = steps.find(({ name }) => name === "Collect owner-scoped dashboard inventory");
-  const value = steps.find(({ name }) => name === "Compute owner-scoped operational value");
-  for (const [step, appPatReserve] of [[inventory, 2000], [logs, 2000], [value, 2000]]) {
+  const value = steps.find(({ name }) => name === "Retain Value evidence and publish collection health");
+  for (const [step, appPatReserve] of [[inventory, 2000], [logs, 2000]]) {
     assert.equal(
       step.env.REPORT_MAX_GITHUB_API_RATE_LIMIT,
       "${{ (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && '-100' || '-"
         + appPatReserve + "' }}",
     );
   }
-  assert.match(value.run, /--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
+  assert.equal(value.env.GH_TOKEN, "");
+  assert.equal(value.env.CAO_OPERATIONAL_VALUE_GH_TOKEN, "");
+  assert.match(value.run, /reason=shared-budget-unavailable/);
+  assert.match(value.run, /REPORT_RATE_LIMITED" == "true" \]\]; then reason=api-budget/);
+  assert.doesNotMatch(value.run, /gh api|--max-github-api-rate-limit|cao\.mjs operational-value/);
   assert.ok(inventory.run.indexOf('github-telemetry.mjs capacity "$REPORT_MAX_GITHUB_API_RATE_LIMIT"')
     < inventory.run.indexOf("cao.mjs discover-workflows"));
 });

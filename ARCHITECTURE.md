@@ -277,7 +277,7 @@ deduplicates GitHub webhooks, and atomically replaces the current Postgres
 sources and state. `server/spec/storage.tsp` owns the fresh-only physical
 Postgres contract. Its emitter generates the standalone
 `server/internal/postgresx/schema.sql` and matching Go column bindings.
-Nineteen canonical collections map one-to-one to entity tables containing only
+Canonical collections map one-to-one to entity tables containing only
 query-consumed fields and identity/storage keys. Scalars use native SQL types;
 required structured fields use entity-owned relational child values, not
 JSON, JSONB, or serialized row documents. Scalar entity rows are never duplicated
@@ -294,6 +294,12 @@ source metadata without asserting complete coverage or current freshness.
 Counts, comparisons, movement and report presentation remain declarative
 queries; importing evidence grants no target authority and navigation never
 acquires evidence.
+Separate `workflowValueCollections` records retain reviewed registrations and
+bounded collection decisions through the same producer, normalization and
+browser/SQLite/PostgreSQL paths. Decisions do not advance actual-attempt,
+accepted-capture or evidence-cutoff clocks. Declarative Value queries expose
+enabled, disabled and unconfigured health before a first report; stale/conflicting
+decisions and regressed attempt history fail closed.
 Explicit `gh cao value publish` writes one validated original packet through
 administrator-only `POST /api/v1/value` into PostgreSQL. The namespace writer
 lock serializes publication with snapshot replacement; typed ownership metadata
@@ -731,9 +737,26 @@ Successful-Run value computations keep produced safe outputs, native
 operational-grader measurements, and efficiency evidence separate; they do not
 turn runtime success or output creation into accepted value.
 Package-level `operational-value.mjs` programs compute repository-scoped metric
-records through `cao operational-value`. Activity appends those timestamped
-records to authoritative JSONL before the canonical Operational Value collection
-is rebuilt in SQLite, IndexedDB, and the hosted Postgres entity store.
+records through `cao operational-value`. Automatic remote acquisition remains
+deferred until shared per-request API admission can protect ordinary Activity
+against concurrent credential consumers; separate workers are not separate quota.
+Activity publishes health and retains accepted packets/proof without remote
+Value acquisition. Health reconciles the latest decision and actual attempt
+independently of arrival order; unknown attempts never erase known history.
+Bounded cache-only/local computation remains independent:
+Actions runs it only after a successful eligible Activity snapshot, while the
+hosted worker uses its own single-owner lease and verified private snapshot.
+Both use the reviewed local-only standard adapter, explicit local-capability
+modules or exact versioned cache reuse, no target credentials or automatic
+backfill, and a two-minute batch/thirty-second adapter budget. Scope, explicit
+disables, fast, public-only and API-limited gates remain enforced. A later
+ordinary snapshot imports completed results; optional work does not acquire
+the projection lease, hold a long core evidence lock, or initiate a
+compute/publication retry loop. Hosted final publication rechecks enrollment
+and the starting generation, manifest, policy and retained-result identities;
+changed inputs defer publication rather than overwrite concurrent evidence.
+Normalized timestamped records then rebuild
+the canonical Operational Value collection in every storage profile.
 Package-level `problem-clustering.mjs` programs read a private Activity SQLite
 snapshot and emit bounded problem records with actionable fix prompts through
 `cao cluster-problems`.

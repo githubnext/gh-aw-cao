@@ -644,7 +644,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   if (needsRepair) {
     let repair;
     try {
-      if (beforeSchema.version === 44 && !scanned.error && scanned.invalid.length === 0) {
+      if ([44, 45].includes(beforeSchema.version) && !scanned.error && scanned.invalid.length === 0) {
         backupPath = await backupDatabase(databasePath, checkedAt);
         const keyRange = /** @type {typeof IDBKeyRange} */ (/** @type {unknown} */ (SqliteIDBKeyRange));
         const database = await openCanonicalDatabase(createSqliteIndexedDB(databasePath), keyRange);

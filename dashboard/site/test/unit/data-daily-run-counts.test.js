@@ -115,8 +115,8 @@ describe('additive daily run outcome counts', () => {
     const receipt = (await readCollections(indexedDB, ['runCountContributions'])).runCountContributions[0];
     expect(receipt.run.inputTokens).toBeUndefined();
     expect(receipt.run.status).toBe('completed');
-    expect(CANONICAL_SCHEMA_VERSION).toBe(34);
-    expect(DATABASE_VERSION).toBe(45);
+    expect(CANONICAL_SCHEMA_VERSION).toBe(35);
+    expect(DATABASE_VERSION).toBe(46);
     expect(ENTITY_STORES).not.toContain('dailyRunCounts');
     expect(ENTITY_STORES).not.toContain('runCountContributions');
   });
@@ -369,10 +369,38 @@ describe('additive daily run outcome counts', () => {
       expect(await readCollections(indexedDB, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'])).toEqual(before);
     });
 
-  it('resumes an interrupted v44 backfill with bounded cursors and byte-identical retained detail', async () => {
+  it('preserves v45 aggregate receipts after detail eviction while adding the workflow-value collection store', async () => {
+    await writeRuns([fixture]);
+    await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
+    const before = await readCollections(indexedDB, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState']);
+    await deleteCanonicalDatabase(indexedDB);
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, 45);
+      request.onupgradeneeded = () => {
+        for (const [name, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
+          if (name === 'workflowValueCollections') continue;
+          const store = request.result.createObjectStore(name, { keyPath: definition.keyPath });
+          for (const [index, keyPath] of Object.entries(definition.indexes)) store.createIndex(index, keyPath);
+          for (const record of before[name] ?? []) store.put(record);
+        }
+      };
+      request.onsuccess = () => { request.result.close(); resolve(undefined); };
+      request.onerror = () => reject(request.error);
+    });
+    const database = await openCanonicalDatabase(indexedDB);
+    expect(database.version).toBe(46);
+    expect(database.objectStoreNames.contains('workflowValueCollections')).toBe(true);
+    database.close();
+    expect(await readCollection(indexedDB, 'runs')).toEqual([]);
+    expect(await readCollections(indexedDB, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'])).toEqual(before);
+    await writeRuns([fixture]);
+    expect(await counts()).toEqual(before.dailyRunCounts);
+  });
+
+  it.each([44, 45])('resumes an interrupted v%s backfill with bounded cursors and byte-identical retained detail', async (version) => {
     const runs = Array.from({ length: 502 }, (_, index) => ({ ...fixture, id: `run:${index}` }));
     await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, 44);
+      const request = indexedDB.open(DATABASE_NAME, version);
       request.onupgradeneeded = () => {
         for (const [name, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
           if (['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'].includes(name)) continue;
@@ -404,7 +432,7 @@ describe('additive daily run outcome counts', () => {
       request.onerror = () => reject(request.error);
     });
     expect(checkpoint).toMatchObject({
-      status: 'backfilling', receiptCount: 250, coverage: 'retained-v44',
+      status: 'backfilling', receiptCount: 250, coverage: `retained-v${version}`,
       after: [...runs].sort((a, b) => a.id.localeCompare(b.id))[249].id
     });
     put.mockImplementation(/** @this {IDBObjectStore} */ function (record, key) {
@@ -418,7 +446,7 @@ describe('additive daily run outcome counts', () => {
     expect((await readCollections(indexedDB, ['transactions'])).transactions).toHaveLength(1);
     expect(await counts()).toEqual([expect.objectContaining({ total: 502, pending: 502 })]);
     const source = (await queryDatabaseSources(indexedDB, {}, ['daily-run-counts']))['daily-run-counts'];
-    expect(source.metadata).toMatchObject({ completeness: 'partial', 'aggregate-coverage': 'retained-v44' });
+    expect(source.metadata).toMatchObject({ completeness: 'partial', 'aggregate-coverage': `retained-v${version}` });
   });
 
   it('serves the worker production source and native summed query after detail expiry', async () => {

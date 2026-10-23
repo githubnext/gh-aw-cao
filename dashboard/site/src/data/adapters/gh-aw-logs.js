@@ -9,6 +9,7 @@ import {
 } from '../model/ids.js';
 import { canonicalTimestamp, OPERATIONAL_VALUE_PERIOD_FIELDS, operationalValuePeriod, requiredString } from '../model/schema.js';
 import { validateOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { validateWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import cachedJsonlExpression from '../ingest/expressions/gh-aw-logs-v2.json' with { type: 'json' };
 import { createDebug } from '../../debug.js';
 import { normalizeSessionMcpEvents, parseUnifiedSession, parseUnifiedSessionDocument } from './unified-session.js';
@@ -1141,6 +1142,8 @@ function createCachedGhAwJsonlAccumulator(options) {
   const operationalValues = [];
   /** @type {Record<string, any>[]} */
   const evidencePackets = [];
+  /** @type {Record<string, any>[]} */
+  const valueCollections = [];
   /** @type {Map<string, string>} */
   const latestRunByGithubId = new Map();
   /** @type {Map<string, CachedRun>} */
@@ -1164,6 +1167,10 @@ function createCachedGhAwJsonlAccumulator(options) {
     records += 1;
     if (envelope.kind === 'operational_value_evidence') {
       evidencePackets.push(validateOperationalValueEvidence(objectValue(envelope.operational_value_evidence, 'operational_value_evidence')));
+      return;
+    }
+    if (envelope.kind === 'workflow_value_collection') {
+      valueCollections.push(validateWorkflowValueCollection(objectValue(envelope.workflow_value_collection, 'workflow_value_collection')));
       return;
     }
     if (envelope.kind === 'github_api_rate_limit') {
@@ -1343,6 +1350,21 @@ function createCachedGhAwJsonlAccumulator(options) {
     observations.push({
       kind: 'operational-value-evidence', source: OBSERVATION_SOURCE, sourceId: packet.id,
       observedAt: packet.observedAt, data: { ...packet, repositoryId: parentId, workflowId }
+    });
+  }
+  for (const record of valueCollections) {
+    const [owner, repository] = record.repository.split('/');
+    const parentId = repositoryCoordinateId(owner, repository);
+    const workflowId = workflowCoordinateId(owner, repository, record.sourcePath);
+    observations.push({
+      kind: 'repository', source: OBSERVATION_SOURCE, sourceId: record.repository, observedAt: record.observedAt,
+      data: { id: parentId, owner, name: repository }
+    }, {
+      kind: 'workflow', source: OBSERVATION_SOURCE, sourceId: record.sourcePath, observedAt: record.observedAt,
+      data: { id: workflowId, repositoryId: parentId, name: record.workflow, path: record.sourcePath, state: 'unknown' }
+    }, {
+      kind: 'workflow-value-collection', source: OBSERVATION_SOURCE, sourceId: record.id, observedAt: record.observedAt,
+      data: { ...record, repositoryId: parentId, workflowId }
     });
   }
   for (const { value, line } of operationalValues) {

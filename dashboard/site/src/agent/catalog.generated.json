@@ -443,6 +443,7 @@
         }
       ],
       "queries": [
+        "value-collection-health",
         "value-report-summary",
         "value-workflow-results"
       ]
@@ -508,14 +509,16 @@
     {
       "id": "value",
       "title": "Value",
-      "description": "Review measured results and follow the evidence behind each workflow's contribution.",
-      "intent": "Start with repository outcomes, then inspect the workflow evidence behind a result.",
-      "subject": "Latest published workflow value reports across repositories.",
-      "objective": "Find a measured result and open its native evidence report.",
+      "description": "Inspect collection health, then review retained results at their actual capture and cutoff dates.",
+      "intent": "Distinguish collection availability from measured repository outcomes.",
+      "subject": "Reviewed Value registrations and latest retained workflow reports.",
+      "objective": "Explain missing or delayed evidence and open the native evidence that is available.",
       "acceptance": "Keep native units, direction, repository, workflow, dates and unknowns visible. No alert score, causal credit or GitHub acquisition.",
       "experimental": false,
       "parameters": [],
       "queries": [
+        "value-collection-health",
+        "value-registered-collections",
         "value-report-summary",
         "value-workflow-results"
       ]
@@ -3388,6 +3391,95 @@
       }
     },
     {
+      "id": "value-capture-order",
+      "subject": "Actual captures across the retained measures of each workflow.",
+      "objective": "Expose the last accepted capture independently of collection decisions.",
+      "acceptance": "Select by original capture time. A deferred or failed check cannot advance evidence clocks.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-contracts"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-latest-capture",
+      "subject": "One last accepted capture per workflow, not a freshness claim.",
+      "objective": "Join capture and cutoff without multiplying collection registrations.",
+      "acceptance": "Missing packets remain unavailable, never zero or an inferred successful collection.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-capture-order"
+      ],
+      "used-by-pages": [],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence"
+        ]
+      }
+    },
+    {
+      "id": "value-collection-health",
+      "subject": "Reviewed registration and authoritative collection decisions, with independently retained evidence.",
+      "objective": "Explain disabled, unconfigured, deferred, failed and not-yet-captured workflows.",
+      "acceptance": "Use published collector facts, not missing result cards. Preserve decision, attempt, capture and cutoff as distinct clocks.",
+      "description": "",
+      "parameters": [
+        {
+          "name": "workflow",
+          "field": "workflow-route"
+        }
+      ],
+      "sources": [
+        "value-latest-capture",
+        "workflow-value-collections"
+      ],
+      "used-by-pages": [
+        "value",
+        "workflow-value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence",
+          "workflow-value-collections"
+        ]
+      }
+    },
+    {
+      "id": "value-registered-collections",
+      "subject": "Reviewed Value registrations, including explicit disables and registrations with no report.",
+      "objective": "Make collection health visible before the first accepted packet.",
+      "acceptance": "Registration is independent of measured outcomes. No enrollment or acquisition follows from navigation.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "value-collection-health"
+      ],
+      "used-by-pages": [
+        "value"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "operational-value-evidence",
+          "workflow-value-collections"
+        ]
+      }
+    },
+    {
       "id": "value-snapshots",
       "subject": "Independent repository-state observations and exact item drill-downs.",
       "objective": "Keep everyone's changes separate from workflow-linked delivery.",
@@ -4656,6 +4748,8 @@
     {
       "id": "runs-daily-health-buckets",
       "subject": "Select whole UTC start-day buckets against the requested time bounds.",
+      "objective": "Expose UTC bucket boundaries for declarative daily time selection.",
+      "acceptance": "Compute bounds from observed execution-start days only; missing request bounds remain unset and no sub-day totals or missing days are fabricated.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -4692,6 +4786,8 @@
     {
       "id": "runs-daily-successful",
       "subject": "Observed daily successful run counts.",
+      "objective": "Expose the successful class for the daily runtime-health chart.",
+      "acceptance": "Project successful counts from scoped daily totals without re-reading detail; runtime success does not imply accepted outcomes.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -4709,6 +4805,8 @@
     {
       "id": "runs-daily-failed",
       "subject": "Observed daily failed run counts.",
+      "objective": "Expose the failed class for the daily runtime-health chart.",
+      "acceptance": "Project failed counts from scoped daily totals, preserving zero counts and aggregate coverage without deriving incidents.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -4726,6 +4824,8 @@
     {
       "id": "runs-daily-approval",
       "subject": "Observed daily approval-required run counts.",
+      "objective": "Expose approval-required observations in the daily runtime-health chart.",
+      "acceptance": "Project approval counts from scoped daily totals without treating approval-required observations as successes or failures.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -4743,6 +4843,8 @@
     {
       "id": "runs-daily-pending",
       "subject": "Observed daily pending run counts.",
+      "objective": "Expose last-observed pending state in the daily runtime-health chart.",
+      "acceptance": "Project pending counts from scoped daily totals; counts describe last-observed evidence, not a live execution census.",
       "description": "",
       "parameters": [],
       "sources": [
@@ -4760,6 +4862,8 @@
     {
       "id": "runs-daily-other",
       "subject": "Observed daily unclassified terminal or missing-status run counts.",
+      "objective": "Expose the remaining runtime-health class without implying success.",
+      "acceptance": "Project other counts from scoped daily totals; preserve zeros and coverage without interpreting skipped, cancelled, or unknown evidence as success.",
       "description": "",
       "parameters": [],
       "sources": [

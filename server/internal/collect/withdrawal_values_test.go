@@ -292,15 +292,15 @@ func TestWithdrawalSharedValuesEndToEnd(t *testing.T) {
 		t.Fatalf("withdrawal retry did not publish a fresh revision: %+v, %v", next, err)
 	}
 	assertValues(1)
-	if tokens.calls != 1 {
-		t.Fatalf("token acquisition failure was not exercised: calls=%d", tokens.calls)
+	if tokens.calls != 0 {
+		t.Fatalf("core publication must not mint Value acquisition credentials: calls=%d", tokens.calls)
 	}
 	withdraw("octo/other")
 	if _, err := w.Projector.Project(ctx); err != nil {
 		t.Fatal(err)
 	}
 	assertValues(0)
-	if tokens.calls != 1 {
+	if tokens.calls != 0 {
 		t.Fatalf("empty enrollment attempted acquisition: calls=%d", tokens.calls)
 	}
 	for _, directory := range []string{lake.ShardDirectory(), lake.RunsDirectory(), lake.RecordsDirectory()} {

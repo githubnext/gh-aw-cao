@@ -284,6 +284,13 @@ func (r *readTransaction) rootMetadata(ctx context.Context, name string) (model.
 		}
 		completeness, freshness = "unknown", "unknown"
 	}
+	if name == "$workflowValueCollections" {
+		if err := r.tx.QueryRowContext(ctx, `SELECT min(observed_at),min(observed_at)
+			FROM workflow_value_collections WHERE namespace=$1`, r.store.namespace).Scan(&asOf, &retrieved); err != nil {
+			return nil, err
+		}
+		completeness, freshness = "unknown", "unknown"
+	}
 	value := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": availability, "completeness": completeness, "freshness": freshness}
 	var evaluated time.Time
 	if err := r.tx.QueryRowContext(ctx, "SELECT evaluated_at FROM cao_state WHERE namespace=$1", r.store.namespace).Scan(&evaluated); err != nil {

@@ -227,8 +227,30 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
   if (roots.length === 0) throw new Error('No owner-scoped activity fragments were downloaded');
   const inventories = [];
   const incoming = new Map();
+  const localValueRequests = [];
+  let localValueRequestBytes = 0;
   for (const fragment of roots) {
     inventories.push(JSON.parse(await readFile(path.join(fragment, 'inventory-sources.json'), 'utf8')));
+    const shards = await shardPaths(path.join(fragment, 'gh-aw-logs-shards'), { allowMissing: true });
+    try {
+      const filename = path.join(fragment, 'gh-aw-logs-shards', 'workflow-value-local.json');
+      const info = await lstat(filename);
+      if (!info.isFile() || localValueRequestBytes + info.size > 16 * 1024 * 1024) {
+        throw new Error('Local Value request metadata exceeds its input budget');
+      }
+      const content = await readFile(filename, 'utf8');
+      const requests = JSON.parse(content);
+      if (!Array.isArray(requests) || localValueRequests.length + requests.length > 1000) {
+        throw new Error('Invalid or oversized owner-scoped local Value requests');
+      }
+      localValueRequestBytes += Buffer.byteLength(content);
+      if (localValueRequestBytes > 16 * 1024 * 1024) throw new Error('Local Value requests exceed their byte budget');
+      localValueRequests.push(...requests);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.warn('Local Value request metadata is invalid or unavailable; this optional fragment is deferred without delaying Activity.');
+      }
+    }
     const proofs = path.join(fragment, 'workflow-value-workspaces');
     try {
       if ((await lstat(proofs)).isSymbolicLink()) throw new Error('Workflow evidence workspaces must not be symlinks');
@@ -244,7 +266,7 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
       if (error.code !== 'ENOENT') throw error;
     }
     // Artifact archives omit empty directories from successful collections.
-    for (const file of await shardPaths(path.join(fragment, 'gh-aw-logs-shards'), { allowMissing: true })) {
+    for (const file of shards) {
       const name = path.basename(file);
       if (incoming.has(name)) throw new Error(`Duplicate owner-scoped shard: ${name}`);
       incoming.set(name, file);
@@ -254,9 +276,12 @@ export async function mergeActivityFragments(fragmentDirectory, outputDirectory)
   const destination = path.join(outputDirectory, 'gh-aw-logs-shards');
   // Each successful collection fragment already includes its retained seed data.
   for (const file of await shardPaths(destination)) {
-    if (!incoming.has(path.basename(file))) await rm(file);
+    if (!incoming.has(path.basename(file)) && path.basename(file) !== 'operational-values-local.jsonl') await rm(file);
   }
   for (const [name, file] of incoming) await rename(file, path.join(destination, name));
   await writeFile(path.join(outputDirectory, 'inventory-sources.json'), `${JSON.stringify(inventory, null, 2)}\n`);
+  const localRequest = path.join(destination, 'workflow-value-local.json');
+  if (localValueRequests.length) await writeFile(localRequest, `${JSON.stringify(localValueRequests)}\n`);
+  else await rm(localRequest, { force: true });
   return { fragments: roots.length, shards: incoming.size };
 }

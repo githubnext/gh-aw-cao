@@ -4,6 +4,7 @@ import { mergeCanonicalRun, pruneCanonicalRecord } from '../model/fields.js';
 import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import { compactRoutingRuns } from './model-routing.js';
 
 const debugNormalize = createDebug('normalize:index');
@@ -22,6 +23,7 @@ const COLLECTIONS = {
   issue: 'issues',
   'operational-value': 'operationalValues',
   'operational-value-evidence': 'operationalValueEvidence',
+  'workflow-value-collection': 'workflowValueCollections',
   'marketplace-package': 'marketplacePackages',
   experiment: 'experiments', 'experiment-assignment': 'experimentAssignments',
   grader: 'graders', 'grader-observation': 'graderObservations',
@@ -177,6 +179,7 @@ export function normalize(observations, options = {}) {
     issues: new Map(),
     operationalValues: new Map(),
     operationalValueEvidence: new Map(),
+    workflowValueCollections: new Map(),
     marketplacePackages: new Map(),
     experiments: new Map(), experimentAssignments: new Map(),
     graders: new Map(), graderObservations: new Map(), evals: new Map(), evalObservations: new Map()
@@ -202,7 +205,9 @@ export function normalize(observations, options = {}) {
       : {};
     const incoming = withoutUndefined(pruneCanonicalRecord(collection, observation.data));
     const evidenceRecord = collection === 'operationalValueEvidence'
-      ? mergeOperationalValueEvidence(entities[collection].get(id), incoming) : null;
+      ? mergeOperationalValueEvidence(entities[collection].get(id), incoming)
+      : collection === 'workflowValueCollections'
+      ? mergeWorkflowValueCollection(entities[collection].get(id), incoming) : null;
     entities[collection].set(id, {
       ...(collection === 'runs' ? mergeCanonicalRun(current, incoming)
         : evidenceRecord ?? { ...current, ...incoming }),

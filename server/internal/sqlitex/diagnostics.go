@@ -35,6 +35,8 @@ func (r *reader) Diagnostics(ctx context.Context) (model.Diagnostics, error) {
 		{"operationalValues", "repositoryId", "repositories"}, {"experiments", "workflowId", "workflows"},
 		{"operationalValueEvidence", "repositoryId", "repositories"},
 		{"operationalValueEvidence", "workflowId", "workflows"},
+		{"workflowValueCollections", "repositoryId", "repositories"},
+		{"workflowValueCollections", "workflowId", "workflows"},
 		{"graders", "workflowId", "workflows"}, {"evals", "workflowId", "workflows"},
 		{"experimentAssignments", "runId", "runs"}, {"experimentAssignments", "experimentId", "experiments"},
 		{"graderObservations", "runId", "runs"}, {"graderObservations", "graderId", "graders"},

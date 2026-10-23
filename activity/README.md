@@ -30,7 +30,7 @@ For a fresh installation whose exact `allowed-repositories` scope contains
 only the control repository, Activity uses the job's `GITHUB_TOKEN` without
 any additional secrets or variables. An unset `GH_AW_GITHUB_AUTH_MODE` or an
 explicit `workflow-token` selects this repository-local path. It reserves
-100 core API requests for both log and operational-value collection, fitting
+100 core API requests for ordinary log collection, fitting
 the standard workflow-token quota. A repository with no agentic runs still
 publishes an explicit empty snapshot. Broader repository or owner-wide scopes
 require explicit `app` or `pat` authentication; missing credentials in those
@@ -342,9 +342,34 @@ records by `organization` and `repository`, and left-joins those query results
 in the data Web Worker. Activity collection and browser components do not
 reconstruct those relationships.
 
+## Health-first Value collection
+
+Activity publishes `workflow_value_collection` JSONL alongside retained evidence.
+The Value page and workflow Value tab show reviewed enabled/disabled registrations
+before any report exists, with actual deferral reasons and separate decision,
+attempt, accepted capture and cutoff dates. Missing reports do not establish an
+unconfigured collector. Deferrals and failures preserve accepted packets and proof.
+
+Recurring remote acquisition remains deferred pending enforceable shared-budget
+admission; a separate process does not isolate API quota. Ordinary Activity only
+performs bounded, credential-free health publication and retained-data import.
+Actual API exhaustion, fast and public-only modes preserve their existing gates.
+Recycle-only maintenance does not create a new eligible local-computation request.
+
+The separate `cao-value-local.yml` runs after successful default-branch Activity
+publication. It validates the snapshot identity and current policy digest, admits
+only the reviewed local-only standard adapter, and permits local-capable modules
+or exact versioned cache reuse without target API calls or automatic backfill.
+The job is capped at five minutes, its compute batch at two minutes and each
+adapter at thirty seconds. Completed results use a separate cache and are
+validated and scope-filtered into a later ordinary Activity snapshot.
+Activity and Dashboard do not wait for this optional job. Disabled registrations,
+campaigns and workflows stay disabled; malformed, missing or oversized optional
+results leave accepted history unchanged.
+
 ## Campaign problem clustering
 
-After canonical ingestion and operational-value collection, Activity runs
+After canonical ingestion and retained-value import, Activity runs
 `cao cluster-problems`. The command discovers one optional
 `<campaign>/problem-clustering.mjs` file in each installed top-level campaign.
 This lets campaigns contribute deterministic problem computations without

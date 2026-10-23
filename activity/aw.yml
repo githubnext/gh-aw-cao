@@ -5,3 +5,4 @@ min-version: v0.93.1
 experimental: true
 includes:
   - .github/workflows/cao-activity.yml
+  - .github/workflows/cao-value-local.yml

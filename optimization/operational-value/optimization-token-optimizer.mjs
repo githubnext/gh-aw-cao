@@ -22,6 +22,7 @@ const TERMINAL_CONCLUSIONS = [
 const FAILURE_CONCLUSIONS = ["failure", "timed_out", "startup_failure"];
 
 export const historyBatch = true;
+export const localCollection = true;
 
 export const definition = {
   schemaVersion: 3,
@@ -389,6 +390,9 @@ function queryEfficiencyWindows(database, requests) {
 }
 
 export async function collectBatch(requests, context = {}) {
+  if (context.localOnly && !context.database) {
+    fail("Local-only Optimization collection requires an existing Activity database");
+  }
   if (context.history && !context.database) {
     fail("Historical Optimization collection requires a preserved Activity database; remote acquisition is disabled");
   }

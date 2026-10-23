@@ -463,7 +463,7 @@ test("Dashboard campaign builds artifacts and deploys Pages in one workflow", ()
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_CACHE/);
   assert.doesNotMatch(activityWorkflow, /REPORT_VALUE_REPLAY_CACHE/);
   assert.match(dashboardWorkflow, /actions\/cache\/restore@[0-9a-f]{40}/);
-  assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 3);
+  assert.equal((activityWorkflow.match(/actions\/cache\/restore@/g) || []).length, 4);
   assert.equal((activityWorkflow.match(/actions\/cache\/save@/g) || []).length, 1);
   assert.doesNotMatch(activityWorkflow, /dashboard-operational-values/);
   assert.match(activityWorkflow, /Resolve gh-aw compiler version[\s\S]*control\.mjs compiler-version \.github\/workflows\/cao\.json/);
@@ -503,6 +503,7 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.equal(activityManifest.name, "CAO Activity");
   assert.deepEqual(activityManifest.includes, [
     ".github/workflows/cao-activity.yml",
+    ".github/workflows/cao-value-local.yml",
   ]);
   assert.equal(activityManifest.resources, undefined);
   assert.ok(rootManifest.includes.includes("activity/aw.yml"));
@@ -539,15 +540,20 @@ test("Activity campaign owns the shared collected-data cache contract", () => {
   assert.match(activityCollector, /REPORT_DEFER_ISSUE_STATUS/);
   assert.match(workflow, /Download owner-scoped agentic workflow logs[\s\S]*?REPORT_DEFER_ISSUE_STATUS: "1"[\s\S]*?Enrich owner-scoped issue statuses[\s\S]*?cao\.mjs issue-status[\s\S]*?Generate phased activity shards/);
   assert.match(workflow, /Ingest activity database[\s\S]*?gh-aw-logs\.sqlite[\s\S]*?ingest-jsonl/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?cao\.mjs operational-value[\s\S]*?--max-github-api-rate-limit "\$REPORT_MAX_GITHUB_API_RATE_LIMIT"/);
-  assert.match(workflow, /cao\.mjs operational-value[\s\S]*?--retention-days 365/);
+  assert.doesNotMatch(workflow, /cao\.mjs operational-value/);
+  assert.match(workflow, /Retain Value evidence and publish collection health[\s\S]*?--defer "\$reason"/);
   assert.doesNotMatch(workflow, /--history-campaign/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?REPORT_VALUE_SEED_SHARDS:[\s\S]*?cp "\$retained_values" "\$value_output"[\s\S]*?ingest-jsonl[\s\S]*?--input "\$value_output"/);
+  assert.match(workflow, /Retain Value evidence and publish collection health[\s\S]*?REPORT_VALUE_SEED_SHARDS:[\s\S]*?cp "\$retained_values" "\$value_output"/);
   assert.match(workflow, /paths:[\s\S]*?- "activity\/\*\*"/);
   assert.match(workflow, /paths:[\s\S]*?- "\*\/operational-value\/\*\*"/);
   assert.match(workflow, /Select independent activity credential[\s\S]*?id: activity-credential[\s\S]*?echo "token=\$token" >> "\$GITHUB_OUTPUT"/);
-  assert.match(workflow, /Compute owner-scoped operational value[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: \$\{\{ steps\.activity-credential\.outputs\.token \}\}/);
-  assert.match(workflow, /if ! node activity\/cao\.mjs operational-value[\s\S]*?Operational value collection failed for \$ACTIVITY_OWNER/);
+  assert.match(workflow, /Retain Value evidence and publish collection health[\s\S]*?CAO_OPERATIONAL_VALUE_GH_TOKEN: ""/);
+  assert.match(workflow, /Report collection-health publication failure/);
+  const optionalImport = parse(workflow).jobs.index.steps.find(step => step.id === "local-value-import");
+  assert.equal(optionalImport["continue-on-error"], true);
+  assert.equal(optionalImport["timeout-minutes"], 1);
+  assert.match(optionalImport.if, /inputs.recycle-only != true/);
+  assert.match(workflow, /Report optional local Value import failure/);
   assert.equal((workflow.match(/path: \$\{\{ runner\.temp \}\}\/cao-activity\s*$/gm) || []).length, 1);
   assert.match(workflow, /cao-activity-v5-\$\{\{ github\.run_id \}\}-/);
   assert.equal(campaignDocument.scripts["activity:local"], undefined);

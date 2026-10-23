@@ -23,7 +23,8 @@ const nativeDatabaseName = dashboardquery.DatabaseName
 
 var nativeCollections = []string{
 	"repositories", "workflows", "runs", "domains", "tools", "skills", "friction", "audits", "issues",
-	"operationalValues", "operationalValueEvidence", "experiments", "experimentAssignments", "graders", "graderObservations", "evals", "evalObservations", "transactions",
+	"operationalValues", "operationalValueEvidence", "workflowValueCollections",
+	"experiments", "experimentAssignments", "graders", "graderObservations", "evals", "evalObservations", "transactions",
 }
 
 func nativeString(cmd *cobra.Command, name string) string {

@@ -143,7 +143,7 @@ failed resolutions appear in the Model routing Problems view once per run, with
 an unknown time unless the session clock is recorded, and per-run resolution roles
 stay on the run page. Routed sessions are expected
 to lack these events, and legacy sessions report no resolution evidence rather
-than failure. Canonical schema 34 / IndexedDB version 44 rebuild older browser
+than failure. Canonical schema 35 / IndexedDB version 45 rebuild older browser
 projections; hosted PostgreSQL needs a fresh generated schema with the new
 Audit columns and compact Run routing aggregates. Ingestion derives the aggregate
 with shared Dashboard Language accounting, retains request evidence needed by
@@ -153,10 +153,10 @@ The activity shard manifest is the dashboard's published operational input. The 
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 34. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
+The canonical model is version 35. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 45. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
+`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `workflowValueCollections`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
@@ -180,6 +180,21 @@ outside the 30-day window, pruning orphaned descendants and unreferenced
 structural parents. The effective retention horizon is the later of the browser
 clock and the newest incoming observation, so a slow clock cannot prune
 current producer data.
+
+Browser IndexedDB and Node.js SQLite ingestion also discard a failed Run's raw
+`failureLog` excerpt once a later completed success is known in the same
+repository/workflow, target, event, branch, and rollout mode. Cancellation and
+incomplete outcomes do not prove recovery. Only the excerpt is removed: Run
+summaries, failure signatures/messages, cost and reliability facts, and all
+run-linked metric and comparison evidence keep their existing retention.
+Re-importing an older shard cannot restore a pruned excerpt for the same attempt.
+Unresolved excerpts follow the existing detail window and database size cap.
+A separate archive with `--retention-days all` preserves full detail. This does
+not prune hosted PostgreSQL, published shards, or GitHub artifacts.
+The saving is retained diagnostic bytes and reduced storage pressure, not fewer
+GitHub API calls, downloaded artifacts, or workflow executions. Cleanup itself
+adds a bounded maintenance scan when excerpts are present; no execution-time
+reduction is assumed.
 
 Every merged batch must satisfy these relationships:
 

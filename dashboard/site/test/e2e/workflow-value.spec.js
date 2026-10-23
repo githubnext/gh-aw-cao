@@ -11,8 +11,8 @@ import ledgerFixture from '../fixtures/operational-value-ledger.json' with { typ
 
 registerSmokeRoutes();
 
-/** @param {typeof ledgerFixture} ledger */
-function publishedShards(ledger) {
+/** @param {typeof ledgerFixture} ledger @param {{includeEvidence?: boolean, defer?: string | null, previousHealth?: string}} [options] */
+function publishedShards(ledger, { includeEvidence = true, defer = 'shared-budget-unavailable', previousHealth = '' } = {}) {
   const root = resolve('../..');
   mkdirSync(join(root, '.tmp'), { recursive: true });
   const directory = mkdtempSync(join(root, '.tmp', 'workflow-value-browser-'));
@@ -23,7 +23,23 @@ function publishedShards(ledger) {
     execFileSync(process.execPath, [
       '.github/skills/add-operational-value/scripts/render-pulse.mjs', input, output
     ], { cwd: root, stdio: 'pipe' });
-    const original = readFileSync(join(directory, 'pulse-evidence.jsonl'), 'utf8');
+    const policy = join(directory, 'cao.json');
+    writeFileSync(policy, JSON.stringify({ version: 1, 'gh-aw-version': 'v0.93.1', 'control-plane': {
+      scope: { 'allowed-repositories': ['octo/example'] }, activity: { repositories: ['octo/example'] },
+      campaigns: { activity: { 'workflow-values': [
+        { repository: 'octo/example', workflow: 'verify-bugs', collector: 'collectors/not-imported.mjs' },
+        { repository: 'octo/example', workflow: 'disabled-worker', enabled: false }
+      ] } },
+    } }));
+    const health = join(directory, 'collection.jsonl');
+    if (previousHealth) writeFileSync(health, previousHealth);
+    execFileSync(process.execPath, [
+      'activity/workflow-values.mjs', '--root', directory, '--policy', policy,
+      '--repository', 'octo/example', '--output', join(directory, 'values.jsonl'),
+      '--healthOutput', health, '--workspace', join(directory, 'proofs'),
+      ...(defer ? ['--defer', defer] : [])
+    ], { cwd: root, stdio: 'pipe' });
+    const original = readFileSync(health, 'utf8') + (includeEvidence ? readFileSync(join(directory, 'pulse-evidence.jsonl'), 'utf8') : '');
     const batch = normalize(adaptCachedGhAwJsonl(original).observations);
     const records = Object.entries(batch).flatMap(([collection, rows]) =>
       Array.isArray(rows) ? rows.map(record => ({ kind: 'record', collection, record })) : []);
@@ -36,7 +52,7 @@ function publishedShards(ledger) {
       const selected = records.filter(({ collection }) => runs.has(collection) === (phase === 'runs'));
       const content = [
         { kind: 'metadata', schemaVersion: CANONICAL_SCHEMA_VERSION, ingestionVersion: NORMALIZED_JSONL_INGESTION_VERSION,
-          sourceRecords: 1, phase, records: selected.length },
+          sourceRecords: original.trim().split('\n').length, phase, records: selected.length },
         ...selected
       ].map(record => JSON.stringify(record)).join('\n') + '\n';
       const hash = createHash('sha256').update(content).digest('hex');
@@ -44,7 +60,7 @@ function publishedShards(ledger) {
       manifest[name] = hash;
       contents[`/${name}`] = content;
     }
-    return { manifest, contents };
+    return { manifest, contents, health: readFileSync(health, 'utf8') };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -53,7 +69,7 @@ function publishedShards(ledger) {
 for (const width of [1440, 390]) {
   test(`workflow Value card opens native evidence and exact items at ${width}px`, async ({ page, context }) => {
     await page.setViewportSize({ width, height: 900 });
-    let publication = publishedShards(structuredClone(ledgerFixture));
+    let publication = publishedShards(structuredClone(ledgerFixture), { includeEvidence: false, defer: 'api-budget' });
     const inventory = {
       repositories: { rows: [{ organization: 'octo', repository: 'example' }], metadata: { 'as-of': ledgerFixture.observedAt } },
       workflows: { rows: [{ organization: 'octo', repository: 'example', workflow: ledgerFixture.sourcePath,
@@ -112,6 +128,20 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('heading', { level: 1, name: 'Value', exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Repository measurements', exact: true })).toHaveCount(0);
     await expect(page.locator('a[href^="#page-operational-value"]')).toHaveCount(0);
+    await expect(page.getByText('GitHub API capacity is exhausted or reserved for ordinary Activity collection.', { exact: true })).toBeVisible();
+    await expect(page.getByText('No retained capture', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('disabled', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: '↓ -1 defects', exact: true })).toHaveCount(0);
+    publication = publishedShards(structuredClone(ledgerFixture), { defer: null, previousHealth: publication.health });
+    await page.evaluate(async ({ dashboard }) => {
+      const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
+      await loadCanonicalDashboardSources(`${location.origin}/payload-hashes.json`, [], {
+        pages: dashboard.dashboard.pages, queries: dashboard.dashboard.queries, views: dashboard.dashboard.views
+      });
+    }, { dashboard: authoritativeDashboard });
+    await expect(page.getByText('Retained evidence available', { exact: true })).toBeVisible();
+    await expect(page.getByText('The collector failed; previous accepted evidence is retained.', { exact: true })).toBeVisible();
+    await expect(page.getByText('failed', { exact: true }).first()).toBeVisible();
     await page.getByRole('link', { name: '↓ -1 defects', exact: true }).click();
     await expect(page.locator('.value-report-heading')).toContainText('Resolve confirmed defects.');
     await expect(page.locator('.value-report-movement')).toHaveText('↓ -1 defects · Better');
@@ -135,7 +165,7 @@ for (const width of [1440, 390]) {
       items: [{ label: 'Defect 3', url: 'https://github.com/octo/example/issues/3' },
         { label: 'Defect 4', url: 'https://github.com/octo/example/issues/4' }]
     });
-    publication = publishedShards(newer);
+    publication = publishedShards(newer, { previousHealth: publication.health });
     await page.evaluate(async ({ dashboard }) => {
       const { loadCanonicalDashboardSources } = await import(`${location.origin}/src/data-processor.js`);
       await loadCanonicalDashboardSources(`${location.origin}/payload-hashes.json`, [], {

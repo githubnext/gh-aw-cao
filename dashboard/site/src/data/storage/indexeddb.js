@@ -1,5 +1,5 @@
 import { relationshipErrors } from '../model/schema.js';
-import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, evictDailyRunCounts, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
@@ -19,7 +19,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 45;
+export const DATABASE_VERSION = 46;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 
@@ -53,6 +53,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'issues',
   'operationalValues',
   'operationalValueEvidence',
+  'workflowValueCollections',
   'marketplacePackages',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
@@ -136,6 +137,10 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
     keyPath: 'id',
     indexes: { byRepository: 'repositoryId', byWorkflow: 'workflowId' }
   },
+  workflowValueCollections: {
+    keyPath: 'id',
+    indexes: { byRepository: 'repositoryId', byWorkflow: 'workflowId' }
+  },
   marketplacePackages: {
     keyPath: 'id',
     indexes: {
@@ -183,7 +188,6 @@ const INGESTION_LOCK_ACQUIRE_TIMEOUT_MS = INGESTION_LOCK_LEASE_MS + 30_000;
 const INGESTION_LOCK_RETRY_DELAY_MS = 25;
 const INGESTION_LOCK_WAITING_NOTICE_DELAY_MS = 500;
 const MAX_QUERY_INDEX_LOOKUPS = 32;
-const RECORD_OVERHEAD_BYTES = 512;
 const RETENTION_TIMESTAMPS = new Set([
   'runs',
   'domains',
@@ -359,8 +363,8 @@ function createIndex(store, name, keyPath) {
   store.createIndex(name, keyPath);
 }
 
-/** @param {IDBDatabase} database @param {boolean} [backfill] */
-function createSchema(database, backfill = false) {
+/** @param {IDBDatabase} database @param {boolean} [backfill] @param {string} [coverage] */
+function createSchema(database, backfill = false, coverage = 'retained-v44') {
   for (const [storeName, definition] of Object.entries(CANONICAL_DATABASE_SCHEMA)) {
     if (database.objectStoreNames.contains(storeName)) continue;
     const store = database.createObjectStore(storeName, { keyPath: definition.keyPath });
@@ -369,7 +373,7 @@ function createSchema(database, backfill = false) {
     }
     if (storeName === 'dailyRunCountState') store.put({
       id: DAILY_RUN_COUNT_STATE_ID, status: backfill ? 'backfilling' : 'ready',
-      coverage: backfill ? 'retained-v44' : 'admitted', excludedRuns: 0, conflictedRuns: 0
+      coverage: backfill ? coverage : 'admitted', excludedRuns: 0, conflictedRuns: 0
     });
   }
 }
@@ -536,8 +540,8 @@ export function openCanonicalDatabase(indexedDB, keyRange = globalThis.IDBKeyRan
           event: 'open-upgrade-completed', openId, elapsedMs: elapsed()
         }));
       }
-      if (event.oldVersion === 44) {
-        createSchema(database, true);
+      if ((event.oldVersion === 44 || event.oldVersion === 45) && database.objectStoreNames.contains('runs')) {
+        createSchema(database, true, `retained-v${event.oldVersion}`);
       } else if (event.oldVersion < DATABASE_VERSION) {
         // Canonical data is a derived cache. Rebuild incompatible identities and
         // schemas from authoritative dashboard inputs instead of migrating them.
@@ -777,14 +781,9 @@ export async function admitExpiredRunCounts(indexedDB, records) {
   }
 }
 
-  /** @param {Record<string, unknown>} record */
-function estimatedRecordBytes(record) {
-  return new TextEncoder().encode(JSON.stringify(record)).byteLength + RECORD_OVERHEAD_BYTES;
-}
-
 /**
- * Applies retention and size limits using indexed, bounded shard cleanup.
- * Full scans are reserved for explicitly requested relationship or legacy audit repair.
+ * Applies retention and size limits using indexed shard cleanup and bounded Run pages.
+ * Full evidence scans are reserved for explicit relationship or legacy audit repair.
  *
  * @param {IDBFactory} indexedDB
  * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, repairAuditCuration?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
@@ -813,22 +812,12 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
     const defaultWindow = Number.isFinite(options.retentionWindowMs)
       ? Math.max(0, Number(options.retentionWindowMs))
       : 30 * 24 * 60 * 60 * 1000;
-    const targetBytes = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
-    let estimatedBytes = 0;
     let deletedRecords = 0;
-    let retainedRecords = 0;
     let prunedAudits = 0;
     /** @type {Map<string, Record<string, unknown>>} */
     const auditRunFacts = new Map();
-    /** @type {{ id: string, timestamp: number, bytes: number }[]} */
-    const runs = [];
     /** @type {string[]} */
     const expiredRunIds = [];
-    /** @type {Map<string, number>} */
-    const linkedBytesByRun = new Map();
-    /** @type {Map<string, number>} */
-    const linkedRecordsByRun = new Map();
-    const retainedRunIds = new Set();
     const campaignIds = new Set();
     const repositoryIds = new Set();
     /** @type {Map<string, string>} */
@@ -839,7 +828,6 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
     const database = await openCanonicalDatabase(indexedDB);
     try {
       await evictDailyRunCounts(database, now, options.signal);
-      estimatedBytes += await readProtectedRunCountBytes(database);
       const referencedAudits = new Set();
       for (const storeName of ['graderObservations', 'evalObservations', 'experimentAssignments']) {
         options.signal?.throwIfAborted();
@@ -907,7 +895,7 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
               validRunIds.add(id);
               referencedWorkflowIds.add(workflowId);
               referencedRepositoryIds.add(repositoryId);
-            } else if (storeName === 'operationalValueEvidence') {
+            } else if (storeName === 'operationalValueEvidence' || storeName === 'workflowValueCollections') {
               const repositoryId = String(record.repositoryId);
               const workflowId = String(record.workflowId);
               if (!repositoryIds.has(repositoryId) || workflowRepositories.get(workflowId) !== repositoryId) {
@@ -946,21 +934,6 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
               deletedRecords += 1;
             }
             return;
-          }
-          const bytes = estimatedRecordBytes(record);
-          estimatedBytes += bytes;
-          retainedRecords += 1;
-          if (storeName === 'runs') {
-            retainedRunIds.add(id);
-            runs.push({
-              id: String(record.id),
-              timestamp: timestamp ?? Number.NEGATIVE_INFINITY,
-              bytes
-            });
-          } else if (RUN_LINKED_STORES.includes(/** @type {typeof RUN_LINKED_STORES[number]} */ (storeName))) {
-            const runId = String(record.runId);
-            linkedBytesByRun.set(runId, (linkedBytesByRun.get(runId) ?? 0) + bytes);
-            linkedRecordsByRun.set(runId, (linkedRecordsByRun.get(runId) ?? 0) + 1);
           }
         };
         if (typeof store.openCursor !== 'function') {
@@ -1025,7 +998,6 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
             if (/** @type {Set<string>} */ (retainedIds).has(String(id))) return;
             remove();
             deletedRecords += 1;
-            retainedRecords -= 1;
           };
           if (typeof store.openCursor !== 'function') {
             for (const record of await requestResult(store.getAll())) {
@@ -1050,31 +1022,8 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
         }
       }
 
-      for (const runId of expiredRunIds) {
-        estimatedBytes -= linkedBytesByRun.get(runId) ?? 0;
-        retainedRecords -= linkedRecordsByRun.get(runId) ?? 0;
-      }
-      const usageTarget = Number.isFinite(options.usageBytes)
-        && Number(options.usageBytes) > options.maxDatabaseBytes
-        ? Math.floor(estimatedBytes * (options.maxDatabaseBytes / Number(options.usageBytes)) * 0.9)
-        : targetBytes;
-      const effectiveTarget = Math.min(targetBytes, usageTarget);
-      const evictedRunIds = [...expiredRunIds];
-      if (estimatedBytes > effectiveTarget) {
-        runs.sort((left, right) => left.timestamp - right.timestamp || left.id.localeCompare(right.id));
-        for (const run of runs) {
-          if (estimatedBytes <= effectiveTarget) break;
-          evictedRunIds.push(run.id);
-          estimatedBytes -= run.bytes + (linkedBytesByRun.get(run.id) ?? 0);
-          retainedRecords -= 1 + (linkedRecordsByRun.get(run.id) ?? 0);
-        }
-      }
-      for (const runId of expiredRunIds) {
-        if (retainedRunIds.has(runId)) retainedRecords -= 1;
-      }
-
-      for (let offset = 0; offset < evictedRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
-        const ids = evictedRunIds.slice(offset, offset + DEFAULT_WRITE_BATCH_SIZE);
+      for (let offset = 0; offset < expiredRunIds.length; offset += DEFAULT_WRITE_BATCH_SIZE) {
+        const ids = expiredRunIds.slice(offset, offset + DEFAULT_WRITE_BATCH_SIZE);
         const transaction = readwriteTransaction(database, ['runs', ...RUN_LINKED_STORES]);
         const done = transactionDone(transaction);
         const runStore = transaction.objectStore('runs');
@@ -1120,8 +1069,15 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
       });
       await receiptDone;
       await rebuildStorageShards(database, ENTITY_STORES);
+      const maintenance = await maintainStorageShards(database, {
+        ...options, entityStores: ENTITY_STORES, runLinkedStores: RUN_LINKED_STORES
+      });
       debug('curated canonical audits', { prunedAudits, version: AUDIT_CURATION_VERSION });
-      return { deletedRecords, estimatedBytes, retainedRecords, prunedAudits };
+      return {
+        ...maintenance,
+        deletedRecords: deletedRecords + maintenance.deletedRecords,
+        prunedAudits: prunedAudits + maintenance.prunedAudits
+      };
     } finally {
       database.close();
     }

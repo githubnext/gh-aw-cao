@@ -38,7 +38,7 @@ const databaseQueryIndex = dashboardQueryIndex(databaseQueries);
 const RUN_RECORD_STORES = new Set(['domains', 'tools', 'skills', 'friction', 'audits', 'issues']);
 const DIRECT_EVIDENCE_SOURCES = new Set([
   'experiments', 'experiment-assignments', 'graders',
-  'grader-observations', 'evals', 'eval-observations'
+  'grader-observations', 'evals', 'eval-observations', 'workflow-value-collections'
 ]);
 const EXTERNAL_SOURCES = new Set([
   ...SERVER_SOURCE_VALUES, 'configuration-policy', 'marketplace-registries'

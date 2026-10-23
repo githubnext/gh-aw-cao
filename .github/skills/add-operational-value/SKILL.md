@@ -232,8 +232,12 @@ Use `/add-operational-value OWNER/REPO` to list repository workflows or `/add-op
   and validation. The automatic registration in step 6 records only the selected
   pair; function files alone are not runtime authority. Have the policy
   and collector reviewed, committed and deployed together. Do not widen Activity
-  scope or enable the measured workflow. Existing collection cycles invoke
-  registered collectors at their frozen cadence; a failed refresh must retain
+  scope or enable the measured workflow. Recurring remote acquisition remains
+  deferred until enforceable shared API budgets protect ordinary Activity.
+  Registration is visible as enabled-but-deferred, not a promise of fresh
+  measurements. Bounded local-only computations run independently on eligible
+  published snapshots; they do not bypass fast, public-only or API-limit gates.
+  An admitted collector must honor the frozen cadence; a failed refresh must retain
   the prior accepted evidence and timestamps. `value disable` revokes future
   collection without removing history and persists an explicit disable that
   automatic registration must respect. Re-enabling requires explicit
@@ -465,3 +469,8 @@ proof, not a target for fresh collections.
 - It may emit provisional pre-maturity values, but must include their interim maturity status and workflow adoption timestamp so consumers can mark them dubious and place adoption in temporal plots.
 - It emits no record for unsupported repositories and fails closed on malformed requests, inaccessible evidence, or invalid collection results.
 - Historical evaluation and CAO collection must import the same shared module so evidence and scoring cannot drift.
+- A module may export `localCollection = true` only when `collectBatch` can use
+  the supplied canonical database or local immutable evidence without remote
+  calls or download fallbacks. Automatic local-only execution admits the reviewed
+  standard adapter by source digest; keep its template and package copies equal
+  and update that reviewed digest with adapter changes. Other adapters defer.

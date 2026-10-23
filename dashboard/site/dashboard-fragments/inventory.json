@@ -175,6 +175,8 @@
     {
       "name": "runs-daily-health-buckets",
       "subject": "Select whole UTC start-day buckets against the requested time bounds.",
+      "objective": "Expose UTC bucket boundaries for declarative daily time selection.",
+      "acceptance": "Compute bounds from observed execution-start days only; missing request bounds remain unset and no sub-day totals or missing days are fabricated.",
       "from": "daily-run-counts",
       "compute": [
         { "as": "day-midnight", "function": "concat", "args": [{ "field": "day" }, { "value": "T00:00:00Z" }] },
@@ -209,6 +211,8 @@
     {
       "name": "runs-daily-successful",
       "subject": "Observed daily successful run counts.",
+      "objective": "Expose the successful class for the daily runtime-health chart.",
+      "acceptance": "Project successful counts from scoped daily totals without re-reading detail; runtime success does not imply accepted outcomes.",
       "from": "runs-daily-health-totals",
       "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Successful" }] }],
       "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "successful", "as": "runs" }]
@@ -216,6 +220,8 @@
     {
       "name": "runs-daily-failed",
       "subject": "Observed daily failed run counts.",
+      "objective": "Expose the failed class for the daily runtime-health chart.",
+      "acceptance": "Project failed counts from scoped daily totals, preserving zero counts and aggregate coverage without deriving incidents.",
       "from": "runs-daily-health-totals",
       "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Failed" }] }],
       "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "failed", "as": "runs" }]
@@ -223,6 +229,8 @@
     {
       "name": "runs-daily-approval",
       "subject": "Observed daily approval-required run counts.",
+      "objective": "Expose approval-required observations in the daily runtime-health chart.",
+      "acceptance": "Project approval counts from scoped daily totals without treating approval-required observations as successes or failures.",
       "from": "runs-daily-health-totals",
       "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Approval required" }] }],
       "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "approval", "as": "runs" }]
@@ -230,6 +238,8 @@
     {
       "name": "runs-daily-pending",
       "subject": "Observed daily pending run counts.",
+      "objective": "Expose last-observed pending state in the daily runtime-health chart.",
+      "acceptance": "Project pending counts from scoped daily totals; counts describe last-observed evidence, not a live execution census.",
       "from": "runs-daily-health-totals",
       "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Pending" }] }],
       "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "pending", "as": "runs" }]
@@ -237,6 +247,8 @@
     {
       "name": "runs-daily-other",
       "subject": "Observed daily unclassified terminal or missing-status run counts.",
+      "objective": "Expose the remaining runtime-health class without implying success.",
+      "acceptance": "Project other counts from scoped daily totals; preserve zeros and coverage without interpreting skipped, cancelled, or unknown evidence as success.",
       "from": "runs-daily-health-totals",
       "compute": [{ "as": "runtime-health", "function": "literal", "args": [{ "value": "Other" }] }],
       "select": [{ "field": "day" }, { "field": "runtime-health" }, { "field": "other", "as": "runs" }]

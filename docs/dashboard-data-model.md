@@ -56,6 +56,7 @@ repository and workflow relationships, listed with the identities below.
 | **Issue** | `github:issue:<owner>/<repository>:<number>` | Run | Records issue and pull-request safe outputs. |
 | **Operational Value** | Deterministic repository, value ID, and timestamp identity | Repository | Records a campaign-defined numeric repository metric. |
 | **Operational Value Evidence** | Deterministic repository, workflow, metric, and metric-version identity | Repository and Workflow | Retains a coherent evidence packet connecting intent, safe outputs, accepted implementations, and independent repository snapshots. |
+| **Workflow Value Collection** | Deterministic repository and workflow identity | Repository and Workflow | Retains the reviewed registration and latest collection decision separately from actual attempts and accepted capture/cutoff clocks. |
 
 Names, paths, timestamps, and ingestion order are not canonical identities. Stable upstream IDs take precedence; deterministic source coordinates are used only when an upstream system provides no stable ID.
 
@@ -96,7 +97,7 @@ Run-scoped Audit facts remain for request, attribution and resolution drill-down
 inventory and generic proxy events are discarded. Complete paired main-request
 costs can be compared to a named, explicitly estimated baseline, separately from
 total accounting. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 34 / IndexedDB version 44 rebuild older
+enter cost quantiles. Browser schema 35 / IndexedDB version 45 rebuild older
 projections, and hosted PostgreSQL requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
@@ -120,10 +121,10 @@ The activity shard manifest is the dashboard's published operational input. Norm
 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
-The canonical model is version 34. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
+The canonical model is version 35. The browser database is
+`gh-aw-cao-dashboard-data`, IndexedDB version 45. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
-`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
+`friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `workflowValueCollections`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.

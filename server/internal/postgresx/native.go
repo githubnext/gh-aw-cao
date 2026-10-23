@@ -185,6 +185,9 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if err := writer.preserveValuePublications(ctx); err != nil {
 		return fail(err)
 	}
+	if err := writer.preserveCollectionDecisions(ctx); err != nil {
+		return fail(err)
+	}
 	writer.preserveValues = true
 	if err := writer.stageAdmittedRuns(ctx); err != nil {
 		return fail(err)
@@ -239,6 +242,11 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 }
 
 func (w *Writer) append(ctx context.Context, source string, row model.Row, inventory bool) error {
+	if source == "$workflowValueCollections" {
+		if err := validateWorkflowValueCollection(row); err != nil {
+			return err
+		}
+	}
 	if source == "$operationalValueEvidence" {
 		if w.preserveValues {
 			var previous time.Time
@@ -554,6 +562,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if _, err := w.tx.Exec(ctx, "SELECT cao_analyze_native()"); err != nil {
 		return State{}, fmt.Errorf("refresh native statistics: %w", err)
 	}
+	if err := w.reconcileCollectionDecisions(ctx); err != nil {
+		return State{}, err
+	}
 	if err := overlayRepositoryLifecycle(ctx, w.store.namespace, func(ctx context.Context, statement string, args ...any) error {
 		_, err := w.tx.Exec(ctx, statement, args...)
 		return err
@@ -569,6 +580,8 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		`SELECT 1 FROM runs r JOIN workflows p ON p.namespace=r.namespace AND p.id=r.workflow_id
 			WHERE r.namespace=$1 AND r.repository_id<>p.repository_id LIMIT 1`,
 		`SELECT 1 FROM operational_value_evidence e JOIN workflows p ON p.namespace=e.namespace AND p.id=e.workflow_id
+			WHERE e.namespace=$1 AND e.repository_id<>p.repository_id LIMIT 1`,
+		`SELECT 1 FROM workflow_value_collections e JOIN workflows p ON p.namespace=e.namespace AND p.id=e.workflow_id
 			WHERE e.namespace=$1 AND e.repository_id<>p.repository_id LIMIT 1`,
 		`SELECT 1 FROM experiment_assignments o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id
 			JOIN experiments d ON d.namespace=o.namespace AND d.id=o.experiment_id WHERE o.namespace=$1 AND r.workflow_id<>d.workflow_id LIMIT 1`,
