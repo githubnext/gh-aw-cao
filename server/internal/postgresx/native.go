@@ -189,9 +189,6 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if err := writer.stageAdmittedRuns(ctx); err != nil {
 		return fail(err)
 	}
-	if err := writer.reconcileDaily(ctx); err != nil {
-		return fail(err)
-	}
 	for _, source := range tableNames() {
 		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
 		if err != nil {

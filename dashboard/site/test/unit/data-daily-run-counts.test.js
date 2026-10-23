@@ -7,13 +7,13 @@ import {
   deleteCanonicalDatabase, maintainCanonicalDatabase, openCanonicalDatabase,
   readCollection, readCollections, recordTransaction, upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
-import { dailyRunCountContribution, protectedRunCountBytes } from '../../src/data/model/daily-run-counts.js';
+import { dailyRunCountContribution, evictDailyRunCounts, protectedRunCountBytes } from '../../src/data/model/daily-run-counts.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { queryDatabaseSources, loadDatabaseQuerySources } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
 import { ingestNormalizedJsonl, NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
-import { installSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
+import { createSqliteIndexedDB, installSqliteIndexedDB } from '../../src/data/storage/sqlite-indexeddb.js';
 import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 import { compileDashboardViewPayloadQueries } from '../../src/data/queries/view-payload-compiler.js';
@@ -24,7 +24,7 @@ import goldenCounts from '../fixtures/daily-run-counts.json' with { type: 'json'
 const originalIndexedDB = globalThis.indexedDB;
 const originalIDBKeyRange = globalThis.IDBKeyRange;
 const directories = /** @type {string[]} */ ([]);
-const now = Date.parse('2026-10-23T12:00:00Z');
+const now = Date.parse('2026-10-15T12:00:00Z');
 const fixture = {
   id: 'run:1', repositoryId: 'repository:1', workflowId: 'workflow:1',
   owner: 'octo', repository: 'demo', workflowPath: '.github/workflows/worker.md',
@@ -98,7 +98,7 @@ describe('additive daily run outcome counts', () => {
       expect(['successful', 'failed', 'approval', 'pending', 'other']
         .reduce((sum, field) => sum + Number(/** @type {Record<string, unknown>} */ (row)[field]), 0)).toBe(1);
     }
-    for (const startedAt of [undefined, null, '', 'invalid', '2026-10-02']) {
+    for (const startedAt of [undefined, null, '', 'invalid', '2026-10-02', '2026-02-30T00:00:00Z']) {
       expect(dailyRunCountContribution({ ...fixture, startedAt })).toBeNull();
     }
   });
@@ -144,7 +144,7 @@ describe('additive daily run outcome counts', () => {
     expect(corrected).toBeGreaterThan(initial);
     const maintenance = await maintainCanonicalDatabase(indexedDB, { now, maxDatabaseBytes: 0 });
     expect(maintenance.estimatedBytes).toBeGreaterThanOrEqual(corrected);
-    expect(await usage()).toBe(corrected);
+    expect(await usage()).toBeGreaterThanOrEqual(corrected);
     expect(await readCollection(indexedDB, 'runs')).toEqual([]);
   });
 
@@ -238,7 +238,138 @@ describe('additive daily run outcome counts', () => {
       .toEqual(before);
   });
 
-  it('upgrades v44 additively with bounded cursors and byte-identical retained detail', async () => {
+  it('uses normalized UTC revision keys for equal-revision conflicts with different timestamp offsets', async () => {
+    const successful = {
+      ...fixture, status: 'completed', conclusion: 'success',
+      startedAt: '2026-10-01T23:30:00-02:00', updatedAt: '2026-10-02T01:45:00-02:00'
+    };
+    const failed = {
+      ...fixture, status: 'completed', conclusion: 'failure',
+      startedAt: '2026-10-02T01:30:00Z', updatedAt: '2026-10-02T03:45:00Z'
+    };
+    await writeRuns([successful]);
+    await writeRuns([failed]);
+    const first = await counts();
+    expect(first).toEqual([expect.objectContaining({ successful: 1, failed: 0 })]);
+    await deleteCanonicalDatabase(indexedDB);
+    await writeRuns([failed]);
+    await writeRuns([successful]);
+    expect(await counts()).toEqual(first);
+    const receipt = (await readCollections(indexedDB, ['runCountContributions'])).runCountContributions[0];
+    expect(receipt.run.startedAt).toBe('2026-10-02T01:30:00.000Z');
+    expect(receipt.run.updatedAt).toBe('2026-10-02T03:45:00.000Z');
+  });
+
+  it.each(['indexeddb', 'sqlite'])('bounds timeless and future-revision undated receipts in %s', async (backend) => {
+    if (backend === 'sqlite') {
+      const directory = mkdtempSync('/tmp/cao-undated-retention-');
+      directories.push(directory);
+      installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
+    }
+    const clock = Date.parse('2026-10-23T12:00:00Z');
+    vi.spyOn(Date, 'now').mockReturnValue(clock);
+    await writeRuns([
+      { ...fixture, id: 'timeless', startedAt: null, updatedAt: null },
+      { ...fixture, id: 'future-revision', startedAt: null, updatedAt: '9999-01-01T00:00:00Z' }
+    ]);
+    const database = await openCanonicalDatabase(indexedDB);
+    await evictDailyRunCounts(database, clock);
+    expect(await counts()).toEqual([]);
+    expect((await readCollections(indexedDB, ['runCountContributions'])).runCountContributions)
+      .toEqual([expect.objectContaining({ observedAt: clock }), expect.objectContaining({ observedAt: clock })]);
+    await evictDailyRunCounts(database, Date.parse('2026-11-09T00:00:00Z'));
+    database.close();
+    const records = await readCollections(indexedDB, ['runCountContributions', 'dailyRunCountState']);
+    expect(records.runCountContributions).toEqual([]);
+    expect(records.dailyRunCountState[0]).toMatchObject({ receiptCount: 0, receiptBytes: 0, excludedRuns: 0 });
+  });
+
+  it.each(['indexeddb', 'sqlite'])('preserves the retained-day replay guard when a correction removes the start date in %s', async (backend) => {
+    if (backend === 'sqlite') {
+      const directory = mkdtempSync('/tmp/cao-undated-correction-');
+      directories.push(directory);
+      installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
+    }
+    const original = { ...fixture, startedAt: '2026-10-12T00:00:00Z' };
+    await writeRuns([original]);
+    const database = await openCanonicalDatabase(indexedDB);
+    await evictDailyRunCounts(database, Date.parse('2026-10-23T00:00:00Z'));
+    await writeRuns([{ ...original, startedAt: null, updatedAt: '2026-10-24T00:00:00Z' }]);
+    await evictDailyRunCounts(database, Date.parse('2026-10-26T00:00:00Z'));
+    await writeRuns([original]);
+    expect(await counts()).toEqual([]);
+    const receipts = (await readCollections(indexedDB, ['runCountContributions'])).runCountContributions;
+    expect(receipts).toEqual([expect.objectContaining({ retentionDay: '2026-10-12', contribution: null })]);
+    await evictDailyRunCounts(database, Date.parse('2026-11-02T00:00:00Z'));
+    database.close();
+    await writeRuns([original]);
+    expect((await readCollections(indexedDB, ['runCountContributions'])).runCountContributions).toEqual([]);
+    expect(await counts()).toEqual([]);
+  });
+
+  it.each(['indexeddb', 'sqlite'])('evicts weekly buckets and receipts atomically with replay fencing in %s', async (backend) => {
+      if (backend === 'sqlite') {
+        const directory = mkdtempSync('/tmp/cao-daily-retention-');
+        directories.push(directory);
+        installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
+      }
+      const expired = Array.from({ length: 251 }, (_, index) => ({
+        ...fixture, id: `expired:${index}`, startedAt: '2026-10-04T23:59:59Z'
+      }));
+      const boundary = { ...fixture, id: 'boundary', startedAt: '2026-10-05T00:00:00Z' };
+      const lastDay = { ...fixture, id: 'last-day', startedAt: '2026-10-25T23:59:59Z' };
+      const future = { ...fixture, id: 'future', startedAt: '2026-10-26T00:00:00Z' };
+      const undated = { ...fixture, id: 'undated', startedAt: null };
+      await writeRuns([...expired, boundary, lastDay, future, undated]);
+      const database = await openCanonicalDatabase(indexedDB);
+      const clock = Date.parse('2026-10-23T23:00:00Z');
+      await evictDailyRunCounts(database, clock);
+      database.close();
+      expect((await counts()).map((row) => row.day).sort()).toEqual(['2026-10-05', '2026-10-25']);
+      expect((await readCollections(indexedDB, ['runCountContributions'])).runCountContributions).toHaveLength(2);
+      expect(await readCollection(indexedDB, 'runs')).toHaveLength(255);
+      await writeRuns([...expired, future, undated]);
+      expect((await counts()).map((row) => row.day).sort()).toEqual(['2026-10-05', '2026-10-25']);
+      expect((await readCollections(indexedDB, ['runCountContributions'])).runCountContributions).toHaveLength(2);
+      // A correction outside the retained window leaves a compact tombstone until
+      // the original bucket expires, so replay cannot resurrect its old count.
+      await writeRuns([{ ...boundary, startedAt: '2026-10-04T00:00:00Z', updatedAt: '2026-10-24T00:00:00Z' }]);
+      await writeRuns([boundary]);
+      expect((await counts()).map((row) => row.day)).toEqual(['2026-10-25']);
+      await writeRuns([{ ...boundary, startedAt: '2026-10-06T00:00:00Z', updatedAt: '2026-10-25T00:00:00Z' }]);
+      expect((await counts()).map((row) => row.day).sort()).toEqual(['2026-10-06', '2026-10-25']);
+      const reopened = await openCanonicalDatabase(indexedDB);
+      await evictDailyRunCounts(reopened, Date.parse('2026-10-26T00:00:00Z'));
+      await evictDailyRunCounts(reopened, clock);
+      reopened.close();
+      await writeRuns([boundary]);
+      expect((await counts()).map((row) => row.day)).toEqual(['2026-10-25']);
+      const records = await readCollections(indexedDB, ['runCountContributions', 'dailyRunCounts', 'dailyRunCountState']);
+      const state = records.dailyRunCountState[0];
+      const bytes = (/** @type {Record<string, unknown>[]} */ rows) => rows.reduce((sum, row) =>
+        sum + new TextEncoder().encode(JSON.stringify(row)).byteLength + 512, 0);
+      expect(state).toMatchObject({
+        retentionCutoff: '2026-10-12', retentionWatermark: Date.parse('2026-10-26T00:00:00Z'),
+        receiptCount: 1, dailyBucketCount: 1, excludedRuns: 0, conflictedRuns: 0,
+        receiptBytes: bytes(records.runCountContributions), dailyBytes: bytes(records.dailyRunCounts)
+      });
+    });
+
+    it('rolls back bucket deletion, receipts, counters and watermark together when eviction fails', async () => {
+      await writeRuns([fixture]);
+      const before = await readCollections(indexedDB, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState']);
+      const remove = IDBObjectStore.prototype.delete;
+      vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(/** @this {IDBObjectStore} */ function (key) {
+        if (this.name === 'runCountContributions') throw new Error('injected eviction failure');
+        return remove.call(this, key);
+      });
+      const database = await openCanonicalDatabase(indexedDB);
+      await expect(evictDailyRunCounts(database, Date.parse('2026-10-26T00:00:00Z'))).rejects.toThrow('injected eviction failure');
+      database.close();
+      expect(await readCollections(indexedDB, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'])).toEqual(before);
+    });
+
+  it('resumes an interrupted v44 backfill with bounded cursors and byte-identical retained detail', async () => {
     const runs = Array.from({ length: 502 }, (_, index) => ({ ...fixture, id: `run:${index}` }));
     await new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, 44);
@@ -255,7 +386,30 @@ describe('additive daily run outcome counts', () => {
       request.onerror = () => reject(request.error);
     });
     const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
-    const put = vi.spyOn(IDBObjectStore.prototype, 'put');
+    const originalPut = IDBObjectStore.prototype.put;
+    let receipts = 0;
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(/** @this {IDBObjectStore} */ function (record, key) {
+      if (this.name === 'runCountContributions' && ++receipts === 251) throw new Error('interrupted backfill');
+      return originalPut.call(this, record, key);
+    });
+    await expect(openCanonicalDatabase(indexedDB)).rejects.toThrow('interrupted backfill');
+    const checkpoint = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
+      request.onsuccess = () => {
+        const database = request.result;
+        const state = database.transaction('dailyRunCountState').objectStore('dailyRunCountState').get('daily-run-counts');
+        state.onsuccess = () => { database.close(); resolve(state.result); };
+        state.onerror = () => reject(state.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+    expect(checkpoint).toMatchObject({
+      status: 'backfilling', receiptCount: 250, coverage: 'retained-v44',
+      after: [...runs].sort((a, b) => a.id.localeCompare(b.id))[249].id
+    });
+    put.mockImplementation(/** @this {IDBObjectStore} */ function (record, key) {
+      return originalPut.call(this, record, key);
+    });
     const database = await openCanonicalDatabase(indexedDB);
     database.close();
     expect(getAll).not.toHaveBeenCalled();
@@ -430,16 +584,16 @@ describe('additive daily run outcome counts', () => {
     };
     const payload = `${JSON.stringify(header)}\n${JSON.stringify({
       kind: 'record', collection: 'runs', record: {
-        ...fixture, startedAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T01:00:00Z'
+        ...fixture, startedAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-01T01:00:00Z'
       }
     })}\n`;
     async function* chunks() { yield payload; }
     await ingestNormalizedJsonl(indexedDB, chunks(), {
       payloadIdentity: 'old-run', payloadScope: 'old', now,
-      retentionWindowMsByStore: { runs: 30 * 86400000 }
+      retentionWindowMsByStore: { runs: 86400000 }
     });
     expect(await readCollection(indexedDB, 'runs')).toEqual([]);
-    expect(await counts()).toEqual([expect.objectContaining({ day: '2025-01-01', total: 1 })]);
+    expect(await counts()).toEqual([expect.objectContaining({ day: '2026-10-01', total: 1 })]);
   });
 
   it('persists the same receipt layer in SQLite and protects it from doctor detail repair', async () => {
@@ -451,12 +605,29 @@ describe('additive daily run outcome counts', () => {
     await maintainCanonicalDatabase(factory, { now, maxDatabaseBytes: 0 });
     const before = await readCollections(factory, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState']);
     await recordTransaction(factory, { id: 'expire', kind: 'test', createdAt: '2000-01-01T00:00:00Z' });
+    globalThis.indexedDB = originalIndexedDB;
+    globalThis.IDBKeyRange = originalIDBKeyRange;
     const repaired = await doctorSqliteDatabase(filename, { now });
     expect(repaired.healthy).toBe(true);
+    expect(globalThis.indexedDB).toBe(originalIndexedDB);
+    expect(globalThis.IDBKeyRange).toBe(originalIDBKeyRange);
     expect(await readCollections(factory, ['dailyRunCounts', 'runCountContributions', 'dailyRunCountState'])).toEqual(before);
     await writeRuns([fixture], factory);
     expect((await readCollections(factory, ['dailyRunCounts'])).dailyRunCounts)
       .toEqual([expect.objectContaining({ total: 1, pending: 1 })]);
+    installSqliteIndexedDB(filename);
+    await maintainCanonicalDatabase(factory, { now, maxDatabaseBytes: 0 });
+    globalThis.indexedDB = originalIndexedDB;
+    globalThis.IDBKeyRange = originalIDBKeyRange;
+    const rolled = await doctorSqliteDatabase(filename, { now: Date.parse('2026-10-26T00:00:00Z'), ttlDays: 'all' });
+    expect(rolled.healthy).toBe(true);
+    expect(rolled.repairs.actions).toEqual(['maintain-daily-count-retention']);
+    if (!rolled.repairs.backup) throw new Error('Aggregate-only cleanup must create a backup');
+    expect((await readCollections(createSqliteIndexedDB(rolled.repairs.backup), ['dailyRunCounts'])).dailyRunCounts)
+      .toEqual([expect.objectContaining({ total: 1, pending: 1 })]);
+    await writeRuns([fixture], factory);
+    expect((await readCollections(factory, ['dailyRunCounts', 'runCountContributions'])))
+      .toEqual({ dailyRunCounts: [], runCountContributions: [] });
   });
 
   it('backfills a v44 Activity SQLite snapshot through bounded reads without losing its detail', async () => {

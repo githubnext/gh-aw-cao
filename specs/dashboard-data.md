@@ -4403,13 +4403,28 @@ are eligible; sub-day filters, arbitrary Run predicates, distinct counts,
 costs, token usage, and ordered incident evidence remain on their existing
 sources. No other query is implicitly routed to the new layer.
 
-This initial layer retains admitted dated counts and receipts without adding a
-new expiry policy. Three-week aggregate rollover, weekly partitions, sampling,
+Daily counts and their compact receipts SHALL retain the current UTC
+Monday-start week and its two preceding weeks. Maintenance SHALL atomically
+remove expired buckets and receipts and persist a monotonic retention watermark;
+a clock regression SHALL NOT reopen an expired week. Browser IndexedDB and
+Activity SQLite SHALL perform bounded logical cleanup independently of detail
+retention, including the SQLite doctor publication path. Hosted PostgreSQL SHALL
+apply the same logical retention within its namespace transaction. Future days
+outside the current week SHALL NOT create retained buckets.
+
+After rollover, replay of an expired execution-start day SHALL NOT recreate a
+bucket. A correction crossing the retention boundary requires a surviving
+receipt and authoritative revision evidence. A retired contribution SHALL
+retain a compact replay guard until its original retained day expires, so a
+stale in-window replay cannot resurrect it. Undated receipt retention SHALL use
+observation evidence only for cleanup, never as an execution-start date.
+Backfill SHALL checkpoint bounded batches atomically with their receipts and
+resume without double counting. Existing databases cannot reconstruct
+already-evicted history: backfill coverage SHALL remain partial and describe
+available evidence rather than claim historical completeness. Sampling,
 hot-tier limits, and full scope-level evidence reconciliation from the
 [three-tier proposal](../adr/three-tier-operational-storage.md) remain separate
-work. Existing databases cannot reconstruct already-evicted history: backfill
-coverage SHALL describe available evidence rather than claim historical
-completeness.
+work.
 
 ## 72.10 Data-worker heap budgets
 

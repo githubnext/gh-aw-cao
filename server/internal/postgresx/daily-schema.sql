@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS run_count_contributions (
   conclusion TEXT,
   updated_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
+  observed_at TIMESTAMPTZ NOT NULL,
+  retention_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, id)
 );
 
@@ -44,5 +46,7 @@ CREATE TABLE IF NOT EXISTS daily_run_count_state (
   namespace TEXT NOT NULL,
   id TEXT NOT NULL,
   initialized_at TIMESTAMPTZ NOT NULL,
+  watermark_at TIMESTAMPTZ NOT NULL,
+  cutoff_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (namespace, id)
 );

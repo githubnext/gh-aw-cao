@@ -1,5 +1,5 @@
 import { relationshipErrors } from '../model/schema.js';
-import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, readProtectedRunCountBytes, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
@@ -482,9 +482,10 @@ async function reportPendingOpenDiagnostics(indexedDB, name, openId) {
 
 /**
  * @param {IDBFactory} indexedDB
+ * @param {typeof IDBKeyRange} [keyRange]
  * @returns {Promise<IDBDatabase>}
  */
-export function openCanonicalDatabase(indexedDB) {
+export function openCanonicalDatabase(indexedDB, keyRange = globalThis.IDBKeyRange) {
   const name = canonicalDatabaseName();
   const openId = ++nextOpenRequestId;
   const startedAt = monotonicNow();
@@ -580,7 +581,7 @@ export function openCanonicalDatabase(indexedDB) {
       // `close` fires only when the browser closes the connection abnormally,
       // for example after backing-store corruption or when site data is cleared.
       database.onclose = () => debug({ event: 'connection-closed-abnormally', openId });
-      backfillDailyRunCounts(database).then(() => resolve(database), (error) => {
+      backfillDailyRunCounts(database, keyRange).then(() => resolve(database), (error) => {
         database.close();
         reject(error);
       });
@@ -612,8 +613,9 @@ export function openCanonicalDatabase(indexedDB) {
  * Upgrade work is cursor-paged and never rewrites a detail record. A v44
  * cache cannot recover already-evicted runs, so its coverage remains partial.
  * @param {IDBDatabase} database
+ * @param {typeof IDBKeyRange} [keyRange]
  */
-export async function backfillDailyRunCounts(database) {
+export async function backfillDailyRunCounts(database, keyRange = globalThis.IDBKeyRange) {
   if (!database.objectStoreNames.contains('dailyRunCountState')) return;
   const initial = await requestResult(database.transaction('dailyRunCountState')
     .objectStore('dailyRunCountState').get(DAILY_RUN_COUNT_STATE_ID));
@@ -632,7 +634,7 @@ export async function backfillDailyRunCounts(database) {
       /** @type {Record<string, unknown>[]} */
       const records = [];
       const runs = transaction.objectStore('runs');
-      const range = state.after === undefined ? undefined : IDBKeyRange.lowerBound(state.after, true);
+      const range = state.after === undefined ? undefined : keyRange.lowerBound(state.after, true);
       if (typeof runs.openCursor !== 'function') {
         records.push(...await requestResult(runs.getAll(range, 250)));
         more = records.length === 250;
@@ -836,6 +838,7 @@ async function reconcileCanonicalDatabase(indexedDB, options) {
     const referencedRepositoryIds = new Set();
     const database = await openCanonicalDatabase(indexedDB);
     try {
+      await evictDailyRunCounts(database, now, options.signal);
       estimatedBytes += await readProtectedRunCountBytes(database);
       const referencedAudits = new Set();
       for (const storeName of ['graderObservations', 'evalObservations', 'experimentAssignments']) {

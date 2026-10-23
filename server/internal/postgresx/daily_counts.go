@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
@@ -17,6 +18,7 @@ import (
 var dailySchemaSQL string
 
 const dailySource = "daily-run-counts"
+const legacyDailyDigest = "b5671e0b61318d5cd2a1c1e270764cff46ef334dd6579bbe76c87eca4afd97b8"
 
 func dailyDigest() string { return fmt.Sprintf("%x", sha256.Sum256([]byte(dailySchemaSQL))) }
 
@@ -40,7 +42,26 @@ func initializeDailyCounts(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 		if digest != dailyDigest() {
-			return errors.New("daily outcome storage contract mismatch; provision the matching extension as owner")
+			if digest != legacyDailyDigest {
+				return errors.New("daily outcome storage contract mismatch; provision the matching extension as owner")
+			}
+			// This owner-only upgrade preserves admitted counts. Runtime roles
+			// never migrate storage or accept the old, unbounded contract.
+			for _, statement := range []string{
+				`ALTER TABLE run_count_contributions ADD COLUMN observed_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()`,
+				`ALTER TABLE run_count_contributions ALTER COLUMN observed_at DROP DEFAULT`,
+				`ALTER TABLE run_count_contributions ADD COLUMN retention_at TIMESTAMPTZ`,
+				`ALTER TABLE daily_run_count_state ADD COLUMN watermark_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+					ADD COLUMN cutoff_at TIMESTAMPTZ NOT NULL DEFAULT ((date_trunc('week',clock_timestamp() AT TIME ZONE 'UTC') - interval '14 days') AT TIME ZONE 'UTC')`,
+				`ALTER TABLE daily_run_count_state ALTER COLUMN watermark_at DROP DEFAULT, ALTER COLUMN cutoff_at DROP DEFAULT`,
+			} {
+				if _, err := tx.ExecContext(ctx, statement); err != nil {
+					return err
+				}
+			}
+			if _, err := tx.ExecContext(ctx, `UPDATE cao_daily_contract SET digest=$1`, dailyDigest()); err != nil {
+				return err
+			}
 		}
 		return tx.Commit()
 	}
@@ -111,10 +132,6 @@ func (s *Store) backfillDailyOnce(ctx context.Context) error {
 		if err := s.reconcileDailyInvocation(ctx, tx, ""); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO daily_run_count_state(namespace,id,initialized_at)
-			VALUES($1,'daily-run-counts',clock_timestamp())`, s.namespace); err != nil {
-			return err
-		}
 	}
 	return tx.Commit()
 }
@@ -124,12 +141,47 @@ const dailyOutcomeSQL = `CASE WHEN conclusion='success' THEN 'successful'
 	WHEN conclusion='action-required' THEN 'approval'
 	WHEN coalesce(status,'')<>'' AND status<>'completed' THEN 'pending' ELSE 'other' END`
 
+func dailyCutoff(now time.Time) time.Time {
+	day := dayStart(now)
+	return day.AddDate(0, 0, -((int(day.Weekday())+6)%7)-14)
+}
+
+func maintainDailyCounts(ctx context.Context, namespace string, now time.Time, exec func(context.Context, string, ...any) error) error {
+	if err := exec(ctx, `INSERT INTO daily_run_count_state AS s(namespace,id,initialized_at,watermark_at,cutoff_at)
+		VALUES($1,'daily-run-counts',$2,$2,$3)
+		ON CONFLICT(namespace,id) DO UPDATE SET watermark_at=greatest(s.watermark_at,excluded.watermark_at),
+			cutoff_at=greatest(s.cutoff_at,excluded.cutoff_at)`, namespace, now.UTC(), dailyCutoff(now)); err != nil {
+		return err
+	}
+	for _, statement := range []string{
+		`DELETE FROM daily_run_counts d USING daily_run_count_state s
+			WHERE d.namespace=$1 AND s.namespace=d.namespace AND s.id='daily-run-counts'
+			AND (d.day<to_char(s.cutoff_at AT TIME ZONE 'UTC','YYYY-MM-DD')
+				OR d.day>=to_char((s.cutoff_at AT TIME ZONE 'UTC')+interval '21 days','YYYY-MM-DD'))`,
+		`DELETE FROM run_count_contributions p USING daily_run_count_state s
+			WHERE p.namespace=$1 AND s.namespace=p.namespace AND s.id='daily-run-counts'
+			AND (coalesce(p.retention_at,p.started_at,p.observed_at)<s.cutoff_at
+				OR (p.started_at IS NOT NULL AND coalesce(p.retention_at,p.started_at)>=s.cutoff_at+interval '504 hours'))`,
+	} {
+		if err := exec(ctx, statement, namespace); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Namespace writer locks are held by every caller. The old and new receipt
 // contributions, and publication of detail, commit or roll back together.
 // Work remains in SQL: no full-detail Go materialization or retained run payloads.
-func reconcileDailyCounts(ctx context.Context, namespace, runID string, exec func(context.Context, string, ...any) error, batchEnd func(context.Context) (string, error)) error {
+func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time.Time, exec func(context.Context, string, ...any) error, batchEnd func(context.Context) (string, error)) error {
+	if err := maintainDailyCounts(ctx, namespace, now, exec); err != nil {
+		return err
+	}
 	columns := []string{"repository_id", "workflow_id", "owner", "repository", "workflow_path", "started_at", "attempt", "status", "conclusion", "updated_at", "completed_at"}
-	merged := []string{"r.namespace", "r.id"}
+	merged := []string{"r.namespace", "r.id", "coalesce(p.observed_at,s.watermark_at) AS observed_at",
+		"p.id IS NOT NULL AS had_previous", "p.attempt AS previous_attempt",
+		"greatest(p.updated_at,p.completed_at) AS previous_revision",
+		"greatest(r.updated_at,r.completed_at) AS incoming_revision"}
 	fieldPresence := func(name string) string {
 		for index, column := range entityTables["$runs"].columns {
 			if column.name == name {
@@ -149,29 +201,55 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, exec fun
 		}
 		value = "CASE WHEN p.id IS NOT NULL AND " + attempt + "=coalesce(p.attempt,1) AND greatest(p.updated_at,p.completed_at) IS NOT NULL" +
 			" AND greatest(r.updated_at,r.completed_at) IS NULL THEN coalesce(p." + column + ",r." + column + ") ELSE " + value + " END"
-		value = "CASE WHEN " + fieldPresence(column) + " AND r." + column + " IS NULL THEN NULL ELSE " + value + " END"
 		merged = append(merged, value+" AS "+column)
+	}
+	rank := func(alias string) string {
+		return "CASE WHEN " + alias + ".status='completed' OR " + alias + ".conclusion IN ('success','failure','startup-failure','stale','timed-out','action-required') THEN 1 ELSE 0 END"
+	}
+	key := func(alias string) string {
+		values := []string{}
+		for _, column := range []string{"id", "repository_id", "workflow_id", "owner", "repository", "workflow_path", "started_at", "status", "conclusion", "attempt", "updated_at", "completed_at"} {
+			value := alias + "." + column
+			if column == "started_at" || column == "updated_at" || column == "completed_at" {
+				value = "to_char(" + value + ` AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`
+			}
+			values = append(values, value)
+		}
+		return "(jsonb_build_array(" + strings.Join(values, ",") + `)::text COLLATE "C")`
 	}
 	statements := []string{
 		`CREATE TEMP TABLE daily_changes ON COMMIT DROP AS SELECT m.*,
 			to_char(m.started_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS day,
-			` + dailyOutcomeSQL + ` AS outcome FROM (
-			SELECT ` + strings.Join(merged, ",") + ` FROM runs r JOIN daily_run_keys k ON k.id=r.id LEFT JOIN run_count_contributions p
+			` + strings.NewReplacer("conclusion", "m.conclusion", "status", "m.status").Replace(dailyOutcomeSQL) + ` AS outcome FROM (
+			SELECT ` + strings.Join(merged, ",") + ` FROM runs r JOIN daily_run_keys k ON k.id=r.id
+			JOIN daily_run_count_state s ON s.namespace=r.namespace AND s.id='daily-run-counts' LEFT JOIN run_count_contributions p
 			ON p.namespace=r.namespace AND p.id=r.id WHERE r.namespace=$1
 			AND (p.id IS NULL OR ` + attempt + `>=coalesce(p.attempt,1))
 			AND NOT (p.id IS NOT NULL AND ` + attempt + `=coalesce(p.attempt,1)
 				AND greatest(r.updated_at,r.completed_at) IS NOT NULL
 				AND greatest(p.updated_at,p.completed_at) IS NOT NULL
-				AND greatest(p.updated_at,p.completed_at)>greatest(r.updated_at,r.completed_at))) m`,
+				AND greatest(p.updated_at,p.completed_at)>greatest(r.updated_at,r.completed_at))) m
+			JOIN daily_run_count_state s ON s.namespace=m.namespace AND s.id='daily-run-counts'
+			LEFT JOIN run_count_contributions o ON o.namespace=m.namespace AND o.id=m.id
+			WHERE (m.started_at IS NULL OR (m.started_at>=s.cutoff_at AND m.started_at<s.cutoff_at+interval '504 hours')
+				OR (m.had_previous AND (coalesce(m.attempt,1)>coalesce(m.previous_attempt,1)
+					OR greatest(m.updated_at,m.completed_at)>m.previous_revision)))
+			AND NOT (m.had_previous AND coalesce(m.attempt,1)=coalesce(m.previous_attempt,1)
+				AND m.previous_revision IS NOT NULL AND m.incoming_revision=m.previous_revision
+				AND (` + rank("o") + `,` + key("o") + `)>(` + rank("m") + `,` + key("m") + `))`,
 		`WITH contributions AS (
 			SELECT p.namespace,to_char(p.started_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS day,
 				p.repository_id,p.workflow_id,coalesce(p.owner,'') AS owner,coalesce(p.repository,'') AS repository,
 				coalesce(p.workflow_path,'') AS workflow_path,` + strings.NewReplacer("conclusion", "p.conclusion", "status", "p.status").Replace(dailyOutcomeSQL) + ` AS outcome,-1::bigint AS delta
 			FROM run_count_contributions p JOIN daily_changes n ON n.namespace=p.namespace AND n.id=p.id
-			WHERE p.started_at IS NOT NULL AND coalesce(p.owner,'')<>'' AND coalesce(p.repository,'')<>'' AND coalesce(p.workflow_path,'')<>''
-			UNION ALL SELECT namespace,day,repository_id,workflow_id,coalesce(owner,''),coalesce(repository,''),
-				coalesce(workflow_path,''),outcome,1::bigint FROM daily_changes WHERE started_at IS NOT NULL
-				AND coalesce(owner,'')<>'' AND coalesce(repository,'')<>'' AND coalesce(workflow_path,'')<>''
+			JOIN daily_run_count_state s ON s.namespace=p.namespace AND s.id='daily-run-counts'
+			WHERE p.started_at>=s.cutoff_at AND p.started_at<s.cutoff_at+interval '504 hours'
+				AND coalesce(p.owner,'')<>'' AND coalesce(p.repository,'')<>'' AND coalesce(p.workflow_path,'')<>''
+			UNION ALL SELECT n.namespace,n.day,n.repository_id,n.workflow_id,coalesce(n.owner,''),coalesce(n.repository,''),
+				coalesce(n.workflow_path,''),n.outcome,1::bigint FROM daily_changes n
+				JOIN daily_run_count_state s ON s.namespace=n.namespace AND s.id='daily-run-counts'
+				WHERE n.started_at>=s.cutoff_at AND n.started_at<s.cutoff_at+interval '504 hours'
+				AND coalesce(n.owner,'')<>'' AND coalesce(n.repository,'')<>'' AND coalesce(n.workflow_path,'')<>''
 		), deltas AS (
 			SELECT namespace,day,repository_id,workflow_id,
 				coalesce(max(owner) FILTER(WHERE delta=1),max(owner)) AS owner,
@@ -195,9 +273,13 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, exec fun
 		ON CONFLICT(namespace,id) DO UPDATE SET owner=excluded.owner,repository=excluded.repository,workflow_path=excluded.workflow_path,
 			total=excluded.total,successful=excluded.successful,failed=excluded.failed,
 			approval=excluded.approval,pending=excluded.pending,other=excluded.other`,
-		`INSERT INTO run_count_contributions AS p(namespace,id,` + strings.Join(columns, ",") + `)
-			SELECT namespace,id,` + strings.Join(columns, ",") + ` FROM daily_changes
-			ON CONFLICT(namespace,id) DO UPDATE SET ` + dailyReceiptUpdates(columns),
+		`INSERT INTO run_count_contributions AS p(namespace,id,` + strings.Join(columns, ",") + `,observed_at,retention_at)
+			SELECT n.namespace,n.id,n.` + strings.Join(columns, ",n.") + `,n.observed_at,
+				CASE WHEN n.started_at>=s.cutoff_at AND n.started_at<s.cutoff_at+interval '504 hours' THEN n.started_at
+					ELSE coalesce(o.retention_at,o.started_at) END
+			FROM daily_changes n JOIN daily_run_count_state s ON s.namespace=n.namespace AND s.id='daily-run-counts'
+			LEFT JOIN run_count_contributions o ON o.namespace=n.namespace AND o.id=n.id
+			ON CONFLICT(namespace,id) DO UPDATE SET ` + dailyReceiptUpdates(columns) + `,retention_at=excluded.retention_at`,
 		`DELETE FROM daily_run_counts WHERE namespace=$1 AND total=0`,
 		`DROP TABLE daily_changes`,
 	}
@@ -212,7 +294,10 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, exec fun
 			return err
 		}
 		if last == "" {
-			return exec(ctx, `DROP TABLE daily_run_keys`)
+			if err := exec(ctx, `DROP TABLE daily_run_keys`); err != nil {
+				return err
+			}
+			return maintainDailyCounts(ctx, namespace, now, exec)
 		}
 		for index, statement := range statements {
 			var args []any
@@ -228,7 +313,7 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, exec fun
 		}
 		after = last
 		if runID != "" {
-			return nil
+			return maintainDailyCounts(ctx, namespace, now, exec)
 		}
 	}
 }
@@ -246,7 +331,7 @@ func (s *Store) reconcileDailyInvocation(ctx context.Context, tx *sql.Tx, runID 
 	if err != nil || !capable {
 		return err
 	}
-	return reconcileDailyCounts(ctx, s.namespace, runID, func(ctx context.Context, statement string, args ...any) error {
+	return reconcileDailyCounts(ctx, s.namespace, runID, time.Now(), func(ctx context.Context, statement string, args ...any) error {
 		_, err := tx.ExecContext(ctx, statement, args...)
 		return err
 	}, func(ctx context.Context) (string, error) {
@@ -260,7 +345,7 @@ func (w *Writer) reconcileDaily(ctx context.Context) error {
 	if !w.store.dailyCounts {
 		return nil
 	}
-	return reconcileDailyCounts(ctx, w.store.namespace, "", func(ctx context.Context, statement string, args ...any) error {
+	return reconcileDailyCounts(ctx, w.store.namespace, "", w.ingestedAt, func(ctx context.Context, statement string, args ...any) error {
 		_, err := w.tx.Exec(ctx, statement, args...)
 		return err
 	}, func(ctx context.Context) (string, error) {
@@ -319,6 +404,14 @@ func (r *readTransaction) dailyMetadata(ctx context.Context) (model.Metadata, er
 		metadata["availability"] = "empty"
 	}
 	metadata["undated-run-count"] = undated
-	metadata["retention"] = "all-admitted-dated-observations"
+	var watermark, cutoff time.Time
+	if err := r.tx.QueryRowContext(ctx, `SELECT watermark_at,cutoff_at FROM daily_run_count_state
+		WHERE namespace=$1 AND id='daily-run-counts'`, r.store.namespace).Scan(&watermark, &cutoff); err != nil {
+		return nil, err
+	}
+	metadata["retention"] = "three-utc-calendar-weeks"
+	metadata["watermark"] = watermark.UTC().Format(time.RFC3339Nano)
+	metadata["retention-cutoff"] = cutoff.UTC().Format("2006-01-02")
+	metadata["backfill-coverage"] = "available-evidence-only"
 	return metadata, nil
 }

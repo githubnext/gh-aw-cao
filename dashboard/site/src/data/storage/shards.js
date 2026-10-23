@@ -1,6 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
-import { DAILY_RUN_COUNT_STORES, readProtectedRunCountBytes, reconcileDailyRunCounts, reconcileRunCountRecord } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCounts, reconcileRunCountRecord } from '../model/daily-run-counts.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import {
   auditCurationRunFacts, discardAudit, AUDIT_CURATION_TRANSACTION_ID, AUDIT_CURATION_VERSION
@@ -342,6 +342,7 @@ async function curateDirtyAudits(database, shards, options) {
 export async function maintainStorageShards(database, options) {
   const startedAt = performance.now();
   const now = options.now ?? Date.now();
+  await evictDailyRunCounts(database, now, options.signal);
   let deletedRecords = 0;
   let shards = await readShards(database, options);
   for (const [index, storeName] of options.entityStores.entries()) {

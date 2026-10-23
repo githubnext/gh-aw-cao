@@ -132,19 +132,30 @@ test('production data worker preserves daily health and chart coverage after det
         }]
       }, { validateRelationships: false });
       const maintenance = await storage.maintainCanonicalDatabase(indexedDB, {
-        now: Date.parse('2026-10-23T00:00:00Z'), maxDatabaseBytes: 0
+        now: Date.parse('2026-10-15T00:00:00Z'), maxDatabaseBytes: 0
       });
       const corrected = await queryHealth();
+      const detailCount = (await storage.readCollection(indexedDB, 'runs')).length;
+      const daily = (await storage.readCollections(indexedDB, ['dailyRunCounts'])).dailyRunCounts;
+      await storage.maintainCanonicalDatabase(indexedDB, {
+        now: Date.parse('2026-10-26T00:00:00Z'), maxDatabaseBytes: 0
+      });
+      await storage.upsertCanonicalBatch(indexedDB, { ...normalize([]), runs: [run] },
+        { validateRelationships: false });
+      const rolled = await queryHealth();
       return {
-        pending, corrected, maintenance,
-        detailCount: (await storage.readCollection(indexedDB, 'runs')).length,
-        daily: (await storage.readCollections(indexedDB, ['dailyRunCounts'])).dailyRunCounts
+        pending, corrected, maintenance, detailCount, daily, rolled,
+        receipts: (await storage.readCollections(indexedDB, ['runCountContributions'])).runCountContributions.length
       };
     } finally {
       worker.terminate();
     }
   });
   expect(Object.keys(result.corrected).sort()).toEqual(['runs-daily-conclusions', 'workflow-runtime-health-summary']);
+  expect(result.rolled['workflow-runtime-health-summary'].rows).toEqual([]);
+  expect(result.rolled['runs-daily-conclusions'].rows).toEqual([]);
+  expect(result.rolled['workflow-runtime-health-summary'].metadata['aggregate-retention-start']).toBe('2026-10-12');
+  expect(result.receipts).toBe(0);
   expect(result.pending['workflow-runtime-health-summary'].rows).toEqual([expect.objectContaining({ total: 1, pending: 1, failed: 0 })]);
   expect(result.corrected['workflow-runtime-health-summary'].rows).toEqual([expect.objectContaining({ total: 1, pending: 0, failed: 1 })]);
   expect(result.corrected['workflow-runtime-health-summary'].metadata).toMatchObject({

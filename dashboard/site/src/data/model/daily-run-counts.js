@@ -1,3 +1,5 @@
+import { timestampMilliseconds } from './schema.js';
+
 export const DAILY_RUN_COUNT_STORES = /** @type {const} */ ([
   'dailyRunCounts', 'runCountContributions', 'dailyRunCountState'
 ]);
@@ -13,12 +15,16 @@ const COMPACT_FIELDS = [
 /** @param {Record<string, unknown>} run */
 export function compactRunCountRecord(run) {
   return Object.fromEntries(COMPACT_FIELDS.filter((field) => run[field] !== undefined)
-    .map((field) => [field, run[field]]));
+    .map((field) => {
+      const time = ['startedAt', 'updatedAt', 'completedAt'].includes(field)
+        ? timestampMilliseconds(run[field]) : null;
+      return [field, time === null ? run[field] : new Date(time).toISOString()];
+    }));
 }
 
 /** @param {unknown} value */
 function timestamp(value) {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;
+  return timestampMilliseconds(value) ?? 0;
 }
 
 /**
@@ -65,8 +71,7 @@ export function reconcileRunCountRecord(previous, incoming) {
 /** @param {Record<string, unknown>} run */
 export function dailyRunCountContribution(run) {
   const startedAt = typeof run.startedAt === 'string' ? run.startedAt : '';
-  if (!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(startedAt)
-      || !Number.isFinite(Date.parse(startedAt))) return null;
+  if (timestampMilliseconds(startedAt) === null) return null;
   if (![run.repositoryId, run.workflowId, run.owner, run.repository, run.workflowPath]
     .every((value) => typeof value === 'string' && value.length > 0)) return null;
   const day = new Date(startedAt).toISOString().slice(0, 10);
@@ -108,6 +113,95 @@ export async function readProtectedRunCountBytes(database) {
     .objectStore('dailyRunCountState').get(DAILY_RUN_COUNT_STATE_ID)));
 }
 
+/** Current UTC Monday and its two preceding weeks. @param {number} now */
+export function dailyRunCountCutoff(now) {
+  if (!Number.isFinite(now)) throw new TypeError('Daily count watermark must be finite');
+  const date = new Date(now);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7 - 14);
+  return date.toISOString().slice(0, 10);
+}
+
+/** @param {Record<string, unknown>} run */
+function runStartDay(run) {
+  const time = timestampMilliseconds(run.startedAt);
+  return time === null ? null : new Date(time).toISOString().slice(0, 10);
+}
+
+/**
+ * Bounded reads in one transaction keep bucket deletion, receipt deletion, and
+ * the monotonic replay fence atomic. No canonical detail is scanned or changed.
+ * @param {IDBDatabase} database
+ * @param {number} now
+ * @param {AbortSignal} [signal]
+ * @param {typeof IDBKeyRange} [keyRange]
+ */
+export async function evictDailyRunCounts(database, now, signal, keyRange = globalThis.IDBKeyRange) {
+  signal?.throwIfAborted();
+  const transaction = database.transaction([...DAILY_RUN_COUNT_STORES], 'readwrite');
+  const done = new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve(undefined);
+    transaction.onerror = transaction.onabort = () =>
+      reject(transaction.error ?? new Error('Daily count eviction aborted'));
+  });
+  try {
+    const states = transaction.objectStore('dailyRunCountState');
+    const state = await result(states.get(DAILY_RUN_COUNT_STATE_ID));
+    if (!state || state.status !== 'ready') {
+      await done;
+      return;
+    }
+    const watermark = Math.max(Number(state.retentionWatermark ?? -Infinity), now);
+    const cutoff = dailyRunCountCutoff(watermark);
+    const end = new Date(Date.parse(cutoff) + 21 * 86400000).toISOString().slice(0, 10);
+    if (state.retentionCutoff === cutoff) {
+      states.put({ ...state, retentionWatermark: watermark });
+      await done;
+      return;
+    }
+    for (const storeName of ['dailyRunCounts', 'runCountContributions']) {
+      const store = transaction.objectStore(storeName);
+      /** @type {IDBValidKey | undefined} */
+      let after;
+      for (;;) {
+        signal?.throwIfAborted();
+        const records = await result(store.getAll(after === undefined ? undefined : keyRange.lowerBound(after, true), 250));
+        for (const record of records) {
+          const day = storeName === 'dailyRunCounts' ? record.day : record.retentionDay ?? runStartDay(record.run);
+          let observedAt = Number(record.observedAt
+            ?? Math.max(timestamp(record.run?.updatedAt), timestamp(record.run?.completedAt)));
+          if (storeName === 'runCountContributions' && !day && observedAt > watermark) {
+            const beforeBytes = storedBytes(record);
+            record.observedAt = observedAt = watermark;
+            store.put(record);
+            state.receiptBytes = Number(state.receiptBytes ?? 0) + storedBytes(record) - beforeBytes;
+          }
+          if (day ? day >= cutoff && day < end : observedAt >= Date.parse(`${cutoff}T00:00:00Z`)) continue;
+          store.delete(record.id);
+          if (storeName === 'dailyRunCounts') {
+            state.dailyBytes = Math.max(0, Number(state.dailyBytes ?? 0) - storedBytes(record));
+            state.dailyBucketCount = Math.max(0, Number(state.dailyBucketCount ?? 0) - 1);
+          } else {
+            state.receiptBytes = Math.max(0, Number(state.receiptBytes ?? 0) - storedBytes(record));
+            state.receiptCount = Math.max(0, Number(state.receiptCount ?? 0) - 1);
+            state.excludedRuns = Math.max(0, Number(state.excludedRuns ?? 0) - Number(!record.contribution && !record.retired));
+            state.conflictedRuns = Math.max(0, Number(state.conflictedRuns ?? 0) - Number(record.conflict ?? false));
+          }
+        }
+        if (records.length < 250) break;
+        after = records.at(-1).id;
+      }
+    }
+    states.put({ ...state, retentionWatermark: watermark, retentionCutoff: cutoff });
+    transaction.commit?.();
+    await done;
+  } catch (error) {
+    try { transaction.abort(); } catch { /* Already completed. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
+
 /**
  * Called inside the canonical run write transaction, after its canonical merge.
  * Detail deletion deliberately does not call this function.
@@ -119,10 +213,22 @@ export async function reconcileDailyRunCounts(transaction, record, batchConflict
   const receipts = transaction.objectStore('runCountContributions');
   const daily = transaction.objectStore('dailyRunCounts');
   const states = transaction.objectStore('dailyRunCountState');
+  const state = await result(states.get(DAILY_RUN_COUNT_STATE_ID));
   const previous = await result(receipts.get(/** @type {IDBValidKey} */ (record.id)));
   const reconciled = reconcileRunCountRecord(previous?.run, record);
   const run = reconciled.run;
-  const contribution = dailyRunCountContribution(run);
+  const day = runStartDay(run);
+  const cutoff = state?.retentionCutoff;
+  const revisionTime = Math.max(timestamp(run.updatedAt), timestamp(run.completedAt));
+  const end = cutoff ? new Date(Date.parse(cutoff) + 21 * 86400000).toISOString().slice(0, 10) : '';
+  const expired = Boolean(cutoff && day && (day < cutoff || day >= end));
+  const contribution = expired ? null : dailyRunCountContribution(run);
+  if (expired && !previous) return;
+  if (!previous && cutoff && !day && revisionTime > 0 && revisionTime < Date.parse(cutoff)) return;
+  if (expired && !previous.retired
+    && Number(run.attempt ?? 1) <= Number(previous.run.attempt ?? 1)
+    && revisionTime
+      <= Math.max(timestamp(previous.run.updatedAt), timestamp(previous.run.completedAt))) return;
   const conflict = Boolean(batchConflict || reconciled.conflict || (previous?.conflict
     && run.attempt === previous.run.attempt
     && run.updatedAt === previous.run.updatedAt && run.completedAt === previous.run.completedAt));
@@ -143,11 +249,15 @@ export async function reconcileDailyRunCounts(transaction, record, batchConflict
     dailyBytesDelta += storedBytes(next.total === 0 ? null : next) - storedBytes(current);
     dailyCountDelta += Number(next.total !== 0) - Number(Boolean(current));
   }
-  const receipt = { id: record.id, run, contribution, conflict };
+  const observedAt = previous?.observedAt
+    ?? Math.min(Number(state?.retentionWatermark) || Date.now(), revisionTime || Infinity);
+  const retentionDay = expired || !day
+    ? previous?.retentionDay ?? (previous ? runStartDay(previous.run) : null) : null;
+  const receipt = { id: record.id, run, contribution, conflict, observedAt,
+    ...(expired ? { retired: true } : {}), ...(retentionDay ? { retentionDay } : {}) };
   receipts.put(receipt);
-  const state = await result(states.get(DAILY_RUN_COUNT_STATE_ID));
   if (state) {
-    state.excludedRuns = Number(state.excludedRuns ?? 0) + Number(!contribution) - Number(Boolean(previous && !previous.contribution));
+    state.excludedRuns = Number(state.excludedRuns ?? 0) + Number(!contribution && !expired) - Number(Boolean(previous && !previous.contribution && !previous.retired));
     state.conflictedRuns = Number(state.conflictedRuns ?? 0) + Number(conflict) - Number(previous?.conflict ?? false);
     state.receiptBytes = Number(state.receiptBytes ?? 0) + storedBytes(receipt) - storedBytes(previous);
     state.dailyBytes = Number(state.dailyBytes ?? 0) + dailyBytesDelta;

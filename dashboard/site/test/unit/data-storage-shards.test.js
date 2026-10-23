@@ -157,10 +157,15 @@ describe('incremental canonical storage shards', () => {
       expect(indexGetAll).not.toHaveBeenCalled();
       expect(cursor).not.toHaveBeenCalled();
       expect(stringify.mock.calls).toEqual([
+        [expect.objectContaining({ id: 'run:old-summary', contribution: null })],
         [expect.objectContaining({ id: 'daily-run-counts', status: 'ready' })]
       ]);
-      expect(getAll.mock.contexts.every((store) => store instanceof IDBObjectStore && store.name === 'storageShards')).toBe(true);
-      expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
+      for (const [index, store] of getAll.mock.contexts.entries()) {
+        expect(store).toBeInstanceOf(IDBObjectStore);
+        const objectStore = /** @type {IDBObjectStore} */ (store);
+        expect(['storageShards', 'dailyRunCounts', 'runCountContributions']).toContain(objectStore.name);
+        expect(getAll.mock.calls[index][1]).toBe(objectStore.name === 'storageShards' ? 1000 : 250);
+      }
     } finally {
       vi.restoreAllMocks();
     }

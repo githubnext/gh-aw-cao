@@ -59,6 +59,10 @@ function dailyRunCountMetadata(state) {
     completeness: ready && state.coverage === 'admitted'
       && !state.excludedRuns && !state.conflictedRuns ? 'complete' : 'partial',
     'aggregate-coverage': state?.coverage ?? 'absent',
+    ...(state?.retentionCutoff ? {
+      'aggregate-retention-start': state.retentionCutoff,
+      'aggregate-retention-watermark': new Date(Number(state.retentionWatermark)).toISOString()
+    } : {}),
     'excluded-runs': Number(state?.excludedRuns ?? 0),
     'conflicted-runs': Number(state?.conflictedRuns ?? 0),
     ...(!ready ? { 'query-diagnostic': 'Daily run count state is absent or backfill is incomplete.' }

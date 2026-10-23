@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { parse } from "yaml";
 import {
@@ -118,6 +119,38 @@ test("the installed runtime retains explicit ingestion and downloadable queryabl
   assert.deepEqual(run([
     "query", "--database", path.join(downloaded, "gh-aw-logs.sqlite"), "--collection", "runs",
   ]), runs);
+});
+
+test("the packaged Activity runtime builds and preserves daily run counts without consumer dependencies", (t) => {
+  const root = unpack(t);
+  assert.ok(existsSync(path.join(root, "dashboard/site/src/data/model/daily-run-counts.js")));
+  const database = path.join(root, "daily-counts.sqlite");
+  const input = path.join(root, "run.jsonl");
+  const timestamp = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  writeFileSync(input, `${JSON.stringify({
+    schema_version: 2, kind: "run", run: {
+      run_id: 42, organization: "octo", repository: "octo/demo", workflow_name: "Worker",
+      workflow_path: ".github/workflows/worker.lock.yml",
+      created_at: timestamp, started_at: timestamp, updated_at: timestamp,
+      status: "completed", conclusion: "success",
+    },
+  })}\n`);
+  const run = args => JSON.parse(execFileSync(process.execPath, ["activity/cao.mjs", ...args], {
+    cwd: root, encoding: "utf8", env: { ...process.env, PATH: "", NODE_OPTIONS: "" }, timeout: 30_000,
+  }));
+  assert.equal(run(["ingest-jsonl", "--database", database, "--input", input]).counts.runs, 1);
+  const repair = run(["repair-database", "--database", database, "--ttl-days", "1", "--run-ttl-days", "1"]);
+  assert.equal(repair.healthy, true);
+  assert.equal(repair.after.counts.runs, 0);
+  const connection = new DatabaseSync(database, { readOnly: true });
+  try {
+    const rows = connection.prepare("SELECT value FROM __idb_records WHERE store_name = ?").all("dailyRunCounts");
+    assert.equal(rows.length, 1);
+    assert.equal(JSON.parse(rows[0].value).total, 1);
+    assert.equal(JSON.parse(rows[0].value).successful, 1);
+  } finally {
+    connection.close();
+  }
 });
 
 function fakeGithub(t, {

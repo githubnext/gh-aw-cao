@@ -32,10 +32,14 @@ model runCountContributions {
   conclusion?: string;
   updatedAt?: utcDateTime;
   completedAt?: utcDateTime;
+  observedAt: utcDateTime;
+  retentionAt?: utcDateTime;
 }
 
 model dailyRunCountState {
   `namespace`: string;
   id: string;
   initializedAt: utcDateTime;
+  watermarkAt: utcDateTime;
+  cutoffAt: utcDateTime;
 }

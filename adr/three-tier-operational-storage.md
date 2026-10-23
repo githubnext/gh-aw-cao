@@ -7,8 +7,11 @@ Proposed — 2026-10-23.
 This record proposes an architectural direction and implementation gates. It
 does not authorize a rollout or claim that the acceptance criteria below already
 pass. The separately specified [daily run-count layer](../specs/dashboard-data.md#722-additive-daily-run-counts)
-implements an initial additive slice and migrates `workflow-runtime-health-summary`;
-it does not implement the remaining metrics, sampling, or tier-retention policy.
+implements an initial additive slice, migrates `workflow-runtime-health-summary`
+and the Runs daily chart, and applies three-week logical aggregate eviction with
+replay fencing across browser IndexedDB, Activity SQLite, and hosted PostgreSQL.
+It does not implement the remaining metrics, sampling, hot-tier limits, or
+native weekly aggregate partitions.
 
 In particular, this proposal conflicts with the current
 [dashboard data specification](../specs/dashboard-data.md): Section 5 retains

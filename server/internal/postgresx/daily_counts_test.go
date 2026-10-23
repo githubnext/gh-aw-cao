@@ -203,14 +203,14 @@ func TestDailyCountsOptionalCapabilityAndIndependentDigest(t *testing.T) {
 func TestDailyCountsUTCDayAndWinningAttempt(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	row := dailyRun("utc", "success", "completed")
-	row["startedAt"] = time.Now().UTC().Format("2006-01-02") + "T23:30:00-02:00"
+	row["startedAt"] = time.Now().UTC().AddDate(0, 0, -1).Format("2006-01-02") + "T23:30:00-02:00"
 	row["updatedAt"] = time.Now().UTC().Format(time.RFC3339Nano)
 	dailyPublish(t, store, row)
 	var day, id string
 	if err := store.db.QueryRowContext(t.Context(), `SELECT day,id FROM daily_run_counts WHERE namespace=$1`, store.namespace).Scan(&day, &id); err != nil {
 		t.Fatal(err)
 	}
-	want := time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")
+	want := time.Now().UTC().Format("2006-01-02")
 	if day != want || id != fmt.Sprintf(`["%s","repo","workflow"]`, want) {
 		t.Fatalf("daily key is not UTC/JSON.stringify compatible: %s %s", day, id)
 	}

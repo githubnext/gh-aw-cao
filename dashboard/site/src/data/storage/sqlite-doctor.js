@@ -4,19 +4,22 @@ import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
-import { DAILY_RUN_COUNT_STORES } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, dailyRunCountCutoff, evictDailyRunCounts } from '../model/daily-run-counts.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_STORES,
   DATABASE_VERSION,
   ENTITY_STORES,
+  openCanonicalDatabase,
   prepareCanonicalRecord
 } from './indexeddb.js';
 import { STORAGE_SHARD_STORE } from './shards.js';
 import { mergeRetainedRecords, OPERATIONAL_VALUE_RETENTION_MS, RETENTION_WINDOW_DAYS } from './retention.js';
 import {
   createSqliteRelationalTables,
+  createSqliteIndexedDB,
+  SqliteIDBKeyRange,
   SQLITE_INDEXEDDB_METADATA_SCHEMA,
   SQLITE_RELATIONAL_STORES
 } from './sqlite-indexeddb.js';
@@ -641,6 +644,13 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   if (needsRepair) {
     let repair;
     try {
+      if (beforeSchema.version === 44 && !scanned.error && scanned.invalid.length === 0) {
+        backupPath = await backupDatabase(databasePath, checkedAt);
+        const keyRange = /** @type {typeof IDBKeyRange} */ (/** @type {unknown} */ (SqliteIDBKeyRange));
+        const database = await openCanonicalDatabase(createSqliteIndexedDB(databasePath), keyRange);
+        database.close();
+        actions.push('backfill-daily-run-counts');
+      }
       repair = await repairCanonicalDatabase(
         databasePath,
         checkedAt,
@@ -648,9 +658,9 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         retentionWindowMs,
         retentionWindowMsByStore
       );
-      backupPath = repair.backupPath;
+      backupPath ??= repair.backupPath;
     } catch (error) {
-      backupPath = error && typeof error === 'object' && 'backupPath' in error
+      backupPath ??= error && typeof error === 'object' && 'backupPath' in error
         ? /** @type {{ backupPath: string | null }} */ (error).backupPath
         : null;
       const doctorStage = error && typeof error === 'object' && 'doctorStage' in error
@@ -709,6 +719,35 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     });
   }
 
+  try {
+    const keyRange = /** @type {typeof IDBKeyRange} */ (/** @type {unknown} */ (SqliteIDBKeyRange));
+    const database = await openCanonicalDatabase(createSqliteIndexedDB(databasePath), keyRange);
+    try {
+      const state = await new Promise((resolve, reject) => {
+        const request = database.transaction('dailyRunCountState').objectStore('dailyRunCountState').get('daily-run-counts');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const cutoff = dailyRunCountCutoff(Math.max(Number(state?.retentionWatermark ?? -Infinity), now));
+      if (state?.status === 'ready' && state.retentionCutoff !== cutoff) {
+        const counts = await Promise.all(['dailyRunCounts', 'runCountContributions'].map((name) =>
+          new Promise((resolve, reject) => {
+            const request = database.transaction(name).objectStore(name).count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          })));
+        if (counts.some((count) => Number(count) > 0)) {
+          backupPath ??= await backupDatabase(databasePath, checkedAt);
+          actions.push('maintain-daily-count-retention');
+        }
+      }
+      await evictDailyRunCounts(database, now, undefined, keyRange);
+    } finally {
+      database.close();
+    }
+  } catch (error) {
+    errors.push(`daily count retention: ${error instanceof Error ? error.message : String(error)}`);
+  }
   const afterSqlite = sqliteDiagnostics(databasePath);
   const afterSchema = schemaDiagnostics(databasePath);
   const afterScan = scanRecords(databasePath);
