@@ -685,6 +685,43 @@ convergence with a full replay. Consumers MUST retain the complete declared
 scope's candidates or replay authoritative inputs until scope finalization,
 and MUST NOT present a prefix plan as a finalized population result.
 
+`createStorageTierPlanner` supports complete populations streamed in ascending,
+locale-independent canonical ID order. Revisions of one Run MUST be adjacent;
+the planner reconciles them before selecting that Run. Descending IDs, invalid
+observations, and invalid winning event times invalidate the scan, and a failed
+or completed planner cannot publish another result. Only `finish()` publishes
+a plan after the caller has supplied its entire declared population.
+
+The streaming selector uses bounded worst-first heaps and retains at most
+`hot capacity + statistical capacity + 1` candidate entries, including one
+pending Run winner. Selected entries contain IDs and ranking scalars, not Run
+payloads; only the pending winner retains a full content precedence string.
+Selection uses `O(N log(max(2, hot capacity, statistical capacity)))` work and
+`O(hot capacity + statistical capacity)` candidate storage, plus the largest
+individual input and the caller's bounded input batch. Final sorting is limited
+to retained candidates. The array-based `planStorageTiers` remains available for
+unordered observations and still materializes its supplied population.
+
+`planCanonicalStorageTiers` uses the shared canonical scan API to read Runs in
+primary-key batches of at most 1,000 within one readonly IndexedDB or local SQLite
+transaction. Backend selection is explicit so independent capacity defaults are
+preserved. Cancellation and failed scans reject without returning a prefix plan.
+This API performs no writes, publishes no aggregate checkpoint, and cannot
+authorize eviction. A plan covers the stored snapshot only: an already-pruned
+database cannot establish the completeness of the original evidence population.
+Corrected snapshots require a fresh complete scan; retaining only a previous
+plan is still insufficient.
+
+The selector's synthetic qualification is
+`node --expose-gc --test tests/performance/storage-tier-planning.test.mjs`.
+It processes one million generated Runs carrying 1 KiB detail strings using the
+largest default capacities, asserts the candidate-entry limit throughout, and
+caps sampled post-GC retained JavaScript heap growth at 32 MiB, including the
+final result. This does not measure transient allocation peaks, storage-engine
+buffers or full-backend ingestion/query throughput. Backend-scale qualification
+remains required; in particular, the SQLite compatibility scan's ordered bounded
+reads are not an indexed streaming SQL execution claim.
+
 Daily metrics use the collision-safe tuple
 `[namespace, UTC event day, repository ID, workflow ID]`. The reducer maintains
 one winning contribution per canonical Run, subtracts a superseded contribution,
@@ -741,10 +778,11 @@ import-completion validation against authoritative data; generated TypeSpec
 PostgreSQL schema support; and declarative daily-metric source/query integration.
 Backend persistence, weekly PostgreSQL aggregate partition design/maintenance,
 transactional checkpoints, metrics beyond the three additive measures and Run/
-conclusion counts above, bounded-memory streaming selection, actual query
+conclusion counts above, actual query
 migration/routing, and enterprise-scale correctness, memory, and performance
-measurements are unfinished. Current planning materializes and sorts its supplied
-population; bounded scope sizes do not make that a streaming selector.
+measurements against authoritative backend populations are unfinished. The
+bounded streaming selector and its synthetic retained-heap qualification do not
+complete these activation requirements.
 The planner always returns `evictionEnabled: false`. No tier-capacity eviction
 may be enabled merely because a plan or in-memory aggregate candidate succeeds.
 

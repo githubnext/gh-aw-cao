@@ -93,6 +93,64 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
   });
 });
 
+test('native tier planning uses bounded readonly batches and agrees with a full materialized plan', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const tiers = await import(`${location.origin}/src/data/storage/tiering.js`);
+    const { normalize } = await import(`${location.origin}/src/data/normalize/index.js`);
+    const watermark = Date.parse('2026-10-21T12:00:00Z');
+    const batch = normalize([]);
+    batch.runs = Array.from({ length: 2501 }, (_, index) => ({
+      id: `run:${index}`, startedAt: '2026-10-20T12:00:00Z',
+      observedAt: '2026-10-21T00:00:00Z', conclusion: index % 3 ? 'success' : 'failure'
+    }));
+    await storage.upsertCanonicalBatch(indexedDB, batch, { validateRelationships: false });
+    const options = {
+      backend: 'indexeddb', namespace: 'browser-tier-test', seed: 'v1', watermark,
+      capacities: { hot: 17, statistical: 53 }
+    };
+    const expected = tiers.planStorageTiers(batch.runs, options);
+    /** @type {(number | undefined)[]} */
+    const readSizes = [];
+    /** @type {string[]} */
+    const modes = [];
+    const originalRead = IDBObjectStore.prototype.getAll;
+    const originalTransaction = IDBDatabase.prototype.transaction;
+    IDBObjectStore.prototype.getAll = function (
+      /** @type {IDBValidKey | IDBKeyRange | null | undefined} */ query,
+      /** @type {number | undefined} */ count
+    ) {
+      readSizes.push(count);
+      return originalRead.call(this, query, count);
+    };
+    IDBDatabase.prototype.transaction = function (
+      /** @type {string | string[]} */ stores,
+      /** @type {IDBTransactionMode | undefined} */ mode,
+      /** @type {IDBTransactionOptions | undefined} */ transactionOptions
+    ) {
+      modes.push(mode ?? 'readonly');
+      return originalTransaction.call(this, stores, mode, transactionOptions);
+    };
+    let actual;
+    try {
+      actual = await storage.planCanonicalStorageTiers(indexedDB, { ...options, batchSize: 127 });
+    } finally {
+      IDBObjectStore.prototype.getAll = originalRead;
+      IDBDatabase.prototype.transaction = originalTransaction;
+    }
+    return {
+      matches: JSON.stringify(actual) === JSON.stringify(expected),
+      readSizes, modes, evictionEnabled: actual.evictionEnabled,
+      rowsAfter: (await storage.countCollections(indexedDB, ['runs'])).runs
+    };
+  });
+  expect(result.matches).toBe(true);
+  expect(result.readSizes).toEqual(Array(20).fill(127));
+  expect(result.modes).toEqual(['readonly']);
+  expect(result.evictionEnabled).toBe(false);
+  expect(result.rowsAfter).toBe(2501);
+});
+
 test('native retention cleans expired shards without scanning retained entities', async ({ page }) => {
   const measured = await page.evaluate(async () => {
     const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);

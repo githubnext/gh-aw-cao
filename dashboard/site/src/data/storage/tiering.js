@@ -10,6 +10,16 @@ export const STORAGE_TIER_CAPACITIES = Object.freeze({
 });
 
 /**
+ * @typedef {{
+ *   backend: keyof typeof STORAGE_TIER_CAPACITIES, namespace: string,
+ *   watermark: number, seed: string,
+ *   capacities?: { hot?: number, statistical?: number },
+ *   sourcePrecedence?: Record<string, number>
+ * }} StorageTierOptions
+ * @typedef {{ id: string, priorityWeight: number, priority: number }} StatisticalCandidate
+ */
+
+/**
  * @param {keyof typeof STORAGE_TIER_CAPACITIES} backend
  * @param {{ hot?: number, statistical?: number }} [overrides]
  */
@@ -110,10 +120,160 @@ function priorityUnit(value) {
 }
 
 /**
+ * Worst-first heap: discarded candidates never retain their Run payloads.
+ * @template T
+ * @param {number} capacity
+ * @param {(left: T, right: T) => number} compare Best-first ordering.
+ */
+function boundedSelection(capacity, compare) {
+  /** @type {T[]} */
+  const heap = [];
+  return {
+    get size() { return heap.length; },
+    /** @param {T} value */
+    add(value) {
+      if (capacity === 0) return;
+      if (heap.length < capacity) {
+        heap.push(value);
+        let index = heap.length - 1;
+        while (index > 0) {
+          const parent = Math.floor((index - 1) / 2);
+          if (compare(heap[index], heap[parent]) <= 0) break;
+          [heap[index], heap[parent]] = [heap[parent], heap[index]];
+          index = parent;
+        }
+        return;
+      }
+      if (compare(value, heap[0]) >= 0) return;
+      heap[0] = value;
+      let index = 0;
+      while (2 * index + 1 < heap.length) {
+        let child = 2 * index + 1;
+        if (child + 1 < heap.length && compare(heap[child + 1], heap[child]) > 0) child += 1;
+        if (compare(heap[child], heap[index]) <= 0) break;
+        [heap[index], heap[child]] = [heap[child], heap[index]];
+        index = child;
+      }
+    },
+    sorted() { return [...heap].sort(compare); }
+  };
+}
+
+/**
+ * @param {{ namespace: string, watermark: number, capacities: { hot: number, statistical: number } }} policy
+ * @param {string[]} hot
+ * @param {StatisticalCandidate[]} statistical
+ * @param {number} population
+ * @param {number} future
+ */
+function tierPlan(policy, hot, statistical, population, future) {
+  const census = population <= policy.capacities.statistical;
+  return {
+    policyVersion: TIER_POLICY_VERSION,
+    ...policy,
+    hot,
+    statistical: statistical.map((entry) => ({
+      ...entry,
+      inclusionProbability: census ? 1 : null,
+      inverseProbabilityWeight: census ? 1 : null
+    })),
+    statisticalPopulation: population,
+    statisticalWindow: { start: policy.watermark - STATISTICAL_WINDOW_MS, end: policy.watermark },
+    weightsValid: census,
+    weightValidity: census ? 'census' : 'deterministic-priority-only',
+    deferredFutureRuns: future,
+    evictionEnabled: false
+  };
+}
+
+/**
+ * Consumes a complete population in ascending canonical ID order. Adjacent
+ * revisions reconcile before selection; a later, smaller ID invalidates the
+ * entire scan. Only finish() publishes a plan, never a prefix population.
+ * @param {StorageTierOptions} options
+ */
+export function createStorageTierPlanner(options) {
+  const watermark = logicalWatermark(options.watermark);
+  const namespace = tierIdentifier(options.namespace, 'namespace');
+  const seed = tierIdentifier(options.seed, 'seed');
+  const capacities = storageTierCapacities(options.backend, options.capacities);
+  const sourcePrecedence = { ...options.sourcePrecedence };
+  if (Object.values(sourcePrecedence).some((rank) => !Number.isFinite(rank))) {
+    throw new TypeError('Source precedence must be finite');
+  }
+  /** @type {ReturnType<typeof boundedSelection<{ id: string, timestamp: number }>>} */
+  const hot = boundedSelection(capacities.hot, (left, right) =>
+    right.timestamp - left.timestamp || compareCanonicalStrings(left.id, right.id));
+  /** @type {ReturnType<typeof boundedSelection<StatisticalCandidate>>} */
+  const statistical = boundedSelection(capacities.statistical, (left, right) =>
+    right.priority - left.priority || compareCanonicalStrings(left.id, right.id));
+  /** @type {{ id: string, record: Record<string, unknown>, precedence: ReturnType<typeof normalizedRunPrecedence> } | null} */
+  let pending = null;
+  let population = 0;
+  let future = 0;
+  let closed = false;
+
+  function flush() {
+    if (!pending) return;
+    const { id, record } = pending;
+    const timestamp = runEventTime(record);
+    if (timestamp > watermark) {
+      future += 1;
+    } else {
+      hot.add({ id, timestamp });
+      if (timestamp >= watermark - STATISTICAL_WINDOW_MS) {
+        population += 1;
+        const priorityWeight = outcomePriorityWeight(record);
+        statistical.add({
+          id, priorityWeight, priority: priorityWeight / priorityUnit(canonicalJson([namespace, seed, id]))
+        });
+      }
+    }
+    pending = null;
+  }
+
+  function assertOpen() {
+    if (closed) throw new Error('Storage tier planner is closed');
+  }
+
+  return {
+    get retainedCandidateCount() { return hot.size + statistical.size + (pending ? 1 : 0); },
+    /** @param {Record<string, unknown>} record */
+    add(record) {
+      assertOpen();
+      try {
+        const id = tierIdentifier(record.id, 'run.id');
+        if (pending && compareCanonicalStrings(id, pending.id) < 0) {
+          throw new Error('Storage tier input must be in ascending canonical ID order');
+        }
+        const precedence = normalizedRunPrecedence(record, sourcePrecedence);
+        if (pending && pending.id !== id) flush();
+        if (!pending || compareRunPrecedence(pending.precedence, precedence) < 0) {
+          pending = {
+            id, precedence,
+            record: { startedAt: record.startedAt, completedAt: record.completedAt, conclusion: record.conclusion }
+          };
+        }
+      } catch (error) {
+        closed = true;
+        throw error;
+      }
+    },
+    finish() {
+      assertOpen();
+      closed = true;
+      flush();
+      return tierPlan({ namespace, watermark, capacities },
+        hot.sorted().map(({ id }) => id), statistical.sorted(), population, future);
+    }
+  };
+}
+
+/**
  * Non-destructive planning only. Hot and statistical capacities are independent;
  * their selections may overlap and are never added as independent populations.
  * @param {Record<string, unknown>[]} runs
- * @param {{ backend: keyof typeof STORAGE_TIER_CAPACITIES, namespace: string, watermark: number, seed: string, capacities?: { hot?: number, statistical?: number }, sourcePrecedence?: Record<string, number> }} options
+ * @param {StorageTierOptions} options
  */
 export function planStorageTiers(runs, options) {
   const watermark = logicalWatermark(options.watermark);
@@ -139,23 +299,6 @@ export function planStorageTiers(runs, options) {
     const priorityWeight = outcomePriorityWeight(record);
     return { id, priorityWeight, priority: priorityWeight / priorityUnit(canonicalJson([namespace, seed, id])) };
   }).sort((left, right) => right.priority - left.priority || compareCanonicalStrings(left.id, right.id));
-  const census = ranked.length <= capacities.statistical;
-  return {
-    policyVersion: TIER_POLICY_VERSION,
-    namespace,
-    watermark,
-    capacities,
-    hot,
-    statistical: ranked.slice(0, capacities.statistical).map((entry) => ({
-      ...entry,
-      inclusionProbability: census ? 1 : null,
-      inverseProbabilityWeight: census ? 1 : null
-    })),
-    statisticalPopulation: population.length,
-    statisticalWindow: { start: watermark - STATISTICAL_WINDOW_MS, end: watermark },
-    weightsValid: census,
-    weightValidity: census ? 'census' : 'deterministic-priority-only',
-    deferredFutureRuns: ordered.length - visible.length,
-    evictionEnabled: false
-  };
+  return tierPlan({ namespace, watermark, capacities }, hot,
+    ranked.slice(0, capacities.statistical), population.length, ordered.length - visible.length);
 }

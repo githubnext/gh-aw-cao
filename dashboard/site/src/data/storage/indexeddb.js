@@ -4,7 +4,7 @@ import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as 
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
-import { logicalWatermark } from './tiering.js';
+import { createStorageTierPlanner, logicalWatermark } from './tiering.js';
 import {
   STORAGE_SHARD_STORE, maintainStorageShards, rebuildStorageShards,
   withStorageMetadata, writeAccountedRecords
@@ -1213,6 +1213,27 @@ export async function scanCanonicalCollection(indexedDB, storeName, visit, optio
   } finally {
     database.close();
   }
+}
+
+/**
+ * Plans against one complete readonly Run snapshot without changing retention,
+ * tier membership, or aggregate checkpoints. SQLite uses the same bounded scan.
+ * @param {IDBFactory} indexedDB
+ * @param {Omit<import('./tiering.js').StorageTierOptions, 'backend'> & {
+ *   backend: 'indexeddb' | 'sqlite', batchSize?: number, signal?: AbortSignal
+ * }} options
+ */
+export async function planCanonicalStorageTiers(indexedDB, options) {
+  options.signal?.throwIfAborted();
+  if (options.backend !== 'indexeddb' && options.backend !== 'sqlite') {
+    throw new TypeError('Canonical tier scans require the indexeddb or sqlite backend');
+  }
+  const planner = createStorageTierPlanner(options);
+  await scanCanonicalCollection(indexedDB, 'runs', (records) => {
+    for (const record of records) planner.add(record);
+  }, { batchSize: options.batchSize, checkpoint: () => options.signal?.throwIfAborted() });
+  options.signal?.throwIfAborted();
+  return planner.finish();
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   countCollections,
   maintainCanonicalDatabase,
   openCanonicalDatabase,
+  planCanonicalStorageTiers,
   readCollection,
   readIndex,
   readTransactions,
@@ -27,6 +28,7 @@ import {
 } from '../../src/data/storage/sqlite-indexeddb.js';
 import { CANONICAL_SCHEMA_VERSION } from '../../src/data/model/schema.js';
 import { sqliteRetention } from '../../../../activity/sqlite-retention.mjs';
+import { planStorageTiers } from '../../src/data/storage/tiering.js';
 
 const temporaryDirectories = /** @type {string[]} */ ([]);
 const originalIndexedDB = globalThis.indexedDB;
@@ -74,6 +76,27 @@ it('maintains SQLite canonical shards against an explicit logical watermark', as
     maxDatabaseBytes: Number.MAX_SAFE_INTEGER
   });
   expect((await readCollection(indexedDB, 'audits')).map(({ id }) => id)).toEqual(['watermark-audit']);
+});
+
+it('plans SQLite tiers through bounded scans with the same Unicode ordering and results as IndexedDB', async () => {
+  const indexedDB = installSqliteIndexedDB(temporaryDatabase());
+  const watermark = Date.parse('2026-10-21T12:00:00Z');
+  const runs = Array.from({ length: 135 }, (_, index) => ({
+    id: `run:${index}`, startedAt: '2026-10-20T12:00:00Z',
+    observedAt: '2026-10-21T00:00:00Z', conclusion: index % 3 ? 'success' : 'failure'
+  }));
+  runs.push(...['😀', '\uE000', 'quote:"', 'slash:\\', 'line:\n'].map((id) => ({ ...runs[0], id })));
+  await upsertCanonicalBatch(indexedDB, { ...normalize([]), runs }, { validateRelationships: false });
+  const before = await readCollection(indexedDB, 'runs');
+  const options = /** @type {const} */ ({
+    backend: 'sqlite', namespace: 'test', seed: 'v1', watermark,
+    capacities: { hot: 11, statistical: 23 }
+  });
+  const expected = planStorageTiers(runs, options);
+  expect(await planCanonicalStorageTiers(indexedDB, { ...options, batchSize: 1 })).toEqual(expected);
+  expect(await planCanonicalStorageTiers(indexedDB, { ...options, batchSize: 37 })).toEqual(expected);
+  expect(await readCollection(indexedDB, 'runs')).toEqual(before);
+  expect(await readTransactions(indexedDB)).toEqual([]);
 });
 
 it('keeps a year of outcome history through ingestion and doctor independently of run and detail TTLs', async () => {
