@@ -13,33 +13,18 @@ organization policy permits; new installations still need appropriate approval.
 
 ## Install
 
+Complete [Step 1 of Set Up CAO](setup-quickstarts.md#step-1---install-cao):
+install the extension and enter a clean default-branch control checkout.
+That guide also covers creating versus cloning the repository and the
+[SAML installer fallback](cao-cli.md#control-plane-installer).
+From the control checkout:
+
 ```bash
 CONTROL_REPO="acme/central-agentic-ops"
 TARGET_REPO="acme/example-service"
 
-gh auth status
-```
-
-Enter an existing clean default-branch control checkout. To create a new
-repository instead, choose its visibility explicitly:
-
-```bash
-gh repo create "$CONTROL_REPO" --private --clone
-cd "${CONTROL_REPO##*/}"
-gh extension install githubnext/gh-cao
 gh cao setup
 ```
-
-To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
-creating one. In an existing checkout, install the extension and run `gh cao setup`.
-No separate `init` is required. See the [primary setup guide](setup-quickstarts.md).
-
-:::tip[SAML-token installation failure]
-If GitHub CLI cannot install the extension because of cross-organization SAML
-authorization, use the [curl fallback](cao-cli.md#control-plane-installer):
-`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
-It requires Bash, curl, and Node.js 24+ and preserves stored credentials.
-:::
 
 At **Repositories**, enter the exact value of `$TARGET_REPO`; the control
 repository stays included. Choose **`github-app`** when authentication is
@@ -66,18 +51,9 @@ gh cao setup auth github-app \
   --repo "$CONTROL_REPO"
 ```
 
-For both browser flows:
-
-1. Keep the App private.
-2. Keep **Only select repositories**.
-3. For a new installation on github.com, review the preselected account and
-   repositories against those printed in the terminal. Existing installations
-   open **Configure**; GHES/data-residency hosts still require manual selection.
-4. Finish the installation and return to the terminal.
-
-Preselection stops on missing/invalid IDs, lookup failures, or more than 100
-repositories; it never drops repositories or selects all. See
-[preselection limits and recovery](control-plane-authentication.md#configure-private-github-apps).
+Follow the [App provisioning procedure](control-plane-authentication.md#configure-private-github-apps)
+for both browser flows, including private visibility, **Only select repositories**,
+preselection limits, host differences, and recovery.
 
 Setup verifies the exact selected repository membership with a short-lived App
 installation token and does not accept a manual-verification fallback. The
@@ -93,20 +69,10 @@ gh aw doctor --repo "$CONTROL_REPO" --dir .
 git diff --check
 ```
 
-Initial guided setup separately offers **“Commit and push these CAO monitoring
-changes? [y/N]”** after review. Approval requires a synchronized default branch,
-matching origin and empty index. It publishes only reviewed CAO files and
-returns deployment-pending links immediately, without waiting for Actions.
-Declining, blocked publication, or unattended setup leaves files local.
-
-If not published, review the diff and stage only CAO files. The following assumes
-these paths contain no unrelated edits. After explicit approval:
-
-```bash
-git add .github activity dashboard
-git commit -m "Install Central Agentic Ops control plane"
-git push --set-upstream origin HEAD
-```
+Follow [Publish and open your dashboard](setup-quickstarts.md#step-3---publish-and-open-your-dashboard).
+Guided publication requires separate approval; declining or unattended setup
+leaves files local. Review and stage only CAO files, never unrelated changes or
+secrets. Publication is not proof that collection or deployment has completed.
 
 Credential setup is complete when the policy parses, exact App installation
 membership is verified, the expected App variables and secrets exist, and

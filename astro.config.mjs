@@ -22,7 +22,6 @@ export default defineConfig({
   site: "https://githubnext.github.io",
   base: "/gh-cao",
   redirects: {
-    "/control-plane-authentication": "/gh-cao/authentication/",
     "/getting-started": "/gh-cao/setup-quickstarts/",
     "/setup": "/gh-cao/setup-quickstarts/",
   },
@@ -300,6 +299,7 @@ export default defineConfig({
             { label: "Add a campaign (optional)", link: "/catalog/" },
             { label: "CAO commands", link: "/cao-cli/" },
             { label: "Authentication", link: "/authentication/" },
+            { label: "Provision credentials", link: "/control-plane-authentication/" },
           ],
         },
         {
@@ -350,6 +350,7 @@ export default defineConfig({
             { label: "View catalog", link: "/dashboard-view-catalog/" },
             { label: "WebMCP", link: "/dashboard-webmcp/" },
             { label: "Agent analysis", link: "/agent-analysis/" },
+            { label: "Copilot plugin and canvas", link: "/agent-plugin/" },
             { label: "Agent-readable documentation", link: "/agent-resources/" },
             {
               label: "Views",

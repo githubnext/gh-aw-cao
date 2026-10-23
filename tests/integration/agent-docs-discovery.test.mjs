@@ -125,3 +125,68 @@ test("an external agent can traverse static discovery and resource metadata", as
     [{ kind: "pages" }, { kind: "queries" }],
   );
 });
+
+test("consolidated guides retain section links and expose their canonical sources", async () => {
+  const routes = {
+    authentication: [
+      "configure-your-profile", "public-only-monitoring-quickstart", "reuse-approved-apps",
+      "automated-app-setup", "multiple-organizations-in-one-enterprise",
+      "fine-grained-pat-fallback", "fine-grained-pat-fallback-1",
+      "validate-before-activation", "validation", "credential-reference",
+      "api-capacity", "rotation-and-incidents", "rotation-and-revocation",
+    ],
+    "control-plane-authentication": [
+      "choose-a-profile", "reuse-approved-apps", "configure-private-github-apps",
+      "enterprise-owned-apps", "configure-a-fine-grained-token", "validate-before-activation",
+    ],
+    "setup-one-organization": ["install", "configure-the-apps", "validate-and-commit"],
+    "setup-multiple-organizations": ["install", "create-and-install-the-apps", "configure-the-control-repository", "validate-and-commit"],
+    "setup-fine-grained-pat": ["install", "configure-the-tokens", "validate-and-commit"],
+    "deployment-actions": ["choosing-a-credential-profile", "deploying-the-dashboard", "keeping-the-site-up-to-date", "publishing-from-an-existing-pages-workflow"],
+    "deployment-actions-github-app": ["deploying-the-dashboard", "configuration-reference", "monitoring-the-deployment", "validating-the-credentials", "rotating-and-revoking-credentials"],
+    "deployment-actions-pat": ["deploying-the-dashboard", "configuration-reference", "monitoring-the-deployment", "validating-the-credentials", "rotating-and-revoking-credentials"],
+    deployment: ["about-the-shared-data-flow", "what-every-option-guarantees"],
+    dashboard: ["know-the-boundary", "design-queries-in-a-copilot-canvas"],
+    "dashboard-data-ingestion": ["canvas-administrative-actions", "hosted-server-data-pipeline", "choose-a-local-serving-mode"],
+    "agent-plugin": ["install-the-plugin", "open-a-copilot-canvas", "design-queries-in-a-copilot-canvas", "run-approved-commands", "compiler-version-evidence"],
+    "cao-cli": ["github-cli-extension", "guided-runtime-preparation", "control-plane-installer"],
+  };
+  const pages = new Map();
+  async function readPage(url) {
+    const file = path.join(fileForPublicUrl(url), "index.html");
+    if (!pages.has(file)) pages.set(file, await readFile(file, "utf8"));
+    return pages.get(file);
+  }
+  const resourceIndex = JSON.parse(await readFile(path.join(dist, "agent/resources.json"), "utf8"));
+
+  for (const [route, anchors] of Object.entries(routes)) {
+    const url = new URL(`${route}/`, publicBase);
+    const html = await readPage(url);
+    for (const anchor of anchors) {
+      assert.ok(html.includes(`id="${anchor}"`), `${route} must retain #${anchor}`);
+    }
+    const summary = resourceIndex.resources.find((entry) => entry.id === route);
+    assert.ok(summary, `${route} must be discoverable, not hidden by a redirect`);
+    const resource = JSON.parse(await readFile(path.join(dist, route, "index.json"), "utf8"));
+    assert.equal(resource.source.path, `docs/${route}.md`);
+
+    const content = html.match(/<main\b[^>]*>([\s\S]*?)<\/main>/)?.[1];
+    assert.ok(content, `${route} must render an article`);
+    for (const [, href] of content.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
+      const target = new URL(href, url);
+      if (target.origin !== publicBase.origin || !target.pathname.startsWith(publicBase.pathname)
+          || target.pathname.startsWith(`${publicBase.pathname}cao/`)) continue;
+      if (path.extname(target.pathname)) continue;
+      const targetHtml = await readPage(target);
+      if (target.hash) {
+        const anchor = decodeURIComponent(target.hash.slice(1));
+        assert.ok(targetHtml.includes(`id="${anchor}"`), `${route} links to missing ${href}`);
+      }
+    }
+  }
+
+  const navigationHtml = await readPage(new URL("dashboard/", publicBase));
+  for (const route of ["control-plane-authentication", "agent-plugin"]) {
+    assert.ok(navigationHtml.includes(`href="/gh-cao/${route}/"`), `${route} must be in navigation`);
+  }
+});

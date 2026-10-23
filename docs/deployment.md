@@ -17,12 +17,16 @@ Choosing a deployment option never changes campaign policy, rollout mode, creden
 
 ## Comparing the options
 
-The table below compares the deployment options. The GitHub Actions only option has two credential profiles, so it appears twice. Server-backed deployments use PostgreSQL for dashboard entities, queries, and operational state by default. Azure still pairs PostgreSQL with Azure Managed Redis for operational caches and security state; Redis remains available elsewhere as an explicit legacy selection, including through a compatible external provider such as Upstash.
+Dashboard hosting and collection credentials are separate choices. Pages can
+use the built-in workflow token for bounded monitoring, or Apps/PATs when
+required. Server-backed deployments use PostgreSQL for dashboard entities,
+queries, and operational state by default. Azure still pairs PostgreSQL with
+Azure Managed Redis for operational state; other hosts can explicitly select
+a compatible Redis provider such as Upstash.
 
 | Option | Dashboard host | Where queries run | Who can sign in | Infrastructure you operate |
 | --- | --- | --- | --- | --- |
-| [GitHub Actions only with GitHub Apps](deployment-actions-github-app.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two private GitHub Apps |
-| [GitHub Actions only with a fine-grained PAT](deployment-actions-pat.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | Two fine-grained personal access tokens (PATs) owned by one user |
+| [GitHub Actions only](deployment-actions.md) | GitHub Pages | In each viewer's browser | Anyone who can read the Pages site | No application server; [collection credentials](deployment-actions.md#choosing-a-credential-profile) depend on the exact scope |
 | [Azure](deployment-azure.md) | Azure Functions | On the server, over PostgreSQL | Members of allowed GitHub organizations or teams | Function App, PostgreSQL, Key Vault, Azure Managed Redis, storage account, and Application Insights |
 
 ## Choosing an option
@@ -31,8 +35,12 @@ The table below compares the deployment options. The GitHub Actions only option 
    control repository and is what the supported CAO installer configures by
    default. If you don't have a control repository yet, follow
    [Set Up CAO](setup-quickstarts.md) first.
-1. **Choose a credential profile.** To try CAO with the least setup, use a fine-grained PAT. For production, use GitHub Apps. For more information, see [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
-1. **Move to a server-backed option only when you need to.** Choose Azure when your data is too large to query in a browser, when you need per-user sign-in instead of Pages visibility, or when you need webhook-driven refresh.
+2. **Choose collection credentials for the scope.** Monitoring the control
+   repository and confirmed public targets needs no App/PAT setup. Prefer
+   private GitHub Apps for durable cross-repository access; use fine-grained
+   PATs only when eligible and explicitly accepted. See
+   [Choosing a credential profile](deployment-actions.md#choosing-a-credential-profile).
+3. **Move to a server-backed option only when you need to.** Choose Azure when your data is too large to query in a browser, when you need per-user sign-in instead of Pages visibility, or when you need webhook-driven refresh.
 
 Azure runs the host-neutral Go service from the `server/` directory, with authentication, authorization, cross-site request forgery (CSRF), webhook, rate-limit, and logging protections. You can also deploy that service on your own container platform; you are responsible for secret management, ingress, and delivery.
 
@@ -57,20 +65,18 @@ Azure, and Upstash examples.
 
 ## About the shared data flow
 
-Every option serves data derived from the same evidence.
-
-1. The `cao-activity.yml` workflow collects bounded `gh aw logs` evidence on a schedule.
-1. The `cao-dashboard.yml` workflow builds the dashboard site and a data payload. The payload includes a hash manifest (`payload-hashes.json`), an inventory (`inventory-sources.json`), and run and record files (`gh-aw-logs-runs/*.jsonl` and `gh-aw-logs-records/*.jsonl`).
-1. The selected deployment consumes the payload. In static mode, GitHub Pages serves the UI and data to the browser. In hosted mode, the Go server serves the UI, verifies and transactionally loads the payload into PostgreSQL, and answers bounded same-origin queries. The payload is server ingestion input, not a separately hosted frontend. Operational caches and state live in PostgreSQL by default, or in Redis when a deployment explicitly selects that legacy backend.
-
-The optional Azure collection profile replaces the first step with server-side collection workers that GitHub App webhooks drive. For more information, see [Using the optional collection profile](deployment-azure.md#using-the-optional-collection-profile).
-
-For collection boundaries, retention, and browser processing, see [Data ingestion](dashboard-data-ingestion.md). For entities and identities, see [Data model](dashboard-data-model.md).
+Every option uses the canonical evidence model, not a separate dashboard data
+format. [Data ingestion](dashboard-data-ingestion.md) owns the collection,
+verified payload, retention, and backend-processing details;
+[Data model](dashboard-data-model.md) owns entities and identities.
+The optional [Azure collection profile](deployment-azure.md#using-the-optional-collection-profile)
+uses server-side workers driven by GitHub App webhooks instead of relying only
+on scheduled Activity snapshots.
 
 ## What every option guarantees
 
-- **Read-only access.** The dashboard can't start work, approve outputs, change policy, or write to target repositories. For more information, see [Know the boundary](dashboard.md#know-the-boundary) and [Execution and safety](execution-and-safety.md).
-- **Disposable data.** Browser storage (IndexedDB) and hosted PostgreSQL hold rebuildable dashboard projections. PostgreSQL or, where explicitly selected, Redis holds rebuildable operational caches and state. None is the authoritative Activity evidence source.
+- **Evidence is not authority.** Viewing a result grants no execution or write permission. Pages is read-only; optional canvas commands and hosted CLI actions have separate authorization and approval requirements. See [Know the boundary](dashboard.md#know-the-boundary).
+- **Rebuildable dashboard data.** Browser IndexedDB and canonical PostgreSQL hold derived evidence projections. Protected operational state such as audit history, queues, and revocation records is separate and must not be treated as a disposable cache. See the [operational-storage contract](https://github.com/githubnext/gh-cao/blob/main/specs/server-operational-storage.md).
 - **Verified payloads.** Each payload file is checked against `payload-hashes.json` before it is parsed. A missing manifest, a hash mismatch, an unsafe path, or a malformed record stops ingestion.
 - **No exposed secrets.** Secrets never appear in the dashboard site, API responses, URLs, or logs.
 
@@ -79,7 +85,7 @@ For collection boundaries, retention, and browser processing, see [Data ingestio
 - **Live data.** The dashboard is not a live feed. Its data is only as fresh as the last Activity run and the last dashboard rebuild or ingestion.
 - **Availability.** CAO adds no availability service-level agreement (SLA), backup service, or disaster-recovery objective beyond what the underlying platform provides.
 - **Compliance records.** The dashboard is not a compliance record. For compliance evidence, use GitHub Actions run history, your checked-in policy, your infrastructure definitions, and platform audit logs.
-- **Workflow control.** The dashboard can't stop, cancel, or govern workflows. To stop campaigns, see [Emergency stop](operations.md#emergency-stop).
+- **Automatic workflow control.** Evidence and recommendations do not stop or govern workflows. To stop campaigns, follow [Emergency stop](operations.md#emergency-stop).
 
 ## Next steps
 

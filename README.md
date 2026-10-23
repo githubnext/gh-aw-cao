@@ -40,75 +40,26 @@ or `gh repo clone OWNER/CONTROL`, then `cd CONTROL` before installation. Choose
 `--public` instead only for public evidence. A private control repository
 requires credentials even when its other targets are public.
 
-Interactive setup shows the CAO file summary, policy diff, and full-diff path,
-then asks **“Commit and push these CAO monitoring changes? [y/N]”**. Approval
-publishes only reviewed CAO files from the synchronized default branch with an
-empty Git index. No force-push or branch-protection bypass. Setup returns
-immediately with Actions and dashboard links marked **deployment pending**;
-it never waits for collection or deployment.
+Follow [Set Up CAO](docs/setup-quickstarts.md) for scope, authentication,
+publication, and the first dashboard visit. Setup offers a separate default-No
+commit-and-push prompt; declining or unattended setup leaves files local.
+Publication returns **deployment pending**, not a ready dashboard.
+**No campaign is installed or run.** An empty dashboard is expected when there
+is no Agentic Workflow history.
 
-Declining, blocked publication, and unattended setup leave files local.
-Run `gh cao doctor` afterward. If not published, review and publish manually:
+Use a private control repository for non-public evidence. A private repository
+does **not** guarantee a private Pages site: verify dashboard visibility before
+publishing.
 
-```bash
-git status --short
-git diff -- .github
-git add .github activity dashboard
-git commit -m "Set up CAO monitoring"
-git push
-```
-
-On upgrades, also review and stage the retired shell launcher's deletion if Git
-reports it. Only known shipped launchers are removed; consumer-owned scripts are preserved.
-
-In Actions, check **CAO validation**, **CAO Activity**, and **CAO Dashboard**,
-including its Pages deployment. The dashboard becomes ready asynchronously.
-**No campaign is installed or run.** A repository without Agentic Workflow
-history starts with an empty dashboard; you do not need to generate activity.
-
-The [getting-started guide](docs/setup-quickstarts.md) covers prerequisites,
-creating a separate control repository, authentication, dashboard visibility,
-and your first look at the data. Prefer a private control repository for
-non-public evidence; a private repository does not guarantee a private dashboard.
-
-**Optional, later:** describe the outcome and scope using
-[From Outcome to Execution](docs/operation-patterns.md), browse the
-[campaign catalog](https://githubnext.github.io/gh-cao/catalog/)
-or try one standalone report with the [Daily Repo Status quickstart](docs/setup/quickstart.md).
-From a configured control checkout, `gh cao add daily-repo-status` installs the workflow
-and registers it in `cao.json` with review-only, one-repository limits. Interactive
-commit/push and first-run prompts are separate opt-ins; campaign packages still
-use `gh cao add`.
-For the campaign pattern, follow the manual
+**Optional, later:** describe your outcome and scope in
+[From Outcome to Execution](docs/operation-patterns.md), then try the
+[Daily Repo Status quickstart](docs/setup/quickstart.md) or the
 [Repo Assist review walkthrough](docs/repo-assist-quickstart.md).
-You can also read [real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
+Campaigns are one first-class way to scale recurring work, not a prerequisite.
+Start with one repository in `review`; live outputs need explicit reviewed
+policy and declared safe-output capabilities. You can also read
+[real Repo Assist reports](repo-assist/README.md#see-repo-assist-in-action)
 without starting a workflow or spending AI credits.
-
-Control repositories receive only the curated production runtime, not dashboard
-tests, screenshots, contributor tooling, or plugin files. The CLI and runtime
-keep their canonical paths under `activity/`, `dashboard/`, and `.github/`.
-Normal installation downloads a prebuilt archive for gh-aw's exact resolved
-SHA and verifies signed build provenance before replacing runtime files; it
-does not run npm. Stable versions use release assets, while main/SHA installs
-use successful Actions artifacts retained for 90 days and wait up to five
-minutes for an already active exact-SHA runtime build. An authenticated GitHub
-CLI with artifact and attestation access is required for runtime materialization;
-this is separate from anonymous public tool downloads.
-The curl fallback requires local Node.js 24+; native setup and Go commands do not.
-Dashboard builds retain their existing production npm dependencies.
-
-Central Agentic Ops governs shared **operations**, not one mandatory
-orchestration recipe. Describe the outcome, target scope, and execution
-requirements; guidance and authoring agents derive the simplest suitable
-structure and explain it. You do not need to choose an implementation-pattern
-name. Campaigns remain a first-class way to package and scale recurring work,
-not a prerequisite.
-
-[From Outcome to Execution](docs/operation-patterns.md) maps those requirements
-to direct operations, bounded fleet workflows, or independent campaign workers,
-and explains when ordinary GitHub Actions or observation alone is enough.
-All participating patterns retain explicit scope, review/live ceilings, and
-gh-aw's execution and safe-output boundaries.
 
 ## Project status and scope
 
@@ -122,47 +73,35 @@ work and planned improvements.
 
 ### GitHub CLI extension
 
-GitHub CLI installs the compiled `gh cao` Go extension for
-setup, authentication, campaigns, diagnostics, and read-only evidence analysis.
-No local Go build is needed:
+The compiled `gh cao` extension handles setup, authentication, campaigns,
+diagnostics, and read-only evidence analysis without local Go or Node.js:
 
 ```bash
 gh cao --help
 gh cao --version
 ```
 
-Use `gh extension upgrade gh-cao` to refresh a GitHub-CLI-managed extension;
-rerun `install-gh-cao.sh` for a curl-installed extension. Runtime updates
-remain separate (`gh cao update --campaign root`). GitHub-CLI-managed
-installations can still use `gh extension upgrade gh-cao`, but that authenticated
-cross-organization release path can fail with enterprise SAML-restricted tokens.
-For local development, `make build` produces `./gh-cao`.
-
-Use `gh cao setup` for guided configuration or
-`gh cao setup auth github-app|enterprise-app|token` for authentication only.
-Every extension command executes natively in Go, including onboarding,
-authentication, repository enrollment, validation, downloads, Dashboard Language
-queries, computations, and MCP. No Node.js installation or JavaScript runtime
-checkout is needed. The binary embeds the reviewed dashboard definitions and
-reads canonical SQLite snapshots directly; use `--dashboard FILE` to select
-an explicit dashboard document. Run policy mutations from the control repository root.
-Help, version, and catalog discovery work offline.
-
-Activity and Dashboard Actions invoke `node activity/cao.mjs <command>` directly;
-operator commands use `gh cao`. There is no shell launcher.
-SQLite snapshot repair and hosted-CLI App setup remain Node-only.
-Releases include version-stamped
-binaries named `gh-cao-OS-ARCH` (`.exe` on Windows) for Linux, macOS, and Windows
-(amd64 and arm64), plus SHA-256 checksums.
-The installer selects the latest published `vX.Y.Z` release, including prereleases
-but excluding drafts, and also verifies older releases' legacy `OS-ARCH` assets.
-See [the command reference](docs/cao-cli.md#github-cli-extension) for the migration
-boundary and [extension development](CONTRIBUTING.md#go-extension-development)
-for local installation, project layout, and checks.
+See [CAO Commands](docs/cao-cli.md) for installation and upgrades, command
+selection, runtime provenance, and the Go/Node boundary. Operators use `gh cao`;
+workflow agents and Activity/Dashboard Actions use `node activity/cao.mjs`.
+The plugin and contributor tooling are not part of the installed control-plane
+runtime. For local extension development, see
+[Contributing](CONTRIBUTING.md#go-extension-development).
 
 ## Documentation
 
-Ready to explore? [See the docs](https://githubnext.github.io/gh-cao/).
+Read the [documentation site](https://githubnext.github.io/gh-cao/), or start
+with the guide for your task:
+
+| Task | Guide |
+| --- | --- |
+| Understand CAO and its boundaries | [What is CAO?](docs/architecture-at-a-glance.md) and [Architecture](docs/architecture.md) |
+| Install and monitor existing workflows | [Set Up CAO](docs/setup-quickstarts.md) |
+| Choose and provision credentials | [Authentication](docs/authentication.md) and [credential setup](docs/control-plane-authentication.md) |
+| Choose dashboard hosting | [Deployment options](docs/deployment.md) |
+| Interpret evidence | [Dashboard](docs/dashboard.md) |
+| Add shared work | [From Outcome to Execution](docs/operation-patterns.md) and [campaign catalog](https://githubnext.github.io/gh-cao/catalog/) |
+| Operate, update, or recover | [Monitor and recover](docs/operations.md) |
 
 For coding agents, use
 [`llms.txt`](https://githubnext.github.io/gh-cao/llms.txt) for navigation and
@@ -174,97 +113,24 @@ broad documentation corpus.
 
 ## Agent plugin and Requirements
 
-This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin. It exposes the portable `setup-cao`, `debug-cao`, `add-cao-campaign`, `create-cao-campaign`, `analyze-cao`, and `cao-cli` skills.
+This repository is an [Agent Plugins 1.0](https://agent-plugins.org/) plugin,
+with portable skills for setup, debugging, campaign authoring, and analysis.
+In Copilot CLI it also provides a **Central Agentic Ops** canvas.
+See [Agent plugin and Copilot canvas](docs/agent-plugin.md) for installation,
+requirements, query authoring, approved commands, and the local trust boundary.
 
-Install this repository using any [compatible client's](https://agent-plugins.org/compatible-clients) plugin installer, then invoke `setup-cao` to create a control plane from scratch, `debug-cao` to diagnose deployment failures and prepare evidence-rich issues, `add-cao-campaign` to discover and safely install an existing catalog campaign, `create-cao-campaign` with an outcome, target scope, and execution requirements (it checks whether a campaign is needed first), `analyze-cao` to download and query CAO activity data with the `cao` CLI, or `cao-cli` for a general reference on using `cao` in local development and inside agentic workflow runs.
-
-The Markdown and Starlight documentation is authoritative. The `llms*.txt`
-resources are generated by the documentation build and must not be edited or
-committed manually. The documentation auditor evaluates whether agents can find
-the authoritative material; it does not define product behavior. Architecture
-and specification changes belong in their source documents.
-
-In Copilot CLI, the plugin also provides a **Central Agentic Ops** Canvas. Open it to start the repository's local dashboard preview, optionally for a specified `OWNER/REPOSITORY`. The extension gives the agent tools to execute declarative queries with the canonical dashboard query engine and read bounded sections of the dashboard data architecture specification.
-
-The plugin must be enabled in the client; the `com.github.copilot/extensions/`
-bundle is not automatically discovered as a repository-local extension. The
-canvas requires GitHub CLI authentication with Actions read access and a current
-`central-agentic-ops-dashboard` artifact from a successful dashboard run. It
-uses only the installed plugin's server, query engine, specification, and site;
-it never imports executable modules from the active checkout. When necessary it
-stages the bundled site in a temporary workspace directory without relaxing the
-local server's path restrictions. Workspace campaign documents remain JSON
-data. Closing the canvas or stopping/reloading the extension removes its
-temporary preview files and prevents new previews from starting.
-
-Canvas previews launch the shared Go dashboard server against the downloaded,
-checksum-verified canonical `gh-aw-logs.sqlite` snapshot. Go serves browser assets,
-declarative queries, pagination, diagnostics, repository memory and revision
-subscriptions behind one loopback capability URL. The private Node adapter
-retains only Copilot integration, JSON composition/live reload, local-user
-GitHub reads and approved command execution. There is no canvas backend selector,
-Node query engine, legacy source transport or browser IndexedDB fallback.
-Missing, corrupt or unsupported snapshots stop startup.
-
-Install Go compatible with the bundled server module, or set
-`CAO_DASHBOARD_EXECUTABLE` to an absolute path to a compatible `cao-dashboard`
-binary. The installed plugin includes its own Go sources and native query module;
-it never compiles executable code from the active checkout. Closing the canvas
-stops the Go child before removing its temporary assets; owner-process exit also
-terminates the child through its stdin lifetime.
-
-The canvas read-only GitHub API can read compiler metadata from default-branch
-lock files. Reads are cached per credential and limited to
-128 distinct files with eight concurrent requests. The API returns only file
-identity and the parsed compiler version, never workflow contents or credentials.
-Live API reads do not rewrite immutable snapshot evidence. Unavailable or stale
-reads never fabricate fresh installed-version evidence. Upgrade is hidden only when recorded versions are known current;
-missing installed-version or release evidence keeps the action available.
-
-All ordinary local serving uses Go: `npm run dev` or `npm run dashboard:local`
-builds the site and runs `cao-dashboard serve` against a verified local SQLite
-snapshot. Set `DASHBOARD_DATA_URL` to another deployed Pages site, or pass
-`--download-sqlite=https://owner.github.io/repository/` to refresh the cache.
-Use `--listen 127.0.0.1:8443` and `--sqlite PATH` for listener and cache overrides.
-Relative server paths resolve from `server/`.
-
-For an explicit Pages/IndexedDB simulation, run
-`npm run dashboard:pages:build -- --fixture` (labelled synthetic evidence), or
-`--activity-dir PATH` with an existing Activity snapshot, then
-`npm run dashboard:pages -- --base-path /gh-cao/`. The Go static server serves
-the actual built Pages artifact without hosted bootstrap or query endpoints.
-This simulates Activity normalization and Dashboard publication locally, not
-GitHub collection, Actions permissions, or Pages deployment infrastructure.
-Hosted PostgreSQL serving uses `go -C server run ./cmd/cao-dashboard serve-hosted`
-with the reviewed policy and OAuth/HTTPS configuration in
-[the server guide](server/README.md). There is no standalone Node server;
-`dashboard/canvas-server.mjs` is an internal canvas-development bridge only.
-
-CLI actions are approved in the canvas's command-review dialog; there is no
-second host confirmation prompt or interactive-elicitation requirement.
-The server still validates each declared action and its resolved command, binds
-execution to the preview's working directory, and executes without a shell.
-Installing the complete plugin bundle is required; the extension folder alone
-is not a standalone package.
-
-For extension changes, run `npm run typecheck:copilot` and the focused
-`tests/unit/dashboard-extension.test.mjs` and
-`tests/unit/dashboard-local-preview.test.mjs` tests. These exercise the SDK
-declarations, registered tools, workspace layouts, and preview cleanup.
-`npm run check:agent-plugin` validates portable skill metadata, package
-containment, relative documentation links, and required bundled resources. It
-runs during lint and pull-request checks, alongside the plugin installation
-smoke test.
+For previews outside Copilot, use the
+[local serving guide](docs/dashboard-data-ingestion.md#choose-a-local-serving-mode).
+Hosted deployment is separate; see the [Go server guide](server/README.md).
 
 ## GitHub Pages setup
 
-The default Central Agentic Ops campaign installs the dashboard builder and manual Pages publisher. Before running **Central Agentic Ops Dashboard** for the first time:
-
-1. Open **Settings > Pages** in the control repository.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Optionally, restrict Pages access to the intended audience if your plan supports private Pages; the dashboard can also be published publicly.
-
-The dashboard workflow remains manual and does not enable Pages automatically.
+Guided setup configures Pages with **GitHub Actions** as its source and checks
+public-publication consent. Successful default-branch **CAO Activity** runs
+automatically trigger **CAO Dashboard**; manual dashboard rebuilds are also
+available. The workflow itself does not enable Pages.
+See [GitHub Actions deployment](docs/deployment-actions.md) for publication,
+visibility, retention, and stopping or recovering the site.
 
 ## Agent analysis
 

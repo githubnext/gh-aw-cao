@@ -230,9 +230,12 @@ test("ingestion documentation separates active packaging from supported manual a
   assert.match(manual, /`ingest`/);
   assert.match(manual, /not used by the Activity or Dashboard pipelines and not deprecated/);
   const ingestion = readFileSync("docs/dashboard-data-ingestion.md", "utf8").replace(/\s+/g, " ");
-  assert.match(ingestion, /### Manual artifact import .*`cao ingest` is a supported manual importer/);
+  assert.match(ingestion, /### Manual artifact import .*`node activity\/cao\.mjs ingest` is a supported manual importer/);
   assert.match(ingestion, /### Active JSONL pipeline .*`compact-jsonl`, `hash-payloads`, and `ingest-jsonl`/);
   assert.match(ingestion, /not just a checksum utility/);
+  assert.match(ingestion, /gh cao download/);
+  assert.match(ingestion, /gh cao query/);
+  assert.match(ingestion, /node activity\/cao\.mjs repair-database/);
 });
 
 test("hosted-executor App setup belongs only to the native operator CLI", () => {

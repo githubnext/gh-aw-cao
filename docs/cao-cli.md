@@ -14,7 +14,6 @@ using the CLI should follow the
 [`cao-cli` skill](https://github.com/githubnext/gh-cao/blob/main/skills/cao-cli/SKILL.md);
 agents querying activity data should use
 [`analyze-cao`](https://github.com/githubnext/gh-cao/blob/main/skills/analyze-cao/SKILL.md).
-The Go extension exposes the operator-facing command surface as `gh cao`.
 Onboarding and lifecycle administration run only in Go, not in Node wrappers.
 The Node `cao` entry point is the supported Actions runtime, including evidence
 APIs for agents inside agentic workflows, not an alternative operator surface.
@@ -127,6 +126,16 @@ release's exact runtime provenance and file checksums, and checks all
 destinations before adding files. Existing policy is read, not replaced with a
 baseline. Invalid policy and conflicting runtime files fail closed. Complete
 runtime installs are reused; use `gh cao update --campaign root` for upgrades.
+
+Control repositories receive the curated production runtime under `activity/`,
+`dashboard/`, and `.github/`, not tests, screenshots, contributor tooling, or
+plugin files. Normal materialization downloads a prebuilt exact-SHA archive,
+without install-time npm. Stable versions use release assets; main/SHA installs
+use successful Actions artifacts retained for 90 days, waiting at most five
+minutes for an already active exact-SHA runtime build. Artifact and attestation
+access needs authenticated GitHub CLI even when public tool downloads are
+anonymous. See the [runtime provenance contract](https://github.com/githubnext/gh-cao/blob/main/specs/repository-layout-and-installation.md#41-provenance).
+Dashboard builds still install their production npm dependencies.
 
 Missing `gh-aw` is installed at the selected catalog's minimum version. Setup
 never silently upgrades an existing older or broken extension. It does not need

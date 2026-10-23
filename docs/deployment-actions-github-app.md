@@ -4,13 +4,17 @@ description: Configure private read and write GitHub Apps as the GitHub API cred
 ---
 
 > [!WARNING]
-> **Experimental:** This credential profile is experimental. App permissions, variable and secret names, setup commands, and the credential fallback order can change between releases. Validate the profile with bounded `review` runs before any `live` use.
+> **Experimental:** This credential profile is experimental. Permissions and setup interfaces can change between releases. Validate the profile with bounded `review` runs before any explicitly authorized `live` use.
 
 ## About the GitHub Apps profile
 
-GitHub Apps are the recommended credential profile for production use of the [GitHub Actions only deployment](deployment-actions.md). The Activity collector, orchestrators, and workers create short-lived installation tokens from two private GitHub Apps that your organization or enterprise owns.
+GitHub Apps are the preferred durable credential profile for the
+[GitHub Actions only deployment](deployment-actions.md) when the built-in token
+cannot cover the required evidence or approved outputs. The Activity collector
+and participating workflows use short-lived installation tokens from separate
+private Apps owned by your organization or enterprise.
 
-- **Read app.** Used by GitHub tools, admission, control precompute, and the Activity collector (`cao-activity.yml`).
+- **Read app.** Used for scoped GitHub reads, control precompute, and Activity collection.
 - **Write app.** Used only by trusted safe-output processing.
 
 The apps don't affect how the dashboard is hosted. The dashboard build and deploy jobs never use the apps. They use the automatic `github.token` and OpenID Connect (OIDC).
@@ -30,98 +34,39 @@ You need everything in the [prerequisites for the GitHub Actions only deployment
 | --- | --- |
 | App ownership | An approved private App pair and access to its keys, or permission to create Apps in the owning organization/enterprise. Public apps aren't supported. |
 | App installation | Appropriate approval for each new organization installation. Repository administrators can extend an already-approved installation to their repositories where organization policy permits. |
-| Read app permissions | Read-only access to Actions, Checks, Contents, Issues, Packages, Pull requests, Secret scanning alerts, Security events, Commit statuses, Vulnerability alerts, and Metadata. No write permissions. |
-| Write app permissions | Write access to Actions, Contents, Issues, and Pull requests. Read access to Administration and Metadata. |
+| Permissions | Use the [permission matrix](authentication.md#permissions) as a ceiling, narrowed to the installed workflows. The read App has no write permissions; write scope covers only approved outputs. |
 | Webhooks | Turned off for both apps. |
-
-Grant only the permissions that your installed campaigns need. For more information, see [Permissions](authentication.md#permissions).
 
 ## Deploying the dashboard
 
-1. Install the dashboard. For more information, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard). Don't run any workflows yet.
-1. Create and install the apps.
+Use [Set Up One Organization](setup-one-organization.md) or
+[Set Up Multiple Organizations](setup-multiple-organizations.md) for a new
+installation. For credential-only changes, follow
+[Reuse approved Apps](control-plane-authentication.md#reuse-approved-apps) or
+[Configure private GitHub Apps](control-plane-authentication.md#configure-private-github-apps).
+Those procedures own the commands, selected-repository installation steps,
+host differences, and secure key prompts.
 
-   - **For already-approved Apps,** reuse their client IDs and securely enter
-     their keys instead of registering replacements. This also supports private
-     enterprise Apps installed separately in each enrolled organization.
+Before dispatching workers, admit the write App's `APP-SLUG[bot]` login in each
+worker's `on.bots` allowlist and recompile its source. Successful pre-activation
+with skipped activation is not a successful worker run.
 
-     ```bash
-     gh cao setup auth github-app \
-       --repo OWNER/CONTROL-REPOSITORY \
-       --read-client-id READ-APP-CLIENT-ID \
-       --write-client-id WRITE-APP-CLIENT-ID \
-       --dry-run
-     ```
-
-     Remove `--dry-run` to apply. See
-     [Reuse approved Apps](authentication.md#reuse-approved-apps)
-     for approval boundaries and supported GitHub versions.
-
-   - **For one organization,** use the manifest helper. Preview the changes with `--dry-run` first. If you use GitHub Enterprise Cloud with data residency, set `GH_HOST` to your host name. Otherwise, omit it.
-
-     ```bash
-     export GH_HOST=HOSTNAME
-     gh cao setup auth github-app --repo OWNER/CONTROL-REPOSITORY --dry-run
-     gh cao setup auth github-app \
-       --repo OWNER/CONTROL-REPOSITORY \
-       --write-repository OWNER/OUTPUT-REPOSITORY
-     ```
-
-   - **For several organizations in one enterprise,** create both private apps in your enterprise settings. The manifest helper can't create apps that an enterprise owns. Install each app on selected repositories in every enrolled organization, then run the following command.
-
-     ```bash
-     gh cao setup auth enterprise-app \
-       --repo OWNER/CONTROL-REPOSITORY \
-       --read-client-id READ-APP-CLIENT-ID \
-       --write-client-id WRITE-APP-CLIENT-ID \
-       --policy .github/workflows/cao.json \
-       --write-repository OWNER/CONTROL-REPOSITORY
-     ```
-
-   Replace the placeholders as follows:
-
-   - `OWNER/CONTROL-REPOSITORY` with your control repository.
-   - `OWNER/OUTPUT-REPOSITORY` with an approved safe-output repository.
-   - `READ-APP-CLIENT-ID` and `WRITE-APP-CLIENT-ID` with the client IDs of your apps.
-1. For every installation, select **Only select repositories**.
-   - For new installations on github.com, review the account and exact
-     repositories preselected by setup before approving. Existing installations
-     retain **Configure**; GHES/data-residency hosts retain manual selection.
-     [Preselection failures or selections over 100 repositories](control-plane-authentication.md#configure-private-github-apps)
-     stop setup rather than dropping repositories or selecting all.
-   - Install the read app on the control repository and on every repository that `.github/workflows/cao.json` allows.
-   - Install the write app only on approved safe-output repositories. By default, that's only the control repository.
-   - Setup uses a short-lived App installation token to verify the exact
-     selected repository membership and fails closed rather than relying on
-     manual verification.
-1. Add the write App's `APP-SLUG[bot]` login to the `on.bots` allowlist of
-   every worker workflow that the App may dispatch, then recompile those
-   workflow sources. A run whose pre-activation job succeeds while activation
-   is skipped has not executed the worker.
-1. Confirm that the helper stored the client IDs as variables and the private keys as secrets. For the names, see [Configuration reference](#configuration-reference). The helper passes private keys to `gh secret set` through standard input, so they are never written to disk or passed as command arguments.
-1. Delete any `GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, or `GH_AW_GITHUB_TOKEN` secrets. If you leave them in place and an app is misconfigured, CAO silently uses the PAT instead.
-1. Run the CAO Activity workflow. Its first successful default-branch run triggers the CAO Dashboard workflow automatically. For the remaining steps, see [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard).
-1. Before you enable any campaign in `live` mode, validate the credentials. For more information, see [Validating the credentials](#validating-the-credentials).
+Then follow [Deploying the dashboard](deployment-actions.md#deploying-the-dashboard)
+for publication and Pages visibility, and the activation checks below before
+enabling agentic work. App access never makes a Pages site private.
 
 ## Configuration reference
 
-| Name | Type | Description |
-| --- | --- | --- |
-| `GH_AW_GITHUB_READ_APP_ID` | Actions variable | Client ID of the read app |
-| `GH_AW_GITHUB_READ_APP_PRIVATE_KEY` | Actions secret | Private key of the read app, in PEM format |
-| `GH_AW_GITHUB_WRITE_APP_ID` | Actions variable | Client ID of the write app |
-| `GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY` | Actions secret | Private key of the write app, in PEM format |
+Set `GH_AW_GITHUB_AUTH_MODE=app`; use the
+[credential reference](authentication.md#credential-reference) for App variable
+and secret names. Explicit App mode fails closed when keys, IDs, installations,
+or repository access are missing. It does not fall back to a PAT. Stored PATs
+may remain inactive during a verified transition.
 
-CAO chooses a credential for each step in this order.
-
-| Step type | Order |
-| --- | --- |
-| Read steps | Read app token, then `GH_AW_GITHUB_READ_PAT`, then `GH_AW_GITHUB_TOKEN`, then `github.token` |
-| Safe outputs | Write app token, then `GH_AW_GITHUB_WRITE_PAT`, then `GH_AW_GITHUB_TOKEN`, then `github.token` |
-
-An app token is used only when both its variable and its secret are set. CAO looks up installation IDs at runtime from the target owner and repository. It never stores them in policy or dispatch inputs.
-
-The apps control which repositories CAO can reach, not which ones it may act on. The `.github/workflows/cao.json` file still decides scope and mode.
+The [runtime selection rules](authentication.md#runtime-credential-selection)
+explain trusted job-token operations and legacy unset-mode compatibility.
+Installation IDs are resolved at runtime, not stored in policy or dispatch
+inputs. `.github/workflows/cao.json` still decides scope and mode.
 
 ## Monitoring the deployment
 
@@ -129,7 +74,7 @@ This profile uses the same signals as [the GitHub Actions only deployment](deplo
 
 | Signal | What to check |
 | --- | --- |
-| Token selection | The `actions/create-github-app-token` step in each job shows whether CAO created an app token. If the step was skipped, the run used a PAT or `github.token` instead. |
+| Token selection | Inspect the selected authentication mode, token-creation steps, and precompute diagnostics. A skipped App step alone does not prove fallback or successful authentication. |
 | API capacity | Before discovery, admission checks `GET /rate_limit` for the selected credential. Each app installation has its own rate limit, which grows with the size of the installation. A failed capacity gate points to one installation, and the dashboard shows it as a GitHub API capacity admission gate. |
 | Audit logs | Installation token activity appears in organization and enterprise audit logs under the app's identity, not under a user. |
 
@@ -139,11 +84,11 @@ This profile uses the same signals as [the GitHub Actions only deployment](deplo
 - **Separate read and write identities.** The read app can't write.
 - **No dependency on individuals.** The credentials keep working if a user loses access or leaves.
 - **Multi-organization support.** One enterprise can span several organizations through separate installations in each organization.
-- **No inferred access.** If an app isn't configured, CAO skips it. It never infers access from another credential.
+- **No cross-profile fallback.** Explicit App mode rejects missing access rather than borrowing PAT credentials.
 
 ## What this deployment does not guarantee
 
-- **Protection from silent fallback.** If an app variable or secret is missing, the run uses the next available credential. CAO can't tell whether that was intended, so delete PAT secrets that you don't use.
+- **Proof from local diagnostics alone.** `gh cao doctor` checks the operator's login, not the workflow App's runtime access or safe-output publication.
 - **Access outside the enterprise.** A private app can't be installed outside the organization or enterprise that owns it. For unrelated owners, use separate control planes.
 - **Access from an enterprise installation.** Installing an app on the enterprise doesn't grant access to any repositories. Every organization needs its own installation on selected repositories.
 - **Automatic key rotation.** Private keys don't expire. You must rotate them.
@@ -151,24 +96,18 @@ This profile uses the same signals as [the GitHub Actions only deployment](deplo
 
 ## Validating the credentials
 
-1. For every enrolled organization, create a read token and confirm that it can read the expected repositories but can't write.
-1. In an approved output repository, use only the write app to make a reversible change, then undo it.
-1. Confirm that neither app is installed on unrelated repositories.
+Start with [read-only runtime credential verification](authentication.md#explicit-runtime-credential-verification),
+then follow [Validate before activation](control-plane-authentication.md#validate-before-activation).
+Verify each organization's selected installation, separate read/write ceilings,
+and the actual review destination. Any write canary needs independent authority
+for that exact destination; it is not part of read-only verification.
 
 ## Rotating and revoking credentials
 
-1. Generate a new private key for each app, and replace the matching secret.
-1. Run a bounded `review` run for each installed campaign.
-1. Delete the old private keys, then review the installations and permissions again.
-
-If you suspect that a key was exposed:
-
-1. Set the kill switch for each affected campaign to `false`.
-1. Cancel active runs.
-1. Delete the private key, or suspend the installation.
-1. Investigate the exposure.
-
-For more information, see [Rotation and revocation](authentication.md#rotation-and-revocation).
+Follow [Rotation and revocation](authentication.md#rotation-and-revocation).
+App keys do not expire automatically. Disabling a campaign does not revoke its
+installation or cancel active runs; use [Emergency stop](operations.md#emergency-stop)
+when responding to exposure.
 
 ## Further reading
 

@@ -484,32 +484,27 @@ test("root campaign resolves the single CAO bootstrap runtime", () => {
   assert.match(admission, /Bash installer installs the explicit CAO root package and creates the consumer-owned policy/i);
 });
 
-test("authentication setup guides share unified onboarding and explicit publication", () => {
+test("authentication setup guides link shared onboarding and retain profile boundaries", () => {
   for (const [guide, profile] of [
     ["setup-one-organization.md", "github-app"],
     ["setup-multiple-organizations.md", "enterprise-app"],
     ["setup-fine-grained-pat.md", "token"],
   ]) {
     const document = readFileSync(join(root, "docs", guide), "utf8");
-    assert.match(document, /curl -fsSL https:\/\/raw\.githubusercontent\.com\/githubnext\/gh-cao\/main\/install-gh-cao\.sh \| bash/, guide);
+    assert.match(document, /setup-quickstarts\.md#step-1---install-cao/, guide);
+    assert.match(document, /cao-cli\.md#control-plane-installer/, guide);
     assert.match(document, /\ngh cao setup\n/, guide);
-    assert.match(document, /gh repo create "\$CONTROL_REPO" --private --clone/, guide);
-    assert.match(document, /gh repo clone "\$CONTROL_REPO"/, guide);
-    assert.match(document, /No separate `init` is required/, guide);
-    assert.match(document, /Node\.js\s+24\+/);
-    assert.match(document, /:::tip\[SAML-token installation failure\]/);
-    assert.ok(document.indexOf("gh extension install") < document.indexOf("curl -fsSL"), guide);
-    assert.match(document, /preserves stored credentials/);
     assert.ok(document.includes(`**\`${profile}\`**`), guide);
     assert.match(document, /exact value of `\$TARGET_REPO`; the control\s+repository stays included/, guide);
     assert.match(document, /require restricted\s+access for non-public evidence/, guide);
     assert.match(document, /credential-only changes after setup/, guide);
     assert.match(document, /gh cao setup auth/, guide);
     assert.match(document, /gh cao doctor/, guide);
-    assert.match(document, /Commit and push these CAO monitoring\s+changes\? \[y\/N\]/, guide);
-    assert.match(document, /deployment-pending links immediately, without waiting for Actions/, guide);
-    assert.match(document, /Declining, blocked publication, or unattended setup leaves files local/, guide);
-    assert.match(document, /gh extension install githubnext\/gh-cao/, guide);
+    assert.match(document, /setup-quickstarts\.md#step-3---publish-and-open-your-dashboard/, guide);
+    assert.match(document, /publication requires separate approval/, guide);
+    assert.match(document, /declining or unattended setup\s+leaves files local/, guide);
+    assert.match(document, /Publication is not proof that collection or deployment has completed/, guide);
+    assert.match(document, /control-plane-authentication\.md#validate-before-activation/, guide);
     assert.doesNotMatch(document, /\bgh cao init\b|node -e/, guide);
   }
 });

@@ -3,15 +3,19 @@ title: Data ingestion
 description: Understand how Central Agentic Ops collects, normalizes, retains, and projects dashboard data.
 ---
 
-Data ingestion moves operational evidence from GitHub Actions into the browser
-dashboard and local tools. Read this page to understand collection boundaries,
+Data ingestion moves operational evidence from GitHub Actions into dashboard
+backends and local tools. Read this page to understand collection boundaries,
 retention, failure behavior, and the available `cao` commands. For entity
 identities and relationships, use the [Data model](dashboard-data-model.md).
 For where the dashboard is served, see [Deployment options](deployment.md).
 
 ## Data flow
 
-Agentic workflows produce Actions logs. The Activity workflow collects a bounded snapshot into published JSONL. Consumers apply the shared model rules to build two separate projections: SQLite supports agents and command-line tools, while IndexedDB supports the browser dashboard.
+Agentic workflows produce Actions logs. The Activity workflow collects a bounded
+snapshot into published JSONL. Consumers apply the shared model rules to build
+separate projections: SQLite supports local Go serving, agents, and command-line
+tools; IndexedDB supports static Pages in the browser; hosted Go deployments
+ingest into PostgreSQL. The diagram shows the SQLite and browser paths.
 
 <div class="docs-theme-diagram">
   <img class="docs-theme-diagram-light" alt="Agentic workflow logs are collected by Activity into JSONL, then the shared data model produces SQLite for agents and CLI tools or IndexedDB for dashboard views" src="/gh-cao/assets/dashboard-data-flow-light.svg">
@@ -54,70 +58,29 @@ normal startup.
 
 ## Canvas administrative actions
 
-The shared CLI executor is packaged in `dashboard/cli-actions.mjs` for the
-trusted Copilot canvas bridge. Ordinary Go local serving and static Pages
-previews do not execute local commands. There is no standalone Node admin server.
-
-Canvas previews refresh the latest stable gh-aw release from GitHub when
-downloading their data. The **Latest** compiler version and upgrade state use
-this current release, not the release recorded in an older published snapshot.
-Installed versions and their observation times remain snapshot evidence.
-If release discovery fails, startup reports an error rather than presenting
-the snapshot's stale release as current.
-
-Open the dashboard in a trusted Copilot canvas to use dashboard-declared CLI
-actions. The internal loopback-only authoring bridge requires paired execution
-and approval callbacks supplied by the host; a web page cannot grant execution.
-
-Each action opens a command-review dialog and requires explicit confirmation
-for every run. Once the server durably queues the approved command, the dashboard
-opens its full-page console with a **Back to Commands** navigation button.
-The console shows live stdout and stderr in a scrollable, read-only terminal
-with the executed command on its first line, ANSI colors, progress updates,
-selection, and scrollback. HTTP and HTTPS
-URLs in terminal output open in a separate tab without opener access.
-Stderr and command failure messages use the terminal's error color.
-The last HTTPS pull-request URL in retained command output becomes the durable
-command result. GitHub Enterprise hosts, custom ports, and path prefixes are
-supported; embedded credentials are rejected and query strings and fragments
-are excluded. **Open pull request** opens that result in a separate tab.
-**Copy** copies the pull-request URL when available, otherwise the command
-transcript. Copying never cancels or reruns the command.
-The console stays visible after completion, failure, timeout, or cancellation
-until the user navigates away. Back navigation and output disconnection only
-detach the browser; they do not cancel execution. Reopening a command from
-**Commands** replays its retained output without starting another command.
-Terminal input is disabled: commands must not require interactive keyboard input. The terminal
-emulator is an interaction-only extension of the existing declarative
-`cli-actions` contract, not a dashboard data query or an arbitrary shell.
-
-Commands run in the canvas's working directory with the local GitHub CLI
-credentials and the existing supported-command allowlist, without shell
-interpolation. Actions using `gh aw` may install the pinned extension first.
-The server admits queued commands within its concurrency and quota limits.
-**Cancel** dismisses the approval dialog without starting anything. The console
-offers **Copy** instead of a cancellation button and **Retry command** for failed
-or timed-out work. Starting another action requires fresh confirmation in the
-web interface, not an additional confirmation in the Copilot app.
-Keep the capability URL private and
-do not expose or forward the canvas bridge to other users. Canvas execution does not
-change CAO rollout policy or grant remote workflow authority.
+Canvas command execution is separate from ingestion. Ordinary Go local serving
+and static Pages previews cannot execute local commands. See
+[Run approved commands](agent-plugin.md#run-approved-commands) for the trusted
+canvas bridge, approval dialog, console, and command lifetime, and
+[Compiler-version evidence](agent-plugin.md#compiler-version-evidence) for the
+boundary between live metadata reads and immutable snapshot evidence.
 
 ## Hosted server data pipeline
 
 Server-backed deployments keep the browser isolated from both databases. The
 Go server verifies the same published payload, normalizes inventory metadata
 onto canonical records, and transactionally replaces the current dashboard
-sources in PostgreSQL. Dashboard Language queries execute against PostgreSQL,
-using parameterized SQL for proven plans and the bounded Go evaluator for other
-supported shapes.
+sources in PostgreSQL. Dashboard Language queries execute as bounded,
+parameterized SQL in a repeatable-read transaction. Unsupported query shapes
+fail explicitly; the hosted path has no Go row-evaluator fallback.
 
-Redis is not a dashboard database. It stores operational state such as sessions,
-rate limits, webhook and collection queues, delivery deduplication, distributed
-coordination, GitHub quota observations, pending token revocations, and bounded
-resolver caches. It does not store dashboard entity rows, query indexes, or
-persistent dashboard projections. If PostgreSQL is unavailable, dashboard data
-is unavailable even when Redis is healthy.
+Operational storage is a separate contract for sessions, queues, rate limits,
+deduplication, coordination, revocation retries, audit records, and caches.
+PostgreSQL is the default; Redis is an explicitly selected alternative for
+supported capabilities, not a dashboard entity database. Protected operational
+state is not disposable evidence-cache data. If canonical PostgreSQL storage is
+unavailable, dashboard data remains unavailable even when Redis is healthy.
+See the [server operational-storage contract](https://github.com/githubnext/gh-cao/blob/main/specs/server-operational-storage.md).
 
 ## Completeness and duplicates
 
@@ -136,7 +99,7 @@ Cached JSONL can repeat the same run in later snapshots. These are repeated obse
 Audit a JSONL source without changing a database:
 
 ```bash
-cao audit-jsonl
+node activity/cao.mjs audit-jsonl
 ```
 
 The report separates raw observations, unique raw runs, enriched observations, unique enriched runs, repeated observations, unenriched runs, and the canonical record counts that ingestion will produce.
@@ -146,10 +109,10 @@ The report separates raw observations, unique raw runs, enriched observations, u
 For a full-detail local archive, collect into `_activity/gh-aw-history.jsonl`, then audit and ingest it with unbounded retention:
 
 ```bash
-cao audit-jsonl \
+node activity/cao.mjs audit-jsonl \
   --input _activity/gh-aw-history.jsonl
 
-cao ingest-jsonl \
+node activity/cao.mjs ingest-jsonl \
   --database _activity/gh-aw-history.sqlite \
   --input _activity/gh-aw-history.jsonl \
   --retention-days all
@@ -302,20 +265,22 @@ SQL uses the versioned `gh-aw-cao.dashboard-sql-export` interchange contract. Da
 
 ## Use local SQLite
 
-Node.js 24 can run the same ingestion and query layer against a persistent
-SQLite file. The local adapter stores IndexedDB metadata and JSON records in
+Use the native `gh cao` extension for operator queries and the Node.js 24
+Actions runtime for ingestion and repair. Run the `node activity/cao.mjs`
+examples from a checkout containing the installed runtime. The local adapter
+stores IndexedDB metadata and JSON records in
 `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records`; those
 tables are an emulation detail, not canonical entity tables. The browser
-continues to use native IndexedDB.
+uses native IndexedDB only in the static Pages profile.
 
 ### Manual artifact import
 
-`cao ingest` is a supported manual importer for an extracted gh-aw artifact
+`node activity/cao.mjs ingest` is a supported manual importer for an extracted gh-aw artifact
 directory and its run context. It is not used by the Activity or Dashboard
 pipelines and is not deprecated:
 
 ```bash
-cao ingest \
+node activity/cao.mjs ingest \
   --database /tmp/cao-dashboard.sqlite \
   --context dashboard/site/test/fixtures/gh-aw-logs/context.json \
   --logs dashboard/site/test/fixtures/gh-aw-logs/run-303
@@ -352,7 +317,7 @@ a checksum utility.
 To import schema-v2 JSONL produced by `gh aw logs` manually:
 
 ```bash
-cao ingest-jsonl \
+node activity/cao.mjs ingest-jsonl \
   --database /tmp/cao-dashboard.sqlite \
   --input-dir .cao/gh-aw-logs-shards
 ```
@@ -364,7 +329,7 @@ Pass `--context CONTEXT_JSON` when JSONL `github_api_rate_limit` records should 
 Download the JSONL and SQLite projection published by the deployed CAO Pages site:
 
 ```bash
-cao download
+gh cao download
 ```
 
 This writes `.cao/payload-hashes.json`, the published compacted
@@ -376,7 +341,7 @@ downloads the published files unchanged; it does not run ingestion locally.
 Query a canonical collection:
 
 ```bash
-cao query \
+gh cao query \
   --collection runs \
   --where conclusion=failure \
   --limit 20
@@ -385,9 +350,9 @@ cao query \
 Use the gh-like query surface for familiar GitHub CLI-shaped commands:
 
 ```bash
-cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure --since 2026-09-01 --until 2026-09-15
-cao gh issues --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
-cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
+gh cao gh runs --repo OWNER/REPOSITORY --workflow WORKFLOW --status failure --since 2026-09-01 --until 2026-09-15
+gh cao gh issues --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
+gh cao gh prs --repo OWNER/REPOSITORY --workflow WORKFLOW --since 2026-09-01 --until 2026-09-15
 ```
 
 `-R`, `-w`, `-s`, and `-L` alias `--repo`, `--workflow`, `--status`, and `--limit`. The default limit is 30. Date-only `--until` values include the entire date. Issue and pull request results come from canonical Issue records created by `safe_output.result` observations.
@@ -405,7 +370,10 @@ To let an agent read the same snapshot through dashboard pages and named
 queries, instead of through collections, see
 [Agent analysis](agent-analysis.md).
 
-Run `cao help` for the collection list and full command syntax. The SQLite file remains local derived state and does not change the static dashboard's deployment boundary.
+Run `gh cao --help` for operator commands or `node activity/cao.mjs --help`
+for the Actions runtime. See [CAO Commands](cao-cli.md#command-reference) for
+their intentional read-only overlap. SQLite remains local derived state and
+does not change the static dashboard's deployment boundary.
 
 ### Choose a local serving mode
 
@@ -431,7 +399,8 @@ build; it does not simulate GitHub collection, Actions permissions or Pages
 infrastructure. Relative Go server paths resolve from `server/`.
 
 SQLite initialization failures stop startup rather than falling back to IndexedDB.
-Only the internal canvas authoring bridge retains the `dataBackend: "sqlite"`
-or `"indexeddb"` canvas input.
+The [Copilot canvas](agent-plugin.md#open-a-copilot-canvas) also uses Go/SQLite;
+it has no `dataBackend` selector. Choose the separate Pages simulation when you
+need to exercise browser IndexedDB.
 
 For normative requirements and failure behavior, see the [Dashboard Data Architecture Specification](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md).

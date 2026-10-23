@@ -3,48 +3,28 @@ title: Set Up with Fine-Grained PATs
 description: Install a CAO control plane with separate owner-scoped tokens when your repository scope and permissions require them.
 ---
 
-Use this path when you cannot install a suitable GitHub App and:
-
-- you already have access to every exact repository;
-- organization policy permits fine-grained PATs;
-- every required campaign API supports fine-grained PATs;
-- you can create a separate token for each resource owner;
-- you accept manual expiration, rotation, and revocation.
-
-Never use a classic PAT.
+Use this path when a suitable GitHub App is unavailable and you meet the
+[PAT eligibility checks](authentication.md#fine-grained-pat-fallback):
+existing repository access, organization approval, supported APIs, exact
+owner-scoped selections, and manual expiration/rotation. Never use a classic PAT.
 
 > [!IMPORTANT]
 > Existing repository access does not authorize token setup. A coding agent must show the dry-run plan and ask before opening PAT creation pages, storing tokens or repository maps, committing, or pushing.
 
 ## Install
 
+Complete [Step 1 of Set Up CAO](setup-quickstarts.md#step-1---install-cao):
+install the extension and enter a clean default-branch control checkout.
+That guide covers creating versus cloning the repository and the
+[SAML installer fallback](cao-cli.md#control-plane-installer).
+From the control checkout:
+
 ```bash
 CONTROL_REPO="acme/central-agentic-ops"
 TARGET_REPO="acme/example-service"
 
-gh auth status
-```
-
-Enter an existing clean default-branch control checkout. To create a new
-repository instead, choose visibility explicitly:
-
-```bash
-gh repo create "$CONTROL_REPO" --private --clone
-cd "${CONTROL_REPO##*/}"
-gh extension install githubnext/gh-cao
 gh cao setup
 ```
-
-To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
-creating one. In an existing checkout, install the extension and run `gh cao setup`.
-No separate `init` is required. See the [primary setup guide](setup-quickstarts.md).
-
-:::tip[SAML-token installation failure]
-If GitHub CLI cannot install the extension because of cross-organization SAML
-authorization, use the [curl fallback](cao-cli.md#control-plane-installer):
-`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
-It requires Bash, curl, and Node.js 24+ and preserves stored credentials.
-:::
 
 At **Repositories**, enter the exact value of `$TARGET_REPO`; the control
 repository stays included. Choose **`token`** when prompted.
@@ -71,15 +51,10 @@ gh cao setup auth token \
   --expires-in 30
 ```
 
-For every browser form:
-
-1. Confirm the displayed **Resource owner**.
-2. Keep **Repository access** set to **Only select repositories**.
-3. Select only the repositories printed in the terminal.
-4. Keep the preselected permissions unchanged.
-5. Generate the token and paste it only into the matching secure prompt.
-
-The command groups repositories by resource owner and stores owner-scoped secrets plus non-secret repository maps.
+Follow [Configure a fine-grained token](control-plane-authentication.md#configure-a-fine-grained-token)
+for each browser form, secure prompt, repository map, and interrupted-setup
+recovery. Read scope and approved output scope remain separate; token setup does
+not enable a campaign.
 
 ## Validate and Commit
 
@@ -89,20 +64,10 @@ gh aw doctor --repo "$CONTROL_REPO" --dir .
 git diff --check
 ```
 
-Initial guided setup separately offers **“Commit and push these CAO monitoring
-changes? [y/N]”** after review. Approval requires a synchronized default branch,
-matching origin and empty index. It publishes only reviewed CAO files and
-returns deployment-pending links immediately, without waiting for Actions.
-Declining, blocked publication, or unattended setup leaves files local.
-
-If not published, review the diff and stage only CAO files. The following assumes
-these paths contain no unrelated edits. After explicit approval:
-
-```bash
-git add .github activity dashboard
-git commit -m "Install Central Agentic Ops control plane"
-git push --set-upstream origin HEAD
-```
+Follow [Publish and open your dashboard](setup-quickstarts.md#step-3---publish-and-open-your-dashboard).
+Guided publication requires separate approval; declining or unattended setup
+leaves files local. Review and stage only CAO files, never unrelated changes or
+secrets. Publication is not proof that collection or deployment has completed.
 
 Credential setup is complete when the policy parses, the owner-scoped secret
 maps match the exact repositories, and `gh aw doctor` reports no blocking

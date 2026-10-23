@@ -15,33 +15,16 @@ including GitHub Enterprise Cloud data residency on `*.ghe.com`.
 
 ## Install
 
+Complete [Step 1 of Set Up CAO](setup-quickstarts.md#step-1---install-cao):
+install the extension and enter a clean default-branch control checkout.
+That guide covers creating versus cloning the repository and the
+[SAML installer fallback](cao-cli.md#control-plane-installer).
+Prepare the approved App pair below before running guided setup.
+
 ```bash
 CONTROL_REPO="platform/central-agentic-ops"
 TARGET_REPO="acme/example-service"
-
-gh auth status
 ```
-
-Enter an existing clean default-branch control checkout. To create a new
-repository instead, choose visibility explicitly:
-
-```bash
-gh repo create "$CONTROL_REPO" --private --clone
-cd "${CONTROL_REPO##*/}"
-gh extension install githubnext/gh-cao
-```
-
-To reuse a remote repository, use `gh repo clone "$CONTROL_REPO"` instead of
-creating one, then install the extension. Prepare the approved App pair
-below before running guided setup. No separate `init` is required.
-See the [primary setup guide](setup-quickstarts.md).
-
-:::tip[SAML-token installation failure]
-If GitHub CLI cannot install the extension because of cross-organization SAML
-authorization, use the [curl fallback](cao-cli.md#control-plane-installer):
-`curl -fsSL https://raw.githubusercontent.com/githubnext/gh-cao/main/install-gh-cao.sh | bash`.
-It requires Bash, curl, and Node.js 24+ and preserves stored credentials.
-:::
 
 ## Create and Install the Apps
 
@@ -111,20 +94,10 @@ gh aw doctor --repo "$CONTROL_REPO" --dir .
 git diff --check
 ```
 
-Initial guided setup separately offers **“Commit and push these CAO monitoring
-changes? [y/N]”** after review. Approval requires a synchronized default branch,
-matching origin and empty index. It publishes only reviewed CAO files and
-returns deployment-pending links immediately, without waiting for Actions.
-Declining, blocked publication, or unattended setup leaves files local.
-
-If not published, review the diff and stage only CAO files. The following assumes
-these paths contain no unrelated edits. After explicit approval:
-
-```bash
-git add .github activity dashboard
-git commit -m "Install Central Agentic Ops control plane"
-git push --set-upstream origin HEAD
-```
+Follow [Publish and open your dashboard](setup-quickstarts.md#step-3---publish-and-open-your-dashboard).
+Guided publication requires separate approval; declining or unattended setup
+leaves files local. Review and stage only CAO files, never unrelated changes or
+secrets. Publication is not proof that collection or deployment has completed.
 
 If an App installation or exact repository selection is missing, correct the
 installation instead of widening policy. Before live activation, complete the

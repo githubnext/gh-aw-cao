@@ -29,14 +29,15 @@ Every view follows the same data flow:
 
 1. **Activity collects evidence.** The Activity workflow publishes a bounded
 	snapshot of workflow activity.
-2. **The dashboard prepares the data.** A Web Worker normalizes the snapshot
-	into a consistent data model and runs declarative queries.
-3. **The active view presents the result.** When the local data changes, the
+2. **The selected backend prepares and queries the data.** Static Pages uses a
+	browser Web Worker and IndexedDB; local Go serving uses SQLite; hosted Go
+	serving uses PostgreSQL. Each evaluates Dashboard Language.
+3. **The active view presents the result.** When the underlying data changes, the
 	query runs again and the view updates.
 
 The dashboard is not a live feed. It reads the latest snapshot collected by the
 Activity workflow. [Data ingestion](dashboard-data-ingestion.md) follows that
-evidence from collection into the browser, while the
+evidence into each query backend, while the
 [Data model](dashboard-data-model.md) explains the records and relationships
 available to every view.
 
@@ -46,22 +47,10 @@ the import running; Overview continues to show preparation progress rather
 than calling campaigns idle. The import screen is automatically removed when a
 complete snapshot is ready, and its animation timers and progress subscription
 are released. If preparation fails or is cancelled while the screen is still
-open, it shows a **Retry import** action; Overview itself only reports that
-campaign status is not available yet, without a way to reopen the dismissed
-screen. Later visits use the cached
-snapshot during refresh. Backend-backed dashboards do not use this browser-local
-first-import experience. While the import screen is visible, 100 friendly notes
-rotate randomly every six seconds without repeating within a cycle. These notes
-are separate from factual import progress and pause when the screen is dismissed
-or the import is no longer running.
-The welcome screen keeps the Central Agentic Ops name visible in its header and
-uses **Explore data** as its only dismissal button; Escape also works.
-**About this preparation** reveals the browser-local import details and
-backend deployment alternative without crowding the first impression.
-Small screens use shorter copy and omit the explanatory step list so the brand
-and main action stay in view. The backdrop shares the exact grid styling used on
-Overview, with a slow opacity animation disabled when the browser requests
-reduced motion. The grid is decorative, not campaign telemetry.
+open, it shows a **Retry import** action. **Explore data** or Escape dismisses
+the screen; Overview cannot reopen it after dismissal. Later visits use the
+cached snapshot during refresh. Go-backed dashboards do not use this
+browser-local first-import experience and do not fall back to it on failure.
 
 ## Read a result
 
@@ -81,68 +70,20 @@ rollout mode, safe output, outcome, and operational value.
 
 ## Know the boundary
 
-The canvas's local preview server stays available between agent turns, including
-completed, interrupted, or failed turns. It stops when its canvas closes, when
-you exit the session, or when its extension process stops.
+Reading dashboard evidence does not start work, approve an output, grant
+workflow authority, change rollout policy, or write to a repository. Make those
+decisions through the control repository and its reviewed workflows and policy.
+Static Pages is read-only; optional canvas commands and
+[hosted CLI actions](https://github.com/githubnext/gh-cao/blob/main/server/README.md#hosted-cli-actions)
+have separate authorization and approval requirements.
 
 ### Design queries in a Copilot canvas
 
-The local **Central Agentic Ops** Copilot canvas includes a **Query editor**
-page under **Experimental**. It is not enabled on the static website, hosted server, or ordinary local
-preview. Enter an intent, subject, optional objective, and acceptance criteria,
-then select **Generate query and view**. The Copilot SDK uses the bundled
-`generate-dashboard-ir` query-design skill and Dashboard Language specification
-to generate a complete query and declarative view.
-
-The icon-only sparkle button next to **Generate query and view**, labeled
-**Improve all fields with Copilot** for assistive technology,
-uses the bundled `author-dashboard-intent` skill in one pure LLM Copilot SDK
-session to refine intent, subject, objective, and acceptance together.
-Review the enhancement before generating the query; if you edit the
-authoring text while the request is pending, the editor does not overwrite
-your changes. These sessions have no tools or automatically discovered skills;
-the trusted authoring skills are supplied as prompt context.
-Subject, objective, and acceptance share a **512-character combined limit**,
-counted as Unicode characters just like query/view annotations. The editor shows
-the current total and blocks generation when it is exceeded. The sparkle action
-can still condense an overlong draft; its output is checked against the same
-combined limit before replacing any fields. Keep additional detail in intent.
-
-The browser data worker validates the draft. The default canvas backend executes
-it against canonical data in a server-side SQLite worker; selecting `indexeddb`
-executes it in the browser data worker instead. SQLite previews do not open
-browser IndexedDB. Successful previews stay subscribed to data changes and show the rendered
-view without exposing a source editor. Invalid generated documents
-show diagnostics without replacing the previous preview. Generation automatically
-feeds worker validation errors and the rejected draft back to Copilot, with at
-most ten attempts per click; only a validated document updates the preview.
-If all attempts fail, the editor reports the failure and retains the diagnostics.
-Each attempt uses AI credits. **Cancel** stops the generation/repair loop or
-generation or validation. **Save as custom view** persists the accepted document
-in `.cao/dashboard/custom-views/<id>.json`, adds it to **Custom views** in local
-canvas navigation, and opens the rendered view. Identical saves reuse the same
-file; independently saved queries are namespaced to avoid collisions. The set
-is workspace-local, survives canvas/server restarts, and is not published or
-installed into other repositories. `.cao/` is ignored by Git. Up to 50 custom
-views are supported; remove a saved JSON file to remove that view. Unsaved
-drafts still belong to the currently loaded canvas; save a custom view to keep it.
-Saved files are content-addressed; use the editor to save revisions instead of
-editing or renaming those files in place.
-
-Generation requires Copilot authentication and uses AI credits. Only authoring
-text and trusted language context go to the SDK, not dashboard evidence rows.
-The generation session has no shell, filesystem, MCP, or write tools. Preview
-documents cannot add CLI actions or UI elements, and each view is capped at
-200 rows. Every preview source must be a declared query with a `limit` between 1
-and its view's `data.limit`, so the worker bounds the result before rendering.
-Layered charts omit `data.limit` and use a source query `limit` of at most 200.
-Forms, lazy pagination, and drill navigation are not supported in previews.
-This editor does not change rollout policy or control-plane authority.
-
-The published dashboard helps you observe and investigate campaigns. It does not start
-work, approve an output, grant workflow authority, change rollout policy, or
-write to a repository. Make those decisions through the control repository and
-its reviewed workflows and policy.
+The local canvas adds a **Query editor** under **Experimental**, with
+AI-assisted authoring and workspace-local saved views. It is not enabled on the
+static website, hosted server, or ordinary local preview. See the
+[canvas guide](agent-plugin.md#design-queries-in-a-copilot-canvas) for setup,
+limits, AI-credit use, saving, and the Go/SQLite execution boundary.
 
 ### Configure compiler defaults
 
@@ -183,3 +124,5 @@ perform these operations, so editing remains disabled for hosted administrators.
 - Let browser agents read the same pages through [WebMCP](dashboard-webmcp.md),
 	and agents without a browser or shell through
 	[Agent analysis](agent-analysis.md).
+- Use the [Copilot plugin and canvas](agent-plugin.md) for local query authoring
+	and explicitly approved commands.

@@ -5,11 +5,16 @@ description: Configure private organization or enterprise GitHub Apps, or owner-
 
 CAO supports private GitHub Apps as its durable authentication model and a fine-grained personal access token (PAT) when an operator cannot obtain App installation rights. Authentication grants credential reach; `.github/workflows/cao.json` remains the reviewed authority for where a workflow may run.
 
+This is the credential **provisioning** guide. For installation and publication,
+start with [Set Up CAO](setup-quickstarts.md). For runtime mode selection,
+permission ceilings, variable/secret names, and rotation, use
+[Authentication](authentication.md).
+
 ## Choose a profile
 
 | Profile | Use when | Boundary |
 | --- | --- | --- |
-| Public-only monitoring | Observe existing workflows in public repositories without App/PAT setup | Exact reviewed scope, built-in Actions token, runtime public visibility checks, explicitly partial evidence; no agent execution or target writes |
+| [Public-only monitoring](authentication.md#public-only-monitoring-quickstart) | Observe existing workflows in public repositories without App/PAT setup | Exact reviewed scope, built-in Actions token, runtime public visibility checks, explicitly partial evidence; no agent execution or target writes |
 | Organization-owned private Apps | The control repository and targets belong to one organization | Apps can be installed only on their owning organization |
 | Enterprise-owned private Apps | Targets span organizations in one GitHub Enterprise Cloud enterprise | Apps are installed separately on each enrolled organization |
 | Fine-grained PATs | The operator cannot install an App and the required repositories and APIs are PAT-compatible | One user-bound token pair per resource owner, repository-selected, and subject to organization approval |
@@ -67,6 +72,21 @@ reviewed CAO allowlist.
 
 CAO creates separate read-only and write-capable Apps. Review the dry-run manifests before creation.
 
+The helper reads exact `control-plane.scope.allowed-repositories` entries,
+adds the control repository, and does not expand `allowed-owners` into a
+repository list. Include every approved evidence source in reviewed policy:
+
+```json
+{
+  "control-plane": {
+    "scope": {
+      "allowed-owners": ["acme"],
+      "allowed-repositories": ["acme/central-agentic-ops", "acme/example-service"]
+    }
+  }
+}
+```
+
 For one organization:
 
 ```bash
@@ -121,6 +141,8 @@ only in an approved safe-output repository.
 
 An organization-owned private App fails closed when policy enrolls a repository owned by another organization.
 
+### Enterprise-owned Apps
+
 For organizations in one enterprise, create the read and write Apps manually in the enterprise settings. [GitHub App manifests do not support enterprise-owned Apps](https://docs.github.com/en/enterprise-cloud@latest/apps/sharing-github-apps/registering-a-github-app-from-a-manifest). Install each private App separately on the selected repositories in every enrolled organization, then configure the control repository:
 
 ```bash
@@ -155,7 +177,15 @@ Use the same separate permission ceilings as the organization-owned Apps:
 
 Keep both Apps private and disable webhooks. Generate one private key for each App only after reviewing its permissions and installations.
 
-The client IDs are not secrets. The legacy `enterprise-app` command stores them as repository variables and prompts for each PEM private key through `gh secret set`; never put a private key in a command argument. Prefer the verified [reuse path](#reuse-approved-apps) for existing enterprise Apps as well. Creating an enterprise App and approving its first organization installation still require the appropriate administrative authority; repository administrators can extend an already-approved installation where organization policy permits.
+The client IDs are not secrets. The legacy `enterprise-app` command stores them
+as repository variables and prompts for each PEM private key through
+`gh secret set`; it does **not** verify enterprise membership or installation
+reach. Never put a private key in a command argument. Prefer the verified
+[reuse path](#reuse-approved-apps) for existing enterprise Apps as well.
+Creating an enterprise App and approving its first organization installation
+still require the appropriate administrative authority; repository
+administrators can extend an already-approved installation where organization
+policy permits.
 
 :::caution[Enterprise installation is not repository access]
 [Installing an App on the enterprise](https://docs.github.com/en/enterprise-cloud@latest/apps/using-github-apps/installing-a-github-app-on-your-enterprise) grants only requested enterprise permissions. CAO's read and write Apps require separate organization installations to access organization or repository resources. GitHub's enterprise-installed App capability is in public preview; CAO does not depend on it for normal runtime access.
@@ -163,15 +193,39 @@ The client IDs are not secrets. The legacy `enterprise-app` command stores them 
 
 The setup commands store App client IDs in `GH_AW_GITHUB_READ_APP_ID` and `GH_AW_GITHUB_WRITE_APP_ID` repository variables. They send private keys to the corresponding Actions secrets through standard input and do not save them to disk.
 
+### Manually storing approved App credentials
+
+Prefer the verified setup path. If you already manage approved Apps and key
+files through a separate process, these commands store their credentials
+without putting keys in command arguments:
+
+```bash
+gh variable set GH_AW_GITHUB_READ_APP_ID \
+  --repo acme/central-agentic-ops \
+  --body '<read-app-client-id>'
+gh secret set GH_AW_GITHUB_READ_APP_PRIVATE_KEY \
+  --repo acme/central-agentic-ops \
+  < read-app-private-key.pem
+
+gh variable set GH_AW_GITHUB_WRITE_APP_ID \
+  --repo acme/central-agentic-ops \
+  --body '<write-app-client-id>'
+gh secret set GH_AW_GITHUB_WRITE_APP_PRIVATE_KEY \
+  --repo acme/central-agentic-ops \
+  < write-app-private-key.pem
+```
+
+Protect those local key files and never commit them. Storage alone is not
+verification: confirm exact installation scope and permissions, explicitly
+select `GH_AW_GITHUB_AUTH_MODE=app`, and complete
+[runtime credential verification](authentication.md#explicit-runtime-credential-verification).
+
 ## Configure a fine-grained token
 
-Use a PAT only after confirming:
-
-1. the user already has access to every selected repository;
-2. the operator can create a separate token pair for every resource owner represented by the selected repositories;
-3. enterprise and organization policy permits the token and any required approval can be obtained;
-4. every required API supports fine-grained PATs;
-5. the token has exact repository selection, minimum permissions, an expiration, and a rotation owner.
+First complete the [PAT eligibility and consent checks](authentication.md#fine-grained-pat-fallback).
+Use exact repository selections and a separate read/write pair per resource
+owner, with an expiration and rotation owner. A PAT cannot supply access its
+user lacks, and a classic PAT is not a workaround for unsupported APIs.
 
 Run:
 
@@ -211,6 +265,10 @@ each existing secret before continuing. It still writes both repository maps
 and selects PAT mode only after every missing or replaced secret has been
 configured.
 
+If setup is interrupted after storing some tokens, rerun the same command.
+The helper checks secret names without reading their values, prompts for
+missing or replaced tokens, and selects PAT mode only after completing both maps.
+
 The two tokens intentionally have different repository selections:
 
 | Token | Select these repositories |
@@ -220,43 +278,18 @@ The two tokens intentionally have different repository selections:
 
 Do not add a target to the write PAT merely because the read PAT covers it. The write PAT is used only by trusted safe-output processing and should remain narrower than the read PAT whenever review outputs stay in the control repository or writes are approved for only a subset of targets.
 
-The credential is user-bound, longer-lived than an App installation token, normally limited to one resource owner, manually rotated, and potentially incompatible with required APIs. It does not bypass organization approval or repository permissions. Never substitute a classic PAT.
-
-Read operations select the owner-scoped secret mapped to the exact target
-repository. Safe-output processing independently selects the owner-scoped
-secret mapped to the exact output repository. The legacy
-`GH_AW_GITHUB_READ_PAT`, `GH_AW_GITHUB_WRITE_PAT`, and
-`GH_AW_GITHUB_TOKEN` names remain compatibility fallbacks only when the
-explicit authentication mode is not `pat`.
-
-CAO Activity requires the explicit mode and does not use those compatibility
-fallbacks. In PAT mode, every exact allowed repository, including the control
-repository, must be present in `GH_AW_GITHUB_READ_PAT_REPOSITORIES` and must map
-to `GH_AW_GITHUB_READ_PAT_<OWNER>`. Activity fails before collection when the
-map is invalid or incomplete, and each owner-scoped matrix job fails if its
-mapped secret is empty. Owner-wide discovery is App-only because a PAT map
-cannot safely represent repositories that were not explicitly selected.
-
-In App mode, Activity creates a separate installation token per resource owner.
-The same runtime supports a private organization-owned App for a single
-organization and a private enterprise-owned App installed separately in every
-enrolled organization. Each token is limited to that owner's exact configured
-repositories, or to that owner's installation when owner-wide discovery is
-explicitly configured. No App job can fall through to a PAT.
-
-For scheduled multi-owner orchestration, the agent receives only the
-control-repository owner's token. Public repositories owned elsewhere remain
-discoverable, and dispatched workers receive their target owner's token.
-Campaigns that require privileged discovery against private repositories in
-several owners still require enterprise Apps or separately scheduled
-owner-scoped control planes; CAO never exposes every owner token to one agent.
-CAO Activity is not an agent orchestrator: it uses isolated owner-scoped jobs
-and merges only non-secret collection artifacts, so multiple PATs are never
-bundled into one job or one secret.
+Explicit App and PAT modes fail closed; neither substitutes another profile
+when credentials are missing. Legacy split/combined PAT names are considered
+only by shared-control workflows with **no explicit mode**, never by Activity.
+See [runtime credential selection](authentication.md#runtime-credential-selection)
+and [pre-activation inventory credentials](authentication.md#pre-activation-inventory-credentials)
+for exact mappings and multi-owner orchestration limits. Activity's isolated
+owner jobs do not mean one agent receives every owner's token.
 
 ## Validate before activation
 
 - Confirm the chosen credential covers every enrolled repository but no unrelated repository.
+- Confirm `GH_AW_GITHUB_AUTH_MODE` selects the intended profile; stored credentials for another profile do not establish which one a run used.
 - Confirm the read App has no write permissions.
 - Install the write App only where approved safe outputs require writes.
 - For App profiles, confirm the write App's bot login (`APP-SLUG[bot]`) is
@@ -266,8 +299,12 @@ bundled into one job or one secret.
 - Confirm PAT approval, expiration, resource owner, and API compatibility when using a token.
 - For a PAT profile, prove independently that the read PAT can read every enrolled repository but cannot perform the selected reversible write probe, then prove that the write PAT can perform and clean up that probe only in an approved output repository.
 - When migrating from `GH_AW_GITHUB_TOKEN`, rerun the same proof after deleting the legacy secret so a successful run cannot be using the compatibility fallback.
+- Begin with [read-only runtime credential verification](authentication.md#explicit-runtime-credential-verification).
+  A passing check does not prove safe-output publication; write probes require
+  separate approval for their exact destination and must be cleaned up.
 - Require successful current-revision authentication, Activity, and Dashboard
-  runs, and confirm the dedicated Pages site is private and workflow-backed.
+  runs. Confirm Pages is workflow-backed and its audience matches the evidence;
+  non-public evidence requires restricted access.
 - Run the first campaign with `max_repos=1`, `rollout_percent=100`, and
   `safe_output_mode=review`. Require an activated worker, routed guidance in
   the approved review repository, and no target mutation.

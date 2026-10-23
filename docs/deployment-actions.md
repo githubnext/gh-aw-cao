@@ -20,9 +20,9 @@ Queries run in each viewer's browser, in a web worker over a local IndexedDB dat
 
 | Requirement | Details |
 | --- | --- |
-| Control repository | A private repository that runs CAO. GitHub Enterprise is not required. |
+| Control repository | Public or private. Use private for non-public evidence; repository visibility does not determine Pages visibility. |
 | GitHub Actions | Enabled for the repository. You need GitHub-hosted `ubuntu-latest` runners or compatible self-hosted runners, and enough minutes for an hourly Activity run. |
-| Actions cache | Stores the Activity snapshot (`cao-activity-v5-*`) and the built dashboard (`central-agentic-ops-dashboard`). If the cache is evicted, the dashboard uses the latest successful Activity artifact instead. For more information, see [Cache contract](activity.md#cache-contract). |
+| Actions cache | Stores the Activity snapshot (`cao-activity-v5-*`) and built dashboard (`central-agentic-ops-dashboard`). Automatic builds fall back only to the triggering Activity run's artifact; manual builds can use the latest successful snapshot. See [Keeping the site up to date](#keeping-the-site-up-to-date). |
 | Actions artifacts | Stores the `cao-activity-index` and `central-agentic-ops-dashboard` artifacts. The dashboard artifact is kept for one day. |
 | GitHub Pages | The publishing source must be **GitHub Actions**. To make the site private, you need a plan that supports access control for Pages, such as GitHub Enterprise Cloud. Otherwise, the site is public. |
 | `github-pages` environment | Created automatically by GitHub Pages. You can protect it with required reviewers. |
@@ -47,56 +47,70 @@ before deployment.
 
 ## Choosing a credential profile
 
-The Activity collector, orchestrators, and workers call the GitHub API with a credential that you configure in the control repository. That credential determines which evidence the dashboard can show and which repositories campaigns can reach. Choose one profile before the first run.
+Collection credentials and Pages hosting are separate decisions. Choose the
+least-privilege profile that can read the evidence you need. Installing
+monitoring does not require enabling campaigns or granting target-write access.
 
 | Profile | Best for | Credentials | Limitations |
 | --- | --- | --- | --- |
-| [GitHub Apps](deployment-actions-github-app.md) | Production | A private read app and a private write app | You need permission to create and install private GitHub Apps. |
-| [Fine-grained PAT](deployment-actions-pat.md) | Getting started and experimentation | A read PAT and write PAT for each resource owner | Not for production. The tokens are tied to one user, expire, need manual rotation, don't support every API, and each owner pair has its own rate limit. |
+| [Built-in workflow token](authentication.md#public-only-monitoring-quickstart) | Monitor the control repository and confirmed public remote targets | Actions `GITHUB_TOKEN`; no App/PAT setup | Remote scope must be explicitly public-only; restricted evidence remains partial. No cross-repository writes. |
+| [GitHub Apps](deployment-actions-github-app.md) | Durable private/internal and cross-repository access | Separate private read and write Apps | Requires approved, selected-repository installations; write access stays limited to approved outputs. |
+| [Fine-grained PATs](deployment-actions-pat.md) | Evaluation when suitable Apps are unavailable | Owner-scoped read/write tokens | User-bound, expiring, manually rotated, API-limited; tokens from the same user share that user's quota. |
 
-At runtime, CAO uses the explicitly selected App or owner-scoped PAT profile. The repository-provided `github.token` remains only as a bounded control-repository fallback.
-
-> [!WARNING]
-> CAO falls back to the next credential without any warning. After you choose a profile, delete the credentials for every profile that you aren't using.
-
-For more information, see [Configure authentication](authentication.md).
+Explicit App and PAT modes **fail closed** when the selected credential or
+mapping is missing; they do not silently switch profiles. Stored credentials
+for another profile may remain inactive. The job token still handles trusted
+control-repository operations. See
+[runtime credential selection](authentication.md#runtime-credential-selection)
+for the distinction from legacy unset-mode compatibility.
 
 ## Deploying the dashboard
 
-1. Install the dashboard. The supported CAO installer includes it through the
-   explicit root package. Advanced users can install only the Activity
-   and dashboard components; unpinned package coordinates resolve the latest
-   release automatically.
+1. Complete [Set Up CAO](setup-quickstarts.md) to install the runtime, review exact
+   collection scope and authentication, configure Pages, and publish reviewed
+   files. Setup selects **GitHub Actions** as the Pages source; it does **not**
+   automatically make a private repository's site private. It asks before
+   accepting public publication. Decline for non-public evidence and configure
+   restricted access in **Settings > Pages** before publishing.
+2. Optionally, protect the `github-pages` environment with
+   [required reviewers](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment).
+3. Follow **CAO Activity**, then the automatically triggered **CAO Dashboard**
+   workflow, including its `deploy` job. If no collection is queued, request it
+   once as described in the setup guide. Confirm the site shows only the reviewed
+   collection scope, which may include explicitly enrolled remote repositories.
 
-   ```bash
-   gh aw add githubnext/gh-cao/activity
-   gh aw add githubnext/gh-cao/dashboard
-   ```
+Before the first successful collection, a manual Dashboard build can publish
+local inventory with an explicitly empty activity set. This is
+[bootstrap evidence](dashboard-data-ingestion.md#before-the-first-activity-snapshot),
+not proof that remote repositories have no activity. Invalid restored data or
+missing artifacts from an existing successful collection still fail; they are
+not treated as an empty installation.
 
-1. Review, commit, and push the installed files. These include `.github/workflows/cao-activity.yml`, `.github/workflows/cao-dashboard.yml`, and the `activity/` and `dashboard/` directories.
-1. Configure your cross-repository credential profile. Follow the procedure for [GitHub Apps](deployment-actions-github-app.md#deploying-the-dashboard) or for [fine-grained PATs](deployment-actions-pat.md#deploying-the-dashboard).
-1. Run `gh cao setup` in the control repository to configure GitHub Pages with GitHub Actions as its source. For a private repository it also restricts access to repository readers; this requires a plan that supports private Pages and permission to manage Pages settings. Setup fails rather than leaving a public site eligible for deployment if access cannot be restricted. If setup was already completed, confirm the Pages source and visibility in **Settings > Pages**.
+<details>
+<summary>Install the components individually in an already configured control repository</summary>
 
-1. Optionally, protect the `github-pages` environment. For more information, see [Managing environments for deployment](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment) in the GitHub documentation.
-1. Run the Activity workflow.
+For a deliberately component-managed installation, gh-aw can install the
+Activity and Dashboard packages separately:
 
-   1. Under your repository name, click **Actions**.
-   1. In the left sidebar, click **CAO Activity**.
-   1. Click **Run workflow**, then wait for the run to succeed.
+```bash
+gh aw add githubnext/gh-cao/activity
+gh aw add githubnext/gh-cao/dashboard
+```
 
-   The dashboard build fails if no successful Activity run exists. If the run fails, see [Routine monitoring](operations.md#routine-monitoring).
-1. Wait for the automatically triggered **CAO Dashboard** workflow to finish, then open the URL from its `deploy` job. Confirm that the site shows data only from your control repository.
+Unpinned coordinates resolve the latest release. These commands are not a
+replacement for scope, credentials, Pages visibility, or reviewed publication.
+Use the complete setup guide for a new control repository.
+
+</details>
 
 To learn how to read the dashboard, see [Dashboard](dashboard.md) and [Overview](dashboard-overview.md).
 
 ### Keeping the site up to date
 
-The CAO Activity workflow runs when you push changes to any of these paths on the default branch:
-
-- `.github/workflows/cao.json`
-- `.github/workflows/cao-dashboard.yml`
-- `*/dashboard.json`
-- `dashboard/**`
+CAO Activity runs hourly, on manual dispatch, and on relevant default-branch
+pushes. These include policy, Activity/Dashboard workflow sources, `activity/**`,
+`dashboard/**`, and campaign dashboard or value-collector files. The exact
+filters live in [`cao-activity.yml`](https://github.com/githubnext/gh-cao/blob/main/.github/workflows/cao-activity.yml).
 
 Dashboard has no push trigger or schedule. Every successful default-branch
 Activity run triggers one Dashboard build, so a relevant push produces one
@@ -115,10 +129,13 @@ still rebuild from the last cached snapshot without collecting fresh evidence.
 | --- | --- | --- | --- |
 | `control-plane.campaigns.dashboard.deploy` | `.github/workflows/cao.json` | `true` | A boolean. When `false`, the workflow still builds and caches the dashboard artifact but doesn't deploy it to Pages. |
 | Activity schedule | `.github/workflows/cao-activity.yml` | Hourly | Controls how fresh the evidence is. Change it in the campaign source and run `gh aw update`. Don't edit the installed lock file. |
-| Activity retention | Ingestion steps in `cao-activity.yml` and `cao-dashboard.yml` | 30 days | Limits the size of the payload that browsers download. For more information, see [Update and retain browser data](dashboard-data-model.md#update-and-retain-browser-data). |
+| Activity retention | Ingestion steps in `cao-activity.yml` and `cao-dashboard.yml` | 30-day runs, 7-day linked detail | Bounds the published run evidence; browser and Operational Value retention have separate rules. See [Data ingestion](dashboard-data-ingestion.md#completeness-and-duplicates). |
 | Pages visibility | Repository Pages settings | Depends on your plan | Controls who can read the site. |
 
-Pages destinations follow each campaign's rollout mode. In `review` mode, the dashboard publishes to access-controlled review Pages. In `live` mode, it publishes to production Pages. For more information, see [Pages report routing](rollout-and-routing.md#pages-report-routing).
+This dashboard deploys to the **control repository's Pages site**, independently
+of campaign `review`/`live` output routing. It does not switch sites when a
+campaign changes mode. Campaign-generated reports have a separate
+[Pages report routing](rollout-and-routing.md#pages-report-routing) contract.
 
 ### Publishing from an existing Pages workflow
 
@@ -140,7 +157,7 @@ This option has no server, so there's no server-side OpenTelemetry endpoint to c
 ## What this deployment guarantees
 
 - **Exact source.** The site is built from the exact workflow commit (`github.workflow_sha`). It publishes only the payload files listed in the manifest.
-- **Complete payloads.** Every payload file is hash-verified before the browser loads it. If the payload is incomplete, the build fails instead of publishing partial data.
+- **Payload integrity.** Manifested files are hash-verified before ingestion. Missing or invalid payload files fail closed. Integrity does not mean complete evidence: bootstrap, restricted artifacts, or capacity-limited collection can be explicitly partial.
 - **No long-lived credentials.** The build, Pages artifact, and deploy jobs
   don't hold long-lived credentials. The deploy job uses OIDC.
 - **One deployment at a time.** A running dashboard build finishes publishing its snapshot without being cancelled by newer triggers. GitHub Actions keeps at most one pending eligible build, replacing it when a newer eligible run arrives. Ineligible triggers use separate concurrency groups and cannot displace that pending build.
@@ -154,11 +171,11 @@ This option has no server, so there's no server-side OpenTelemetry endpoint to c
 - **Scale.** Each viewer's browser downloads and queries all of the data. Large fleets can exceed browser memory or load slowly. If that happens, consider a server-backed option.
 - **Per-user authorization.** Anyone who can read the Pages site can read all of its data. There is no per-user or per-repository filtering.
 - **Availability.** Availability depends on GitHub Pages and GitHub Actions. CAO adds no SLA.
-- **Coverage.** The dashboard shows only evidence that your credential can read. Repositories that the credential can't reach appear as incomplete coverage, not as healthy repositories with no activity.
+- **Coverage.** Restricted or unavailable evidence is not a healthy zero. Some collection gaps are explicitly partial; missing selected credentials, failed visibility checks, and invalid data block publication.
 
 ## Rolling back or stopping the deployment
 
-- **To roll back,** run the CAO Dashboard workflow from a known-good commit, or revert the change and push.
+- **To roll back,** restore known-good reviewed source through the normal Git process and rebuild. A manual rebuild uses retained Activity evidence, not necessarily the original historical dataset.
 - **To stop future deployments,** set `control-plane.campaigns.dashboard.deploy` to `false`. This setting doesn't remove the current site.
 - **To take the site down,** unpublish it from your repository's Pages settings, or block the `github-pages` environment.
 
@@ -166,7 +183,7 @@ If private data was exposed, treat it as a Pages incident. For more information,
 
 ## Next steps
 
-- If you haven't set up credentials yet, configure [GitHub Apps](deployment-actions-github-app.md) or a [fine-grained PAT](deployment-actions-pat.md).
+- If collection is not configured, choose the [credential profile](#choosing-a-credential-profile) for your exact scope; public-only monitoring needs no App/PAT setup.
 - To publish reports for reviewed campaigns, see [Publishing Pages reports](operations.md#publishing-pages-reports).
 
 ## Further reading

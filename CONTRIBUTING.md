@@ -127,6 +127,42 @@ verifies credentials remain unchanged, and removes its installation afterward.
 It requires network access, Bash, curl, Git, GitHub CLI 2.68+, Node.js 24+, and the
 repository's npm dependencies; CI runs it as a separate public-installer job.
 
+### Documentation sources and validation
+
+Edit the authored source, not another copy of its rendered output:
+
+| Surface | Source of truth |
+| --- | --- |
+| Repository entry point | Root `README.md`; keep it short and route readers to task guides |
+| Documentation pages and landing page | `docs/*.md` and `docs/README.md`; `docs/content.config.ts` loads these, while `astro.config.mjs` owns navigation and redirects |
+| Blog posts | `docs/content/docs/blog/`; the loader exposes these as `blog/...` routes |
+| Catalog pages | `docs/pages/catalog/` renders campaign manifests and READMEs through `docs/lib/catalog.ts`; the repository README and site rendering of a campaign are intentionally the same source |
+| Contributor architecture and contracts | `ARCHITECTURE.md`, its compiled `CODEBASE.yml`, and `specs/`; the reader-facing `docs/architecture.md` explains those boundaries without replacing them |
+| Agent discovery | Generated `llms*.txt`, `agent/` indexes, and per-page `index.json`; edit the source Markdown/metadata, never generated output |
+
+Some authored pages, such as `docs/control-policy-specification.md`, are
+intentional pointers to normative contracts. Others, such as
+`docs/dashboard-language-specification.md`, contain the contract itself.
+Do not treat these as generated files or merge them merely because their titles
+overlap. See [Agent-readable documentation](docs/agent-resources.md) for metadata
+and discovery generation.
+
+Keep one procedural home per task: [setup](docs/setup-quickstarts.md),
+[credential provisioning](docs/control-plane-authentication.md),
+[runtime authentication](docs/authentication.md),
+[Pages deployment](docs/deployment-actions.md), and
+[plugin/canvas use](docs/agent-plugin.md). Scope-specific guides should retain
+their distinct decisions and caveats, linking to shared procedures instead of
+copying them.
+
+Use relative `.md` links between authored pages; `docs/rewrite-docs-links.mjs`
+converts them to site routes. Preserve moved section anchors or update all
+inbound references, and do not redirect a still-authored page to a different
+guide with incompatible anchors. Validate documentation changes with
+`npm run docs:build` (including generated agent-doc validation and discovery
+tests) and `npm run compile` after Markdown edits. Never hand-edit or commit
+generated `llms*.txt` output.
+
 ### Go extension development
 
 The root Go module provides the operator-facing `gh cao` GitHub CLI extension.
