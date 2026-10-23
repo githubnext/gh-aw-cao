@@ -15,7 +15,7 @@ Build dashboard experiences declaratively first. Use JavaScript only for interac
 2. Express data shaping under `dashboard.queries`; keep joins, projections, aggregates, filters, ordering, and computed fields out of view-specific JavaScript.
 3. Prefer an existing Dashboard Language mark, encoding, layout, section, route, control, or named UI element.
 4. Extend a shared declarative renderer when the missing behavior applies to an existing mark.
-5. Add a named UI element only when the experience requires reusable interaction or presentation that the declarative vocabulary cannot represent. Record a concise `intent` and declare every source it consumes.
+5. Add a named UI element only when the experience requires reusable interaction or presentation that the declarative vocabulary cannot represent. Declare every source it consumes in the view's `data.sources`, and describe its purpose with the view `subject`, `objective`, and `acceptance` fields; views have no `intent` key (only pages and table row actions do).
 6. Do not infer specialized behavior from page IDs, view IDs, source names, or source contents.
 
 ## Named UI elements
@@ -25,8 +25,8 @@ Build dashboard experiences declaratively first. Use JavaScript only for interac
 - Keep specialized views declarative: they select sources and an element but do not directly query, create, replace, or mutate DOM nodes.
 - Reuse `dashboard/site/src/dom.js`, shared UI primitives, chart elements, badges, formatters, Octicons, and view chrome instead of duplicating markup or behavior.
 - Return one owned root element. Keep selectors and events scoped to that root, preserve semantic HTML and keyboard operation, and expose accessible names and state.
-- Add the element to `EMPTY_AWARE_ELEMENTS` only when it renders honest empty or unavailable states itself.
-- Use lazy registration for substantial elements that are not needed on every page.
+- Add the element to `EMPTY_AWARE_ELEMENTS` or `UNAVAILABLE_AWARE_ELEMENTS` only when it renders honest empty or unavailable states itself. Add it to `ASYNC_SOURCE_ELEMENTS` only when it loads its declared sources independently of the page subscription, and to `PAGE_BOUND_ELEMENTS` only when it must retain its DOM while the page subscription publishes results.
+- Use lazy registration for substantial elements that are not needed on every page: register a `<name>-lazy` entry in `LAZY_ELEMENT_RENDERERS` so `renderUiElement` wraps the dynamic import in `renderLazyView` with an abort-scoped lifetime.
 
 ## Reactive state
 
