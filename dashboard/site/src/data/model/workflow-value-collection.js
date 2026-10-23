@@ -1,5 +1,8 @@
 import { repositoryCoordinateId, workflowCoordinateId } from './ids.js';
 import { timestampMilliseconds } from './schema.js';
+import { createDebug } from '../../debug.js';
+
+const debugWorkflowValueCollection = createDebug('workflow-value-collection');
 
 export const VALUE_COLLECTION_REASONS = {
   unconfigured: 'No collector is registered for this workflow in the reviewed policy.',
@@ -41,7 +44,10 @@ export function workflowValueCollectionId(repository, workflow) {
 /** Collection facts never supply an outcome measurement or grant authority.
  * @param {Record<string, any>} record */
 export function validateWorkflowValueCollection(record) {
-  const fail = () => { throw new TypeError('Invalid workflow Value collection record'); };
+  const fail = () => {
+    debugWorkflowValueCollection({ event: 'validation-rejected' });
+    throw new TypeError('Invalid workflow Value collection record');
+  };
   if (!record || record.schemaVersion !== 1
     || ['repository', 'workflow', 'observedAt', 'policyDigest'].some(field => typeof record[field] !== 'string')
     || !/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/.test(record.repository)
@@ -78,6 +84,12 @@ export function validateWorkflowValueCollection(record) {
   return record;
 }
 
+/** @param {'decision' | 'attempt'} kind @param {string} message */
+function conflict(kind, message) {
+  debugWorkflowValueCollection({ event: 'merge-conflict', kind });
+  return new TypeError(message);
+}
+
 /** Reconcile the decision and actual attempt independently of arrival order.
  * @param {Record<string, any> | undefined} previous @param {Record<string, any>} incoming
  * @returns {Record<string, any>} */
@@ -88,15 +100,16 @@ export function mergeWorkflowValueCollection(previous, incoming) {
   const after = Date.parse(incoming.observedAt);
   const fields = ['registration', 'collector', 'state', 'reasonCode', 'policyDigest'];
   if (before === after && fields.some(field => previous?.[field] !== incoming[field])) {
-    throw new TypeError('Conflicting workflow Value collection decisions at the same time');
+    throw conflict('decision', 'Conflicting workflow Value collection decisions at the same time');
   }
   const previousAttempt = timestampMilliseconds(previous?.lastAttemptAt);
   const incomingAttempt = timestampMilliseconds(incoming.lastAttemptAt);
   if (previousAttempt !== null && previousAttempt === incomingAttempt
     && previous?.lastAttemptOutcome !== incoming.lastAttemptOutcome) {
-    throw new TypeError('Conflicting workflow Value collection outcomes for the same attempt');
+    throw conflict('attempt', 'Conflicting workflow Value collection outcomes for the same attempt');
   }
   const decision = before > after ? previous : incoming;
+  debugWorkflowValueCollection({ event: 'merged', hadPrevious: Boolean(previous), decision: before > after ? 'previous' : 'incoming' });
   const attempt = (previousAttempt ?? -Infinity) > (incomingAttempt ?? -Infinity) ? previous : incoming;
   return {
     ...decision,
