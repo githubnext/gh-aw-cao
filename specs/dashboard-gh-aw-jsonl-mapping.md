@@ -92,6 +92,13 @@ sessions, ambiguous session artifacts, and missing execution identity SHALL
 fail explicitly rather than masquerade as absent sessions. Artifacts belonging
 to another attempt SHALL NOT be associated with the cached attempt.
 
+During Activity collection, `activity/session-evidence.mjs` SHALL treat a
+malformed session, ambiguous session artifacts, or unavailable or mismatched
+execution identity for one Run as invalid evidence for that Run only: it SHALL
+log a Run-scoped warning, SHALL NOT retain a session projection for that Run,
+and SHALL continue collecting the remaining Runs. Other failures, such as
+filesystem errors, SHALL abort collection.
+
 ## 1 `workflow_runs` envelope
 
 The `workflow_runs` envelope contains raw GitHub Actions run listings.
