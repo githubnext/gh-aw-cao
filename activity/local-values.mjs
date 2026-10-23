@@ -1,6 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { loadPolicyFile } from '../.github/workflows/shared/policy.mjs';
 import { MAX_LOCAL_VALUE_BYTES as MAX_BYTES, runOperationalValue } from './operational-value.mjs';
 import { adaptCachedGhAwJsonl } from '../dashboard/site/src/data/adapters/gh-aw-logs.js';
@@ -72,18 +73,25 @@ export async function retainLocalValues({ policy, input, output }) {
     return envelopes;
   };
   const retained = await readValues(output);
-  let incoming = [];
+  const key = value => JSON.stringify([value.campaign, value.repository.toLowerCase(), value.value_id, value.timestamp]);
+  let accepted = new Map(retained.flatMap(envelope => {
+    const value = envelope.operational_value;
+    return valueRepositoryInScope(document, [value.repository], value.repository, true) ? [[key(value), envelope]] : [];
+  }));
   try {
-    incoming = await readValues(input);
+    const merged = new Map(accepted);
+    for (const envelope of await readValues(input)) {
+      const value = envelope.operational_value;
+      if (!valueRepositoryInScope(document, [value.repository], value.repository, true)) continue;
+      const previous = merged.get(key(value));
+      if (previous && !isDeepStrictEqual(previous, envelope)) {
+        throw new Error('Conflicting completed local Value evidence at the same observation identity');
+      }
+      merged.set(key(value), envelope);
+    }
+    accepted = merged;
   } catch (error) {
     console.warn(`Local Value import deferred: ${error.message}; retained evidence is unchanged`);
-    incoming = [];
-  }
-  const accepted = new Map();
-  for (const envelope of [...retained, ...incoming]) {
-    const value = envelope.operational_value;
-    if (!valueRepositoryInScope(document, [value.repository], value.repository, true)) continue;
-    accepted.set(JSON.stringify([value.campaign, value.repository.toLowerCase(), value.value_id, value.timestamp]), envelope);
   }
   const envelopes = [...accepted.values()];
   if (Buffer.byteLength(envelopes.map(envelope => JSON.stringify(envelope)).join('\n')) + envelopes.length > MAX_BYTES) {

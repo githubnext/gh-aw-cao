@@ -3,6 +3,7 @@ package collect
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,15 +86,31 @@ func (p Projector) CollectLocalValues(ctx context.Context) error {
 	if err := copyLocalValueSnapshot(ctx, p.Lake, workspace); err != nil {
 		return err
 	}
+	policy, err := readLocalValueFile(ctx, p.PolicyPath, 1<<20)
+	if err != nil {
+		return err
+	}
+	policyPath := filepath.Join(workspace, "cao.json")
+	if err := os.WriteFile(policyPath, policy, 0o600); err != nil {
+		return err
+	}
 	output := filepath.Join(workspace, "operational-values.jsonl")
+	revision, err := readLocalValueRevision(ctx, workspace, policyPath, output)
+	if err != nil {
+		return err
+	}
 	config := operationalvalue.Config{
 		Root: p.CatalogRoot, NodeBinary: p.node(), Output: output,
 		Database:    filepath.Join(workspace, "activity.sqlite"),
 		Environment: collectionEnvironment(p.GitHubAPIURL), WorkerTimeout: 2 * time.Minute,
 	}
-	if err := operationalvalue.ComputeLocalSnapshot(ctx, config, p.PolicyPath, workspace, strconv.Itoa(p.windowDays())); err != nil {
+	if err := operationalvalue.ComputeLocalSnapshot(ctx, config, policyPath, workspace, strconv.Itoa(p.windowDays())); err != nil {
 		return err
 	}
+	return p.publishLocalValues(ctx, output, generation, revision)
+}
+
+func (p Projector) publishLocalValues(ctx context.Context, output string, generation []byte, revision localValueRevision) error {
 	content, err := readLocalValueFile(ctx, output, 16<<20)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -108,6 +125,17 @@ func (p Projector) CollectLocalValues(ctx context.Context) error {
 		return err
 	}
 	defer unlock()
+	currentGeneration, err := p.State.OperationalState(publication, projectionCompletedKey)
+	if err != nil {
+		return err
+	}
+	current, err := readLocalValueRevision(publication, p.Lake.Directory, p.PolicyPath, p.Lake.operationalValuesPath())
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(generation, currentGeneration) || current != revision {
+		return errors.New("local Value publication deferred: its input, policy, or accepted evidence changed")
+	}
 	repositories, err := p.enrolledRepositories(publication)
 	if err != nil {
 		return err
@@ -133,6 +161,31 @@ func (p Projector) CollectLocalValues(ctx context.Context) error {
 	// The next ordinary projection publishes this result. Value must not create
 	// a compute -> projection -> compute retry loop on incomplete local evidence.
 	return WriteFileAtomic(p.Lake.operationalValuesPath(), content)
+}
+
+type localValueRevision struct {
+	policy, manifest, values [sha256.Size]byte
+}
+
+func readLocalValueRevision(ctx context.Context, directory, policy, values string) (localValueRevision, error) {
+	var revision localValueRevision
+	for _, input := range []struct {
+		filename string
+		limit    int64
+		optional bool
+		digest   *[sha256.Size]byte
+	}{
+		{policy, 1 << 20, false, &revision.policy},
+		{filepath.Join(directory, "payload-hashes.json"), 1 << 20, false, &revision.manifest},
+		{values, 16 << 20, true, &revision.values},
+	} {
+		content, err := readLocalValueFile(ctx, input.filename, input.limit)
+		if err != nil && (!input.optional || !errors.Is(err, os.ErrNotExist)) {
+			return revision, err
+		}
+		*input.digest = sha256.Sum256(content)
+	}
+	return revision, nil
 }
 
 func copyLocalValueSnapshot(ctx context.Context, lake Lake, destination string) error {
@@ -181,10 +234,6 @@ func copyLocalValueSnapshot(ctx context.Context, lake Lake, destination string) 
 		if err := os.WriteFile(target, content, 0o600); err != nil {
 			return err
 		}
-	}
-	content, err = json.Marshal(manifest)
-	if err != nil {
-		return err
 	}
 	if err := os.WriteFile(filepath.Join(destination, "payload-hashes.json"), content, 0o600); err != nil {
 		return err

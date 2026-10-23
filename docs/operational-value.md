@@ -101,7 +101,15 @@ five-minute ceiling, with two minutes per computation batch and thirty seconds
 per adapter; it does not backfill history. Existing fast, public-only and
 API-limited gates remain. A later Activity snapshot imports completed results.
 The hosted collector uses the same local runtime under a separate lease and
-private snapshot, never the core projection lease.
+private snapshot, never the core projection lease. Publication rechecks enrollment
+and the starting input, policy and retained evidence; a concurrent change defers
+the result rather than overwriting newer evidence. Completed-cache imports reject
+conflicting measurements at an identical observation identity.
+
+Collection decisions and actual attempts retain independent clocks. Reordered
+or repeated health observations cannot erase a known attempt or restore an older
+registration. A missing attempt remains unknown; accepted capture and cutoff
+dates still come only from measurement evidence.
 
 Opening a report does not trigger collection. A failed acquisition, timeout or
 invalid result leaves previous evidence and its capture/cutoff timestamps intact;

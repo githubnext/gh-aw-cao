@@ -2951,8 +2951,12 @@ and `available`. Unconfigured requires an observed workflow and an explicit
 policy check; absent reports or absent collection records do not establish it.
 Never-captured describes the absence of an accepted capture in the retained
 collection history, not a claim about unavailable historical archives.
-The latest decision replaces the entire health record; stale imports MUST NOT
-roll it back. Health records retain structural parents without requiring a Run.
+The latest decision replaces its registration, collector, state, reason and
+policy facts; stale imports MUST NOT roll them back. Actual attempt history is
+an independently reconciled fact, not an optional field overwrite. Health records
+retain structural parents without requiring a Run. Decision and attempt clocks
+SHALL use UTC with millisecond precision or coarser; equivalent timestamp
+spellings SHALL compare as instants and normalize without discarding precision.
 
 `lastAttemptAt` and `lastAttemptOutcome`, when present, SHALL describe an actual
 collector process invocation, including a cadence check. Deferral before
@@ -2963,11 +2967,19 @@ The `workflow-value-collections` logical source and declarative Value views SHAL
 keep these clocks separate and show registration health before a first report.
 No health observation promotes outcome completeness or freshness.
 Explicit disables without a collector path SHALL remain disabled, not
-unconfigured. Newer decisions MUST NOT discard or regress a known attempt clock;
-conflicting decisions at the same observation time SHALL fail.
+unconfigured. Decision and attempt reconciliation SHALL independently retain
+the greatest authoritative timestamp. An older decision may supply a later
+known attempt without restoring older registration or policy facts. An older
+attempt MUST NOT replace a newer known attempt, even when carried by a newer
+decision. Conflicting decision facts at the same decision time, or conflicting
+outcomes for the same attempt time, SHALL fail rather than select by arrival.
 An absent attempt is unknown, not proof that collection never ran. Merging a
 newer decision after cache loss SHALL retain an already known actual attempt;
 it MUST NOT synthesize one from the new decision time.
+For nonconflicting evidence, replay, permutation and regrouping SHALL produce
+the same decision and attempt facts in browser, SQLite and hosted storage.
+This bounded current-fact contract does not introduce a complete event ledger,
+historical conflict quarantine, or the proposed three-tier storage policy.
 
 Optional Value acquisition MUST NOT delay ordinary Activity publication, consume
 its protected API headroom, or hold the hosted projection lease. A separate job
@@ -3000,8 +3012,13 @@ snapshot SHALL remain within 256 MiB with individual inputs bounded to 16 MiB.
 An optional result import failure MUST retain accepted evidence without failing
 ordinary Activity publication.
 Completed local results SHALL wait for the next ordinary projection, not create
-a compute/publication retry loop. A final short publication rechecks enrollment;
-failure, timeout or withdrawal MUST NOT replace accepted evidence or hold up
+a compute/publication retry loop. Computation SHALL use a frozen copy of policy.
+A final short publication rechecks enrollment and compares the completed input
+generation, manifest, policy and retained-result identity with the computation's
+starting state. Changed inputs or accepted evidence SHALL defer publication,
+not overwrite concurrent work. Optional Actions imports SHALL reject conflicting
+measurements at the same observation identity without changing retained evidence.
+Failure, timeout or withdrawal MUST NOT replace accepted evidence or hold up
 ordinary Activity publication. These bounds do not claim isolation from unrelated
 host CPU/I/O consumers, Actions transport requests, or external API consumers.
 

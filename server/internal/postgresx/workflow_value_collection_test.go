@@ -2,6 +2,7 @@ package postgresx
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"os"
 	"strings"
@@ -31,6 +32,15 @@ func collectionFixture(t *testing.T) model.Row {
 func TestWorkflowValueCollectionValidation(t *testing.T) {
 	if err := validateWorkflowValueCollection(collectionFixture(t)); err != nil {
 		t.Fatal(err)
+	}
+	for _, field := range []string{"observedAt", "lastAttemptAt"} {
+		for _, clock := range []string{"2026-10-22T12:00:00.000001Z", "2026-10-22T12:00:00+00:00"} {
+			record := collectionFixture(t)
+			record[field] = clock
+			if err := validateWorkflowValueCollection(record); err == nil {
+				t.Fatalf("%s must preserve common UTC millisecond precision: %s", field, clock)
+			}
+		}
 	}
 	for field, value := range map[string]any{
 		"id": "wrong", "sourcePath": ".github/workflows/other.md", "schemaVersion": "1",
@@ -96,44 +106,47 @@ func TestWorkflowValueCollectionHostedStorage(t *testing.T) {
 	}
 }
 
-func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
+func publishCollectionHealth(t *testing.T, store *Store, record model.Row, revision string) error {
+	t.Helper()
+	writer, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		return err
+	}
+	defer writer.Abort(t.Context())
+	if record != nil {
+		for source, row := range map[string]model.Row{
+			"$repositories":             {"id": record["repositoryId"], "owner": "octo", "name": "example"},
+			"$workflows":                {"id": record["workflowId"], "repositoryId": record["repositoryId"], "path": record["sourcePath"], "state": "unknown"},
+			"$workflowValueCollections": record,
+		} {
+			if err := writer.Append(t.Context(), source, row); err != nil {
+				return err
+			}
+		}
+	}
+	_, err = writer.Publish(t.Context(), revision)
+	return err
+}
+
+func TestWorkflowValueCollectionRetainsIndependentClocks(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	original := collectionFixture(t)
 	publish := func(record model.Row, revision string) error {
-		writer, err := store.BeginIngestion(t.Context())
-		if err != nil {
-			return err
-		}
-		defer writer.Abort(t.Context())
-		if record != nil {
-			for source, row := range map[string]model.Row{
-				"$repositories":             {"id": record["repositoryId"], "owner": "octo", "name": "example"},
-				"$workflows":                {"id": record["workflowId"], "repositoryId": record["repositoryId"], "path": record["sourcePath"], "state": "unknown"},
-				"$workflowValueCollections": record,
-			} {
-				if err := writer.Append(t.Context(), source, row); err != nil {
-					return err
-				}
-			}
-		}
-		_, err = writer.Publish(t.Context(), revision)
-		return err
+		return publishCollectionHealth(t, store, record, revision)
 	}
 	if err := publish(original, "original"); err != nil {
 		t.Fatal(err)
 	}
 	clock, _ := evidenceTime(original["observedAt"])
-	for _, scenario := range []string{"stale", "conflicting", "regressed-attempt"} {
+	for _, scenario := range []string{"conflicting-decision", "conflicting-attempt"} {
 		record := maps.Clone(original)
 		switch scenario {
-		case "stale":
-			record["observedAt"] = clock.Add(-time.Second).Format(time.RFC3339)
-		case "conflicting":
+		case "conflicting-decision":
 			record["reasonCode"] = "shared-budget-unavailable"
 			record["reason"] = valueCollectionReasons["shared-budget-unavailable"]
-		case "regressed-attempt":
+		case "conflicting-attempt":
 			record["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
-			record["lastAttemptAt"] = clock.Add(-48 * time.Hour).Format(time.RFC3339)
+			record["lastAttemptOutcome"] = "available"
 		}
 		if err := publish(record, scenario); err == nil || !strings.Contains(err.Error(), "accepted history") {
 			t.Fatalf("%s snapshot must not overwrite accepted decisions: %v", scenario, err)
@@ -146,6 +159,17 @@ func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
 	rows := sources["workflow-value-collections"].Rows
 	if len(rows) != 1 || rows[0]["reason-code"] != "api-budget" || rows[0]["last-attempt-outcome"] != "failed" {
 		t.Fatalf("failed imports changed accepted health: %v", rows)
+	}
+	stale := maps.Clone(original)
+	stale["observedAt"] = clock.Add(-time.Second).Format(time.RFC3339)
+	if err := publish(stale, "stale"); err != nil {
+		t.Fatal("stale health must not roll back a decision or block ordinary publication", err)
+	}
+	regressed := maps.Clone(original)
+	regressed["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
+	regressed["lastAttemptAt"] = clock.Add(-48 * time.Hour).Format(time.RFC3339)
+	if err := publish(regressed, "older-attempt"); err != nil {
+		t.Fatal("an older attempt must not erase a later known one", err)
 	}
 	unknown := maps.Clone(original)
 	unknown["observedAt"] = clock.Add(time.Hour).Format(time.RFC3339)
@@ -170,7 +194,59 @@ func TestWorkflowValueCollectionRejectsRegressiveSnapshots(t *testing.T) {
 	if err := publish(disabled, "disabled"); err != nil {
 		t.Fatal(err)
 	}
+	if err := publish(original, "disabled-replay"); err != nil {
+		t.Fatal(err)
+	}
+	sources, _, err = store.ExecuteSQLPlan(t.Context(), canonicalProjectionDefinitions(t), []string{"workflow-value-collections"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows = sources["workflow-value-collections"].Rows
+	if len(rows) != 1 || rows[0]["registration"] != "disabled" || rows[0]["collector"] != nil {
+		t.Fatalf("stale replay revived a disabled collector: %v", rows)
+	}
 	if err := publish(nil, "withdrawn"); err != nil {
 		t.Fatal("protecting clocks must not restore withdrawn collection records", err)
+	}
+}
+
+func TestWorkflowValueCollectionSnapshotPermutationConvergence(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	older := collectionFixture(t)
+	attempted := maps.Clone(older)
+	attempted["observedAt"] = "2026-10-23T15:00:00Z"
+	attempted["lastAttemptAt"], attempted["lastAttemptOutcome"] = "2026-10-23T14:30:00Z", "available"
+	deferred := maps.Clone(older)
+	deferred["observedAt"] = "2026-10-24T14:00:00Z"
+	delete(deferred, "lastAttemptAt")
+	delete(deferred, "lastAttemptOutcome")
+	records := []model.Row{older, attempted, deferred}
+	for _, order := range [][]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}} {
+		if err := publishCollectionHealth(t, store, nil, "reset"); err != nil {
+			t.Fatal(err)
+		}
+		for pass := range 2 {
+			for index, record := range order {
+				if err := publishCollectionHealth(t, store, records[record], fmt.Sprintf("%v-%d-%d", order, pass, index)); err != nil {
+					t.Fatalf("order %v: %v", order, err)
+				}
+			}
+		}
+		sources, _, err := store.ExecuteSQLPlan(t.Context(), canonicalProjectionDefinitions(t), []string{"workflow-value-collections"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := sources["workflow-value-collections"].Rows
+		if len(rows) != 1 || rows[0]["registration"] != "enabled" || rows[0]["reason-code"] != "api-budget" ||
+			rows[0]["last-attempt-outcome"] != "available" {
+			t.Fatalf("order %v lost independent collection facts: %v", order, rows)
+		}
+		for field, want := range map[string]any{"checked-at": deferred["observedAt"], "last-attempt-at": attempted["lastAttemptAt"]} {
+			actual, err := evidenceTime(rows[0][field])
+			expected, _ := evidenceTime(want)
+			if err != nil || !actual.Equal(expected) {
+				t.Fatalf("order %v changed %s: %v", order, field, rows)
+			}
+		}
 	}
 }

@@ -26,6 +26,13 @@ const STATE_REASONS = {
   available: ['captured', 'not-due']
 };
 
+/** @param {unknown} value */
+function collectionTime(value) {
+  if (typeof value !== 'string' || !value.endsWith('Z')) return null;
+  const fraction = /\.(\d+)Z$/.exec(value)?.[1] ?? '';
+  return /[1-9]/.test(fraction.slice(3)) ? null : timestampMilliseconds(value);
+}
+
 /** @param {string} repository @param {string} workflow */
 export function workflowValueCollectionId(repository, workflow) {
   return `workflow-value-collection:${encodeURIComponent(`${repository.toLowerCase()}:${workflow}`)}`;
@@ -41,7 +48,7 @@ export function validateWorkflowValueCollection(record) {
     || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(record.workflow)
     || record.sourcePath !== `.github/workflows/${record.workflow}.md`
     || record.id !== workflowValueCollectionId(record.repository, record.workflow)
-    || timestampMilliseconds(record.observedAt) === null
+    || collectionTime(record.observedAt) === null
     || !/^[a-f0-9]{64}$/.test(record.policyDigest)
     || !['enabled', 'disabled', 'unconfigured'].includes(record.registration)
     || !['unconfigured', 'disabled', 'never-captured', 'deferred', 'failed', 'available'].includes(record.state)
@@ -61,7 +68,7 @@ export function validateWorkflowValueCollection(record) {
     || record.registration === 'disabled' && record.state !== 'disabled'
     || record.registration === 'enabled' && record.state === 'unconfigured') fail();
   if (record.lastAttemptAt !== undefined || record.lastAttemptOutcome !== undefined) {
-    if (timestampMilliseconds(record.lastAttemptAt) === null
+    if (collectionTime(record.lastAttemptAt) === null
       || Date.parse(record.lastAttemptAt) > Date.parse(record.observedAt)
       || !['available', 'failed'].includes(record.lastAttemptOutcome)) fail();
   }
@@ -71,22 +78,32 @@ export function validateWorkflowValueCollection(record) {
   return record;
 }
 
-/** Replace a complete decision without rolling back its independent attempt clock.
- * @param {Record<string, any> | undefined} previous @param {Record<string, any>} incoming */
+/** Reconcile the decision and actual attempt independently of arrival order.
+ * @param {Record<string, any> | undefined} previous @param {Record<string, any>} incoming
+ * @returns {Record<string, any>} */
 export function mergeWorkflowValueCollection(previous, incoming) {
   validateWorkflowValueCollection(incoming);
-  if (!previous) return incoming;
-  const before = Date.parse(previous.observedAt), after = Date.parse(incoming.observedAt);
-  if (before > after) return previous;
-  const next = previous.lastAttemptAt && !incoming.lastAttemptAt ? {
-    ...incoming, lastAttemptAt: previous.lastAttemptAt, lastAttemptOutcome: previous.lastAttemptOutcome,
-  } : incoming;
-  const fields = ['registration', 'collector', 'state', 'reasonCode', 'policyDigest', 'lastAttemptAt', 'lastAttemptOutcome'];
-  if (before === after && fields.some(field => previous[field] !== next[field])) {
+  if (previous && previous.id !== incoming.id) throw new TypeError('Cannot merge different workflow Value collection identities');
+  const before = previous ? Date.parse(previous.observedAt) : -Infinity;
+  const after = Date.parse(incoming.observedAt);
+  const fields = ['registration', 'collector', 'state', 'reasonCode', 'policyDigest'];
+  if (before === after && fields.some(field => previous?.[field] !== incoming[field])) {
     throw new TypeError('Conflicting workflow Value collection decisions at the same time');
   }
-  if (previous.lastAttemptAt && Date.parse(next.lastAttemptAt) < Date.parse(previous.lastAttemptAt)) {
-    throw new TypeError('Workflow Value collection attempt history regressed');
+  const previousAttempt = timestampMilliseconds(previous?.lastAttemptAt);
+  const incomingAttempt = timestampMilliseconds(incoming.lastAttemptAt);
+  if (previousAttempt !== null && previousAttempt === incomingAttempt
+    && previous?.lastAttemptOutcome !== incoming.lastAttemptOutcome) {
+    throw new TypeError('Conflicting workflow Value collection outcomes for the same attempt');
   }
-  return next;
+  const decision = before > after ? previous : incoming;
+  const attempt = (previousAttempt ?? -Infinity) > (incomingAttempt ?? -Infinity) ? previous : incoming;
+  return {
+    ...decision,
+    observedAt: new Date(Math.max(before, after)).toISOString(),
+    ...(attempt?.lastAttemptAt ? {
+      lastAttemptAt: new Date(attempt.lastAttemptAt).toISOString(),
+      lastAttemptOutcome: attempt.lastAttemptOutcome,
+    } : {}),
+  };
 }

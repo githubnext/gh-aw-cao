@@ -2863,12 +2863,20 @@ It does not mint a token or treat a quota preflight as a shared reservation.
 Bounded local-only computation has its own `value-local` lease, a verified private
 Activity snapshot and one attempt per completed projection generation. It does
 not hold the projection lease or evidence lock while computing. The two-minute
-batch/30-second adapter budgets cancel the owned process tree; final publication
-uses a short evidence lock and rechecks enrollment. Completed output waits for
+batch/30-second adapter budgets cancel the owned process tree. Computation uses
+a frozen policy copy; final publication uses a short evidence lock, rechecks
+enrollment, and compares the input generation, manifest, policy and retained
+evidence with its starting state. A changed precondition defers the result
+rather than overwriting newer accepted evidence. Completed output waits for
 the next ordinary projection, avoiding a Value-generated retry loop. An
 unsupported adapter, missing input, timeout or failure preserves accepted history.
 This improves health visibility and core isolation, not guaranteed fresh Value
 collection or separate capacity for external consumers.
+
+Health reconciliation keeps the newest decision and newest actual attempt
+independently, so replay order and missing attempt metadata cannot erase known
+history or revive an older registration. Same-clock contradictions fail closed;
+measurement capture/cutoff dates remain exclusively those of accepted evidence.
 
 The hosted dashboard shows a user icon at the lower left of the navigation.
 It appears only after the server confirms an authenticated GitHub session and

@@ -19,7 +19,7 @@ import {
   upsertCanonicalBatch
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
-import { NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
+import { ingestCachedGhAwJsonl, NORMALIZED_JSONL_INGESTION_VERSION } from '../../src/data/ingest/coordinator.js';
 import { doctorSqliteDatabase } from '../../src/data/storage/sqlite-doctor.js';
 import {
   createSqliteIndexedDB,
@@ -60,6 +60,33 @@ function batch() {
   );
   return canonical;
 }
+
+it('reconciles independent Value decision and attempt clocks across SQLite reopen and replay order', async () => {
+  const older = JSON.parse(readFileSync(resolve('test/fixtures/workflow-value-collection.jsonl'), 'utf8'));
+  const newer = structuredClone(older);
+  newer.workflow_value_collection.observedAt = '2026-10-24T14:00:00.000Z';
+  delete newer.workflow_value_collection.lastAttemptAt;
+  delete newer.workflow_value_collection.lastAttemptOutcome;
+  const results = [];
+  for (const records of [[older, newer], [newer, older]]) {
+    const filename = temporaryDatabase();
+    for (const [index, envelope] of [...records, ...records].entries()) {
+      const database = installSqliteIndexedDB(filename);
+      await ingestCachedGhAwJsonl(database, JSON.stringify(envelope), {
+        now: Date.parse('2026-10-25T00:00:00Z'), payloadScope: `health-${index}`,
+      });
+    }
+    results.push(await readCollection(installSqliteIndexedDB(filename), 'workflowValueCollections'));
+  }
+  expect(results[0]).toEqual(results[1]);
+  expect(results[0]).toHaveLength(1);
+  expect(results[0][0]).toMatchObject({
+    observedAt: newer.workflow_value_collection.observedAt,
+    lastAttemptAt: older.workflow_value_collection.lastAttemptAt,
+    lastAttemptOutcome: older.workflow_value_collection.lastAttemptOutcome,
+    registration: 'enabled', state: 'deferred', reasonCode: 'api-budget',
+  });
+});
 
 it('keeps a year of outcome history through ingestion and doctor independently of run and detail TTLs', async () => {
   const filename = temporaryDatabase();

@@ -741,7 +741,9 @@ records through `cao operational-value`. Automatic remote acquisition remains
 deferred until shared per-request API admission can protect ordinary Activity
 against concurrent credential consumers; separate workers are not separate quota.
 Activity publishes health and retains accepted packets/proof without remote
-Value acquisition. Bounded cache-only/local computation remains independent:
+Value acquisition. Health reconciles the latest decision and actual attempt
+independently of arrival order; unknown attempts never erase known history.
+Bounded cache-only/local computation remains independent:
 Actions runs it only after a successful eligible Activity snapshot, while the
 hosted worker uses its own single-owner lease and verified private snapshot.
 Both use the reviewed local-only standard adapter, explicit local-capability
@@ -750,7 +752,10 @@ backfill, and a two-minute batch/thirty-second adapter budget. Scope, explicit
 disables, fast, public-only and API-limited gates remain enforced. A later
 ordinary snapshot imports completed results; optional work does not acquire
 the projection lease, hold a long core evidence lock, or initiate a
-compute/publication retry loop. Normalized timestamped records then rebuild
+compute/publication retry loop. Hosted final publication rechecks enrollment
+and the starting generation, manifest, policy and retained-result identities;
+changed inputs defer publication rather than overwrite concurrent evidence.
+Normalized timestamped records then rebuild
 the canonical Operational Value collection in every storage profile.
 Package-level `problem-clustering.mjs` programs read a private Activity SQLite
 snapshot and emit bounded problem records with actionable fix prompts through

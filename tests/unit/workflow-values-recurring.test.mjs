@@ -337,4 +337,14 @@ test('completed local imports validate the canonical envelope, retain known zero
   await writeFile(input, JSON.stringify(withdrawn));
   await retainLocalValues({ policy: options.policy, input, output });
   assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), original);
+  const conflicting = structuredClone(original);
+  conflicting.operational_value.value = 7;
+  const later = structuredClone(original);
+  later.operational_value.timestamp = '2026-10-21T12:00:00.000Z';
+  await writeFile(input, [later, conflicting].map(record => JSON.stringify(record)).join('\n'));
+  await retainLocalValues({ policy: options.policy, input, output });
+  assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), original);
+  await writeFile(input, [original, later, original].map(record => JSON.stringify(record)).join('\n'));
+  await retainLocalValues({ policy: options.policy, input, output });
+  assert.deepEqual((await readFile(output, 'utf8')).trim().split('\n').map(line => JSON.parse(line)), [original, later]);
 });

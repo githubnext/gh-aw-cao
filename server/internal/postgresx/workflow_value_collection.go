@@ -7,56 +7,64 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/model"
 )
 
 func (w *Writer) preserveCollectionDecisions(ctx context.Context) error {
 	_, err := w.tx.Exec(ctx, `CREATE TEMP TABLE workflow_value_collections_previous ON COMMIT DROP AS
-		SELECT id, observed_at, registration, collector, state, reason_code, policy_digest,
+		SELECT id, present_fields, observed_at, registration, collector, state, reason_code, reason, policy_digest,
 			last_attempt_at, last_attempt_outcome
 		FROM workflow_value_collections WHERE namespace=$1`, w.store.namespace)
 	return err
 }
 
 func (w *Writer) reconcileCollectionDecisions(ctx context.Context) error {
-	presence := "incoming.present_fields"
-	for index, column := range entityTables["$workflowValueCollections"].columns {
-		if column.field == "lastAttemptAt" || column.field == "lastAttemptOutcome" {
-			presence = fmt.Sprintf("set_bit(%s,%d,1)", presence, index)
-		}
-	}
-	// An absent attempt means unknown, including after a local cache loss.
-	if _, err := w.tx.Exec(ctx, `UPDATE workflow_value_collections incoming SET
-		last_attempt_at=previous.last_attempt_at, last_attempt_outcome=previous.last_attempt_outcome,
-		present_fields=`+presence+` FROM workflow_value_collections_previous previous
-		WHERE incoming.namespace=$1 AND incoming.id=previous.id
-		AND incoming.observed_at>=previous.observed_at
-		AND incoming.last_attempt_at IS NULL AND previous.last_attempt_at IS NOT NULL`, w.store.namespace); err != nil {
-		return err
-	}
 	var invalid bool
 	err := w.tx.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM workflow_value_collections incoming
 		JOIN workflow_value_collections_previous previous USING (id)
 		WHERE incoming.namespace=$1 AND (
-			incoming.observed_at < previous.observed_at OR
 			(incoming.observed_at = previous.observed_at AND
 				ROW(incoming.registration, incoming.collector, incoming.state, incoming.reason_code,
-					incoming.policy_digest, incoming.last_attempt_at, incoming.last_attempt_outcome)
+					incoming.policy_digest)
 				IS DISTINCT FROM
 				ROW(previous.registration, previous.collector, previous.state, previous.reason_code,
-					previous.policy_digest, previous.last_attempt_at, previous.last_attempt_outcome)) OR
-			(previous.last_attempt_at IS NOT NULL AND
-				(incoming.last_attempt_at IS NULL OR incoming.last_attempt_at < previous.last_attempt_at))
+					previous.policy_digest)) OR
+			(incoming.last_attempt_at = previous.last_attempt_at AND
+				incoming.last_attempt_outcome IS DISTINCT FROM previous.last_attempt_outcome)
 		))`, w.store.namespace).Scan(&invalid)
 	if err != nil {
 		return err
 	}
 	if invalid {
-		return errors.New("workflow Value collection decision regressed or conflicts with accepted history")
+		return errors.New("workflow Value collection decision or attempt conflicts with accepted history")
 	}
-	return nil
+	decisionPresence, attemptPresence := "incoming.present_fields", "incoming.present_fields"
+	for index, column := range entityTables["$workflowValueCollections"].columns {
+		if column.field == "collector" {
+			decisionPresence = fmt.Sprintf("set_bit(%s,%d,get_bit(previous.present_fields,%d))", decisionPresence, index, index)
+		}
+		if column.field == "lastAttemptAt" || column.field == "lastAttemptOutcome" {
+			attemptPresence = fmt.Sprintf("set_bit(%s,%d,1)", attemptPresence, index)
+		}
+	}
+	if _, err := w.tx.Exec(ctx, `UPDATE workflow_value_collections incoming SET
+		observed_at=previous.observed_at, registration=previous.registration, collector=previous.collector,
+		state=previous.state, reason_code=previous.reason_code, reason=previous.reason, policy_digest=previous.policy_digest,
+		present_fields=`+decisionPresence+` FROM workflow_value_collections_previous previous
+		WHERE incoming.namespace=$1 AND incoming.id=previous.id
+		AND incoming.observed_at<previous.observed_at`, w.store.namespace); err != nil {
+		return err
+	}
+	_, err = w.tx.Exec(ctx, `UPDATE workflow_value_collections incoming SET
+		last_attempt_at=previous.last_attempt_at, last_attempt_outcome=previous.last_attempt_outcome,
+		present_fields=`+attemptPresence+` FROM workflow_value_collections_previous previous
+		WHERE incoming.namespace=$1 AND incoming.id=previous.id
+		AND previous.last_attempt_at IS NOT NULL
+		AND (incoming.last_attempt_at IS NULL OR incoming.last_attempt_at<previous.last_attempt_at)`, w.store.namespace)
+	return err
 }
 
 var valueCollectorPath = regexp.MustCompile(`^[A-Za-z0-9._/-]+\.mjs$`)
@@ -91,7 +99,8 @@ func validateWorkflowValueCollection(row model.Row) error {
 	observed, err := evidenceTime(row["observedAt"])
 	registration, state := evidenceText(row["registration"]), evidenceText(row["state"])
 	reason := evidenceText(row["reasonCode"])
-	if err != nil || fmt.Sprint(row["schemaVersion"]) != "1" || evidenceText(row["schemaVersion"]) != "" ||
+	if err != nil || observed.Nanosecond()%int(time.Millisecond) != 0 ||
+		fmt.Sprint(row["schemaVersion"]) != "1" || evidenceText(row["schemaVersion"]) != "" ||
 		!targetCoordinate.MatchString(repository) || !evidenceSlug.MatchString(workflow) ||
 		row["sourcePath"] != ".github/workflows/"+workflow+".md" ||
 		row["id"] != "workflow-value-collection:"+evidenceComponent(strings.ToLower(repository)+":"+workflow) ||
@@ -126,7 +135,8 @@ func validateWorkflowValueCollection(row model.Row) error {
 	outcome, hasOutcome := row["lastAttemptOutcome"]
 	if hasAttempt || hasOutcome {
 		started, err := evidenceTime(attempt)
-		if err != nil || started.After(observed) || !slices.Contains([]string{"available", "failed"}, evidenceText(outcome)) {
+		if err != nil || started.Nanosecond()%int(time.Millisecond) != 0 ||
+			started.After(observed) || !slices.Contains([]string{"available", "failed"}, evidenceText(outcome)) {
 			return fail
 		}
 	}
