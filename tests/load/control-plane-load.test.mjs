@@ -354,13 +354,16 @@ test("control precompute fails inventory closed after bounded API errors", () =>
   const run = runPrecompute({ MOCK_FAIL_INVENTORY: "true" });
 
   try {
-    assert.equal(run.result.status, 0, run.result.stderr);
+    assert.notEqual(run.result.status, 0);
     const output = JSON.parse(readFileSync("/tmp/gh-aw/agent/control-precompute.json", "utf8"));
     const inventoryCalls = readFileSync(run.logPath, "utf8").trim().split("\n");
-    assert.equal(output.total_repositories_scanned, 0);
+    assert.equal(output.inventory_status, "incomplete");
+    assert.equal(output.authorized, true);
+    assert.equal(output.activation_ready, false);
     assert.equal(output.effective_max_repos, 0);
     assert.deepEqual(output.candidate_repositories, []);
-    assert.match(output.repo_error, /simulated API rate limit/);
+    assert.match(output.repo_error, /Required repository inventory could not be read/);
+    assert.doesNotMatch(output.repo_error, /simulated API rate limit/);
     assert.equal(inventoryCalls.length, 2, "inventory fallback retried beyond organization and user endpoints");
   } finally {
     rmSync(run.temporaryDirectory, { recursive: true, force: true });

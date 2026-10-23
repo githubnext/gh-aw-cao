@@ -25,6 +25,9 @@ import-schema:
   github_tools:
     type: boolean
     default: true
+  inventory_exclude_control:
+    type: boolean
+    default: false
   read_repository:
     type: string
     required: true
@@ -169,22 +172,6 @@ tools:
 jobs:
   pre-activation:
     pre-steps:
-      - name: Generate CAO pre-activation GitHub App token
-        id: cao_pre_activation_app_token
-        env:
-          CAO_GITHUB_APP_ID: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
-          CAO_GITHUB_APP_PRIVATE_KEY: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-        if: ${{ env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
-          private-key: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
-          github-api-url: ${{ github.api_url }}
-          permission-actions: read
-          permission-contents: read
-
       - name: Checkout CAO control modules
         id: cao_control_checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -288,12 +275,39 @@ jobs:
             if (process.exitCode) throw new Error(`control.mjs exited with code ${process.exitCode}`);
             core.info('[cao] Admission evaluation completed.');
 
+      - name: Generate CAO pre-activation GitHub App token
+        id: cao_pre_activation_app_token
+        continue-on-error: true
+        env:
+          CAO_GITHUB_APP_ID: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_GITHUB_APP_PRIVATE_KEY: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+        if: ${{ steps.cao_admission.outputs.authorized == 'true' && env.CAO_GITHUB_APP_ID != '' && env.CAO_GITHUB_APP_PRIVATE_KEY != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          private-key: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          github-api-url: ${{ github.api_url }}
+          permission-actions: read
+          permission-contents: read
+
       - name: Run CAO control precompute
         id: cao_precompute
         if: ${{ steps.cao_admission.outputs.authorized == 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GH_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_TOKEN || (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && github.token }}
+          CAO_AUTH_MODE: ${{ vars.GH_AW_GITHUB_AUTH_MODE }}
+          CAO_CONTROL_READ_TOKEN: ${{ steps.cao_pre_activation_app_token.outputs.token }}
+          CAO_READ_APP_ID: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && vars.GH_AW_GITHUB_READ_APP_ID || '' }}
+          CAO_READ_APP_PRIVATE_KEY: ${{ (vars.GH_AW_GITHUB_AUTH_MODE == 'app' || vars.GH_AW_GITHUB_AUTH_MODE == '') && secrets.GH_AW_GITHUB_READ_APP_PRIVATE_KEY || '' }}
+          CAO_READ_PAT_REPOSITORIES: ${{ vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES }}
+          CAO_CONTROL_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[github.repository]] || '' }}
+          CAO_INVENTORY_PAT_REPOSITORY: ${{ inputs.target_repo || github.repository }}
+          CAO_INVENTORY_READ_PAT: ${{ vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || '' }}
+          CAO_LEGACY_READ_TOKEN: ${{ vars.GH_AW_GITHUB_AUTH_MODE == '' && (secrets.GH_AW_GITHUB_READ_PAT || secrets.GH_AW_GITHUB_TOKEN) || '' }}
+          CAO_WORKFLOW_TOKEN: ${{ github.token }}
+          CAO_INVENTORY_EXCLUDE_CONTROL: "${{ github.aw.import-inputs.inventory_exclude_control }}"
           GITHUB_WORKFLOW_SHA: ${{ github.workflow_sha }}
           CAO_CAMPAIGN: ${{ github.aw.import-inputs.campaign }}
           CAO_WORKFLOW: ${{ github.aw.import-inputs.workflow }}
@@ -314,7 +328,7 @@ jobs:
           CAO_WORKER_CREDITS_PER_TARGET: "${{ github.aw.import-inputs.worker_credits_per_target }}"
           CAO_CONTROL_RUNTIME: ${{ steps.cao_control_source.outputs.runtime }}
         with:
-          github-token: ${{ steps.cao_pre_activation_app_token.outputs.token || vars.GH_AW_GITHUB_AUTH_MODE == 'pat' && secrets[fromJSON(vars.GH_AW_GITHUB_READ_PAT_REPOSITORIES || '{}')[inputs.target_repo || github.repository]] || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_READ_PAT || vars.GH_AW_GITHUB_AUTH_MODE == '' && secrets.GH_AW_GITHUB_TOKEN || (vars.GH_AW_GITHUB_AUTH_MODE == '' || vars.GH_AW_GITHUB_AUTH_MODE == 'workflow-token') && github.token }}
+          github-token: ${{ github.token }}
           script: |
             core.info('[cao] Loading the control runtime for precompute.');
             const control = await import(process.env.CAO_CONTROL_RUNTIME);
@@ -456,7 +470,7 @@ jobs:
 
       - name: Upload CAO control precompute artifact
         id: cao_precompute_upload
-        if: ${{ steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outputs.authorized != 'false' }}
+        if: ${{ always() && steps.cao_admission.outputs.authorized == 'true' && steps.cao_precompute.outcome != 'skipped' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cao-control-precompute
@@ -505,14 +519,9 @@ jobs:
           for (const [step, outcome] of Object.entries(steps)) {
             console.log(`[cao] ${JSON.stringify({ step, outcome: outcome || "not-run" })}`);
           }
-          const credential = steps.github_app_token === "success"
-            ? "github-app"
-            : steps.github_app_token === "skipped"
-              ? "fallback-token-chain"
-              : `github-app-${steps.github_app_token || "not-run"}`;
           console.log(`[cao] ${JSON.stringify({
             decision: "read-credential",
-            outcome: credential,
+            outcome: "See the profile-bound inventory-credential decision; credentials are never substituted after profile selection.",
           })}`);
           console.log(`[cao] ${JSON.stringify({
             decision: "control-handoff",

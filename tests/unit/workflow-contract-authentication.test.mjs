@@ -210,7 +210,10 @@ test("Repo Assist uses configured CAO GitHub authentication and organization-bil
     assert.doesNotMatch(source, /COPILOT_GITHUB_TOKEN/, `${workflowId}.md must not select token billing`);
 
     assert.ok(precomputeStep, `${workflowId}.lock.yml must include CAO precompute`);
-    assert.match(precomputeStep, /GH_TOKEN:.*steps\.cao_pre_activation_app_token\.outputs\.token/);
+    assert.match(precomputeStep, /CAO_CONTROL_READ_TOKEN:.*steps\.cao_pre_activation_app_token\.outputs\.token/);
+    assert.match(precomputeStep, /github-token: \$\{\{ github\.token \}\}/);
+    assert.match(precomputeStep, /CAO_READ_APP_PRIVATE_KEY:/);
+    assert.match(precomputeStep, /CAO_INVENTORY_READ_PAT:/);
     assert.match(precomputeStep, /GH_AW_GITHUB_AUTH_MODE == 'pat'/);
     assert.match(precomputeStep, /GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
     assert.doesNotMatch(
@@ -242,7 +245,9 @@ test("public read-only operation uses the built-in token without widening access
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
 
-  assert.match(control, /GH_TOKEN:.*GH_AW_GITHUB_READ_PAT_REPOSITORIES.*secrets\.GH_AW_GITHUB_READ_PAT.*secrets\.GH_AW_GITHUB_TOKEN.*github\.token/);
+  assert.match(control, /CAO_CONTROL_READ_PAT:.*GH_AW_GITHUB_READ_PAT_REPOSITORIES/);
+  assert.match(control, /CAO_LEGACY_READ_TOKEN:.*secrets\.GH_AW_GITHUB_READ_PAT.*secrets\.GH_AW_GITHUB_TOKEN/);
+  assert.match(control, /CAO_WORKFLOW_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(precompute, /\{id, full_name, archived, disabled, private, pushed_at, default_branch\}/);
   assert.match(authentication, /App or PAT is not required for a bounded `review` run when every target repository is public/);
   assert.match(authentication, /use `review` mode and keep safe outputs in the current control repository/);
@@ -282,7 +287,9 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
     control,
     /safe-outputs:\n\s+github-app:\n\s+client-id:[\s\S]*?ignore-if-missing: true\n\s+repositories:\n\s+- \$\{\{ env\.CAO_ROLE == 'direct' && inputs\.safe_output_mode == 'live' && inputs\.target_repo \|\| inputs\.safe_output_repo \|\| github\.repository \}\}/,
   );
-  assert.match(control, /jobs:\n\s+pre-activation:[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?GH_AW_GITHUB_AUTH_MODE == '' && secrets\.GH_AW_GITHUB_READ_PAT[\s\S]*?github\.token/);
+  assert.match(control, /CAO_READ_PAT_REPOSITORIES: \$\{\{ vars\.GH_AW_GITHUB_READ_PAT_REPOSITORIES \}\}/);
+  assert.match(control, /CAO_LEGACY_READ_TOKEN: \$\{\{ vars\.GH_AW_GITHUB_AUTH_MODE == '' && \(secrets\.GH_AW_GITHUB_READ_PAT \|\| secrets\.GH_AW_GITHUB_TOKEN\)/);
+  assert.match(control, /CAO_WORKFLOW_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(control, /name: Resolve CAO GitHub read scope[\s\S]*?CAO_READ_REPOSITORY: \$\{\{ github\.aw\.import-inputs\.read_repository \}\}/);
   assert.match(control, /name: Generate CAO target-scoped read App token[\s\S]*?owner: \$\{\{ steps\.cao_target_read_scope\.outputs\.owner \}\}/);
   assert.match(control, /permission-vulnerability-alerts: "\$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}"/);

@@ -228,11 +228,11 @@ for (const [name, changes, declaration, error] of [
   });
 }
 
-for (const [name, options, error] of [
-  ["redirected repository", { repositories: [{ ...standaloneRepositories[0], requested_name: "acme/one", full_name: "acme/other" }] }, /redirected/],
+for (const [name, options, error, activationBlocked = false] of [
+  ["redirected repository", { repositories: [{ ...standaloneRepositories[0], requested_name: "acme/one", full_name: "acme/other" }] }, /does not match the enrolled repository identity/, true],
   ["archived repository", { repositories: [{ ...standaloneRepositories[0], archived: true }] }, /archived/],
   ["disabled repository", { repositories: [{ ...standaloneRepositories[0], disabled: true }] }, /disabled/],
-  ["incomplete repository evidence", { repositories: [{ ...standaloneRepositories[0], disabled: undefined }] }, /required evidence/],
+  ["incomplete repository evidence", { repositories: [{ ...standaloneRepositories[0], disabled: undefined }] }, /Repository metadata is malformed/, true],
   ["unavailable repository", { repositories: [] }, /exited|Command|exit/i],
   ["public review destination", {
     env: { ...operationEnv, CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: "acme/review" },
@@ -248,11 +248,12 @@ for (const [name, options, error] of [
   ["missing envelope", { mutateEffective: value => { delete value.authority_envelope; } }, /envelope must/],
 ]) {
   test(`direct operation precompute blocks ${name}`, () => {
-    const { output, precomputeResult } = runAdmission({
+    const { admission, output, precomputeResult } = runAdmission({
       policy: directPolicy(), env: operationEnv, repositories: standaloneRepositories,
       runPrecompute: true, ...options,
     });
-    assert.equal(output.authorized, "true");
+    assert.equal(admission.authorized, true);
+    assert.equal(output.authorized, activationBlocked ? "false" : "true");
     assert.notEqual(precomputeResult.status, 0);
     assert.match(precomputeResult.stderr, error);
   });
@@ -344,7 +345,7 @@ for (const [name, options, reason] of [
 
 test("standalone precompute refuses incomplete evidence, out-of-scope requests, and dispatcher envelopes", () => {
   for (const [env, repositories, reason] of [
-    [{}, [], /standalone inventory unavailable/],
+    [{}, [], /Required repository inventory could not be read/],
     [{ CAO_TARGET_REPOSITORY: "acme/outside" }, standaloneRepositories, /target_repo is not allowed/],
     [{ CAO_CORRELATION_ID: "123-1" }, standaloneRepositories, /must not carry a dispatcher envelope/],
     [{ CAO_SAFE_OUTPUT_REPOSITORY: "acme/one" }, standaloneRepositories, /review safe_output_repo must differ/],
@@ -377,7 +378,7 @@ test("standalone inventory redirects cannot bypass exact repository scope", () =
     runPrecompute: true,
   });
   assert.notEqual(precomputeResult.status, 0);
-  assert.match(precomputeResult.stderr, /standalone target_repo is not allowed/);
+  assert.match(precomputeResult.stderr, /does not match the enrolled repository identity/);
 });
 
 test("standalone resolved targets cannot bypass owner scope after a repository redirect", () => {
@@ -389,7 +390,7 @@ test("standalone resolved targets cannot bypass owner scope after a repository r
     runPrecompute: true,
   });
   assert.notEqual(precomputeResult.status, 0);
-  assert.match(precomputeResult.stderr, /target_repo owner is outside control-plane.scope.allowed-owners/);
+  assert.match(precomputeResult.stderr, /does not match the enrolled repository identity/);
 });
 
 test("standalone requested and resolved target scope is case-insensitive", () => {

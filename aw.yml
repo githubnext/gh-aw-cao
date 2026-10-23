@@ -20,6 +20,8 @@ agents:
 resources:
   - source: .github/workflows/shared/control.mjs
     destination: .github/workflows/shared/control.mjs
+  - source: .github/workflows/shared/inventory-credentials.mjs
+    destination: .github/workflows/shared/inventory-credentials.mjs
   - source: .github/workflows/shared/policy.mjs
     destination: .github/workflows/shared/policy.mjs
   - source: .github/workflows/shared/authority.mjs
