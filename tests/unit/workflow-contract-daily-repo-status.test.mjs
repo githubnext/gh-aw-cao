@@ -223,11 +223,12 @@ test("report lookups are destination-bound, include closed duplicates and fail c
   assert.match(lookup.with["github-token"], /== github\.repository && github\.token \|\| steps\.cao_target_read_credential\.outputs\.token/);
 });
 
-test("Setup quickstart is discoverable, review-first and honest about the missing recording and operational value", () => {
+test("Daily Repo Status quickstart is discoverable, review-first and honest about operational value", () => {
   const guide = readFileSync(join(root, "docs/setup/quickstart.md"), "utf8");
-  assert.match(readFileSync(join(root, "astro.config.mjs"), "utf8"), /label: "Setup"[\s\S]*label: "Quickstart: install and monitor", link: "\/setup-quickstarts\/"[\s\S]*label: "Daily Repo Status \(optional\)", link: "\/setup\/quickstart\/"/);
-  assert.match(guide, /CAO recording not yet available/);
-  assert.match(guide, /\*\*Video TODO:\*\*/);
+  const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf8");
+  assert.match(astroConfig, /label: "Setup"[\s\S]*?label: "Quick Start", link: "\/setup-quickstarts\/"/);
+  assert.match(astroConfig, /label: "Gallery"[\s\S]*?label: "Daily Repo Status", link: "\/setup\/quickstart\/"/);
+  assert.doesNotMatch(guide, /CAO recording not yet available|Video TODO/);
   assert.match(guide, /\*\*Estimated time: 15 minutes after setup\*\*/);
   assert.match(guide, /## Prerequisites/);
   assert.match(guide, /Complete \[Set Up CAO\]\(\.\.\/setup-quickstarts\.md\)/);

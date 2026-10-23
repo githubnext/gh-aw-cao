@@ -610,7 +610,7 @@ test("Documentation Pages deploys docs with the latest dashboard artifact", () =
   assert.match(astroConfig, /rewriteDocsLinks, \{ base: "\/gh-cao" \}/);
   assert.match(astroConfig, /githubnext\/gh-cao\/edit\/main/);
   assert.match(astroConfig, /href: "https:\/\/github\.com\/githubnext\/gh-cao"/);
-  assert.match(astroConfig, /label: "Control plane status", link: "\/cao\/"/);
+  assert.match(astroConfig, /label: "Sample Dashboard", link: "\/cao\/"/);
 });
 
 test("mobile dashboard integration downloads deployed dashboard data", () => {

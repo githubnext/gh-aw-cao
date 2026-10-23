@@ -266,7 +266,7 @@ test("public read-only operation uses the built-in token without widening access
   assert.match(control, /do not silently reduce the requested analysis to the subset the token can read/);
 });
 
-test("authentication prefers an optional GitHub App and retains bounded fallbacks", () => {
+test("authentication preserves explicit credential boundaries and informed PAT consent", () => {
   const authentication = readFileSync(join(root, "docs", "authentication.md"), "utf8");
   const control = workflow("shared/control.md");
   const precompute = controlPrecompute();
@@ -295,10 +295,15 @@ test("authentication prefers an optional GitHub App and retains bounded fallback
   assert.match(control, /permission-vulnerability-alerts: "\$\{\{ github\.aw\.import-inputs\.read_vulnerability_alerts \}\}"/);
   assert.match(control, /name: Resolve CAO target read credential[\s\S]*?GH_AW_GITHUB_READ_PAT_REPOSITORIES[\s\S]*?cao_target_read_scope\.outputs\.full_name/);
   assert.match(control, /tools:\n\s+github:[\s\S]*?github-token: \$\{\{ steps\.cao_target_read_credential\.outputs\.token \}\}/);
-  assert.match(authentication, /runtime availability precedence, not permission to choose a PAT silently/);
+  assert.match(authentication, /Select a profile explicitly rather than relying on legacy precedence/);
+  assert.match(authentication, /In `pat` mode,[\s\S]*?do not fall through to App credentials or legacy PAT\s+secrets/);
+  assert.match(authentication, /Missing cross-repository map entries and mapped secrets fail closed/);
+  assert.match(authentication, /`app` mode,[\s\S]*?fail closed instead of borrowing PAT credentials/);
   assert.match(authentication, /A PAT is not a substitute for repository or organization access/);
   assert.match(authentication, /Each token covers repositories from exactly one resource owner/);
-  assert.match(authentication, /including the Checks API/);
+  assert.match(authentication, /Every endpoint required by the installed campaign supports the chosen token/);
+  assert.match(authentication, /\[creating a check run\]\([^)]+\) requires a GitHub App, while reading checks is a different operation/);
+  assert.match(authentication, /Do not substitute a classic PAT to work around an endpoint gap/);
   assert.match(authentication, /Obtain explicit confirmation to proceed/);
   assert.match(authentication, /presence of an existing PAT secret, is not consent/);
   assert.match(authentication, /CAO installation does not require Copilot organization billing/);
