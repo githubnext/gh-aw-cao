@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +8,7 @@ const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const databaseName = 'gh-aw-cao-dashboard-data';
 
 test.beforeEach(async ({ context, page }) => {
-  await context.route('http://dashboard.test/**', async (route) => {
+  await context.route(/^https?:\/\/dashboard\.test\//, async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === '/' || pathname === '/index.html') {
       await route.fulfill({ contentType: 'text/html', body: '<main>IndexedDB stress test</main>' });
@@ -29,6 +30,52 @@ test.beforeEach(async ({ context, page }) => {
     request.onsuccess = () => resolve(undefined);
     request.onerror = () => reject(request.error);
   }), databaseName);
+});
+
+test('native Web Crypto compact metrics require replay for content-only conflicts', async ({ page }) => {
+  await page.goto('https://dashboard.test/');
+  const result = await page.evaluate(async () => {
+    const metrics = await import(`${location.origin}/src/data/storage/daily-metrics.js`);
+    const { canonicalJson } = await import(`${location.origin}/src/data/normalize/order.js`);
+    const watermark = Date.parse('2026-10-21T12:00:00Z');
+    const record = {
+      id: 'run:one', repositoryId: 'repo', workflowId: 'workflow', conclusion: 'failure',
+      startedAt: '2026-10-20T12:00:00Z', observedAt: '2026-10-21T12:00:00Z',
+      provenance: { source: 'fixture', sourceId: 'one' }, aicTotal: 0.1,
+      title: 'discard-this-run-detail'
+    };
+    const base = metrics.beginMetricScope({
+      id: 'scope', namespace: 'native-compact', watermark, expectedShards: ['first']
+    });
+    const stage = (/** @type {Record<string, unknown>[]} */ records) => metrics.stageMetricShard(base, 'first', records);
+    const initial = await metrics.completeCompactMetricScope(
+      metrics.createCompactMetricLedger('native-compact', watermark), stage([record]));
+    const serialized = JSON.stringify(initial);
+    const restored = JSON.parse(serialized);
+    const retry = await metrics.completeCompactMetricScope(restored, stage([record]));
+    const correction = { ...record, conclusion: 'success' };
+    let rejected = false;
+    try {
+      await metrics.completeCompactMetricScope(restored, stage([correction]));
+    } catch (error) {
+      if (!(error instanceof metrics.MetricLedgerReplayRequiredError)) throw error;
+      rejected = true;
+    }
+    const replayed = await metrics.completeCompactMetricScope(restored, stage([correction, record]));
+    const prototype = metrics.completeMetricScope(
+      metrics.createMetricLedger('native-compact', watermark), stage([record, correction]));
+    return {
+      token: Object.values(initial.contributions)[0].precedence.content,
+      canonicalContent: canonicalJson(record),
+      retry: canonicalJson(initial) === canonicalJson(retry),
+      rejected, unchanged: JSON.stringify(restored) === serialized,
+      detailRemoved: !serialized.includes('discard-this-run-detail'),
+      parity: canonicalJson(replayed.dailyMetrics) === canonicalJson(prototype.dailyMetrics)
+    };
+  });
+  const digest = createHash('sha256').update(`cao.metric-revision.sha256-replay-v1\n${result.canonicalContent}`).digest('hex');
+  expect(result.token).toBe(`sha256:${digest}`);
+  expect(result).toMatchObject({ retry: true, rejected: true, unchanged: true, detailRemoved: true, parity: true });
 });
 
 test('native IndexedDB persists a large mixed reconciliation across connections', async ({ page }) => {

@@ -7,6 +7,7 @@ import {
 const MAX_SCOPE_SHARDS = 4096;
 const MAX_SHARD_RUNS = 1000;
 const MAX_SCOPE_RUNS = 100_000;
+export const COMPACT_METRIC_PRECEDENCE = 'sha256-replay-v1';
 const ADDITIVE_FIELDS = /** @type {const} */ ([
   'aicTotal', 'inputTokens', 'outputTokens'
 ]);
@@ -39,6 +40,7 @@ const ADDITIVE_FIELDS = /** @type {const} */ ([
  *   id: string, namespace: string, watermark: number,
  *   expectedShards: string[], shards: Record<string, Record<string, unknown>[]>
  * }} MetricScope
+ * @typedef {MetricLedger & { precedenceFormat: typeof COMPACT_METRIC_PRECEDENCE }} CompactMetricLedger
  */
 
 /** @param {string} namespace @param {number} watermark @param {Record<string, number>} [sourcePrecedence] @returns {MetricLedger} */
@@ -51,6 +53,18 @@ export function createMetricLedger(namespace, watermark, sourcePrecedence = {}) 
     watermark: logicalWatermark(watermark), sourcePrecedence: { ...sourcePrecedence },
     contributions: {}, dailyMetrics: {}, checkpoint: null
   };
+}
+
+/** @param {string} namespace @param {number} watermark @param {Record<string, number>} [sourcePrecedence] @returns {CompactMetricLedger} */
+export function createCompactMetricLedger(namespace, watermark, sourcePrecedence = {}) {
+  return { ...createMetricLedger(namespace, watermark, sourcePrecedence), precedenceFormat: COMPACT_METRIC_PRECEDENCE };
+}
+
+export class MetricLedgerReplayRequiredError extends Error {
+  constructor() {
+    super('Metric revision content conflict requires authoritative replay including the previous winning snapshot');
+    this.name = 'MetricLedgerReplayRequiredError';
+  }
 }
 
 /**
@@ -138,10 +152,10 @@ function addDecimal(left, right, direction) {
 /**
  * @param {string} namespace
  * @param {Record<string, unknown>} record
- * @param {Record<string, number>} sourcePrecedence
+ * @param {RunContribution['precedence']} precedence
  * @returns {RunContribution}
  */
-function contribution(namespace, record, sourcePrecedence) {
+function contribution(namespace, record, precedence) {
   const id = tierIdentifier(record.id, 'run.id');
   const day = new Date(runEventTime(record)).toISOString().slice(0, 10);
   const repositoryId = tierIdentifier(record.repositoryId, 'run.repositoryId');
@@ -161,7 +175,7 @@ function contribution(namespace, record, sourcePrecedence) {
   return {
     id, partition: canonicalJson([namespace, day, repositoryId, workflowId]),
     metric: { namespace, day, repositoryId, workflowId, measures },
-    precedence: normalizedRunPrecedence(record, sourcePrecedence), retiredAt: null
+    precedence, retiredAt: null
   };
 }
 
@@ -210,19 +224,48 @@ function applyContribution(metrics, value, direction) {
  * @returns {MetricLedger}
  */
 export function completeMetricScope(state, scope) {
+  if (Object.hasOwn(state, 'precedenceFormat')) throw new TypeError('Compact metric ledgers require the compact reducer');
+  return reduceMetricScope(state, scope,
+    (record) => normalizedRunPrecedence(record, state.sourcePrecedence), compareRunPrecedence);
+}
+
+/** @param {MetricLedger} state @param {MetricScope} scope */
+function validateMetricScope(state, scope) {
+  beginMetricScope(scope);
   if (scope.namespace !== state.namespace) throw new Error('Metric scope namespace mismatch');
   if (logicalWatermark(scope.watermark) < state.watermark) throw new Error('Logical watermark cannot move backwards');
   if (scope.expectedShards.some((id) => !Object.hasOwn(scope.shards, canonicalJson([id])))) {
     throw new Error('Metric scope is incomplete');
   }
+  const allowedKeys = new Set(scope.expectedShards.map((id) => canonicalJson([id])));
+  let total = 0;
+  for (const [key, records] of Object.entries(scope.shards)) {
+    if (!allowedKeys.has(key)) throw new TypeError('Undeclared metric shard');
+    if (!Array.isArray(records) || records.length > MAX_SHARD_RUNS) {
+      throw new RangeError('Metric shard exceeds bounded run count');
+    }
+    total += records.length;
+  }
+  if (total > MAX_SCOPE_RUNS) throw new RangeError('Metric scope exceeds bounded run count');
+}
+
+/**
+ * @param {MetricLedger} state
+ * @param {MetricScope} scope
+ * @param {(record: Record<string, unknown>) => RunContribution['precedence']} revisionFor
+ * @param {typeof compareRunPrecedence} compare
+ * @returns {MetricLedger}
+ */
+function reduceMetricScope(state, scope, revisionFor, compare) {
+  validateMetricScope(state, scope);
   /** @type {Map<string, RunContribution>} */
   const winners = new Map();
   for (const shardId of scope.expectedShards) {
     for (const record of scope.shards[canonicalJson([shardId])]) {
       if (runEventTime(record) > scope.watermark) throw new Error('Metric scope contains a future run');
-      const value = contribution(state.namespace, record, state.sourcePrecedence);
+      const value = contribution(state.namespace, record, revisionFor(record));
       const previous = winners.get(value.id);
-      if (!previous || compareRunPrecedence(previous.precedence, value.precedence) < 0) winners.set(value.id, value);
+      if (!previous || compare(previous.precedence, value.precedence) < 0) winners.set(value.id, value);
     }
   }
   const next = structuredClone(state);
@@ -239,7 +282,7 @@ export function completeMetricScope(state, scope) {
     .sort((left, right) => compareCanonicalStrings(left.id, right.id))
     .filter((value) => {
       const previous = next.contributions[canonicalJson([value.id])];
-      return !previous || compareRunPrecedence(previous.precedence, value.precedence) < 0;
+      return !previous || compare(previous.precedence, value.precedence) < 0;
     });
   // Remove all superseded values first so valid corrections cannot transiently overflow.
   for (const value of replacements) {
@@ -258,4 +301,74 @@ export function completeMetricScope(state, scope) {
   next.watermark = scope.watermark;
   next.checkpoint = { scopeId: scope.id, watermark: scope.watermark, shards: [...scope.expectedShards] };
   return next;
+}
+
+/** @param {RunContribution['precedence']} value @param {boolean} [digest] */
+function validateCompactPrecedence(value, digest = true) {
+  if (!Number.isFinite(value.rank) || !Number.isSafeInteger(value.observedAt)
+    || typeof value.source !== 'string' || value.source.length > 256
+    || typeof value.sourceId !== 'string' || value.sourceId.length > 2048) {
+    throw new TypeError('Compact metric revision requires bounded source metadata and finite authority');
+  }
+  logicalWatermark(value.observedAt);
+  if (digest && !/^sha256:[a-f0-9]{64}$/.test(value.content)) {
+    throw new TypeError('Compact metric revision requires a versioned SHA-256 identity');
+  }
+}
+
+/**
+ * Replaces full Run content with a digest used only for identity, not authority.
+ * A content-only tie resolves using raw snapshots present in this scope; without
+ * the old winner's content it requires replay instead of ordering opaque hashes.
+ * This still returns a candidate, not a durable commit or eviction permission.
+ * @param {CompactMetricLedger} state
+ * @param {MetricScope} scope
+ * @returns {Promise<CompactMetricLedger>}
+ */
+export async function completeCompactMetricScope(state, scope) {
+  if (state.version !== 1 || state.precedenceFormat !== COMPACT_METRIC_PRECEDENCE) {
+    throw new TypeError('Unsupported compact metric precedence format; authoritative replay is required');
+  }
+  validateMetricScope(state, scope);
+  for (const value of Object.values(state.contributions)) validateCompactPrecedence(value.precedence);
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error('Compact metric revisions require Web Crypto SHA-256');
+
+  // No caller-owned object may change while digest preparation yields.
+  const snapshot = structuredClone({ state, scope });
+  /** @type {WeakMap<Record<string, unknown>, RunContribution['precedence']>} */
+  const revisions = new WeakMap();
+  /** @type {Map<string, string>} */
+  const contents = new Map();
+  const encoder = new TextEncoder();
+  for (const shard of snapshot.scope.expectedShards) {
+    for (const record of snapshot.scope.shards[canonicalJson([shard])]) {
+      const revision = normalizedRunPrecedence(record, snapshot.state.sourcePrecedence);
+      validateCompactPrecedence(revision, false);
+      const digest = await subtle.digest('SHA-256',
+        encoder.encode(`cao.metric-revision.${COMPACT_METRIC_PRECEDENCE}\n${revision.content}`));
+      if (digest.byteLength !== 32) throw new Error('Compact metric revision requires a 256-bit SHA-256 digest');
+      const identity = `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+      if (contents.has(identity) && contents.get(identity) !== revision.content) {
+        throw new Error('Compact metric revision digest collision');
+      }
+      contents.set(identity, revision.content);
+      revisions.set(record, { ...revision, content: identity });
+    }
+  }
+  /** @type {typeof compareRunPrecedence} */
+  const compare = (left, right) => {
+    const authority = compareRunPrecedence({ ...left, content: '' }, { ...right, content: '' });
+    if (authority || left.content === right.content) return authority;
+    const before = contents.get(left.content);
+    const after = contents.get(right.content);
+    if (before === undefined || after === undefined) throw new MetricLedgerReplayRequiredError();
+    return compareCanonicalStrings(before, after);
+  };
+  const next = reduceMetricScope(snapshot.state, snapshot.scope, (record) => {
+    const revision = revisions.get(record);
+    if (!revision) throw new Error('Compact metric revision was not prepared');
+    return revision;
+  }, compare);
+  return { ...next, precedenceFormat: COMPACT_METRIC_PRECEDENCE };
 }

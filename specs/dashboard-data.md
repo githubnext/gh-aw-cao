@@ -774,13 +774,42 @@ arbitrary corrections beyond that evidence horizon require authoritative replay.
 Conflict precedence is frozen source authority, observation timestamp, source,
 source ID, and stable JSON content, using locale-independent string comparisons.
 Normalization likewise ignores JSON object insertion order when breaking ties.
-The current prototype retains the complete stable canonical Run serialization
-inside each contribution's precedence key, including retired contributions.
+The original `createMetricLedger` / `completeMetricScope` prototype retains the
+complete stable canonical Run serialization inside each contribution's precedence
+key, including retired contributions.
 It is therefore **not a compact durable ledger** and MUST NOT be persisted as a
-way to retain Run details beyond their allowed lifetime. A compact, versioned
-authority/revision token or digest-based total-order contract, consistently
-implemented across normalization and all adapters, is an additional activation
-prerequisite; no detail-eviction safety claim is made for these prototype keys.
+way to retain Run details beyond their allowed lifetime.
+
+The separate `createCompactMetricLedger` / `completeCompactMetricScope` candidate
+format is identified by `precedenceFormat: "sha256-replay-v1"` and ledger version
+1. Its contribution and tombstone precedence retains the same source rank,
+observation timestamp, source, and source ID, but replaces the full canonical Run
+content with `sha256:<64 lowercase hexadecimal digits>`. The digest is SHA-256
+over the UTF-8 encoding of `cao.metric-revision.sha256-replay-v1`, a newline, and
+the existing stable canonical Run JSON. Native Web Crypto is required; missing
+cryptography or digest failure rejects the candidate without a fallback.
+Source metadata is bounded to 256 UTF-16 code units for source and 2,048 for source
+ID, and authority ranks must be finite. These bounds do not truncate values:
+oversized metadata fails closed. Compact candidates retain metric facts and
+identities, not arbitrary Run detail fields or the canonical content string.
+
+Digests establish content identity **only**, never authority or a new total
+order. Exact retries and higher/lower source authority or timestamps use existing
+precedence. An equal-authority conflict between different digests uses the
+existing canonical JSON comparison only when both raw snapshots are available
+in the current complete scope. If the previous winning snapshot is absent,
+completion rejects with `MetricLedgerReplayRequiredError`; the caller must replay
+authoritative evidence including that snapshot rather than guess hash order.
+This preserves normalization's content tie order without retaining Run details
+past retention. Observed collisions between supplied snapshots reject completion.
+Raw and compact reducer APIs cannot be mixed, and unsupported compact versions
+require authoritative replay. The async reducer snapshots its inputs before
+awaiting hashes and revalidates restored scope bounds before processing.
+
+The compact reducer is still an in-memory commit-candidate API, not a durable
+ledger or a migration of existing raw ledgers. Production adapters must implement
+the same versioned identity and replay contract before activation; no detail-
+eviction safety claim is made merely because compact candidate reduction succeeds.
 
 A staged scope declares its exact immutable shard identities. Only receipt of
 every declared shard permits an aggregate commit candidate; retries with changed
