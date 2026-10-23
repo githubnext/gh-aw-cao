@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "gh-aw-version": "v0.92.6",
+  "gh-aw-version": "v0.93.1",
   "control-plane": {
     "scope": {
       "allowed-owners": ["simulator"],

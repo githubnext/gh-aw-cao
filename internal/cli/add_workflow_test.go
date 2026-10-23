@@ -12,7 +12,7 @@ import (
 )
 
 const standaloneFixture = "---\nif: needs.pre_activation.outputs.cao_authorized == 'true'\nimports:\n  - uses: shared/control.md\n    with:\n      role: standalone\n      workflow: daily-repo-status\n---\nReport.\n"
-const standalonePolicy = `{"version":1,"gh-aw-version":"v0.92.6","control-plane":{"scope":{"allowed-owners":["acme"],"allowed-repositories":["acme/control","acme/target"]},"defaults":{"mode":"live","max-repositories":100,"rollout-percent":20},"campaigns":{"other":{"enabled":false,"mode":"review"}}}}`
+const standalonePolicy = `{"version":1,"gh-aw-version":"v0.93.1","control-plane":{"scope":{"allowed-owners":["acme"],"allowed-repositories":["acme/control","acme/target"]},"defaults":{"mode":"live","max-repositories":100,"rollout-percent":20},"campaigns":{"other":{"enabled":false,"mode":"review"}}}}`
 
 func installWorkflowFixture(t *testing.T, source string) {
 	t.Helper()
@@ -115,7 +115,7 @@ func TestAddStandaloneCreatesPolicyOnlyAfterInstall(t *testing.T) {
 			root, stdout, _ := testCommand(t, func(_ context.Context, args ...string) (string, string, error) {
 				switch args[0] + " " + args[1] {
 				case "aw version":
-					return "gh-aw v0.92.6", "", nil
+					return "gh-aw v0.93.1", "", nil
 				case "repo view":
 					return "acme/control", "", nil
 				case "aw add":

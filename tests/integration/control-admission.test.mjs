@@ -179,7 +179,7 @@ const operationEnv = {
 };
 function directPolicy(declaration = {}) {
   return JSON.stringify({
-    version: 1, "gh-aw-version": "v0.92.6",
+    version: 1, "gh-aw-version": "v0.93.1",
     "control-plane": {
       scope: { "allowed-owners": ["acme"], "allowed-repositories": ["acme/one", "acme/two"] },
       operations: { "direct-audit": { "max-repositories": 2, ...declaration } },
