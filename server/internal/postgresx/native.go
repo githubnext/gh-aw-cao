@@ -145,6 +145,7 @@ type Writer struct {
 	inventoryOrdinals    map[string]int64
 	inventoryTables      map[string]bool
 	batches              map[string][][]any
+	aggregateBatch       [][]any
 	rows, bytes          int
 	revision             int64
 	PreviousDataRevision string
@@ -189,7 +190,16 @@ func (s *Store) BeginIngestion(ctx context.Context) (*Writer, error) {
 	if err := writer.stageAdmittedRuns(ctx); err != nil {
 		return fail(err)
 	}
+	if err := writer.preserveAggregateParents(ctx); err != nil {
+		return fail(err)
+	}
+	if _, err := tx.Exec(ctx, `CREATE TEMP TABLE daily_run_metrics ON COMMIT DROP AS SELECT * FROM cao_run_contributions WITH NO DATA`); err != nil {
+		return fail(err)
+	}
 	for _, source := range tableNames() {
+		if source == dailyAggregateSource {
+			continue
+		}
 		statement, args, err := sqlbuilder.Build("DELETE FROM {} WHERE namespace={}", sqlbuilder.Identifier(entityTables[source].name), s.namespace)
 		if err != nil {
 			return nil, err
@@ -225,6 +235,9 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 		if !exists || table.runtime {
 			return fmt.Errorf("unregistered inventory collection %q", source)
 		}
+		if source == dailyAggregateSource {
+			return errors.New("daily workflow aggregates are maintained from native run contributions")
+		}
 		statement, args, err := sqlbuilder.Build("CREATE TEMP TABLE {} (LIKE {} INCLUDING ALL) ON COMMIT DROP",
 			sqlbuilder.Identifier(table.name+"_inventory"), sqlbuilder.Identifier(table.name))
 		if err != nil {
@@ -239,6 +252,9 @@ func (w *Writer) AppendInventory(ctx context.Context, source string, row model.R
 }
 
 func (w *Writer) append(ctx context.Context, source string, row model.Row, inventory bool) error {
+	if source == dailyAggregateSource {
+		return errors.New("daily workflow aggregates are maintained from native run contributions")
+	}
 	if source == "$operationalValueEvidence" {
 		if w.preserveValues {
 			var previous time.Time
@@ -268,6 +284,28 @@ func (w *Writer) append(ctx context.Context, source string, row model.Row, inven
 	id, valid := row["id"].(string)
 	if !valid || id == "" {
 		return errors.New("native row requires a nonempty string id")
+	}
+	if source == "$runs" {
+		var aggregateDay any
+		for _, field := range []string{"startedAt", "completedAt", "createdAt"} {
+			if instant, valid := auditTimestamp(row[field]); valid {
+				aggregateDay = dayStart(instant)
+				break
+			}
+		}
+		values := []any{w.store.namespace, id, aggregateDay}
+		for _, column := range aggregateMeasures() {
+			if !strings.HasSuffix(column.field, "Sum") {
+				continue
+			}
+			value := row[strings.TrimSuffix(column.field, "Sum")]
+			bound, err := column.bind(value)
+			if err != nil {
+				return fmt.Errorf("run aggregate %s: %w", column.field, err)
+			}
+			values = append(values, bound)
+		}
+		w.aggregateBatch = append(w.aggregateBatch, values)
 	}
 	if source == "$audits" {
 		if err := validateAuditProjection(row); err != nil {
@@ -370,6 +408,18 @@ func presenceBytes(present []byte) []byte {
 }
 
 func (w *Writer) Flush(ctx context.Context) error {
+	if len(w.aggregateBatch) > 0 {
+		columns := []string{"namespace", "run_id", "day"}
+		for _, column := range aggregateMeasures() {
+			if strings.HasSuffix(column.field, "Sum") {
+				columns = append(columns, column.name)
+			}
+		}
+		if _, err := w.tx.CopyFrom(ctx, pgx.Identifier{"daily_run_metrics"}, columns, pgx.CopyFromRows(w.aggregateBatch)); err != nil {
+			return fmt.Errorf("stage run aggregate measurements: %w", err)
+		}
+		w.aggregateBatch = nil
+	}
 	for source, batch := range w.batches {
 		if len(batch) == 0 {
 			continue
@@ -379,7 +429,7 @@ func (w *Writer) Flush(ctx context.Context) error {
 		tableName := table.name
 		if sourceName != source {
 			tableName += "_inventory"
-		} else if table.partitioned && table.name != "runs" {
+		} else if table.partitioned {
 			tableName += "_stage"
 			if !w.staged[sourceName] {
 				if _, err := w.tx.Exec(ctx, "CREATE TEMP TABLE "+query.SQLIdentifier(tableName)+" ON COMMIT DROP AS SELECT * FROM "+query.SQLIdentifier(table.name)+" WITH NO DATA"); err != nil {
@@ -451,11 +501,32 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.Flush(ctx); err != nil {
 		return State{}, err
 	}
+	if w.staged["$runs"] {
+		if _, err := w.tx.Exec(ctx, `INSERT INTO runs SELECT * FROM runs_stage`); err != nil {
+			return State{}, fmt.Errorf("publish runs: %w", err)
+		}
+	}
 	if err := w.restoreAdmittedRuns(ctx); err != nil {
 		return State{}, err
 	}
 	var duplicate bool
 	if err := w.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs WHERE namespace=$1 GROUP BY id HAVING count(*)>1)`, w.store.namespace).Scan(&duplicate); err != nil {
+		return State{}, err
+	}
+	if duplicate {
+		return State{}, errors.New("duplicate run identity across days")
+	}
+	if _, err := w.tx.Exec(ctx, `CREATE TEMP TABLE daily_aggregate_runs ON COMMIT DROP AS SELECT * FROM runs WHERE namespace=$1`, w.store.namespace); err != nil {
+		return State{}, err
+	}
+	if w.staged["$runs"] {
+		if _, err := w.tx.Exec(ctx, `DELETE FROM daily_aggregate_runs r WHERE EXISTS(SELECT 1 FROM runs_stage s WHERE s.namespace=r.namespace AND s.id=r.id);
+			INSERT INTO daily_aggregate_runs SELECT * FROM runs_stage`); err != nil {
+			return State{}, err
+		}
+		w.staged["$runs"] = false
+	}
+	if err := w.tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM daily_aggregate_runs GROUP BY namespace,id HAVING count(*)>1)`).Scan(&duplicate); err != nil {
 		return State{}, err
 	}
 	if duplicate {
@@ -480,7 +551,7 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 		stage := query.SQLIdentifier(name + "_stage")
 		cutoff := dayStart(w.ingestedAt.AddDate(0, 0, -w.store.linkedRetentionDays))
 		var expired int64
-		if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+stage+" s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at<$1", cutoff).Scan(&expired); err != nil {
+		if err := w.tx.QueryRow(ctx, "SELECT count(*) FROM "+stage+" s JOIN daily_aggregate_runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at<$1", cutoff).Scan(&expired); err != nil {
 			return State{}, err
 		}
 		statement := fmt.Sprintf("INSERT INTO %s (%s,run_at) SELECT %s,p.run_at FROM %s s JOIN runs p ON p.namespace=s.namespace AND p.id=s.run_id WHERE p.run_at >= $1",
@@ -546,6 +617,39 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.restoreValuePublications(ctx); err != nil {
 		return State{}, err
 	}
+	if err := w.restoreAggregateParents(ctx); err != nil {
+		return State{}, err
+	}
+	exec := func(ctx context.Context, statement string, args ...any) error {
+		_, err := w.tx.Exec(ctx, statement, args...)
+		return err
+	}
+	tools, domains := "tools", "domains"
+	// Staging retains late evidence even when its owning detail partition has
+	// already expired; aggregate correction must happen before that evidence goes.
+	if w.ordinals["$tools"] > 0 {
+		tools = "tools_stage"
+	}
+	if w.ordinals["$domains"] > 0 {
+		domains = "domains_stage"
+	}
+	aggregateStages := []string{"daily_run_metrics", "daily_aggregate_runs"}
+	for _, table := range []string{tools, domains} {
+		if strings.HasSuffix(table, "_stage") {
+			aggregateStages = append(aggregateStages, table)
+		}
+	}
+	for _, table := range aggregateStages {
+		if _, err := w.tx.Exec(ctx, "ANALYZE "+query.SQLIdentifier(table)); err != nil {
+			return State{}, err
+		}
+	}
+	if err := refreshDailyAggregates(ctx, exec, w.store.namespace, w.ingestedAt, "", "daily_aggregate_runs", tools, domains, true); err != nil {
+		return State{}, err
+	}
+	if err := w.removeUnusedAggregateParents(ctx); err != nil {
+		return State{}, err
+	}
 	// Autovacuum cannot analyze uncommitted replacement rows or partitioned parents.
 	// Refresh estimates before integrity joins can choose quadratic cold-start plans.
 	if _, err := w.tx.Exec(ctx, "SELECT cao_analyze_native()"); err != nil {
@@ -565,6 +669,8 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	for _, check := range []string{
 		`SELECT 1 FROM runs r JOIN workflows p ON p.namespace=r.namespace AND p.id=r.workflow_id
 			WHERE r.namespace=$1 AND r.repository_id<>p.repository_id LIMIT 1`,
+		`SELECT 1 FROM daily_workflow_aggregates a JOIN workflows p ON p.namespace=a.namespace AND p.id=a.workflow_id
+			WHERE a.namespace=$1 AND a.repository_id<>p.repository_id LIMIT 1`,
 		`SELECT 1 FROM operational_value_evidence e JOIN workflows p ON p.namespace=e.namespace AND p.id=e.workflow_id
 			WHERE e.namespace=$1 AND e.repository_id<>p.repository_id LIMIT 1`,
 		`SELECT 1 FROM experiment_assignments o JOIN runs r ON r.namespace=o.namespace AND r.id=o.run_id
@@ -622,6 +728,12 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 			w.store.namespace, source, map[bool]string{true: "empty", false: "available"}[count == 0]); err != nil {
 			return State{}, err
 		}
+	}
+	if _, err := w.tx.Exec(ctx, `UPDATE cao_quality a SET completeness=CASE WHEN r.availability='unavailable' THEN 'partial' ELSE r.completeness END,
+		freshness=r.freshness,as_of=r.as_of,retrieved_at=r.retrieved_at FROM cao_quality r
+		WHERE a.namespace=$1 AND a.collection=$2 AND r.namespace=a.namespace AND r.collection='$runs'`,
+		w.store.namespace, dailyAggregateSource); err != nil {
+		return State{}, err
 	}
 	if _, err := w.tx.Exec(ctx, `UPDATE cao_quality SET completeness='partial',availability='available'
 		WHERE namespace=$1 AND collection IN ('$runs','$workflows','$repositories')

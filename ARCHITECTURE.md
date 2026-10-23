@@ -319,13 +319,18 @@ and no per-workflow schedule or model call is introduced.
 Owner-run bootstrap initializes this schema and its UTC daily partitions; runtime
 opens and validates provisioned state without DDL. Daily owner-run maintenance
 keeps historical, current, and 28 upcoming days provisioned, expiring only
-complete days at each configured retention cutoff. Weekly layouts require a
+complete days at each configured retention cutoff. Daily workflow aggregates
+use three UTC Monday-aligned weekly partitions: the current week and two
+preceding weeks. Their compact correction contributions outlive seven-day
+execution details; IndexedDB and local SQLite preserve the same logical
+aggregate identity and retention window. Incompatible layouts require a
 fresh canonical schema rebuilt from authoritative inputs without removing
 operational audit/queue state. A fixed schema-qualified
 ANALYZE capability preserves ingestion statistics without runtime ownership.
 Bootstrap performs no legacy conversion or
-backward-compatible import. There are no persistent Postgres generations or
-separate derived projections. Redis remains reconstructable
+backward-compatible import. There are no persistent Postgres generations.
+Daily aggregates remain reconstructable canonical query projections rather
+than a separate analytical database. Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis operations, Postgres canonical state and
@@ -1402,8 +1407,12 @@ not authorize cross-repository evidence access.
   and emit bounded, versioned results; they do not create authority or convert
   runtime success into verified outcomes or operational value.
 - Overview counters use IndexedDB-native counts or request-scoped declarative
-  queries over canonical records. No daily aggregate or computation-result
-  projection is persisted. Failure clustering and audit diagnosis execute in
+  queries over canonical records, including shared daily workflow aggregates
+  when their additive measurements and retained dates answer the query exactly.
+  Aggregate keys contain only namespace, UTC date, repository, and workflow;
+  sums retain observation counts, and ingestion applies transactional
+  contribution differences for enrichment and corrections. Computation-result
+  projections are not persisted. Failure clustering and audit diagnosis execute in
   bounded, selected-partition queries. Runtime facts evaluate orchestrators first
   and enumerate worker targets only when orchestration is eligible. Worker facts
   use one evaluation partition per target so success on one target cannot mask

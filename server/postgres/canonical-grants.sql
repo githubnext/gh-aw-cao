@@ -18,6 +18,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
     :"schema".cao_github_resources, :"schema".cao_quality, :"schema".cao_repository_lifecycle,
     :"schema".repositories, :"schema".campaigns, :"schema".workflows,
     :"schema".runs, :"schema".audits, :"schema".domains, :"schema".evals,
+    :"schema".daily_workflow_aggregates, :"schema".cao_run_contributions, :"schema".cao_run_evidence_contributions,
     :"schema".experiments, :"schema".eval_observations, :"schema".experiment_assignments,
     :"schema".friction, :"schema".graders, :"schema".grader_observations,
     :"schema".issues, :"schema".operational_values, :"schema".outcome_performance,

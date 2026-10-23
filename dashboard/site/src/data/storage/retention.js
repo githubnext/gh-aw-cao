@@ -2,6 +2,8 @@ import { orderRunRecords } from '../normalize/index.js';
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { DAILY_WORKFLOW_STORES, dailyWorkflowCutoff } from '../model/daily-workflow-aggregates.js';
+import { mergeCanonicalRun } from '../model/fields.js';
 
 const debugRetention = createDebug('retention');
 
@@ -29,6 +31,7 @@ export const RETENTION_TIMESTAMPS = {
   graderObservations: ['timestamp', 'observedAt'],
   evalObservations: ['timestamp', 'observedAt']
 };
+for (const store of DAILY_WORKFLOW_STORES) RETENTION_TIMESTAMPS[store] = ['day'];
 
 const STORES = /** @type {const} */ ([
   'campaigns',
@@ -44,6 +47,7 @@ const STORES = /** @type {const} */ ([
   'operationalValues',
   'operationalValueEvidence',
   'marketplacePackages',
+  'daily_workflow_aggregates', 'daily_workflow_contributions',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ ([
@@ -62,9 +66,13 @@ export const BROWSER_RETENTION_WINDOWS_MS = Object.freeze({
 
 /**
  * @param {string} storeName
- * @param {{ retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
+ * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
  */
 export function retentionWindowForStore(storeName, options = {}) {
+  if (DAILY_WORKFLOW_STORES.includes(storeName)) {
+    const now = options.now ?? Date.now();
+    return now - dailyWorkflowCutoff(now);
+  }
   const configured = options.retentionWindowMsByStore?.[storeName]
     ?? (Number.isFinite(options.retentionWindowMs)
       ? options.retentionWindowMs
@@ -80,6 +88,9 @@ export function retentionWindowForStore(storeName, options = {}) {
 export function isExpiredCanonicalRecord(storeName, record, options = {}) {
   if (!Object.hasOwn(RETENTION_TIMESTAMPS, storeName)) return false;
   const timestamp = recordTimestamp(storeName, record);
+  if (DAILY_WORKFLOW_STORES.includes(storeName)) {
+    return timestamp === null || timestamp < dailyWorkflowCutoff(options.now ?? Date.now());
+  }
   return timestamp === null
     || timestamp < (options.now ?? Date.now()) - retentionWindowForStore(storeName, options);
 }
@@ -181,6 +192,8 @@ export function capCanonicalBatchSize(batch, maxBytes) {
     operationalValues: batch.operationalValues ?? [],
     operationalValueEvidence: batch.operationalValueEvidence ?? [],
     marketplacePackages: batch.marketplacePackages ?? [],
+    daily_workflow_aggregates: batch.daily_workflow_aggregates ?? [],
+    daily_workflow_contributions: batch.daily_workflow_contributions ?? [],
     experiments: batch.experiments ?? [],
     graders: batch.graders ?? [],
     evals: batch.evals ?? [],
@@ -253,7 +266,8 @@ function upsertRecords(
     const retentionWindowMs = Number.isFinite(configuredWindow)
       ? Math.max(0, Number(configuredWindow))
       : defaultRetentionWindowMs;
-    const horizon = reference - retentionWindowMs;
+    const horizon = DAILY_WORKFLOW_STORES.includes(storeName)
+      ? dailyWorkflowCutoff(reference) : reference - retentionWindowMs;
     for (const record of previous[storeName] ?? []) {
       const timestamp = recordTimestamp(storeName, record);
       if (timeBound && (timestamp === null || timestamp < horizon)) continue;
@@ -278,7 +292,8 @@ function upsertRecords(
           continue;
         }
       }
-      records.set(id, storeName === 'operationalValueEvidence'
+      records.set(id, storeName === 'runs' ? mergeCanonicalRun(records.get(id), record)
+        : storeName === 'operationalValueEvidence'
         ? mergeOperationalValueEvidence(records.get(id), record) : EVIDENCE_DEFINITION_STORES.has(storeName)
         ? mergeEvidenceDefinition(records.get(id), record) : record);
     }
@@ -343,6 +358,14 @@ function pruneOrphans(merged) {
     if (!repositories.has(String(record.repositoryId))
       || workflows.get(String(record.workflowId))?.repositoryId !== record.repositoryId) merged.operationalValueEvidence.delete(id);
   }
+  for (const storeName of DAILY_WORKFLOW_STORES) {
+    for (const [id, record] of merged[storeName]) {
+      if (!repositories.has(String(record.repositoryId))
+          || workflows.get(String(record.workflowId))?.repositoryId !== record.repositoryId) {
+        merged[storeName].delete(id);
+      }
+    }
+  }
   if (orphanedRunCount > 0) debugRetention({ event: 'orphans-pruned', orphanedRunCount });
 }
 
@@ -360,6 +383,8 @@ function collectUnreferencedParents(merged, incoming) {
   const referencedWorkflows = new Set([
     ...[...merged.runs.values()].map((run) => String(run.workflowId)),
     ...[...merged.operationalValueEvidence.values()].map((packet) => String(packet.workflowId)),
+    ...DAILY_WORKFLOW_STORES.flatMap((store) =>
+      [...merged[store].values()].map((record) => String(record.workflowId))),
     ...['experiments', 'graders', 'evals'].flatMap((store) =>
       [...merged[store].values()].map((record) => String(record.workflowId)))
   ]);

@@ -6,6 +6,11 @@ import {
 } from '../model/audit-curation.js';
 import { recordTimestamp, RETENTION_TIMESTAMPS, retentionWindowForStore } from './retention.js';
 import { createDebug } from '../../debug.js';
+import {
+  DAILY_WORKFLOW_AGGREGATES, DAILY_WORKFLOW_CONTRIBUTIONS, DAILY_WORKFLOW_STORES,
+  applyDailyWorkflowContribution, dailyWorkflowContribution, dailyWorkflowCutoff,
+  withDailyWorkflowEvidence
+} from '../model/daily-workflow-aggregates.js';
 
 const debug = createDebug('data:retention');
 export const STORAGE_SHARD_STORE = 'storageShards';
@@ -75,8 +80,9 @@ function metadata(record) {
  * @param {string} storeName
  * @param {Record<string, unknown>[]} records
  * @param {Record<string, unknown>[]} [removed]
+ * @param {{ now?: number }} [options]
  */
-export async function writeAccountedRecords(transaction, storeName, records, removed = []) {
+export async function writeAccountedRecords(transaction, storeName, records, removed = [], options = {}) {
   const store = transaction.objectStore(storeName);
   const shards = transaction.objectStore(STORAGE_SHARD_STORE);
   const unique = new Map();
@@ -104,6 +110,8 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   /** @type {string[]} */
   const dirtyRuns = [];
   const dirtyAudits = new Set();
+  /** @type {Record<string, unknown>[]} */
+  const updatedRuns = [];
   const referencesAudits = ['experimentAssignments', 'graderObservations', 'evalObservations'].includes(storeName);
   /** @param {Record<string, unknown>} record @param {number} sign */
   const account = (record, sign) => {
@@ -141,6 +149,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       ));
     }
     account(record, 1);
+    if (storeName === 'runs') updatedRuns.push(record);
     if (storeName === 'runs' && existing && JSON.stringify(auditCurationRunFacts(existing))
         !== JSON.stringify(auditCurationRunFacts(record))) dirtyRuns.push(String(record.id));
     store.put(record);
@@ -173,6 +182,127 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   for (const auditId of dirtyAudits) shards.put({
     id: `audit-curation:${auditId}`, auditId, bytes: 0, count: 0
   });
+  if (updatedRuns.length && DAILY_WORKFLOW_STORES.every((name) => transaction.objectStoreNames.contains(name))) {
+    await updateDailyWorkflowAggregates(transaction, updatedRuns, options.now ?? Date.now(), previous);
+  } else if (incoming.length && (storeName === 'tools' || storeName === 'domains')
+      && ['runs', ...DAILY_WORKFLOW_STORES].every((name) => transaction.objectStoreNames.contains(name))) {
+    await updateDailyWorkflowEvidence(transaction, storeName, incoming, previous, options.now ?? Date.now());
+  }
+}
+
+/**
+ * Called after run/accounting writes, in the very same transaction. Reading only
+ * the touched ledger and group keys keeps ingestion independent of history size.
+ * @param {IDBTransaction} transaction
+ * @param {Record<string, unknown>[]} runs
+ * @param {number} now
+ * @param {(Record<string, unknown> | undefined)[]} previousRuns
+ */
+async function updateDailyWorkflowAggregates(transaction, runs, now, previousRuns) {
+  const ledger = transaction.objectStore(DAILY_WORKFLOW_CONTRIBUTIONS);
+  const previous = await Promise.all(runs.map((run) =>
+    result(ledger.get(/** @type {IDBValidKey} */ (run.id)))));
+  /** @type {{ prior: Record<string, unknown> | null, next: Record<string, unknown> | null }[]} */
+  const changes = [];
+  for (const [index, run] of runs.entries()) {
+    const prior = previous[index] ?? null;
+    let next = dailyWorkflowContribution(run, now, prior);
+    if (next && !prior && previousRuns[index]) {
+      for (const storeName of /** @type {const} */ (['tools', 'domains'])) {
+        if (!transaction.objectStoreNames.contains(storeName)) continue;
+        let range = IDBKeyRange.bound([String(run.id)], [String(run.id), []]);
+        for (;;) {
+          const records = await result(transaction.objectStore(storeName).index('byStorageRun').getAll(range, BATCH_SIZE));
+          if (records.length) next = withDailyWorkflowEvidence(next, storeName, records);
+          if (records.length < BATCH_SIZE) break;
+          range = IDBKeyRange.bound([String(run.id), records.at(-1).id], [String(run.id), []], true);
+        }
+      }
+    }
+    if (JSON.stringify(prior ? withoutStorageMetadata(prior) : null) === JSON.stringify(next)) continue;
+    changes.push({ prior, next });
+  }
+  await writeDailyWorkflowChanges(transaction, changes, now);
+}
+
+/**
+ * @param {IDBTransaction} transaction
+ * @param {'tools' | 'domains'} storeName
+ * @param {Record<string, unknown>[]} records
+ * @param {(Record<string, unknown> | undefined)[]} previous
+ * @param {number} now
+ */
+export async function updateDailyWorkflowEvidence(transaction, storeName, records, previous, now) {
+  /** @type {Map<string, { records: Record<string, unknown>[], removedIds: string[] }>} */
+  const grouped = new Map();
+  /** @param {string} runId */
+  const group = (runId) => {
+    if (!grouped.has(runId)) grouped.set(runId, { records: [], removedIds: [] });
+    return /** @type {{ records: Record<string, unknown>[], removedIds: string[] }} */ (grouped.get(runId));
+  };
+  records.forEach((record, index) => {
+    if (typeof record.runId === 'string') group(record.runId).records.push(record);
+    const prior = previous[index];
+    if (typeof prior?.runId === 'string' && prior.runId !== record.runId) {
+      group(prior.runId).removedIds.push(String(prior.id));
+    }
+  });
+  const runIds = [...grouped.keys()];
+  const ledgers = transaction.objectStore(DAILY_WORKFLOW_CONTRIBUTIONS);
+  const runStore = transaction.objectStore('runs');
+  const inputs = await Promise.all(runIds.map(async (runId) => ({
+    runId, prior: await result(ledgers.get(runId)), run: await result(runStore.get(runId))
+  })));
+  /** @type {{ prior: Record<string, unknown> | null, next: Record<string, unknown> | null }[]} */
+  const changes = [];
+  for (const { runId, prior, run } of inputs) {
+    const current = run ? dailyWorkflowContribution(run, now, prior)
+      : prior ? withoutStorageMetadata(prior) : null;
+    if (!current || Date.parse(String(current.day)) < dailyWorkflowCutoff(now)) continue;
+    const updates = group(runId);
+    const next = withDailyWorkflowEvidence(current, storeName, updates.records, current, updates.removedIds);
+    if (JSON.stringify(prior ? withoutStorageMetadata(prior) : null) !== JSON.stringify(next)) {
+      changes.push({ prior: prior ?? null, next });
+    }
+  }
+  await writeDailyWorkflowChanges(transaction, changes, now);
+}
+
+/**
+ * @param {IDBTransaction} transaction
+ * @param {{ prior: Record<string, unknown> | null, next: Record<string, unknown> | null }[]} changes
+ * @param {number} now
+ */
+async function writeDailyWorkflowChanges(transaction, changes, now) {
+  const store = transaction.objectStore(DAILY_WORKFLOW_AGGREGATES);
+  const keys = new Set();
+  for (const { prior, next } of changes) {
+    if (prior && Date.parse(String(prior.day)) >= dailyWorkflowCutoff(now)) keys.add(String(prior.groupId));
+    if (next) keys.add(String(next.groupId));
+  }
+  const groupIds = [...keys];
+  const groups = await Promise.all(groupIds.map((key) => result(store.get(key))));
+  const initialGroups = new Map(groupIds.map((key, index) => [key, groups[index]]));
+  const updatedGroups = new Map(initialGroups);
+  for (const { prior, next } of changes) {
+    const retainedPrior = prior && Date.parse(String(prior.day)) >= dailyWorkflowCutoff(now) ? prior : null;
+    for (const [contribution, sign] of /** @type {[Record<string, unknown> | null, 1 | -1][]} */ ([
+      [retainedPrior, -1], [next, 1]
+    ])) {
+      if (!contribution) continue;
+      const key = String(contribution.groupId);
+      updatedGroups.set(key, applyDailyWorkflowContribution(updatedGroups.get(key), contribution, sign));
+    }
+  }
+  const updated = [...updatedGroups.values()];
+  await writeAccountedRecords(transaction, DAILY_WORKFLOW_AGGREGATES,
+    updated.filter((row) => Number(row.runCount) > 0)
+      .map((row) => withStorageMetadata(DAILY_WORKFLOW_AGGREGATES, row)),
+    updated.filter((row) => row.runCount === 0)
+      .map((row) => initialGroups.get(String(row.id))).filter(Boolean));
+  await writeAccountedRecords(transaction, DAILY_WORKFLOW_CONTRIBUTIONS,
+    changes.flatMap(({ next }) => next ? [withStorageMetadata(DAILY_WORKFLOW_CONTRIBUTIONS, next)] : []),
+    changes.flatMap(({ prior, next }) => !next && prior ? [prior] : []));
 }
 
 /**
@@ -332,7 +462,8 @@ export async function maintainStorageShards(database, options) {
   for (const [index, storeName] of options.entityStores.entries()) {
     options.signal?.throwIfAborted();
     if (Object.hasOwn(RETENTION_TIMESTAMPS, storeName)) {
-      const horizon = now - retentionWindowForStore(storeName, options);
+      const horizon = DAILY_WORKFLOW_STORES.includes(storeName)
+        ? dailyWorkflowCutoff(now) : now - retentionWindowForStore(storeName, options);
       const expired = shards.filter((shard) => shard.storeName === storeName
         && Number(shard.day) * DAY_MS < horizon);
       if (storeName === 'runs' && expired.length > 0) {

@@ -271,7 +271,7 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
   let batch = { ...incoming };
   for (const storeName of NORMALIZED_BATCH_COLLECTIONS) {
     batch[storeName] = (incoming[storeName] ?? []).filter((record) =>
-      !isExpiredCanonicalRecord(storeName, record, options));
+      ['tools', 'domains'].includes(storeName) || !isExpiredCanonicalRecord(storeName, record, options));
   }
   if (options.preserveRepositoryRecords || options.preserveWorkflowCampaignMappings) {
     batch = {
@@ -311,6 +311,10 @@ async function ingestCanonicalBatch(indexedDB, incoming, options) {
     const totalRecords = Object.values(batch).reduce((total, records) => total + records.length, 0);
     const startedAt = performance.now();
     const result = await upsertCanonicalBatch(indexedDB, batch, {
+      now: options.now,
+      retainExpiredEvidenceOnly: true,
+      retentionWindowMs: options.retentionWindowMs,
+      retentionWindowMsByStore: options.retentionWindowMsByStore,
       validateRelationships: false,
       signal: options.signal,
       onBatchCommitted: ({ committedBatches, committedRecords }) => {
@@ -606,6 +610,10 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
             try {
               await preserveStreamedStructuralMetadata(database, batch);
               result = await upsertCanonicalBatchWithConnection(database, batch, {
+                now: options.now,
+                retainExpiredEvidenceOnly: true,
+                retentionWindowMs: options.retentionWindowMs,
+                retentionWindowMsByStore: options.retentionWindowMsByStore,
                 batchSize,
                 validateRelationships: false,
                 onBatchCommitted: ({ committedRecords: storedRecords }) => {
@@ -727,7 +735,7 @@ export function ingestNormalizedJsonl(indexedDB, chunks, options) {
           const record = pruneCanonicalRecord(collection, /** @type {Record<string, unknown>} */ (envelope.record));
           if (isExpiredCanonicalRecord(collection, record, options)) {
             expiredRecords += 1;
-            return;
+            if (!['tools', 'domains'].includes(collection)) return;
           }
           batch[collection]?.push(/** @type {never} */ (record));
           bufferedRecords += 1;

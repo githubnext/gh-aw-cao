@@ -604,6 +604,10 @@ class SqliteIDBObjectStore {
 }
 
 class SqliteIDBTransaction {
+  get objectStoreNames() {
+    return new SqliteDOMStringList([...this.storeNames].sort());
+  }
+
   /**
    * @param {SqliteIDBDatabase} database
    * @param {string[]} storeNames

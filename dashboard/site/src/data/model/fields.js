@@ -99,11 +99,11 @@ export function pruneCanonicalRecord(collection, record) {
  * @param {Record<string, unknown>} incoming
  */
 export function mergeCanonicalRun(existing, incoming) {
-  if (!existing || !Number.isInteger(existing.attempt) || Number(existing.attempt) < 1
-      || existing.attempt !== incoming.attempt) return incoming;
-  let merged = incoming;
+  if (!existing || (incoming.attempt !== undefined && existing.attempt !== incoming.attempt)) return incoming;
+  let merged = { ...existing, ...Object.fromEntries(Object.entries(incoming)
+    .filter(([, value]) => value !== undefined)) };
   if (incoming.routingAggregateVersion === undefined && existing.routingAggregateVersion !== undefined) {
-    merged = { ...incoming, ...Object.fromEntries(Object.entries(existing)
+    merged = { ...merged, ...Object.fromEntries(Object.entries(existing)
       .filter(([field]) => field.startsWith('routing'))) };
   }
   for (const field of ['aicTotal', 'inputTokens', 'outputTokens', 'cacheReadTokens',

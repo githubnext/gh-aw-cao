@@ -61,6 +61,10 @@ func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error
 	}
 
 	columns := relationColumns(table, func(index int) string { return "get_bit(t.present_fields, " + strconv.Itoa(index) + ") = 1" })
+	if name == dailyAggregateSource {
+		columns["namespace"] = query.SQLColumn{Expression: "t.namespace", Presence: "TRUE", Kind: query.SQLText}
+		columns["day"] = query.SQLColumn{Expression: "t.day::text", Presence: "TRUE", Kind: query.SQLText}
+	}
 	return query.SQLRelation{
 		SQL:     "(SELECT * FROM " + query.SQLIdentifier(table.name) + " WHERE namespace = {}) AS t",
 		Params:  []any{r.store.namespace},

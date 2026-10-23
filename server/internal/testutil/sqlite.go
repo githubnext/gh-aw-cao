@@ -42,7 +42,7 @@ func SQLiteSnapshot(t testing.TB, sources map[string][]model.Row) string {
 	for _, name := range []string{
 		"campaigns", "repositories", "workflows", "runs", "domains", "tools", "skills", "friction", "audits", "issues",
 		"operationalValues", "operationalValueEvidence", "marketplacePackages", "experiments", "experimentAssignments", "graders", "graderObservations",
-		"evals", "evalObservations", "transactions",
+		"evals", "evalObservations", "transactions", "daily_workflow_aggregates", "daily_workflow_contributions",
 	} {
 		if _, err := db.ExecContext(t.Context(), `INSERT INTO __idb_stores VALUES (?,?,'id')`, dashboardquery.DatabaseName, name); err != nil {
 			t.Fatal(err)

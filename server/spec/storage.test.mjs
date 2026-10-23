@@ -4,6 +4,7 @@ import test from 'node:test';
 import { compile, getDoc, getNamespaceFullName, navigateProgram, NodeHost } from '@typespec/compiler';
 import { PRUNED_CANONICAL_FIELDS } from '../../dashboard/site/src/data/model/fields.js';
 import { EVIDENCE_FACT_FIELDS } from '../../dashboard/site/src/data/model/operational-value-evidence.js';
+import { DAILY_WORKFLOW_METRICS, DAILY_WORKFLOW_OUTCOMES } from '../../dashboard/site/src/data/model/daily-workflow-aggregates.js';
 
 const program = await compile(NodeHost, new URL('storage.tsp', import.meta.url).pathname, { noEmit: true });
 assert.deepEqual(program.diagnostics, []);
@@ -58,8 +59,26 @@ test('TypeSpec declares exactly one root table per canonical dashboard collectio
   assert.deepEqual([...tables.keys()].sort(), [
     '$campaigns', '$repositories', '$workflows', '$runs', ...records, '$operationalValues', '$operationalValueEvidence',
     '$marketplacePackages', '$experiments', '$experimentAssignments',
-    '$graders', '$graderObservations', '$evals', '$evalObservations'
+    '$graders', '$graderObservations', '$evals', '$evalObservations', '$daily_workflow_aggregates'
   ].sort());
+});
+
+test('daily aggregates have only repository/workflow/day grain and shared additive measures', () => {
+  assert.deepEqual([...tables.get('$daily_workflow_aggregates')].sort(), [
+    'id', 'day', 'repositoryId', 'workflowId', 'runCount',
+    ...Object.values(DAILY_WORKFLOW_OUTCOMES), 'observedConclusionCount',
+    ...DAILY_WORKFLOW_METRICS.flatMap((metric) => [`${metric}Sum`, `${metric}ObservedCount`])
+  ].sort());
+  const sql = readFileSync(new URL('../internal/postgresx/schema.sql', import.meta.url), 'utf8');
+  const aggregate = sql.split('CREATE TABLE IF NOT EXISTS daily_workflow_aggregates (')[1]?.split(';')[0];
+  assert.match(aggregate, /PRIMARY KEY \(namespace, day, repository_id, workflow_id\)/);
+  assert.match(aggregate, /PARTITION BY RANGE \(day\)$/);
+  assert.match(aggregate, /REFERENCES repositories\(namespace, id\)/);
+  assert.match(aggregate, /REFERENCES workflows\(namespace, id\)/);
+  const ledger = sql.split('CREATE TABLE IF NOT EXISTS cao_run_contributions (')[1]?.split(';')[0];
+  assert.match(ledger, /PRIMARY KEY \(namespace, run_id, day\)/);
+  assert.match(ledger, /PARTITION BY RANGE \(day\)$/);
+  assert.doesNotMatch(ledger, /REFERENCES runs/);
 });
 
 test('all run-owned tables share daily partitions and maintenance coverage', () => {
@@ -126,12 +145,15 @@ test('native table fields cover database projections and joins without speculati
   required.get('$runs').add('repositoryId'); // Cross-parent canonical integrity.
   // This input normalizes the packet and its typed child values, not root columns.
   required.set('$operationalValueEvidence', new Set(tables.get('$operationalValueEvidence')));
+  // This derived collection is maintained from native run contributions, not an input projection.
+  required.set('$daily_workflow_aggregates', new Set(tables.get('$daily_workflow_aggregates')));
   for (const definition of definitions) {
     if (definition.from === '$operationalValueEvidence') continue;
     const sources = [definition.from];
     const fields = inputFields(definition);
     if (tables.has(definition.from)) {
       for (const field of fields) {
+        if (definition.from === '$daily_workflow_aggregates' && field === 'namespace') continue;
         if (!tables.get(definition.from).has(field)) defects.push(`missing ${definition.from}.${field}`);
       }
     }

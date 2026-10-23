@@ -6,6 +6,7 @@ import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_STORES,
+  readCollections,
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
@@ -333,7 +334,17 @@ describe('canonical view sources', () => {
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
     const tableNames = DATABASE_STORES.filter((store) => store !== 'storageShards');
-    const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
+    const collections = await readCollections(indexedDB, tableNames.filter((table) => table !== 'transactions'));
+    const canonical = {
+      ...Object.fromEntries(Object.entries(collections).map(([source, rows]) => [source, {
+        source, rows, metadata: {
+          ...metadata, 'source-id': source, 'source-kind': 'database-query',
+          'retrieved-at': metadata['as-of'], completeness: /** @type {const} */ ('unknown'),
+          freshness: /** @type {const} */ ('unknown')
+        }
+      }])),
+      ...(await queryCanonicalViewSources(indexedDB, sources, ['transactions']))
+    };
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
       from: table,

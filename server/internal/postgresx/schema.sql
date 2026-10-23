@@ -46,6 +46,24 @@ CREATE TABLE IF NOT EXISTS cao_state (
   PRIMARY KEY (namespace)
 );
 
+CREATE TABLE IF NOT EXISTS cao_run_evidence_contributions (
+  namespace TEXT NOT NULL,
+  source TEXT NOT NULL,
+  id TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  day DATE NOT NULL,
+  calls NUMERIC,
+  mcp_calls NUMERIC,
+  mcp_response_bytes NUMERIC,
+  allowed_calls NUMERIC,
+  blocked_calls NUMERIC,
+  PRIMARY KEY (namespace, source, id, day),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (source IN ('tools','domains'))
+) PARTITION BY RANGE (day);
+
+CREATE INDEX IF NOT EXISTS cao_run_evidence_contributions_run ON cao_run_evidence_contributions(namespace, run_id);
+
 CREATE TABLE IF NOT EXISTS cao_value_publications (
   namespace TEXT NOT NULL,
   packet_id TEXT NOT NULL,
@@ -66,7 +84,7 @@ CREATE TABLE IF NOT EXISTS cao_quality (
   retrieved_at TIMESTAMPTZ,
   PRIMARY KEY (namespace, collection),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
-  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValueEvidence','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
+  CHECK (collection IN ('$repositories','$campaigns','$workflows','$runs','$audits','$daily_workflow_aggregates','$domains','$evals','$experiments','$evalObservations','$experimentAssignments','$friction','$graders','$graderObservations','$issues','$operationalValueEvidence','$operationalValues','$outcomes','$security-findings','$skills','$tools','$transactions','work-items')),
   CHECK (availability IN ('available','empty','unavailable')),
   CHECK (completeness IN ('complete','partial','unknown')),
   CHECK (freshness IN ('current','stale','unknown'))
@@ -482,6 +500,77 @@ CREATE TABLE IF NOT EXISTS audits (
 CREATE INDEX IF NOT EXISTS audits_run_id ON audits (namespace, run_id, ordinal);
 
 CREATE INDEX IF NOT EXISTS audits_identity ON audits (namespace, id);
+
+CREATE TABLE IF NOT EXISTS daily_workflow_aggregates (
+  namespace TEXT NOT NULL,
+  ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
+  present_fields BIT VARYING NOT NULL,
+  id TEXT NOT NULL CHECK (id <> ''),
+  day DATE NOT NULL,
+  repository_id TEXT NOT NULL,
+  workflow_id TEXT NOT NULL,
+  run_count BIGINT NOT NULL,
+  success_count BIGINT NOT NULL,
+  failure_count BIGINT NOT NULL,
+  cancelled_count BIGINT NOT NULL,
+  timed_out_count BIGINT NOT NULL,
+  skipped_count BIGINT NOT NULL,
+  action_required_count BIGINT NOT NULL,
+  neutral_count BIGINT NOT NULL,
+  startup_failure_count BIGINT NOT NULL,
+  observed_conclusion_count BIGINT NOT NULL,
+  aic_total_sum NUMERIC,
+  aic_total_observed_count BIGINT NOT NULL,
+  input_tokens_sum NUMERIC,
+  input_tokens_observed_count BIGINT NOT NULL,
+  output_tokens_sum NUMERIC,
+  output_tokens_observed_count BIGINT NOT NULL,
+  cache_read_tokens_sum NUMERIC,
+  cache_read_tokens_observed_count BIGINT NOT NULL,
+  cache_write_tokens_sum NUMERIC,
+  cache_write_tokens_observed_count BIGINT NOT NULL,
+  reasoning_tokens_sum NUMERIC,
+  reasoning_tokens_observed_count BIGINT NOT NULL,
+  action_minutes_sum NUMERIC,
+  action_minutes_observed_count BIGINT NOT NULL,
+  agentic_duration_seconds_sum NUMERIC,
+  agentic_duration_seconds_observed_count BIGINT NOT NULL,
+  github_api_calls_sum NUMERIC,
+  github_api_calls_observed_count BIGINT NOT NULL,
+  safe_items_count_sum NUMERIC,
+  safe_items_count_observed_count BIGINT NOT NULL,
+  error_count_sum NUMERIC,
+  error_count_observed_count BIGINT NOT NULL,
+  firewall_allowed_calls_sum NUMERIC,
+  firewall_allowed_calls_observed_count BIGINT NOT NULL,
+  firewall_blocked_calls_sum NUMERIC,
+  firewall_blocked_calls_observed_count BIGINT NOT NULL,
+  mcp_tool_calls_sum NUMERIC,
+  mcp_tool_calls_observed_count BIGINT NOT NULL,
+  mcp_response_bytes_sum NUMERIC,
+  mcp_response_bytes_observed_count BIGINT NOT NULL,
+  tool_calls_sum NUMERIC,
+  tool_calls_observed_count BIGINT NOT NULL,
+  domain_calls_sum NUMERIC,
+  domain_calls_observed_count BIGINT NOT NULL,
+  high_priority_audit_items_sum NUMERIC,
+  high_priority_audit_items_observed_count BIGINT NOT NULL,
+  medium_priority_audit_items_sum NUMERIC,
+  medium_priority_audit_items_observed_count BIGINT NOT NULL,
+
+  PRIMARY KEY (namespace, day, repository_id, workflow_id),
+  UNIQUE (namespace, ordinal, day),
+  CHECK (bit_length(present_fields) = 52),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  CHECK (repository_id IS NOT NULL AND repository_id <> ''),
+  FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
+  CHECK (workflow_id IS NOT NULL AND workflow_id <> ''),
+  FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (day);
+
+CREATE INDEX IF NOT EXISTS daily_workflow_aggregates_repository_id ON daily_workflow_aggregates (namespace, repository_id, ordinal);
+
+CREATE INDEX IF NOT EXISTS daily_workflow_aggregates_workflow_id ON daily_workflow_aggregates (namespace, workflow_id, ordinal);
 
 CREATE TABLE IF NOT EXISTS domains (
   namespace TEXT NOT NULL,
@@ -1203,3 +1292,65 @@ CREATE TABLE IF NOT EXISTS work_items (
   CHECK (bit_length(present_fields) = 44),
   FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS cao_run_contributions (
+  namespace TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  day DATE NOT NULL,
+  repository_id TEXT NOT NULL,
+  workflow_id TEXT NOT NULL,
+  run_count BIGINT,
+  success_count BIGINT,
+  failure_count BIGINT,
+  cancelled_count BIGINT,
+  timed_out_count BIGINT,
+  skipped_count BIGINT,
+  action_required_count BIGINT,
+  neutral_count BIGINT,
+  startup_failure_count BIGINT,
+  observed_conclusion_count BIGINT,
+  aic_total_sum NUMERIC,
+  aic_total_observed_count BIGINT,
+  input_tokens_sum NUMERIC,
+  input_tokens_observed_count BIGINT,
+  output_tokens_sum NUMERIC,
+  output_tokens_observed_count BIGINT,
+  cache_read_tokens_sum NUMERIC,
+  cache_read_tokens_observed_count BIGINT,
+  cache_write_tokens_sum NUMERIC,
+  cache_write_tokens_observed_count BIGINT,
+  reasoning_tokens_sum NUMERIC,
+  reasoning_tokens_observed_count BIGINT,
+  action_minutes_sum NUMERIC,
+  action_minutes_observed_count BIGINT,
+  agentic_duration_seconds_sum NUMERIC,
+  agentic_duration_seconds_observed_count BIGINT,
+  github_api_calls_sum NUMERIC,
+  github_api_calls_observed_count BIGINT,
+  safe_items_count_sum NUMERIC,
+  safe_items_count_observed_count BIGINT,
+  error_count_sum NUMERIC,
+  error_count_observed_count BIGINT,
+  firewall_allowed_calls_sum NUMERIC,
+  firewall_allowed_calls_observed_count BIGINT,
+  firewall_blocked_calls_sum NUMERIC,
+  firewall_blocked_calls_observed_count BIGINT,
+  mcp_tool_calls_sum NUMERIC,
+  mcp_tool_calls_observed_count BIGINT,
+  mcp_response_bytes_sum NUMERIC,
+  mcp_response_bytes_observed_count BIGINT,
+  tool_calls_sum NUMERIC,
+  tool_calls_observed_count BIGINT,
+  domain_calls_sum NUMERIC,
+  domain_calls_observed_count BIGINT,
+  high_priority_audit_items_sum NUMERIC,
+  high_priority_audit_items_observed_count BIGINT,
+  medium_priority_audit_items_sum NUMERIC,
+  medium_priority_audit_items_observed_count BIGINT,
+  PRIMARY KEY (namespace, run_id, day),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
+  FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (day);
+
+CREATE INDEX IF NOT EXISTS cao_run_contributions_identity ON cao_run_contributions(namespace, run_id);

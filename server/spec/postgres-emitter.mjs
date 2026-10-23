@@ -6,18 +6,22 @@ export const $lib = createTypeSpecLibrary({ name: 'cao-postgres', diagnostics: {
 export const namespace = 'Cao.Postgres';
 const parentKey = Symbol.for('cao-postgres.parent');
 const partitionKey = Symbol.for('cao-postgres.run-partition');
+const aggregatePartitionKey = Symbol.for('cao-postgres.aggregate-partition');
 export function $parent(context, target, entity, required = true) {
   context.program.stateMap(parentKey).set(target, { entity, required });
 }
 export function $runPartition(context, target) {
   context.program.stateSet(partitionKey).add(target);
 }
+export function $aggregatePartition(context, target) {
+  context.program.stateSet(aggregatePartitionKey).add(target);
+}
 
 const snake = (field) => field.replace(/-/g, '_').replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 const kinds = new Map([
   ['string', ['', 'TEXT']], ['decimal', ['numeric', 'NUMERIC']],
   ['int64', ['numeric', 'BIGINT']], ['boolean', ['boolean', 'BOOLEAN']],
-  ['utcDateTime', ['timestamp', 'TIMESTAMPTZ']]
+  ['utcDateTime', ['timestamp', 'TIMESTAMPTZ']], ['plainDate', ['', 'DATE']]
 ]);
 const inputNames = new Map([
   ['securityFindings', '$security-findings'], ['outcomePerformance', '$outcomes'],
@@ -83,7 +87,8 @@ export async function $onEmit(context) {
         if (!kind) throw new Error(`Storage requires an explicit native type: ${model.name}.${property.name}`);
         columns.push({ field: property.name, name: snake(property.name), kind: kind[0], sql: kind[1], required: !property.optional });
       }
-      const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model) };
+      const table = { collection: model.name, name: snake(model.name), columns, partitioned: context.program.stateSet(partitionKey).has(model),
+        aggregate: context.program.stateSet(aggregatePartitionKey).has(model) };
       if (namespace === 'Cao.Postgres.Storage') systems.push(table);
       else {
         table.runtime = namespace === 'Cao.Postgres.Runtime' || model.name === 'marketplacePackages';
@@ -119,6 +124,10 @@ export async function $onEmit(context) {
       'PRIMARY KEY (namespace, packet_id)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
       "CHECK (digest ~ '^[a-f0-9]{64}$')"
+    ] : table.name === 'cao_run_evidence_contributions' ? [
+      'PRIMARY KEY (namespace, source, id, day)',
+      'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
+      "CHECK (source IN ('tools','domains'))"
     ] : table.name === 'cao_contract' ? ['PRIMARY KEY (digest)'] : table.name === 'cao_state' ? ['PRIMARY KEY (namespace)'] : table.name === 'cao_repository_lifecycle' ? [
       'PRIMARY KEY (namespace, id)',
       'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE',
@@ -131,16 +140,17 @@ export async function $onEmit(context) {
       "CHECK (completeness IN ('complete','partial','unknown'))",
       "CHECK (freshness IN ('current','stale','unknown'))"
     ];
-    statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (\n${table.columns.map((c) => `  ${c.name} ${c.sql}${c.required ? ' NOT NULL' : ''}`).join(',\n')},\n  ${constraints.join(',\n  ')}\n);`);
+    statements.push(`CREATE TABLE IF NOT EXISTS ${table.name} (\n${table.columns.map((c) => `  ${c.name} ${c.sql}${c.required ? ' NOT NULL' : ''}`).join(',\n')},\n  ${constraints.join(',\n  ')}\n)${table.aggregate ? ' PARTITION BY RANGE (day)' : ''};`);
     if (table.name === 'cao_repository_lifecycle') statements.push('CREATE INDEX IF NOT EXISTS cao_repository_lifecycle_coordinate ON cao_repository_lifecycle (namespace, owner, name);');
     if (table.name === 'cao_github_resources') statements.push('CREATE INDEX IF NOT EXISTS cao_github_resources_expiry ON cao_github_resources (namespace, validated_at, id);');
+    if (table.name === 'cao_run_evidence_contributions') statements.push('CREATE INDEX IF NOT EXISTS cao_run_evidence_contributions_run ON cao_run_evidence_contributions(namespace, run_id);');
   }
   const go = ['// Code generated from server/spec/storage.tsp. DO NOT EDIT.', '', 'package postgresx', '', 'var entityTables = map[string]entityTable{'];
   for (const table of tables) {
     if (!table.runtime) {
       const constraints = [
-        `PRIMARY KEY (namespace, id${table.partitioned ? ', run_at' : ''})`,
-        `UNIQUE (namespace, ordinal${table.partitioned ? ', run_at' : ''})`,
+        `PRIMARY KEY (namespace, ${table.aggregate ? 'day, repository_id, workflow_id' : `id${table.partitioned ? ', run_at' : ''}`})`,
+        `UNIQUE (namespace, ordinal${table.partitioned ? ', run_at' : table.aggregate ? ', day' : ''})`,
         `CHECK (bit_length(present_fields) = ${table.columns.length})`,
         'FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE'
       ];
@@ -154,10 +164,10 @@ export async function $onEmit(context) {
   namespace TEXT NOT NULL,
   ordinal BIGINT NOT NULL CHECK (ordinal >= 0),
   present_fields BIT VARYING NOT NULL,
-${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : ''}`).join(',\n')},
+${table.columns.map((c) => `  ${c.name} ${c.sql}${c.field === 'id' ? " NOT NULL CHECK (id <> '')" : table.aggregate && c.required ? ' NOT NULL' : ''}`).join(',\n')},
 ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
   ${constraints.join(',\n  ')}
-)${table.partitioned ? ' PARTITION BY RANGE (run_at)' : ''};`);
+)${table.partitioned ? ' PARTITION BY RANGE (run_at)' : table.aggregate ? ' PARTITION BY RANGE (day)' : ''};`);
       for (const [field] of parents.get(table.collection) ?? []) {
         statements.push(`CREATE INDEX IF NOT EXISTS ${table.name}_${snake(field)} ON ${table.name} (namespace, ${snake(field)}, ordinal);`);
       }
@@ -172,6 +182,23 @@ ${table.partitioned ? '  run_at TIMESTAMPTZ NOT NULL,\n' : ''}
       .map((child) => `{field: "${child.field}", source: "${child.source}"}`).join(',')}}},` : '\t}},');
   }
   go.push('}', '');
+  const aggregate = tables.find((table) => table.aggregate);
+  if (aggregate) {
+    const measures = aggregate.columns.filter((column) => !['id', 'day', 'repositoryId', 'workflowId'].includes(column.field));
+    statements.push(`CREATE TABLE IF NOT EXISTS cao_run_contributions (
+  namespace TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  day DATE NOT NULL,
+  repository_id TEXT NOT NULL,
+  workflow_id TEXT NOT NULL,
+${measures.map((column) => `  ${column.name} ${column.sql}`).join(',\n')},
+  PRIMARY KEY (namespace, run_id, day),
+  FOREIGN KEY (namespace) REFERENCES cao_state(namespace) ON DELETE CASCADE,
+  FOREIGN KEY (namespace, repository_id) REFERENCES repositories(namespace, id) DEFERRABLE INITIALLY DEFERRED,
+  FOREIGN KEY (namespace, workflow_id) REFERENCES workflows(namespace, id) DEFERRABLE INITIALLY DEFERRED
+) PARTITION BY RANGE (day);`);
+    statements.push('CREATE INDEX IF NOT EXISTS cao_run_contributions_identity ON cao_run_contributions(namespace, run_id);');
+  }
   const literal = (value) => value === null ? 'nil' : JSON.stringify(value);
   go.push('var inventoryBindings = map[string][]inventoryBinding{');
   for (const [source, kind] of [['campaigns','campaign'],['repositories','repository'],['workflows','workflow']]) {

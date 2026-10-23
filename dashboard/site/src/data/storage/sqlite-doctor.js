@@ -21,6 +21,7 @@ import {
 } from './sqlite-indexeddb.js';
 import { createDebug } from '../../debug.js';
 import { identifier, sql } from './sql.js';
+import { rebuildDailyWorkflowAggregates } from '../model/daily-workflow-aggregates.js';
 
 const debug = createDebug('sqlite-doctor');
 
@@ -42,6 +43,14 @@ function emptyBatch() {
   return /** @type {import('../model/schema.js').CanonicalBatch} */ (
     /** @type {unknown} */ (Object.fromEntries(ENTITY_STORES.map((store) => [store, []])))
   );
+}
+
+/** @param {import('../model/schema.js').CanonicalBatch} before @param {import('../model/schema.js').CanonicalBatch} after */
+function removedCanonicalRecords(before, after) {
+  return ENTITY_STORES.reduce((total, store) => {
+    const retained = new Set((after[store] ?? []).map((record) => String(record.id)));
+    return total + (before[store] ?? []).filter((record) => !retained.has(String(record.id))).length;
+  }, 0);
 }
 
 /** @param {Record<string, unknown> | undefined} row */
@@ -423,6 +432,9 @@ async function repairCanonicalDatabase(filename, checkedAt, now, retentionWindow
       includePreviousInReference: true,
       preserveUnreferencedParents: true
     });
+    Object.assign(repairedBatch, rebuildDailyWorkflowAggregates(
+      repairedBatch.runs, now, repairedBatch.daily_workflow_contributions, repairedBatch
+    ));
     const transactions = retainedTransactions(scanned.transactions, horizon);
     writeCanonicalDatabase(connection, repairedBatch, transactions);
     createSqliteRelationalTables(connection);
@@ -603,12 +615,12 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     includePreviousInReference: true,
     preserveUnreferencedParents: true
   });
+  Object.assign(repairedBatch, rebuildDailyWorkflowAggregates(
+    repairedBatch.runs, now, repairedBatch.daily_workflow_contributions, repairedBatch
+  ));
   const transactions = retainedTransactions(scanned.transactions, horizon);
   const transactionRowsRemoved = scanned.transactions.length - transactions.length;
-  const canonicalRowsRemoved = ENTITY_STORES.reduce(
-    (total, store) => total + (scanned.batch[store]?.length ?? 0) - (repairedBatch[store]?.length ?? 0),
-    0
-  );
+  const canonicalRowsRemoved = removedCanonicalRecords(scanned.batch, repairedBatch);
   const canonicalDataChanged = !sameBatch(scanned.batch, repairedBatch);
   const needsRepair = beforeSchema.issues.length > 0
     || beforeSqlite.foreignKeyViolations > 0
@@ -674,12 +686,7 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     }
     const lockedBatch = repair.scanned.batch;
     invalidRecordsRemoved = repair.scanned.invalid.length;
-    repairedCanonicalRows = ENTITY_STORES.reduce(
-      (total, store) => total
-        + (lockedBatch[store]?.length ?? 0)
-        - (repair.repairedBatch[store]?.length ?? 0),
-      0
-    );
+    repairedCanonicalRows = removedCanonicalRecords(lockedBatch, repair.repairedBatch);
     repairedTransactionRows = repair.scanned.transactions.length - repair.transactions.length;
     if (repair.schema.issues.length > 0 || beforeSqlite.foreignKeyViolations > 0) {
       actions.push('rebuild-schema');

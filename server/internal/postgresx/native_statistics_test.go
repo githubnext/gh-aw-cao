@@ -14,13 +14,17 @@ func TestNativePublicationRefreshesPlannerStatistics(t *testing.T) {
 	assertEstimates := func(want int) {
 		t.Helper()
 		for _, table := range []string{"repositories", "workflows", "runs", "domains"} {
+			expected := want
+			if want == 0 && (table == "repositories" || table == "workflows") {
+				expected = 1 // Parents remain while retained daily aggregates reference them.
+			}
 			var estimate float64
 			if err := store.db.QueryRowContext(t.Context(),
 				"SELECT reltuples FROM pg_class WHERE oid=to_regclass($1)", table).Scan(&estimate); err != nil {
 				t.Fatal(err)
 			}
-			if estimate != float64(want) {
-				t.Fatalf("%s planner estimate = %v, want %d replacement rows", table, estimate, want)
+			if estimate != float64(expected) {
+				t.Fatalf("%s planner estimate = %v, want %d replacement rows", table, estimate, expected)
 			}
 		}
 	}

@@ -50,6 +50,14 @@ export function createCanonicalQueries(indexedDB) {
         return rows;
       }
     },
+    dailyWorkflowAggregates: {
+      forDay: (/** @type {string} */ day) =>
+        readIndex(indexedDB, 'daily_workflow_aggregates', 'byDay', [day]),
+      forRepository: (/** @type {string} */ repositoryId) =>
+        readIndex(indexedDB, 'daily_workflow_aggregates', 'byRepository', [repositoryId]),
+      forWorkflow: (/** @type {string} */ workflowId) =>
+        readIndex(indexedDB, 'daily_workflow_aggregates', 'byWorkflow', [workflowId])
+    },
     domains: runLinkedQueries(indexedDB, 'domains'),
     tools: runLinkedQueries(indexedDB, 'tools'),
     skills: runLinkedQueries(indexedDB, 'skills'),

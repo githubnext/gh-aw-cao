@@ -373,6 +373,7 @@ export const BUILT_IN_PAGE_REQUIRED_FIELDS = {
 };
 
 export const TABLE_VALUES = [
+  'daily-workflow-aggregates',
   'routing-aggregates',
   'organizations',
   'campaigns',
@@ -464,6 +465,29 @@ export const TABLE_VALUES = [
 ];
 
 export const TABLE_FIELDS = {
+  'daily-workflow-aggregates': [
+    'id', 'namespace', 'date', 'repository-id', 'workflow-id', 'organization', 'repository', 'workflow', 'run-count',
+    'success-count', 'failure-count', 'cancelled-count', 'skipped-count', 'timed-out-count',
+    'action-required-count', 'neutral-count', 'startup-failure-count', 'observed-conclusion-count',
+    'tool-calls-sum', 'tool-calls-observed-count', 'domain-calls-sum', 'domain-calls-observed-count',
+    'aic-total-sum', 'aic-total-observed-count',
+    'input-tokens-sum', 'input-tokens-observed-count',
+    'output-tokens-sum', 'output-tokens-observed-count',
+    'cache-read-tokens-sum', 'cache-read-tokens-observed-count',
+    'cache-write-tokens-sum', 'cache-write-tokens-observed-count',
+    'reasoning-tokens-sum', 'reasoning-tokens-observed-count',
+    'action-minutes-sum', 'action-minutes-observed-count',
+    'agentic-duration-seconds-sum', 'agentic-duration-seconds-observed-count',
+    'github-api-calls-sum', 'github-api-calls-observed-count',
+    'safe-items-count-sum', 'safe-items-count-observed-count',
+    'error-count-sum', 'error-count-observed-count',
+    'firewall-allowed-calls-sum', 'firewall-allowed-calls-observed-count',
+    'firewall-blocked-calls-sum', 'firewall-blocked-calls-observed-count',
+    'mcp-tool-calls-sum', 'mcp-tool-calls-observed-count',
+    'mcp-response-bytes-sum', 'mcp-response-bytes-observed-count',
+    'high-priority-audit-items-sum', 'high-priority-audit-items-observed-count',
+    'medium-priority-audit-items-sum', 'medium-priority-audit-items-observed-count'
+  ],
   'routing-aggregates': [
     'routing-aggregate-version', 'organization', 'repository', 'workflow', 'run', 'run-attempt', 'run-link', 'engine',
     'routing-run-key', 'observed-at', 'pick', 'unknown-pick-model', 'routing-dashboard-link',
@@ -743,6 +767,10 @@ export const TEMPORAL_FIELD_NAMES = [
 ];
 
 export const ADDITIVE_MEASURE_FIELDS = [
+  'run-count',
+  'success-count', 'failure-count', 'cancelled-count', 'skipped-count', 'timed-out-count',
+  'action-required-count', 'neutral-count', 'startup-failure-count', 'observed-conclusion-count',
+  ...TABLE_FIELDS['daily-workflow-aggregates'].filter((field) => field.endsWith('-sum') || field.endsWith('-observed-count')),
   'input-tokens',
   'output-tokens',
   'cache-read-tokens',

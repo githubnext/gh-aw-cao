@@ -80,5 +80,5 @@ func (s *Store) checkProvisionedPartitions(ctx context.Context, now time.Time, r
 			}
 		}
 	}
-	return nil
+	return s.checkAggregatePartitions(ctx, now)
 }

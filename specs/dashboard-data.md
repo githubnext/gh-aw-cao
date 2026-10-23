@@ -633,9 +633,9 @@ The implementation profile defined by this specification is:
 
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
-| Canonical model | 34 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 44 | Nineteen canonical entity stores, `transactions`, and disposable `storageShards` accounting |
-| Local SQLite projection | IndexedDB 43 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Canonical model | 35 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records, plus daily workflow aggregates and compact accounted contributions |
+| Browser IndexedDB | 45 | Canonical entity stores including `daily_workflow_aggregates` and `daily_workflow_contributions`, `transactions`, and disposable `storageShards` accounting |
+| Local SQLite projection | IndexedDB 45 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 18 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -666,8 +666,10 @@ Go server data profile SHALL:
   owner maintenance SHALL provision retained history, the current day, and 28
   upcoming days, and expire only whole days ending at or before each configured
   retention cutoff, dropping linked partitions before their Runs; runtime
-  SHALL validate the provisioned window without DDL, and weekly layouts SHALL
-  require fresh canonical storage without removing operational audit history;
+  SHALL validate the provisioned window without DDL; daily workflow aggregates
+  SHALL instead use the three weekly partitions specified in Section 72;
+  incompatible layouts SHALL require fresh canonical storage without removing
+  operational audit history;
 * serve the built dashboard and its query API over HTTP on loopback by default,
   or HTTPS only when the operator provides a certificate and key;
 * keep Postgres and Redis credentials exclusively in the Go process; use Redis
@@ -3227,6 +3229,11 @@ dropped when a mandatory parent no longer survives, and structural parents that
 neither the current collection nor any retained descendant references SHALL be
 collected.
 
+The daily workflow aggregate tier defined in Section 72 SHALL retain its
+repository and workflow parents and its compact correction contributions
+independently of rich execution details. Its weekly cutoff SHALL be applied
+consistently during ingestion and maintenance in all storage backends.
+
 Token-optimization retention SHALL also satisfy Section 5.5.5 so an active
 intervention is not pruned before maturation and compact terminal evidence
 remains bounded.
@@ -4330,11 +4337,111 @@ The implementation SHALL be guided by the following rules:
 
 # 72. Request-scoped Overview aggregates
 
-Overview counts and time series SHALL be computed on demand by the declarative
-query engine in the data worker from canonical records. Ingestion SHALL NOT
-persist daily aggregate records or metadata. Queries MUST preserve the
-requested time window, UTC day semantics, and source-quality metadata.
-Distinct counts MUST NOT be approximated by summing daily distinct counts.
+Overview counts and time series SHALL be evaluated by the declarative query
+engine over canonical records or the shared `daily_workflow_aggregates` source.
+Daily aggregates are disposable analytical projections, not operational
+authority. Queries MUST preserve the requested time window, UTC day semantics,
+missing observations, and source-quality metadata. Distinct counts MUST NOT be
+approximated by summing daily distinct counts.
+
+### Daily workflow aggregate contract
+
+The aggregate identity SHALL contain only namespace, UTC date, repository ID,
+and workflow ID. Model, conclusion, event, actor, and target repository SHALL
+NOT introduce additional grouping dimensions. Outcome counters are additive
+measurements, not grouping keys. Relational storage SHALL retain repository
+and workflow foreign keys.
+
+The UTC date SHALL use the first available valid business timestamp in
+`startedAt`, `completedAt`, then `createdAt` order. An undated run SHALL NOT
+acquire an execution date from ingestion time. Sparse admission observations
+remain available on the Run source without inventing dated execution activity.
+
+Each measured numeric quantity SHALL retain both its sum and the number of
+observed numeric values. An observed zero increments that observation count;
+missing, null, and invalid measurements do not. Averages SHALL divide by the
+appropriate observation count, not by all runs, unless the existing query
+explicitly specifies a per-run denominator. Rates SHALL retain their original
+numerators, denominators, and treatment of incomplete runs.
+
+Ingestion SHALL atomically apply the difference between a run's previously
+accounted contribution and its newly merged canonical contribution. Replaying
+an observation SHALL NOT add it again. Enrichment, corrections, changes of
+aggregate identity, and separately arriving run-linked evidence SHALL update
+the affected contributions without counting the same evidence twice. A compact
+contribution ledger SHALL survive expiration of rich details for as long as
+the corresponding aggregates remain eligible for correction. Rebuilding from
+the same authoritative canonical inputs SHALL be deterministic.
+
+Rich run-linked execution records SHALL retain a seven-day window. Aggregate
+retention SHALL span the current UTC week, beginning Monday at 00:00 UTC, and
+the two preceding weeks. This preserves at least fourteen complete days of
+daily aggregates without requiring rich details for the same period.
+PostgreSQL SHALL provision three weekly aggregate partitions and expire whole
+partitions; IndexedDB and SQLite SHALL apply the equivalent logical cutoff.
+Late evidence outside that aggregate window SHALL NOT resurrect expired
+aggregate buckets. Detail expiration SHALL NOT subtract previously accounted
+measurements from retained aggregates.
+
+Only queries answerable exactly from those additive measurements and their
+retained time window may select this source. Queries requiring individual
+identities, distinct counts, arbitrary timestamp boundaries, model or event
+filters, medians, record ordering, or investigation evidence SHALL continue
+using their canonical detailed sources. Existing query identifiers and
+observable payload contracts SHALL remain unchanged.
+
+### Dashboard query audit
+
+The composed dashboard currently declares 286 queries with Subject, Objective,
+and Acceptance annotations. The initial aggregate source is
+`daily-workflow-aggregates`, backed by `$daily_workflow_aggregates`; it exposes
+identity keys, UTC `date`, additive counters, metric sums, and observation
+counts. Query authors may sum these sufficient statistics over eligible dates
+and repository/workflow scopes. Averages require dividing the appropriate
+summed numerator by its summed observation count.
+
+The Run-based measurements are the authoritative canonical fields
+`aicTotal`, `inputTokens`, `outputTokens`, `cacheReadTokens`,
+`cacheWriteTokens`, `reasoningTokens`, `actionMinutes`,
+`agenticDurationSeconds`, `githubApiCalls`, `safeItemsCount`, `errorCount`,
+`firewallAllowedCalls`, `firewallBlockedCalls`, `mcpToolCalls`,
+`mcpResponseBytes`, `highPriorityAuditItems`, and `mediumPriorityAuditItems`.
+Their persisted names append `Sum` and `ObservedCount`. Outcome measurements
+include success, failure, cancellation, skipped, timed-out, action-required,
+neutral, and startup-failure counters, with `observedConclusionCount`
+distinguishing an observed conclusion from an incomplete run.
+
+Generic `toolCallsSum` SHALL sum observed finite canonical Tool
+`invocationCount` values; `domainCallsSum` SHALL sum canonical Domain
+`requestCount` values. Their `ObservedCount` fields count numeric child
+measurements, not runs, and may exceed `runCount`. Observed zero contributes
+one observation; missing and null values do not. MCP calls and firewall
+decisions SHALL NOT be added to or relabelled as these generic measurements.
+
+The compact contribution ledger SHALL retain independently keyed child
+measurements throughout the aggregate window. Replaying or correcting a child
+ID SHALL replace its accounted measurement, including retraction to null,
+without requiring its expired rich record. Late child evidence may update this
+ledger without resurrecting expired rich details. Summing only the remaining
+partial rich-child set is not an equivalent substitute.
+
+Existing query mappings remain intentionally unchanged where exact substitution
+has not been established:
+
+| Query family | Required detailed semantics |
+| --- | --- |
+| Repository/workflow usage and AIC summaries | Arbitrary selected horizons, positive-AIC populations, and distinct run-attempt denominators |
+| `indexing-runs-table-count`, `workflow-run-observation-counts` | All retained runs rather than only the aggregate retention window |
+| `runs-daily-conclusions` | Recorded conclusion values, started-at dates, and inherited detailed filters |
+| `overview-rhythm` | Rolling `15d` input, calendar-week reached-day semantics, and inherited filters |
+| `workflow-failure-trend` | Conclusion classification and windows of observations, not fixed UTC-day populations |
+| Routing summaries | Model/state distinctions, medians, paired populations, and routing-accounting completeness |
+| Investigation and operational-value queries | Event identity, ordering, distinct relationships, or independent value evidence |
+
+Registering an additive source does not by itself establish an exact migration
+for these queries. A future hybrid plan must prove disjoint aggregate/detail
+coverage, complete eligible UTC days, and equivalent inherited predicates before
+replacing any existing source; an apparently similar total is insufficient.
 
 ## 72.1 Indexed run aggregate pushdown
 

@@ -1,12 +1,13 @@
 import { relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
-import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
+import { BROWSER_RETENTION_WINDOWS_MS, isExpiredCanonicalRecord, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
+import { DAILY_WORKFLOW_STORES, rebuildDailyWorkflowAggregates } from '../model/daily-workflow-aggregates.js';
 import {
   STORAGE_SHARD_STORE, maintainStorageShards, rebuildStorageShards,
-  withStorageMetadata, writeAccountedRecords
+  withStorageMetadata, writeAccountedRecords, updateDailyWorkflowEvidence
 } from './shards.js';
 import {
   AUDIT_CURATION_TRANSACTION_ID,
@@ -18,7 +19,7 @@ import {
 const debug = createDebug('data:indexeddb');
 
 export const DATABASE_NAME = 'gh-aw-cao-dashboard-data';
-export const DATABASE_VERSION = 44;
+export const DATABASE_VERSION = 45;
 /** @type {Set<(versions: { oldVersion: number, newVersion: number }) => void>} */
 const upgradeListeners = new Set();
 
@@ -53,6 +54,7 @@ export const ENTITY_STORES = /** @type {const} */ ([
   'operationalValues',
   'operationalValueEvidence',
   'marketplacePackages',
+  'daily_workflow_aggregates', 'daily_workflow_contributions',
   'experiments', 'experimentAssignments', 'graders', 'graderObservations', 'evals', 'evalObservations'
 ]);
 export const TRANSACTION_STORE = 'transactions';
@@ -81,6 +83,14 @@ export const CANONICAL_DATABASE_SCHEMA = /** @type {Record<
      byEvent: 'event',
      byEventConclusion: ['event', 'conclusion']
    }
+ },
+ daily_workflow_aggregates: {
+   keyPath: 'id',
+   indexes: { byRepository: 'repositoryId', byWorkflow: 'workflowId', byDay: 'day' }
+ },
+ daily_workflow_contributions: {
+   keyPath: 'id',
+   indexes: { byDay: 'day' }
  },
  domains: {
    keyPath: 'id',
@@ -189,6 +199,7 @@ const RETENTION_TIMESTAMPS = new Set([
   'audits',
   'issues',
   'operationalValues',
+  'daily_workflow_aggregates', 'daily_workflow_contributions',
   'experimentAssignments', 'graderObservations', 'evalObservations'
 ]);
 const RUN_LINKED_STORES = /** @type {const} */ ([
@@ -603,7 +614,7 @@ export function openCanonicalDatabase(indexedDB) {
  *
  * @param {IDBDatabase} database
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
+ * @param {{ now?: number, retainExpiredEvidenceOnly?: boolean, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
 export async function upsertCanonicalBatchWithConnection(database, batch, options = {}) {
   options.signal?.throwIfAborted();
@@ -629,11 +640,24 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
       options.signal?.throwIfAborted();
       const boundedRecords = records.slice(offset, offset + batchSize)
         .map((record) => pruneCanonicalRecord(storeName, record));
-      const transaction = readwriteTransaction(database, [storeName, STORAGE_SHARD_STORE]);
+      const expiredEvidence = options.retainExpiredEvidenceOnly && (storeName === 'tools' || storeName === 'domains')
+        ? boundedRecords.filter((record) => isExpiredCanonicalRecord(storeName, record, options)) : [];
+      const expiredIds = new Set(expiredEvidence.map((record) => record.id));
+      const retainedRecords = boundedRecords.filter((record) => !expiredIds.has(record.id));
+      const transaction = readwriteTransaction(database, [...new Set([
+        storeName, STORAGE_SHARD_STORE,
+        ...(['runs', 'tools', 'domains'].includes(storeName) ? ['runs', ...DAILY_WORKFLOW_STORES] : []),
+        ...(storeName === 'runs' ? ['tools', 'domains'] : [])
+      ])]);
       const done = transactionDone(transaction);
       try {
         await writeAccountedRecords(transaction, storeName,
-          boundedRecords.map((record) => prepareCanonicalRecord(storeName, record)));
+          retainedRecords.map((record) => prepareCanonicalRecord(storeName, record)), [], options);
+        if (expiredEvidence.length && (storeName === 'tools' || storeName === 'domains')) {
+          const previous = await Promise.all(expiredEvidence.map((record) =>
+            requestResult(transaction.objectStore(storeName).get(/** @type {IDBValidKey} */ (record.id)))));
+          await updateDailyWorkflowEvidence(transaction, storeName, expiredEvidence, previous, options.now ?? Date.now());
+        }
         commitTransaction(transaction);
         await done;
       } catch (error) {
@@ -641,7 +665,7 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
         await done.catch(() => undefined);
         throw error;
       }
-      committedRecords += boundedRecords.length;
+      committedRecords += retainedRecords.length;
       committedBatches += 1;
       await options.onBatchCommitted?.({ committedBatches, committedRecords });
     }
@@ -657,7 +681,7 @@ export async function upsertCanonicalBatchWithConnection(database, batch, option
  *
  * @param {IDBFactory} indexedDB
  * @param {import('../model/schema.js').CanonicalBatch} batch
- * @param {{ batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
+ * @param {{ now?: number, retainExpiredEvidenceOnly?: boolean, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, batchSize?: number, validateRelationships?: boolean, signal?: AbortSignal, onBatchCommitted?: (progress: { committedBatches: number, committedRecords: number }) => void | Promise<void> }} [options]
  */
 export async function upsertCanonicalBatch(indexedDB, batch, options = {}) {
   const database = await openCanonicalDatabase(indexedDB);
@@ -1581,6 +1605,7 @@ export async function readIndex(indexedDB, storeName, indexName, key) {
  * @param {{ batchSize?: number, onProgress?: (progress: { storedRecords: number, totalRecords: number }) => void, onMetrics?: (metrics: { durationMs: number, requestCount: number, storedRecords: number, deletedRecords: number, scannedKeys: number, committedBatches: number, abortedTransactions: number }) => void, previousBatch?: import('../model/schema.js').CanonicalBatch, signal?: AbortSignal }} [options]
  */
 export async function replaceCanonicalBatch(indexedDB, batch, options = {}) {
+  batch = { ...batch, ...rebuildDailyWorkflowAggregates(batch.runs, Date.now(), batch.daily_workflow_contributions, batch) };
   options.signal?.throwIfAborted();
   const errors = relationshipErrors(batch);
   if (errors.length > 0) throw new Error(`Canonical relationship validation failed: ${errors.join('; ')}`);

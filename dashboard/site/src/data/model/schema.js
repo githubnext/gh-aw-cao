@@ -2,7 +2,7 @@ import { createDebug } from '../../debug.js';
 
 const debugSchema = createDebug('schema');
 
-export const CANONICAL_SCHEMA_VERSION = 34;
+export const CANONICAL_SCHEMA_VERSION = 35;
 
 export const ENTITY_KINDS = /** @type {const} */ ([
   'campaign',
@@ -79,6 +79,8 @@ const RUN_LINKED_COLLECTIONS = /** @type {const} */ ([
  * @property {Record<string, unknown>[]} [graderObservations]
  * @property {Record<string, unknown>[]} [evals]
  * @property {Record<string, unknown>[]} [evalObservations]
+ * @property {Record<string, unknown>[]} [daily_workflow_aggregates]
+ * @property {Record<string, unknown>[]} [daily_workflow_contributions]
  */
 
 /**

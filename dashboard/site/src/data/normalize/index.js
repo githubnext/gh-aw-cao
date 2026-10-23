@@ -178,6 +178,7 @@ export function normalize(observations, options = {}) {
     operationalValues: new Map(),
     operationalValueEvidence: new Map(),
     marketplacePackages: new Map(),
+    daily_workflow_aggregates: new Map(), daily_workflow_contributions: new Map(),
     experiments: new Map(), experimentAssignments: new Map(),
     graders: new Map(), graderObservations: new Map(), evals: new Map(), evalObservations: new Map()
   };

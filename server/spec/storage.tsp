@@ -5,6 +5,66 @@ namespace Cao.Postgres;
 
 extern dec parent(target: ModelProperty, entity: valueof string, required?: valueof boolean);
 extern dec runPartition(target: Model);
+extern dec aggregatePartition(target: Model);
+
+/** Additive UTC-day facts; no execution/model/event dimensions. Missing measurements retain null sums and zero observation counts. */
+@aggregatePartition
+model daily_workflow_aggregates {
+  id: string;
+  day: plainDate;
+  @parent("repositories")
+  repositoryId: string;
+  @parent("workflows")
+  workflowId: string;
+  runCount: int64;
+  successCount: int64;
+  failureCount: int64;
+  cancelledCount: int64;
+  timedOutCount: int64;
+  skippedCount: int64;
+  actionRequiredCount: int64;
+  neutralCount: int64;
+  startupFailureCount: int64;
+  observedConclusionCount: int64;
+  aicTotalSum?: decimal;
+  aicTotalObservedCount: int64;
+  inputTokensSum?: decimal;
+  inputTokensObservedCount: int64;
+  outputTokensSum?: decimal;
+  outputTokensObservedCount: int64;
+  cacheReadTokensSum?: decimal;
+  cacheReadTokensObservedCount: int64;
+  cacheWriteTokensSum?: decimal;
+  cacheWriteTokensObservedCount: int64;
+  reasoningTokensSum?: decimal;
+  reasoningTokensObservedCount: int64;
+  actionMinutesSum?: decimal;
+  actionMinutesObservedCount: int64;
+  agenticDurationSecondsSum?: decimal;
+  agenticDurationSecondsObservedCount: int64;
+  githubApiCallsSum?: decimal;
+  githubApiCallsObservedCount: int64;
+  safeItemsCountSum?: decimal;
+  safeItemsCountObservedCount: int64;
+  errorCountSum?: decimal;
+  errorCountObservedCount: int64;
+  firewallAllowedCallsSum?: decimal;
+  firewallAllowedCallsObservedCount: int64;
+  firewallBlockedCallsSum?: decimal;
+  firewallBlockedCallsObservedCount: int64;
+  mcpToolCallsSum?: decimal;
+  mcpToolCallsObservedCount: int64;
+  mcpResponseBytesSum?: decimal;
+  mcpResponseBytesObservedCount: int64;
+  toolCallsSum?: decimal;
+  toolCallsObservedCount: int64;
+  domainCallsSum?: decimal;
+  domainCallsObservedCount: int64;
+  highPriorityAuditItemsSum?: decimal;
+  highPriorityAuditItemsObservedCount: int64;
+  mediumPriorityAuditItemsSum?: decimal;
+  mediumPriorityAuditItemsObservedCount: int64;
+}
 
 model campaigns {
   aiCreditAllowance?: decimal;
@@ -970,6 +1030,21 @@ namespace Storage {
     dataRevision: string;
     evaluatedAt: utcDateTime;
     schemaVersion: int64;
+  }
+
+  /** Compact event deltas survive rich detail expiry and deduplicate partial evidence replays. */
+  @aggregatePartition
+  model caoRunEvidenceContributions {
+    `namespace`: string;
+    source: string;
+    id: string;
+    runId: string;
+    day: plainDate;
+    calls?: decimal;
+    mcpCalls?: decimal;
+    mcpResponseBytes?: decimal;
+    allowedCalls?: decimal;
+    blockedCalls?: decimal;
   }
 
   /** Ownership and retry identity only; measured evidence remains in the typed canonical tables. */

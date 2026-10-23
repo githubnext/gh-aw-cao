@@ -96,6 +96,9 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 			return err
 		}
 	}
+	if err := s.maintainAggregatePartitions(ctx, now); err != nil {
+		return err
+	}
 	return s.purgeInactiveRepositories(ctx, cutoff)
 }
 
@@ -114,6 +117,7 @@ func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time)
 		WHERE l.namespace=$1 AND l.lifecycle IN ('deleted','archived') AND l.changed_at<$2
 		AND NOT EXISTS (SELECT 1 FROM workflows w WHERE w.namespace=l.namespace AND w.repository_id=l.id)
 		AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.namespace=l.namespace AND r.repository_id=l.id)
+		AND NOT EXISTS (SELECT 1 FROM daily_workflow_aggregates a WHERE a.namespace=l.namespace AND a.repository_id=l.id)
 		AND NOT EXISTS (SELECT 1 FROM operational_values v WHERE v.namespace=l.namespace AND v.repository_id=l.id)`,
 		s.namespace, cutoff)
 	if err != nil {

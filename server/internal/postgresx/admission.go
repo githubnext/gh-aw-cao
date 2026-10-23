@@ -46,7 +46,13 @@ func (s *Store) RecordAdmittedRun(ctx context.Context, identity admission.Identi
 	if err = insertInvocationEntity(ctx, tx, s.namespace, "$runs", run, now); err != nil {
 		return err
 	}
-	for _, source := range []string{"$repositories", "$workflows", "$runs"} {
+	if err := refreshDailyAggregates(ctx, func(ctx context.Context, statement string, args ...any) error {
+		_, err := tx.ExecContext(ctx, statement, args...)
+		return err
+	}, s.namespace, now, runID.(string), "runs", "tools", "domains", false); err != nil {
+		return err
+	}
+	for _, source := range []string{"$repositories", "$workflows", "$runs", dailyAggregateSource} {
 		if err := partialInvocationQuality(ctx, tx, s.namespace, source); err != nil {
 			return err
 		}

@@ -120,11 +120,12 @@ The activity shard manifest is the dashboard's published operational input. Norm
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 34. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 44. Its canonical stores are
+`gh-aw-cao-dashboard-data`, IndexedDB version 45. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
-`evals`, and `evalObservations`;
+`evals`, `evalObservations`, `daily_workflow_aggregates`, and
+`daily_workflow_contributions`;
 all use `id` as the key.
 
 Storage keeps facts, not recomputable display fields. Workflow campaign
@@ -138,9 +139,73 @@ Run. Identity, integrity keys, provenance, and independently observed historical
 facts remain stored.
 
 The `transactions` store records
-ingestion outcomes and is indexed by `createdAt`. Overview aggregates are
-computed by request-scoped queries over canonical runs. Schema upgrades rebuild all stores from
+ingestion outcomes and is indexed by `createdAt`. Analytical queries may read
+`daily_workflow_aggregates` when their existing semantics can be answered
+exactly by additive daily measurements. Other queries continue reading
+canonical runs and execution records. Schema upgrades rebuild all stores from
 authoritative dashboard inputs.
+
+### Daily workflow aggregates
+
+IndexedDB, the local SQLite projection, and PostgreSQL share a daily aggregate
+identity: namespace, UTC date, repository ID, and workflow ID. There are no
+model, conclusion, or event grouping dimensions. Numeric totals carry
+observation counts: missing evidence is not a measured zero, and averages use
+the denominator specified by the original query.
+
+Each run has a compact accounted contribution. Ingestion subtracts its previous
+contribution and adds its merged replacement in the same storage transaction.
+Repeated ingestion therefore does not increase counts; partial enrichment and
+corrections update totals rather than append another run. Expiring rich
+execution details does not undo an already accounted contribution.
+
+Generic tool/domain totals account for canonical child `invocationCount` and
+`requestCount` measurements, respectively. Their observation counts count
+numeric child values, not runs. Compact child identity/value accounting survives
+rich-detail expiration so replay, corrections, and null retractions remain
+idempotent. MCP and firewall Run measurements remain separate metrics and are
+never added to these totals.
+
+Daily aggregates retain the current UTC Monday-aligned week and two preceding
+weeks, independently of the seven-day rich-detail window. PostgreSQL maintains
+three weekly aggregate partitions; browser and SQLite retention use the same
+logical cutoff. Evidence older than this window cannot resurrect an expired
+aggregate. Compact run summaries remain available to existing detailed queries
+according to their own backend retention policy.
+
+Only additive, whole-UTC-day queries within the retained window are eligible.
+Distinct entities, medians, event/model filters, arbitrary timestamp boundaries,
+individual run ordering, and investigation views still require their original
+canonical sources. See [the canonical contract](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md#72-request-scoped-overview-aggregates)
+for contribution and query eligibility requirements.
+
+The initial query audit does not substitute bounded daily totals for existing
+all-retained-history, arbitrary-filter, conclusion-series, or calendar-rhythm
+queries. The additive source is available to explicitly compatible queries;
+existing dashboard query IDs and detailed sources remain unchanged. Migrating
+those views requires an exact scope/boundary contract, not silently shortening
+their history.
+
+### Aggregate workload benchmark
+
+Run `node --test tests/performance/dashboard-daily-workflow-aggregates.test.mjs`
+from the repository root for the sample correctness/performance workload. Set
+`CAO_DAILY_WORKFLOW_FULL=1` for the planning workload: 25,000 runs, 1,250,000
+tool records, and 125,000 domain records actually written through the production
+local SQLite adapter. JSON reports are written under
+`test-results/daily-workflow-aggregates/`, not committed.
+
+A full synthetic run measured 670.23 seconds for 1.4 million canonical record
+writes (2,089 records/second), an 822.86 MB SQLite file, and 9.78–16.28 ms
+analytical queries reading 21 aggregate/identity records. Ten daily aggregate
+rows occupied 13,261 serialized bytes; 25,000 compact contributions occupied
+8,888,890 serialized bytes. File size includes indexes; serialized record sizes
+do not.
+
+These measurements exclude artifact download, normalization, and network
+ingestion. The IndexedDB comparison uses `fake-indexeddb` with a 250-run sample,
+so it demonstrates correctness, not native-browser throughput. This benchmark
+does not measure PostgreSQL or claim seven-day steady-state storage consumption.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires run-linked detail outside the browser's 7-day window (while retaining available run summaries and keeping Operational Values on 30 days), and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
