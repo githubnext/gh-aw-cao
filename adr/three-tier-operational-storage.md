@@ -82,10 +82,21 @@ SQLite and IndexedDB; only PostgreSQL requires native weekly partitions.
 
 ### 2. Stable identities, ordering, and reconciliation precede retention
 
-Reuse canonical run identity, including repository and execution attempt;
-reruns must not collide. Namespace every identity. Observation identity must
-come from an immutable source identity or a documented canonical identity
-tuple, never ingestion position or arrival time.
+Reuse the repository-scoped canonical Run identity, which excludes attempt
+under RUN-001/RUN-002 in the current specification. Distinguish source execution
+evidence with `(canonical Run ID, attempt)` so rerun observations do not collide,
+then reconcile them into one canonical Run with its winning attempt. Namespace
+every identity. Observation identity must come from an immutable source identity
+or a documented canonical identity tuple, never ingestion position or arrival
+time.
+
+Capacities, hot ordering, sample membership, and run-outcome counts operate on
+canonical Runs, not a second Run per attempt. A retained bundle preserves the
+attempt keys of its associated observations. Queries explicitly about attempts
+must retain that grain; they cannot substitute canonical Run counts. A changed
+winning attempt updates the existing contribution rather than adding a run.
+Measurements spanning attempts need their own documented observation-level
+deduplication and contribution semantics, not an implicit change to Run identity.
 
 Define one versioned reconciliation contract shared by JavaScript and Go:
 
