@@ -12,8 +12,31 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/githubnext/gh-cao/server/internal/auditlifecycle"
+	debuglogger "github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/server"
 )
+
+var auditLifecyclesLog = debuglogger.New("cao:dashboard:audit-lifecycles")
+
+func validateLifecycleTimeout(timeout time.Duration) error {
+	if timeout < time.Second || timeout > 30*time.Minute {
+		return errors.New("audit lifecycle timeout must be between 1s and 30m")
+	}
+	return nil
+}
+
+// lifecycleOutcome maps a completed scan to the command error: a scan error
+// wins, then any non-ok status requires operator attention.
+func lifecycleOutcome(result auditlifecycle.Result, scanErr error) error {
+	auditLifecyclesLog.Printf("audit lifecycle scan finished: status=%s scan_failed=%t", result.Status, scanErr != nil)
+	if scanErr != nil {
+		return scanErr
+	}
+	if result.Status != "ok" {
+		return errors.New("audit lifecycle evidence requires operator attention; inspect the JSON result")
+	}
+	return nil
+}
 
 func newAuditLifecyclesCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -31,8 +54,8 @@ func newAuditLifecyclesCommand() *cobra.Command {
 		if err := options.Validate(); err != nil {
 			return err
 		}
-		if *timeout < time.Second || *timeout > 30*time.Minute {
-			return errors.New("audit lifecycle timeout must be between 1s and 30m")
+		if err := validateLifecycleTimeout(*timeout); err != nil {
+			return err
 		}
 		ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
@@ -48,13 +71,7 @@ func newAuditLifecyclesCommand() *cobra.Command {
 		if err := json.NewEncoder(cmd.OutOrStdout()).Encode(result); err != nil {
 			return errors.New("audit lifecycle scan could not write its operational result")
 		}
-		if scanErr != nil {
-			return scanErr
-		}
-		if result.Status != "ok" {
-			return errors.New("audit lifecycle evidence requires operator attention; inspect the JSON result")
-		}
-		return nil
+		return lifecycleOutcome(result, scanErr)
 	}
 	return cmd
 }

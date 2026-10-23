@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/githubnext/gh-cao/server/internal/auditlifecycle"
 	"github.com/githubnext/gh-cao/server/internal/operational"
@@ -79,5 +81,34 @@ func TestAuditLifecyclesRejectsInvalidOptionsAndMissingStore(t *testing.T) {
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("read-only command created storage: %v", err)
+	}
+}
+
+func TestValidateLifecycleTimeout(t *testing.T) {
+	for _, test := range []struct {
+		timeout time.Duration
+		ok      bool
+	}{
+		{0, false}, {time.Second - 1, false}, {time.Second, true},
+		{30 * time.Minute, true}, {30*time.Minute + 1, false},
+	} {
+		if err := validateLifecycleTimeout(test.timeout); (err == nil) != test.ok {
+			t.Fatalf("timeout %v: err=%v, want ok=%t", test.timeout, err, test.ok)
+		}
+	}
+}
+
+func TestLifecycleOutcome(t *testing.T) {
+	scanErr := errors.New("scan failed")
+	if err := lifecycleOutcome(auditlifecycle.Result{Status: "ok"}, nil); err != nil {
+		t.Fatalf("ok status returned %v", err)
+	}
+	for _, status := range []string{"attention", "incomplete", ""} {
+		if err := lifecycleOutcome(auditlifecycle.Result{Status: status}, nil); err == nil {
+			t.Fatalf("status %q returned nil", status)
+		}
+	}
+	if err := lifecycleOutcome(auditlifecycle.Result{Status: "ok"}, scanErr); !errors.Is(err, scanErr) {
+		t.Fatalf("scan error not preserved: %v", err)
 	}
 }
