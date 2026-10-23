@@ -41,6 +41,24 @@ async function expectAccurateTotals(indexedDB) {
 }
 
 describe('incremental canonical storage shards', () => {
+  it('maintains browser shards against explicit logical time rather than the browser clock', async () => {
+    const indexedDB = new IDBFactory();
+    const watermark = Date.parse('2026-10-10T12:00:00Z');
+    await upsertCanonicalBatch(indexedDB, {
+      ...normalize([]),
+      runs: [{ id: 'watermark-run', startedAt: '2026-10-09T00:00:00Z' }],
+      audits: [{ id: 'watermark-audit', runId: 'watermark-run', timestamp: '2026-10-09T00:00:00Z' }]
+    }, { validateRelationships: false });
+    await maintainCanonicalDatabase(indexedDB, {
+      now: Date.parse('2027-01-01T00:00:00Z'), watermark,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    });
+    expect((await readCollection(indexedDB, 'audits')).map(({ id }) => id)).toEqual(['watermark-audit']);
+    await expect(maintainCanonicalDatabase(indexedDB, {
+      watermark: NaN, maxDatabaseBytes: Number.MAX_SAFE_INTEGER
+    })).rejects.toThrow(/logical watermark/);
+  });
+
   it('preserves usage through the production normalized-shard ingestion boundary', async () => {
     const indexedDB = new IDBFactory();
     const run = { id: 'run:303', attempt: 1, startedAt: '2026-10-09T00:00:00Z' };

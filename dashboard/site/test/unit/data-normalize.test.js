@@ -14,6 +14,21 @@ function observation(kind, sourceId, observedAt, data, source = 'dashboard-sourc
 }
 
 describe('canonical normalization', () => {
+  it('resolves equal-authority conflicts independently of JSON property insertion order', () => {
+    const identity = { owner: 'octo', repository: 'api', githubRunId: '303' };
+    const left = observation('run', 'same', '2026-10-01T00:00:00Z', {
+      ...identity, conclusion: 'failure', event: 'push'
+    });
+    const right = observation('run', 'same', '2026-10-01T00:00:00Z', {
+      ...identity, conclusion: 'success', event: 'workflow_dispatch'
+    });
+    const reorder = (/** @type {Record<string, unknown>} */ value) =>
+      Object.fromEntries(Object.entries(value).reverse());
+    expect(normalize([left, right])).toEqual(normalize([
+      { ...right, data: reorder(right.data) }, { ...left, data: reorder(left.data) }
+    ]));
+  });
+
   it('keeps measured usage through sparse refreshes but not across run attempts', () => {
     const run = { owner: 'octo', repository: 'api', githubRunId: '303', attempt: 1 };
     const measured = observation('run', 'measured', '2026-10-01T00:00:00Z',

@@ -627,6 +627,123 @@ Explicit per-store historical retention windows MAY override these defaults.
 Expiring run-owned records MUST NOT remove their retained Run or the Run's
 structural parents.
 
+### Three-tier migration staging
+
+The following is the migration target, **not an activated replacement for the
+implemented retention profile above**. The shared JavaScript planning and
+aggregate-reducer primitives live in `storage/tiering.js` and
+`storage/daily-metrics.js`. They do not persist tier membership, publish a
+queryable aggregate source, or authorize eviction.
+
+| Canonical backend | Hot Run capacity | Statistical Run capacity |
+| --- | ---: | ---: |
+| PostgreSQL | 16,000 | 64,000 |
+| SQLite | 2,000 | 8,000 |
+| IndexedDB | 1,000 | 16,000 |
+
+The capacities are independent, not one shared budget. Planner callers may
+override `capacities.hot` and `capacities.statistical` independently, retaining
+the backend default for an omitted override. Overrides must be non-negative
+safe integers; NaN, infinities, fractions, and unsafe integers fail closed.
+These planner overrides are not wired to production runtime configuration.
+Hot Runs are selected by
+descending event timestamp and ascending canonical ID. The statistical population
+includes all canonical Runs in the inclusive interval
+`[logical watermark - 7 UTC days, logical watermark]`, including hot Runs.
+Membership overlap MUST NOT be interpreted as independent observations or
+double-counted. Event time is valid `startedAt`, falling back to valid
+`completedAt`; observation time is not an event-time substitute. Future event
+times are deferred by the tier planner, not used to advance its watermark.
+
+The new primitives require an explicit epoch-millisecond logical watermark.
+Consumers MUST persist it with their checkpoint and reject backward progress.
+The existing browser/SQLite maintenance and in-memory merge APIs additionally
+accept an optional `watermark` that overrides wall-clock and observation-derived
+retention time. Legacy callers retain their previous behavior until migrated.
+
+Statistical selection uses deterministic descending priority `outcome weight / u`,
+where `u` is a reproducible two-lane hash rank of namespace, caller-supplied seed,
+and canonical Run ID. Failure, timed-out, startup-failure, and action-required
+conclusions have priority weight 4; cancellation has weight 2; other conclusions
+have weight 1. The planner recognizes both hyphenated canonical/query spellings
+and underscore GitHub API spellings for these conclusions; the Activity adapter
+currently preserves API conclusion strings. IDs break rank ties. These weights
+express selection preference,
+**not inverse inclusion probabilities**. With a fixed deterministic seed,
+sampled populations have `weightsValid: false` and null inclusion probabilities
+and inverse-probability weights. They MUST NOT power population estimates,
+unbiased totals, confidence intervals, or representative outcome-rate claims.
+Only an untruncated census exposes valid probability and inverse weight 1.
+Randomized, independently seeded sampling and validated estimator semantics
+remain future work.
+
+Tier plans are valid only for their supplied canonical population. They are not
+an online reservoir with recovery of discarded candidates: changes in hot
+membership or corrected outcomes can promote a previously discarded candidate.
+Replanning only the preceding hot/statistical selections cannot establish
+convergence with a full replay. Consumers MUST retain the complete declared
+scope's candidates or replay authoritative inputs until scope finalization,
+and MUST NOT present a prefix plan as a finalized population result.
+
+Daily metrics use the collision-safe tuple
+`[namespace, UTC event day, repository ID, workflow ID]`. The reducer maintains
+one winning contribution per canonical Run, subtracts a superseded contribution,
+and adds the replacement, including corrections that move a Run between days
+or parents. Partial collections never imply deletion of absent Runs. However,
+every supplied Run MUST already be a reconciled, complete canonical snapshot,
+not a partial evidence/enrichment patch. A winning newer snapshot replaces its
+entire contribution: omitting a previously measured field makes that measurement
+unknown and removes its previous measured count/sum. Reconciliation of partial
+evidence into complete snapshots is outside this reducer and its production
+integration remains unfinished; the reducer does not promise arbitrary partial
+enrichment support. Metrics
+include Run and conclusion counts and measured count/sum pairs for `aicTotal`,
+`inputTokens`, and `outputTokens`; missing/null measurements do not become zero.
+Decimal-string accumulators make sums independent of correction and batch
+ordering; public numeric sums round only after exact decimal accumulation.
+These are execution-evidence metrics, not verification or operational-value
+outcomes.
+
+Daily metrics retain the current Monday-based UTC calendar week and the previous
+two weeks. Obsolete contributions leave bounded-time precedence tombstones so
+stale retries cannot immediately resurrect a corrected-out Run. These tombstones
+expire when their retirement timestamp falls before the same calendar cutoff;
+arbitrary corrections beyond that evidence horizon require authoritative replay.
+Conflict precedence is frozen source authority, observation timestamp, source,
+source ID, and stable JSON content, using locale-independent string comparisons.
+Normalization likewise ignores JSON object insertion order when breaking ties.
+The current prototype retains the complete stable canonical Run serialization
+inside each contribution's precedence key, including retired contributions.
+It is therefore **not a compact durable ledger** and MUST NOT be persisted as a
+way to retain Run details beyond their allowed lifetime. A compact, versioned
+authority/revision token or digest-based total-order contract, consistently
+implemented across normalization and all adapters, is an additional activation
+prerequisite; no detail-eviction safety claim is made for these prototype keys.
+
+A staged scope declares its exact immutable shard identities. Only receipt of
+every declared shard permits an aggregate commit candidate; retries with changed
+content under one shard identity fail closed. At least one shard identity is
+required; an empty-data publication supplies an explicit empty shard rather than
+inferring completion from the absence of inputs. Shards are limited to 1,000 Run
+observations, scopes to 100,000 observations and 4,096 shard identities. The
+reducer leaves input state unchanged on failure. Its returned checkpoint is only
+a **commit candidate**: an adapter MUST transactionally persist contributions,
+daily metrics, and checkpoint before discarding staging or pruning canonical
+evidence. In-memory completion is not proof of a durable transaction.
+
+Activation remains blocked on durable, crash-safe scope staging and atomic
+checkpoint integration in all three canonical adapters; correction/replay and
+import-completion validation against authoritative data; generated TypeSpec
+PostgreSQL schema support; and declarative daily-metric source/query integration.
+Backend persistence, weekly PostgreSQL aggregate partition design/maintenance,
+transactional checkpoints, metrics beyond the three additive measures and Run/
+conclusion counts above, bounded-memory streaming selection, actual query
+migration/routing, and enterprise-scale correctness, memory, and performance
+measurements are unfinished. Current planning materializes and sorts its supplied
+population; bounded scope sizes do not make that a streaming selector.
+The planner always returns `evictionEnabled: false`. No tier-capacity eviction
+may be enabled merely because a plan or in-memory aggregate candidate succeeds.
+
 ## 5.1 Implemented storage profile
 
 The implementation profile defined by this specification is:

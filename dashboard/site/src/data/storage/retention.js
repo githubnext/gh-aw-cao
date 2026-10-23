@@ -2,6 +2,7 @@ import { orderRunRecords } from '../normalize/index.js';
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition } from '../model/schema.js';
 import { createDebug } from '../../debug.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
+import { logicalWatermark } from './tiering.js';
 
 const debugRetention = createDebug('retention');
 
@@ -75,13 +76,15 @@ export function retentionWindowForStore(storeName, options = {}) {
 /**
  * @param {string} storeName
  * @param {Record<string, unknown>} record
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
+ * @param {{ now?: number, watermark?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number> }} options
  */
 export function isExpiredCanonicalRecord(storeName, record, options = {}) {
   if (!Object.hasOwn(RETENTION_TIMESTAMPS, storeName)) return false;
   const timestamp = recordTimestamp(storeName, record);
+  const reference = options.watermark === undefined
+    ? (options.now ?? Date.now()) : logicalWatermark(options.watermark);
   return timestamp === null
-    || timestamp < (options.now ?? Date.now()) - retentionWindowForStore(storeName, options);
+    || timestamp < reference - retentionWindowForStore(storeName, options);
 }
 const WORKFLOW_INVENTORY_FIELDS = /** @type {const} */ ([
   'campaignId',
@@ -386,11 +389,14 @@ function collectUnreferencedParents(merged, incoming) {
  * The window ends at the newest incoming observation whenever the collection
  * reports observations later than `now`, so a browser clock behind the
  * producer's clock cannot prune records the current collection still reports.
+ * An explicit logical `watermark` overrides both clocks without inferring
+ * progress from an unrelated or future-dated record.
  *
  * @param {import('../model/schema.js').CanonicalBatch} previous
  * @param {import('../model/schema.js').CanonicalBatch} incoming
  * @param {{
  *   now?: number,
+ *   watermark?: number,
  *   retentionWindowMs?: number,
  *   retentionWindowMsByStore?: Partial<Record<typeof STORES[number], number>>,
  *   includePreviousInReference?: boolean,
@@ -402,11 +408,11 @@ function collectUnreferencedParents(merged, incoming) {
  */
 export function mergeRetainedRecords(previous, incoming, options = {}) {
   const now = Number.isFinite(options.now) ? Number(options.now) : Date.now();
-  const reference = Math.max(
+  const reference = options.watermark === undefined ? Math.max(
     now,
     newestObservation(incoming) ?? now,
     options.includePreviousInReference ? (newestObservation(previous) ?? now) : now
-  );
+  ) : logicalWatermark(options.watermark);
   const retentionWindowMs = Number.isFinite(options.retentionWindowMs)
     ? Math.max(0, Number(options.retentionWindowMs))
     : RETENTION_WINDOW_MS;

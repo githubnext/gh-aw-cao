@@ -4,6 +4,7 @@ import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as 
 import { scopedStorageKey } from '../../storage-scope.js';
 import { createDebug } from '../../debug.js';
 import { tidy } from '../../data-operations.js';
+import { logicalWatermark } from './tiering.js';
 import {
   STORAGE_SHARD_STORE, maintainStorageShards, rebuildStorageShards,
   withStorageMetadata, writeAccountedRecords
@@ -678,9 +679,10 @@ function estimatedRecordBytes(record) {
  * Full scans are reserved for explicitly requested relationship or legacy audit repair.
  *
  * @param {IDBFactory} indexedDB
- * @param {{ now?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, repairAuditCuration?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
+ * @param {{ now?: number, watermark?: number, retentionWindowMs?: number, retentionWindowMsByStore?: Record<string, number>, maxDatabaseBytes: number, usageBytes?: number | null, reconcileRelationships?: boolean, repairAuditCuration?: boolean, preserveEntityIds?: { repositories?: string[], workflows?: string[] }, onMaintenanceProgress?: (completed: number, total: number) => void, signal?: AbortSignal }} options
  */
 export async function maintainCanonicalDatabase(indexedDB, options) {
+  if (options.watermark !== undefined) options = { ...options, now: logicalWatermark(options.watermark) };
   if (options.reconcileRelationships || options.repairAuditCuration) return reconcileCanonicalDatabase(indexedDB, options);
   options.signal?.throwIfAborted();
   const database = await openCanonicalDatabase(indexedDB);

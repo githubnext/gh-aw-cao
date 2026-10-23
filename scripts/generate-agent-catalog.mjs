@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 
 import { loadAgentDashboardDocument, readAgentCatalog } from '../activity/agent-catalog.mjs';
+import { queryStorageInventory } from '../activity/query-storage-inventory.mjs';
 
 const output = new URL('../dashboard/site/src/agent/catalog.generated.json', import.meta.url);
 const queriesOutput = new URL('../dashboard/site/src/agent/queries.generated.json', import.meta.url);
@@ -10,3 +11,5 @@ const [catalog, dashboard] = await Promise.all([
 ]);
 await writeFile(output, `${JSON.stringify(catalog, null, 2)}\n`);
 await writeFile(queriesOutput, `${JSON.stringify(dashboard.dashboard.queries)}\n`);
+await writeFile(new URL('../dashboard/site/src/agent/storage-inventory.generated.json', import.meta.url),
+  `${JSON.stringify(queryStorageInventory(dashboard))}\n`);

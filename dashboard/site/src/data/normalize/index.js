@@ -5,6 +5,7 @@ import { createDebug } from '../../debug.js';
 import { curateBatchAudits } from '../model/audit-curation.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import { compactRoutingRuns } from './model-routing.js';
+import { canonicalJson, compareCanonicalStrings } from './order.js';
 
 const debugNormalize = createDebug('normalize:index');
 
@@ -115,9 +116,9 @@ function identityFor(observation) {
 function compareObservations(left, right, precedence) {
   return (precedence[left.source] ?? 0) - (precedence[right.source] ?? 0)
     || Date.parse(left.observedAt) - Date.parse(right.observedAt)
-    || left.source.localeCompare(right.source)
-    || left.sourceId.localeCompare(right.sourceId)
-    || JSON.stringify(left.data).localeCompare(JSON.stringify(right.data));
+    || compareCanonicalStrings(left.source, right.source)
+    || compareCanonicalStrings(left.sourceId, right.sourceId)
+    || compareCanonicalStrings(canonicalJson(left.data), canonicalJson(right.data));
 }
 
 /**

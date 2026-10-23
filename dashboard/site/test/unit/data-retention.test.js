@@ -5,6 +5,7 @@ import {
   capCanonicalBatchSize,
   estimateCanonicalBatchBytes,
   mergeRetainedRecords,
+  isExpiredCanonicalRecord,
   OPERATIONAL_VALUE_RETENTION_MS,
   RETENTION_WINDOW_DAYS
 } from '../../src/data/storage/retention.js';
@@ -62,6 +63,19 @@ function batch(events) {
 }
 
 describe('canonical retention merge', () => {
+  it('uses an explicit logical watermark instead of wall time or future observations', () => {
+    const previous = batch([{ eventId: 'keep', timestamp: '2026-09-08T04:00:00Z' }]);
+    const incoming = batch([{ eventId: 'future', timestamp: '2027-01-01T00:00:00Z' }]);
+    const merged = mergeRetainedRecords(previous, incoming, {
+      now: Date.parse('2027-01-01T00:00:00Z'), watermark: NOW
+    });
+    expect(merged.audits.map(({ id }) => id)).toContain('keep');
+    expect(isExpiredCanonicalRecord('audits', previous.audits[0], {
+      now: Date.parse('2027-01-01T00:00:00Z'), watermark: NOW
+    })).toBe(false);
+    expect(() => mergeRetainedRecords(previous, incoming, { watermark: NaN })).toThrow(/logical watermark/);
+  });
+
   it('retains compact browser outcomes for a year without retaining old run details', () => {
     const day = 86_400_000;
     const previous = batch([{ eventId: 'event:old', timestamp: new Date(NOW - 40 * day).toISOString() }]);
