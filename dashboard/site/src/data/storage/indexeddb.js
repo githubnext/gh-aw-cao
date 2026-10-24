@@ -1,5 +1,5 @@
 import { relationshipErrors } from '../model/schema.js';
-import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, evictDailyRunCounts, reconcileDailyRunCounts } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, DAILY_RUN_COUNT_STATE_ID, evictDailyRunCounts, reconcileDailyRunCountsBatch } from '../model/daily-run-counts.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
 import { BROWSER_RETENTION_WINDOWS_MS, recordTimestamp, RETENTION_TIMESTAMPS as RETENTION_TIMESTAMP_FIELDS } from './retention.js';
 import { scopedStorageKey } from '../../storage-scope.js';
@@ -656,7 +656,7 @@ export async function backfillDailyRunCounts(database, keyRange = globalThis.IDB
           }
         };
       });
-      for (const record of records) await reconcileDailyRunCounts(transaction, record);
+      await reconcileDailyRunCountsBatch(transaction, records);
       const latest = await requestResult(states.get(DAILY_RUN_COUNT_STATE_ID));
       states.put({
         ...latest, after: records.at(-1)?.id ?? state.after,
@@ -759,7 +759,7 @@ export async function admitExpiredRunCountsWithConnection(database, records) {
     const transaction = readwriteTransaction(database, [...DAILY_RUN_COUNT_STORES]);
     const done = transactionDone(transaction);
     try {
-      for (const record of records.slice(offset, offset + 250)) await reconcileDailyRunCounts(transaction, record);
+      await reconcileDailyRunCountsBatch(transaction, records.slice(offset, offset + 250));
       commitTransaction(transaction);
       await done;
     } catch (error) {

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { condition, evaluate, interpolate } from "../helpers/actions-runtime/expressions.mjs";
 import { sampleWorkflow } from "../helpers/actions-runtime/workflow.mjs";
-import { publishFile } from "../helpers/actions-runtime/index.mjs";
+import { copyRuntimeTool, publishFile } from "../helpers/actions-runtime/index.mjs";
 
 const context = {
   status: "success", github: { event: {} }, env: {}, inputs: {},
@@ -36,6 +36,24 @@ test("runtime tool publication isolates overlapping writers and preserves comple
   }), /checksum mismatch/);
   assert.equal(readFileSync(target, "utf8"), "first");
   assert.deepEqual(readdirSync(directory), ["tool"]);
+});
+
+test("Activity tools replace parent links with self-contained files for isolated Docker mounts", t => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-runtime-tools-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const activity = join(directory, "activity");
+  mkdirSync(activity);
+  const source = join(directory, "jq");
+  const target = join(activity, "jq");
+  writeFileSync(source, "fixture executable", { mode: 0o755 });
+  symlinkSync("../jq", target);
+  copyRuntimeTool(source, target);
+  assert.equal(lstatSync(target).isFile(), true);
+  assert.equal(lstatSync(target).mode & 0o777, 0o755);
+  const mounted = join(directory, "mounted");
+  cpSync(activity, mounted, { recursive: true });
+  rmSync(source);
+  assert.equal(readFileSync(join(mounted, "jq"), "utf8"), "fixture executable");
 });
 
 test("sample runner expressions preserve values, short circuit and missing properties", () => {

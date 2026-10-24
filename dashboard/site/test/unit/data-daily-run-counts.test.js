@@ -151,6 +151,27 @@ describe('additive daily run outcome counts', () => {
     expect(await readCollection(indexedDB, 'runs')).toEqual([]);
   });
 
+  it('reads and publishes shared count accounting once per bounded write batch', async () => {
+    const get = vi.spyOn(IDBObjectStore.prototype, 'get');
+    const put = vi.spyOn(IDBObjectStore.prototype, 'put');
+    const runs = Array.from({ length: 300 }, (_, index) => ({
+      ...fixture, id: `run:${index}`
+    }));
+    await upsertCanonicalBatch(indexedDB, { ...normalize([]), runs }, {
+      batchSize: 150, validateRelationships: false
+    });
+    const stateCalls = (/** @type {typeof get | typeof put} */ spy) =>
+      spy.mock.contexts.filter((store) =>
+        /** @type {IDBObjectStore} */ (store).name === 'dailyRunCountState').length;
+    // Opening the database reads state once; each of the two write batches does once more.
+    expect(stateCalls(get)).toBe(3);
+    // Initial schema state plus one publication per batch.
+    expect(stateCalls(put)).toBe(3);
+    expect(await counts()).toEqual([expect.objectContaining({ total: 300, pending: 300 })]);
+    expect((await readCollections(indexedDB, ['dailyRunCountState'])).dailyRunCountState[0])
+      .toMatchObject({ receiptCount: 300, dailyBucketCount: 1, excludedRuns: 0 });
+  });
+
   it('moves corrected dates, repositories and workflows without retaining the obsolete bucket', async () => {
     await writeRuns([fixture]);
     await writeRuns([{

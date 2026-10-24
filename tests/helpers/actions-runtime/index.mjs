@@ -24,6 +24,10 @@ export function publishFile(target, prepare) {
   } finally { rmSync(temporary, { force: true }); }
 }
 
+export function copyRuntimeTool(source, target) {
+  publishFile(target, temporary => cpSync(source, temporary));
+}
+
 // Download only the immutable setup revision declared by this compiled workflow.
 export function prepareActions(workspace, workflow, cache) {
   const compiled = parse(readFileSync(join(workspace, workflow), "utf8"));
@@ -66,7 +70,8 @@ export function prepareActivityTools(cache) {
   const version = JSON.parse(readFileSync(join(root, ".github/workflows/cao.json"), "utf8"))["gh-aw-version"];
   const destination = join(shared, `activity-${version}`);
   mkdirSync(destination, { recursive: true });
-  if (!existsSync(join(destination, "jq"))) publishFile(join(destination, "jq"), temporary => symlinkSync("../jq", temporary));
+  // Only this directory is mounted into Docker; links to its parent cannot resolve.
+  copyRuntimeTool(join(shared, "jq"), join(destination, "jq"));
   const download = (url, asset, target, executable = false) => {
     if (existsSync(target)) return;
     const sums = run("curl", ["-fsSL", "--proto", "=https", `${url}/${asset.sums}`]);

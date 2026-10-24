@@ -1,6 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, timestampMilliseconds } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
-import { DAILY_RUN_COUNT_STORES, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCounts, reconcileRunCountRecord } from '../model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCountsBatch, reconcileRunCountRecord } from '../model/daily-run-counts.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import {
@@ -134,6 +134,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   /** @type {string[]} */
   const dirtyRuns = [];
   const dirtyAudits = new Set();
+  const countRecords = [];
   let failureLogs = false;
   const referencesAudits = ['experimentAssignments', 'graderObservations', 'evalObservations'].includes(storeName);
   /** @param {Record<string, unknown>} record @param {number} sign */
@@ -175,9 +176,9 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
       ));
     }
     if (storeName === 'runs') {
-      await reconcileDailyRunCounts(transaction, {
+      countRecords.push({
         ...withoutStorageMetadata(record), ...runCountCandidates.get(String(record.id))
-      }, runCountConflicts.has(String(record.id)));
+      });
     }
     account(record, 1);
     if (storeName === 'runs' && typeof record.failureLog === 'string' && record.failureLog.length > 0) failureLogs = true;
@@ -185,6 +186,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
         !== JSON.stringify(auditCurationRunFacts(record))) dirtyRuns.push(String(record.id));
     store.put(record);
   }
+  await reconcileDailyRunCountsBatch(transaction, countRecords, runCountConflicts);
   for (const record of removed) store.delete(/** @type {IDBValidKey} */ (record.id));
   if (deltas.size === 0) return;
   const changes = [...deltas.values()];

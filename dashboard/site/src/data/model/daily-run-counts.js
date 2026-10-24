@@ -203,17 +203,32 @@ export async function evictDailyRunCounts(database, now, signal, keyRange = glob
 }
 
 /**
- * Called inside the canonical run write transaction, after its canonical merge.
- * Detail deletion deliberately does not call this function.
+ * Reconcile a bounded page inside its canonical write transaction, reading and
+ * publishing shared accounting state once rather than for every receipt.
  * @param {IDBTransaction} transaction
- * @param {Record<string, unknown>} record
- * @param {boolean} [batchConflict]
+ * @param {Record<string, unknown>[]} records
+ * @param {Set<string>} [conflicts]
  */
-export async function reconcileDailyRunCounts(transaction, record, batchConflict = false) {
-  const receipts = transaction.objectStore('runCountContributions');
-  const daily = transaction.objectStore('dailyRunCounts');
+export async function reconcileDailyRunCountsBatch(transaction, records, conflicts = new Set()) {
+  if (!records.length) return;
   const states = transaction.objectStore('dailyRunCountState');
   const state = await result(states.get(DAILY_RUN_COUNT_STATE_ID));
+  for (const record of records) {
+    await reconcileDailyRunCounts(transaction, record, conflicts.has(String(record.id)), state);
+  }
+  if (state) states.put(state);
+}
+
+/**
+ * Detail deletion deliberately does not reconcile count receipts.
+ * @param {IDBTransaction} transaction
+ * @param {Record<string, unknown>} record
+ * @param {boolean} batchConflict
+ * @param {Record<string, any> | undefined} state
+ */
+async function reconcileDailyRunCounts(transaction, record, batchConflict, state) {
+  const receipts = transaction.objectStore('runCountContributions');
+  const daily = transaction.objectStore('dailyRunCounts');
   const previous = await result(receipts.get(/** @type {IDBValidKey} */ (record.id)));
   const reconciled = reconcileRunCountRecord(previous?.run, record);
   const run = reconciled.run;
@@ -263,6 +278,5 @@ export async function reconcileDailyRunCounts(transaction, record, batchConflict
     state.dailyBytes = Number(state.dailyBytes ?? 0) + dailyBytesDelta;
     state.receiptCount = Number(state.receiptCount ?? 0) + Number(!previous);
     state.dailyBucketCount = Number(state.dailyBucketCount ?? 0) + dailyCountDelta;
-    states.put(state);
   }
 }
