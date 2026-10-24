@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T22:21:01Z",
-      "worker_run_id": "39863949279",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39861817815,
-        39860009827,
-        39859869900,
-        39858147029,
-        39856721920,
-        39853841365,
-        39851881587,
-        39850101910,
-        39849775463,
-        39848891781,
-        39848482868,
-        39848428490,
-        39848107063,
-        39846338334,
-        39845758662,
-        39845403154,
-        39845248093,
-        39843325812,
-        39843076599,
-        39842243038
-      ],
-      "outcome": "incomplete: the 2026-10-22T19:41:07Z to 2026-10-22T22:01:36Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. During bounded job-and-step metadata collection for the successful build-and-deploy paths, the runner hit an OS-thread resource limit (failed to create a new OS thread); only run 39849775463 returned complete job metadata before collection stopped. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful build-and-deploy runs, workflow/job median and p90 timings, repeated trusted cache-hit verification, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the Astro documentation generation category remains next."
-    },
-    {
       "evaluated_at": "2026-10-22T22:53:17Z",
       "worker_run_id": "39867713369",
       "category": "Astro documentation generation",
@@ -757,6 +729,34 @@
       "category": "dependency installation and caching",
       "evidence_run_ids": [],
       "outcome": "incomplete: the first bounded latest-completed docs.yml workflow-run request returned an API rate-limit error before a current evidence window could be collected. Per resource-limit policy, all further GitHub API and model work stopped. The required five comparable successful runs, workflow and build/deploy job median and p90 timings, dashboard-producer comparison, step-level cost analysis, trusted cache-hit verification, and duplicate open-issue check could not be completed. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T11:09:00Z",
+      "worker_run_id": "40089239717",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40088202008,
+        40087201749,
+        40086650991,
+        40086356094,
+        40085620594,
+        40085544587,
+        40084262204,
+        40083295947,
+        40082492096,
+        40081734662,
+        40081732363,
+        40080322090,
+        40079579050,
+        40079554998,
+        40079039344,
+        40078135799,
+        40076460048,
+        40075511648,
+        40074719374,
+        40074066090
+      ],
+      "outcome": "incomplete: the 2026-10-24T07:25:23Z to 2026-10-24T11:01:11Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Trusted job and step metadata established only three successful build-and-deploy paths: schedule 40085620594 and push 40085544587 at source SHA a31193495a7499e7f79752280964f86092f6ba9a, plus schedule 40081732363 at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. Workflow_run 40081734662 spent most of its elapsed time waiting behind the concurrent publication, then freshness-checked and skipped build and deploy; every other successful run completed in 13 seconds or less and cannot contain the observed 75-99 second build paths. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
