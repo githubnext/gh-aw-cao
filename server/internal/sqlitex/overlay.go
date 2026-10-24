@@ -59,9 +59,7 @@ func OpenOverlay(ctx context.Context, snapshot, overlay string, metadata map[str
 			return nil, err
 		}
 	}
-	location := &url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(overlay), "/")}
-	location.RawQuery = url.Values{"mode": {"rw"}, "_pragma": {"busy_timeout(5000)"}}.Encode()
-	db, err := sql.Open("sqlite", location.String())
+	db, err := sql.Open("sqlite", overlayDSN(overlay))
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +126,15 @@ func (s *Store) initializeOverlay(ctx context.Context, snapshot string) error {
 
 func (s *Store) SnapshotRevision() string { return s.snapshotRevision }
 
+func overlayDSN(path string) string {
+	location := &url.URL{Scheme: "file", Path: "/" + strings.TrimPrefix(filepath.ToSlash(path), "/")}
+	location.RawQuery = url.Values{"mode": {"rw"}, "_pragma": {"busy_timeout(5000)"}}.Encode()
+	return location.String()
+}
+
 // StageOverlay copies only the local delta, never the attached deployed records.
 func (s *Store) StageOverlay(ctx context.Context, path string) error {
-	db, err := sql.Open("sqlite", s.overlayPath)
+	db, err := sql.Open("sqlite", overlayDSN(s.overlayPath))
 	if err != nil {
 		return err
 	}
@@ -142,7 +146,7 @@ func (s *Store) StageOverlay(ctx context.Context, path string) error {
 // PublishOverlay atomically activates a fully ingested local delta. Concurrent
 // refreshes cannot overwrite a generation published after staging began.
 func (s *Store) PublishOverlay(ctx context.Context, path string) error {
-	db, err := sql.Open("sqlite", s.overlayPath)
+	db, err := sql.Open("sqlite", overlayDSN(s.overlayPath))
 	if err != nil {
 		return err
 	}

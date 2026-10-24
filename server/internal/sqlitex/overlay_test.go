@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -27,7 +28,11 @@ func TestOverlayPreservesSnapshotAndPublishesAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	overlay := filepath.Join(t.TempDir(), "local.sqlite")
+	name := "local #1.sqlite"
+	if runtime.GOOS != "windows" {
+		name = "local ?#1.sqlite"
+	}
+	overlay := filepath.Join(t.TempDir(), name)
 	store, err := OpenOverlay(t.Context(), snapshot, overlay, nil)
 	if err != nil {
 		t.Fatal(err)
