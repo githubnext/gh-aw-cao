@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createDebug } from '../../debug.js';
 import { identifier, sql } from './sql.js';
+import { attachSqliteOverlay } from './sqlite-overlay.js';
 
 const debug = createDebug('sqlite-indexeddb');
 
@@ -155,8 +156,8 @@ export function createSqliteRelationalTables(connection) {
 
 /** @typedef {string | string[]} KeyPath */
 
-/** @param {string} filename */
-function createConnection(filename) {
+/** @param {string} filename @param {{ snapshotPath: string, snapshotRevision: string }} [overlay] */
+function createConnection(filename, overlay) {
   const connection = new DatabaseSync(filename);
   connection.function('__idb_key_valid', { deterministic: true }, (key) => (
     key === null ? 0 : Number(isValidJsonKey(JSON.parse(String(key))))
@@ -170,6 +171,7 @@ function createConnection(filename) {
   connection.exec('BEGIN IMMEDIATE;');
   try {
     createSqliteRelationalTables(connection);
+    if (overlay) attachSqliteOverlay(connection, overlay);
     connection.exec('COMMIT;');
   } catch (error) {
     connection.exec('ROLLBACK;');
@@ -507,7 +509,7 @@ class SqliteIDBObjectStore {
       const key = valueAtKeyPath(record, this.keyPath);
       if (key === undefined) throw new TypeError(`Record is missing key path ${String(this.keyPath)}`);
       this.database.connection.prepare(`
-        INSERT INTO __idb_records (database_name, store_name, record_key, value)
+        INSERT INTO main.__idb_records (database_name, store_name, record_key, value)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(database_name, store_name, record_key)
         DO UPDATE SET value = excluded.value
@@ -581,8 +583,9 @@ class SqliteIDBObjectStore {
   /** @param {unknown} key */
   delete(key) {
     return this.requireTransaction().runRequest(() => {
+      this.database.markOverlayDeleted(this.name, encodeKey(key));
       this.database.connection.prepare(`
-        DELETE FROM __idb_records
+        DELETE FROM main.__idb_records
         WHERE database_name = ? AND store_name = ? AND record_key = ?
       `).run(this.database.name, this.name, encodeKey(key));
       return undefined;
@@ -591,8 +594,9 @@ class SqliteIDBObjectStore {
 
   clear() {
     return this.requireTransaction().runRequest(() => {
+      this.database.markOverlayDeleted(this.name);
       this.database.connection.prepare(`
-        DELETE FROM __idb_records WHERE database_name = ? AND store_name = ?
+        DELETE FROM main.__idb_records WHERE database_name = ? AND store_name = ?
       `).run(this.database.name, this.name);
       return undefined;
     });
@@ -694,14 +698,26 @@ class SqliteIDBDatabase {
    * @param {DatabaseSync} connection
    * @param {string} name
    * @param {number} version
+   * @param {boolean} [overlay]
    */
-  constructor(connection, name, version) {
+  constructor(connection, name, version, overlay = false) {
     this.connection = connection;
     this.name = name;
     this.version = version;
+    this.overlay = overlay;
     this.activeTransactions = /** @type {Set<SqliteIDBTransaction>} */ (new Set());
     this.closeRequested = false;
     this.upgradeTransaction = /** @type {SqliteIDBTransaction | null} */ (null);
+  }
+
+  /** @param {string} store @param {string} [key] */
+  markOverlayDeleted(store, key) {
+    if (!this.overlay) return;
+    this.connection.prepare(`
+      INSERT OR IGNORE INTO main.__cao_overlay_deleted (database_name,store_name,record_key)
+      SELECT database_name,store_name,record_key FROM __idb_records
+      WHERE database_name=? AND store_name=? ${key === undefined ? '' : 'AND record_key=?'}
+    `).run(this.name, store, ...(key === undefined ? [] : [key]));
   }
 
   get objectStoreNames() {
@@ -851,12 +867,13 @@ export class SqliteIDBKeyRange {
 }
 
 export class SqliteIndexedDBFactory {
-  /** @param {string} filename */
-  constructor(filename) {
+  /** @param {string} filename @param {{ snapshotPath: string, snapshotRevision: string }} [overlay] */
+  constructor(filename, overlay) {
     if (typeof filename !== 'string' || !filename.trim()) {
       throw new TypeError('SQLite database filename is required');
     }
     this.filename = filename;
+    this.overlay = overlay;
   }
 
   /**
@@ -868,7 +885,7 @@ export class SqliteIndexedDBFactory {
     queueMicrotask(() => {
       let connection;
       try {
-        connection = createConnection(this.filename);
+        connection = createConnection(this.filename, this.overlay);
         const databaseName = String(name);
         const row = /** @type {{ version: number } | undefined} */ (connection.prepare(`
           SELECT version FROM __idb_databases WHERE name = ?
@@ -884,7 +901,10 @@ export class SqliteIndexedDBFactory {
           throw error;
         }
 
-        const database = new SqliteIDBDatabase(connection, databaseName, requestedVersion);
+        if (this.overlay && requestedVersion !== oldVersion) {
+          throw new Error('SQLite overlays cannot migrate the deployed snapshot schema');
+        }
+        const database = new SqliteIDBDatabase(connection, databaseName, requestedVersion, Boolean(this.overlay));
         if (requestedVersion > oldVersion) {
           connection.exec('BEGIN IMMEDIATE;');
           try {
@@ -936,6 +956,7 @@ export class SqliteIndexedDBFactory {
     queueMicrotask(() => {
       let connection;
       try {
+        if (this.overlay) throw new Error('SQLite overlays cannot delete the deployed database');
         connection = createConnection(this.filename);
         connection.exec('BEGIN IMMEDIATE;');
         try {
@@ -957,7 +978,7 @@ export class SqliteIndexedDBFactory {
   }
 
   async databases() {
-    const connection = createConnection(this.filename);
+    const connection = createConnection(this.filename, this.overlay);
     try {
       return connection.prepare(`
         SELECT name, version FROM __idb_databases ORDER BY name
@@ -981,20 +1002,22 @@ export class SqliteIndexedDBFactory {
 
 /**
  * @param {string} filename
+ * @param {{ snapshotPath: string, snapshotRevision: string }} [overlay]
  * @returns {IDBFactory & SqliteIndexedDBFactory}
  */
-export function createSqliteIndexedDB(filename) {
+export function createSqliteIndexedDB(filename, overlay) {
   return /** @type {IDBFactory & SqliteIndexedDBFactory} */ (
-    /** @type {unknown} */ (new SqliteIndexedDBFactory(filename))
+    /** @type {unknown} */ (new SqliteIndexedDBFactory(filename, overlay))
   );
 }
 
 /**
  * @param {string} filename
+ * @param {{ snapshotPath: string, snapshotRevision: string }} [overlay]
  * @returns {IDBFactory & SqliteIndexedDBFactory}
  */
-export function installSqliteIndexedDB(filename) {
-  const indexedDB = createSqliteIndexedDB(filename);
+export function installSqliteIndexedDB(filename, overlay) {
+  const indexedDB = createSqliteIndexedDB(filename, overlay);
   globalThis.indexedDB = indexedDB;
   globalThis.IDBKeyRange = /** @type {typeof IDBKeyRange} */ (
     /** @type {unknown} */ (SqliteIDBKeyRange)

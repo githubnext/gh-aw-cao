@@ -107,6 +107,7 @@ type App struct {
 	ownedOperational operational.Store
 	database         dashboardstore.Store
 	ownedDatabase    dashboardstore.Store
+	localBackfill    *localSQLiteBackfill
 	closeDatabase    sync.Once
 	closeError       error
 	databaseQueries  []query.Definition
@@ -417,6 +418,9 @@ func (a *App) start(startupCtx, runtimeCtx context.Context) error {
 	}
 	a.startContext = runCtx
 	a.stop = cancel
+	if a.localBackfill != nil {
+		a.startTask(func() { a.localBackfill.run(runCtx, a.config.Logger, a.hub.Broadcast) })
+	}
 	if a.services.Backend != nil {
 		a.startTask(func() { a.runRedisMaintenance(runCtx, redisMaintenanceInterval) })
 	}

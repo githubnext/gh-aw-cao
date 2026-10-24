@@ -693,6 +693,9 @@ func newServeCommand() *cobra.Command {
 	redisURL := cmd.Flags().String("redis-url", defaultRedisURL, "explicitly opt in to Redis operational state instead of Postgres")
 	postgresURL := cmd.Flags().String("postgres-url", "", "opt in to Postgres dashboard storage; an empty value uses CAO_POSTGRES_URL")
 	sqlitePath := cmd.Flags().String("sqlite", defaultSQLitePath, "local SQLite snapshot cache; download deployed data if missing")
+	sqliteOverlay := cmd.Flags().String("sqlite-overlay", "", "writable local delta; defaults to the snapshot path plus .local.sqlite")
+	backfill := cmd.Flags().Bool("backfill", true, "refresh local SQLite data using GH_TOKEN, GITHUB_TOKEN or gh auth; set false for offline serving")
+	backfillInterval := cmd.Flags().Duration("backfill-interval", 5*time.Minute, "delay between local SQLite refresh passes")
 	dataURLDefault := strings.TrimSpace(os.Getenv("DASHBOARD_DATA_URL"))
 	if dataURLDefault == "" {
 		dataURLDefault = defaultSQLiteDataURL
@@ -711,8 +714,13 @@ func newServeCommand() *cobra.Command {
 	agentCatalog := cmd.Flags().String("agent-catalog", "../dashboard/site/src/agent/catalog.generated.json", "materialized read-only agent catalog")
 	mcpContract := cmd.Flags().String("mcp-contract", "../dashboard/site/src/agent/mcp-contract.json", "shared MCP tool contract")
 	mcpEnabled := cmd.Flags().Bool("mcp-enabled", false, "serve the read-only MCP endpoint at /mcp")
-	cmd.MarkFlagsMutuallyExclusive("sqlite", "postgres-url")
 	canvasConfigPath := cmd.Flags().String("canvas-config", "", "private local Copilot adapter configuration; stdin owns the host lifetime")
+	cmd.MarkFlagsMutuallyExclusive("sqlite", "postgres-url")
+	for _, flag := range []string{"sqlite-overlay", "backfill", "backfill-interval"} {
+		for _, other := range []string{"postgres-url", "redis-url", "source", "canvas-config"} {
+			cmd.MarkFlagsMutuallyExclusive(flag, other)
+		}
+	}
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "redis-url")
 	cmd.MarkFlagsMutuallyExclusive("sqlite", "source")
 	cmd.MarkFlagsMutuallyExclusive("download-sqlite", "postgres-url")
@@ -756,6 +764,12 @@ func newServeCommand() *cobra.Command {
 		if localSQLite {
 			if snapshotPath == "" {
 				return errors.New("--sqlite requires a local snapshot cache path")
+			}
+			if *backfillInterval <= 0 {
+				return errors.New("--backfill-interval must be positive")
+			}
+			if cmd.Flags().Changed("sqlite-overlay") && strings.TrimSpace(*sqliteOverlay) == "" {
+				return errors.New("--sqlite-overlay requires a separate local file path")
 			}
 			if err := server.ValidateListen(*listen, *cert, *key); err != nil {
 				return err
@@ -820,6 +834,11 @@ func newServeCommand() *cobra.Command {
 				Logger:               log.New(os.Stderr, "cao-dashboard: ", log.LstdFlags),
 				Canvas:               canvas,
 			}
+			if localSQLite {
+				// A local user's GITHUB_TOKEN is collection-only, not an
+				// Actions identity admitted through the MCP endpoint.
+				config.GitHubActionsToken, config.GitHubActionsActor = "", ""
+			}
 			if canvas != nil {
 				config.OnListen = func(address string) error {
 					return json.NewEncoder(cmd.OutOrStdout()).Encode(map[string]string{
@@ -847,7 +866,20 @@ func newServeCommand() *cobra.Command {
 				}
 				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "SQLite snapshot ready.")
 			}
-			app, err := server.NewLocalSQLiteApp(ctx, snapshotPath, config)
+			var app *server.App
+			if canvas != nil {
+				app, err = server.NewLocalSQLiteApp(ctx, snapshotPath, config)
+			} else {
+				overlay := strings.TrimSpace(*sqliteOverlay)
+				if overlay == "" {
+					overlay = snapshotPath + ".local.sqlite"
+				}
+				interval := time.Duration(0)
+				if *backfill {
+					interval = *backfillInterval
+				}
+				app, err = server.NewLocalSQLiteOverlayApp(ctx, snapshotPath, overlay, interval, config)
+			}
 			if err != nil {
 				return err
 			}

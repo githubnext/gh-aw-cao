@@ -685,6 +685,26 @@ The default local profile is loopback-only. The separate hosted profile requires
 GitHub OAuth and explicit organization/team authorization; neither profile
 grants database access to clients.
 
+Local SQLite serving outside the internal canvas MAY refresh recent GitHub
+evidence using the operator's local token. The deployed snapshot MUST remain
+attached read-only through native SQLite `ATTACH DATABASE`; a separate local
+delta SHALL hold upserts and deletion markers, without copying historical
+records. Requests MUST use query-only transactions over the merged view.
+The delta MUST be bound to the snapshot's canonical content revision and
+incompatible bases MUST fail closed without deleting local evidence.
+Refresh scope MUST come exclusively from repositories in that snapshot, never
+token reach or expanded control-plane authority. Collection SHALL reuse the
+Activity pipeline and canonical ingestion, including winning-attempt and
+run-linked replacement semantics. Publication MUST atomically activate a
+successfully ingested staged local delta, reject concurrent stale writers, and
+notify revision subscribers; incomplete repository collection and failed
+ingestion MUST preserve previously committed evidence and remain explicit.
+Credentials MUST NOT be stored in SQLite or exposed to clients. Backfill MUST
+have bounded scope, lookback, run count, and execution deadlines, be canceled
+and joined on shutdown, and support offline serving of both snapshot and local
+data without GitHub requests. Local refresh MUST NOT change hosted PostgreSQL,
+OAuth, webhook, collection-authority, or internal canvas contracts.
+
 The optional hosted OIDC admission gate MAY publish early Run evidence only
 after verified identity, policy approval and durable decision resolution.
 Successful publication SHALL insert a sparse canonical `runs` row with

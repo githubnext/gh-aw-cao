@@ -26,10 +26,14 @@ import (
 )
 
 type Store struct {
-	db          *sql.DB
-	dataVersion int64
-	state       dashboardstore.State
-	metadata    map[string]model.Metadata
+	db               *sql.DB
+	dataVersion      int64
+	state            dashboardstore.State
+	metadata         map[string]model.Metadata
+	conn             *sql.Conn
+	readGate         chan struct{}
+	snapshotRevision string
+	overlayPath      string
 }
 
 type reader struct {
@@ -100,13 +104,31 @@ func storeVersion(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func (s *Store) Open() bool   { return s != nil && s.db != nil }
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Open() bool { return s != nil && s.db != nil }
+func (s *Store) Close() error {
+	var err error
+	if s.conn != nil {
+		err = s.conn.Close()
+	}
+	return errors.Join(err, s.db.Close())
+}
 
 func (s *Store) WithReadTransaction(ctx context.Context, fn func(context.Context, dashboardstore.Reader) error) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if s.readGate != nil {
+		select {
+		case s.readGate <- struct{}{}:
+			defer func() { <-s.readGate }()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	begin := s.db.BeginTx
+	if s.conn != nil {
+		begin = s.conn.BeginTx
+	}
+	tx, err := begin(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return fmt.Errorf("begin SQLite snapshot read: %w", err)
 	}
