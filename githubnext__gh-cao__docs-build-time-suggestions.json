@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T22:53:17Z",
-      "worker_run_id": "39867713369",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39867543520,
-        39867286337,
-        39865710922,
-        39864715403,
-        39864355080,
-        39861817815,
-        39860009827,
-        39859869900,
-        39858147029,
-        39856721920,
-        39853841365,
-        39851881587,
-        39850101910,
-        39849775463,
-        39848891781,
-        39848482868,
-        39848428490,
-        39848107063,
-        39846338334,
-        39845758662
-      ],
-      "outcome": "no-op: the 2026-10-22T20:05:14Z to 2026-10-22T22:49:43Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Eight successful build-and-deploy runs were comparable (four push, three workflow_run, and one schedule, across six source SHAs): median/p90 end-to-end 108/135.8 seconds, initial queue or orchestration wait 4/6.8 seconds, queue-excluded execution 105/132.1 seconds, build job 77/80 seconds, and deploy job 11.5/43.8 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful producer workflows were 31/39.6 seconds median/p90 end-to-end and their build jobs were 16/25 seconds. Dependency installation was 21.5/24.2 seconds, Astro generation 15/15 seconds, reusable-dashboard restoration 1/2.3 seconds, and Pages artifact upload 2.5/3 seconds. Bounded trusted logs verified npm package-cache hits of about 301 MiB and reusable dashboard-cache hits of about 3 MiB on five representative builds; trusted step metadata showed all eight builds skipped dashboard lookup and artifact fallback. Astro generation was 14.3% of median queue-excluded execution, and eliminating it entirely would save only 15 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving Astro change met the threshold, so the category advanced. The newest source revision had the same 15-second Astro time; the 65-second Deploy Pages step in run 39851881587 was disclosed rather than attributed to Astro."
-    },
-    {
       "evaluated_at": "2026-10-22T23:51:21Z",
       "worker_run_id": "39874161959",
       "category": "reusable dashboard generation",
@@ -757,6 +729,13 @@
         40074066090
       ],
       "outcome": "incomplete: the 2026-10-24T07:25:23Z to 2026-10-24T11:01:11Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Trusted job and step metadata established only three successful build-and-deploy paths: schedule 40085620594 and push 40085544587 at source SHA a31193495a7499e7f79752280964f86092f6ba9a, plus schedule 40081732363 at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. Workflow_run 40081734662 spent most of its elapsed time waiting behind the concurrent publication, then freshness-checked and skipped build and deploy; every other successful run completed in 13 seconds or less and cannot contain the observed 75-99 second build paths. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T11:34:34Z",
+      "worker_run_id": "40090269811",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: the first bounded latest-completed docs.yml workflow-run request returned an API rate-limit error before a current evidence window could be collected. Per resource-limit policy, all further GitHub API and model work stopped. The required five comparable successful runs, workflow and build/deploy job median and p90 timings, dashboard-producer comparison, step-level cost analysis, trusted cache-hit verification, and duplicate open-issue check could not be completed. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
