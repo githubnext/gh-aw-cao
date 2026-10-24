@@ -574,7 +574,7 @@ invariants:
   - "Dispatch envelopes include identity, mode, review destination, and provenance; they MUST NOT include credentials."
   - "Activity evidence MUST NOT determine rollout, outcomes, or operational value."
   - "JSONL snapshots are authoritative; caches, SQLite, and IndexedDB are disposable projections."
-  - "Postgres is the exclusive hosted dashboard entity and query store: it holds native typed entity and inventory tables, quality metadata, diagnostics, and revision state; replacement is transactional and does not create generations or persistent derived projections."
+  - "Postgres is the exclusive hosted dashboard entity and query store: it holds native typed entity and inventory tables, quality metadata, diagnostics, and revision state; replacement is transactional and does not create generations. The additive daily run-count projection, compact contribution receipts, and state in specs/dashboard-data.md §72.2 are the only persisted derived-projection exception; other daily metrics and computation results remain request-scoped."
   - "Local serve MUST default to SQLite, reuse existing caches offline and acquire verified deployed data only when missing; --sqlite selects another cache and --download-sqlite explicitly refreshes. Explicit --postgres-url, --source or --redis-url selects PostgreSQL; database service environment variables alone MUST NOT override the local SQLite default. SQLite MUST remain loopback-only and bearer-authenticated and open canonical snapshots read-only without bootstrap, migration, repair or ingestion; invalid or unreadable existing caches and dangling symlinks MUST fail closed without automatic repair downloads. It MUST NOT change hosted PostgreSQL execution, ingest behavior or defaults, become a fallback from a failed PostgreSQL connection, enable hosted capabilities, or cache stale query results. In-place commits MUST notify revision subscribers; quality stays unknown without stronger evidence."
   - "The hosted query plan executor MUST bind values and namespace and enforce pre-filter input and resource bounds; all hosted row operations execute in SQL without Go evaluator fallback."
   - "TypeSpec owns the fresh Postgres physical schema; entities MUST NOT be duplicated in generic source storage or persisted as JSON/JSONB/serialized documents. Startup MUST NOT migrate or import old database layouts."
@@ -633,7 +633,7 @@ invariants:
   - "Recurring workflow-value collection MUST require exact reviewed opt-in under control-plane.campaigns.activity.workflow-values and a confined local collector deployed with policy. Existing Activity and hosted collection cycles MUST intersect effective collection scope and frozen cadence; failed refreshes MUST retain the original accepted capture without invented freshness or zeros. Disable MUST stop future collection without deleting history. Navigation, upload and discovery MUST NOT enable collection or introduce a new schedule or model call."
   - "Computation results MUST NOT grant authority or turn runtime success into verification, accepted outcomes, or operational value."
   - "Successful-Run value computations MUST report produced outputs, native operational-grader measurements, and efficiency as separate axes; operational value is reserved for package-defined repository campaign metrics, output creation MUST NOT imply acceptance or value, and no composite score may be invented."
-  - "Overview counters MUST use IndexedDB-native counts or request-scoped declarative queries. Explicitly migrated additive health queries may read a separate daily run-count projection keyed by namespace, UTC run-start date, repository, and workflow; compact per-Run receipts survive detail eviction, with atomic old/new contribution replacement. Existing detail storage and retention are unchanged; other daily metrics and computation-result projections are not persisted. Clustering and audit diagnosis execute in bounded selected-partition queries."
+  - "Overview counters MUST use IndexedDB-native counts or request-scoped declarative queries. Explicitly migrated additive health queries may read a separate daily run-count projection keyed by namespace, UTC run-start date, repository, and workflow; compact per-Run receipts survive detail eviction, with atomic old/new contribution replacement. Existing detail storage and retention are unchanged. Daily buckets and receipts retain the current UTC Monday-start week and its two preceding weeks independently of detail-retention overrides; backfill cannot recover already-evicted history. Other daily metrics and computation-result projections are not persisted. Clustering and audit diagnosis execute in bounded selected-partition queries."
   - "Materialized computation results MUST remain generation-scoped disposable state; runtime facts and failure scopes are precomputed, while detailed audit causes and actions are cached only for selected or prioritized partitions."
   - "Runtime computation partitions MUST be target-aware for workers: form Campaign, Workflow, and target Repository evaluation partitions before evaluating success boundaries so one target's success cannot mask another target's failures."
   - "Runtime computations MUST evaluate Campaign orchestrators before enumerating worker-target partitions; a failing, unknown, or unobserved orchestrator gates worker evaluation without converting skipped workers into healthy, failed, or not-observed results."
@@ -837,6 +837,7 @@ commands:
       tests: npm test
       unit_tests: npm run test:unit
       integration_tests: npm run test:integration
+      daily_run_counts_conformance: POSTGRES_URL=... npm run test:conformance:daily-run-counts
       campaign_lifecycle_tests: npm run test:campaign-lifecycle
       campaign_root_tests: npm run test:campaign-root
       runtime_installation_tests: npm run test:runtime-install
@@ -890,6 +891,8 @@ validation:
     - commands.repository_root.entries.dashboard_server_e2e
     - commands.dashboard_server.entries.tests
     - commands.dashboard_server.entries.local_gateway_conformance
+  daily_run_counts_command_refs:
+    - commands.repository_root.entries.daily_run_counts_conformance
   workflow_source_command_refs:
     - commands.repository_root.entries.workflow_compile
   workflow_source_generated_artifact_command_refs:
@@ -914,6 +917,7 @@ validation:
     - "Verify workflow sources, not generated lock files, are edited."
     - "Verify dashboard data access crosses either the Web Worker or Go HTTP(S) server declarative query boundary."
     - "Verify hosted dashboard entities and queries use Postgres, while Redis remains operational-only."
+    - "Changes to the daily run-count projection, reconciliation, retention, source, or migrated consumers require the additional daily-run-count conformance gate against an isolated PostgreSQL database whose test role can create schemas, with native Chromium installed. Skipped backends or browser emulation alone are not conformance; npm run check does not execute this gate."
 
 provenance:
   source: ARCHITECTURE.md

@@ -24,8 +24,6 @@ does not apply.
 4. Preserve availability and freshness metadata in the result.
 5. Report source identifiers, timestamps, filters, and uncertainty.
 
-Use for CAO activity analysis from a published dashboard snapshot.
-
 ## Deterministic boundary
 
 Use `gh cao download`, `node activity/cao.mjs audit-jsonl`, `node activity/cao.mjs repair-database`, and reviewed `gh cao query`
@@ -134,9 +132,9 @@ running commands. See [Agent analysis](https://github.com/githubnext/gh-cao/blob
    node activity/cao.mjs repair-database
    ```
 
-   This mutates the snapshot, backs up before repair, and applies retention even
-   without corruption. Use `--ttl-days all --run-ttl-days all` for intentional
-   historical backfills.
+   This backs up and mutates the snapshot, applying retention even without
+   corruption. Use `--ttl-days all --run-ttl-days all` for historical detail,
+   not daily counts; see [daily-count limits](../cao-cli/SKILL.md#daily-run-counts).
 
 ## Collections
 

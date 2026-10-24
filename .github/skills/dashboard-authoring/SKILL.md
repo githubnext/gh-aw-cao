@@ -29,6 +29,15 @@ Before implementing a data-backed feature or modifying a database, write or upda
 
 Follow the data-injection boundary documented in [`docs/dashboard-data-model.md`](../../../docs/dashboard-data-model.md): authoritative inputs pass through source adapters, canonical normalization, canonical storage, and the query layer before reaching a view. Views must not parse upstream logs or query storage directly. Treat browser IndexedDB and the local SQLite projection as disposable, reconstructable derived state.
 
+Read the checked-out data specification at the revision being authored, not only
+main's online copy. Its §72.2 `daily-run-counts` source is the only persisted
+daily-projection exception, not a new canonical entity. Explicitly migrated
+additive run-health consumers sum its counters at supported scope and
+whole-UTC-day grain; they preserve partial/unavailable provenance and never
+union totals with retained Runs, silently fall back to detail, or accept
+unsupported filters such as rollout mode. Other analyses keep their declared
+sources.
+
 Use the shared dashboard notification service only for brief, actionable runtime feedback. Keep durable findings, workflow outcomes, and operator attention items in Dashboard Language sources and views rather than transient notifications.
 
 Use [`gh aw logs`](https://github.com/github/gh-aw/blob/main/docs/src/content/docs/troubleshooting/debugging.md) as the source of workflow-run evidence. The published activity shards use the gh-aw [`logs-jsonl.schema.json`](https://github.com/github/gh-aw/blob/main/schemas/logs-jsonl.schema.json); consult that schema rather than inferring fields from fixtures or individual deployed records.
@@ -38,6 +47,20 @@ Operational-grader design and result semantics belong to gh-aw's `operational-va
 For live feature-development data, run `cao download`. It downloads the deployed Pages site's shard manifest, activity shards, and `gh-aw-logs.sqlite` into `.cao/` by default. Set `DASHBOARD_DATA_URL` or pass `--url URL` for another deployment, and pass `--output DIRECTORY` for another destination. Query the downloaded SQLite database with `cao query`, and use `cao help` for the supported collections and filters. Live data is development evidence, not a schema authority; keep code aligned with the specifications and JSONL schema.
 
 Before treating a source as complete, run `cao audit-jsonl --input FILE`. Distinguish repeated source observations from duplicate canonical records, and distinguish run-summary coverage from enriched artifact coverage. Use a separate SQLite database plus `--retention-days all` and `repair-database --ttl-days all --run-ttl-days all` for historical backfills; repair mutates the database and otherwise applies retention even without corruption. Do not turn browser IndexedDB into an archive.
+
+These flags preserve run/detail history only. Daily buckets and contribution
+receipts retain the current UTC Monday-start week and its two preceding weeks
+independently of detail retention; expired replay cannot reopen buckets and
+backfill cannot recover already-evicted history. Use appropriate retained
+canonical detail sources for historical or unsupported-dimension analysis,
+without substituting them for the three migrated daily-count consumers.
+
+For changes to the daily projection, reconciliation, retention, source, or
+migrated consumers, run
+`POSTGRES_URL=... npm run test:conformance:daily-run-counts` from the repository
+root with isolated PostgreSQL (test role can create schemas) and native
+Chromium. Skipped backends/tests, browser emulation alone, or `npm run check`
+does not establish this cross-backend conformance.
 
 ## Campaign file convention
 
