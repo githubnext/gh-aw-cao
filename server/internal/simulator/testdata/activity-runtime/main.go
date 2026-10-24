@@ -116,6 +116,9 @@ func serve() (result error) {
 			api.ServeHTTP(w, r)
 		case route == prefix:
 			send(repository)
+		case route == prefix+"/issues":
+			// This fixture has no issues created by safe outputs.
+			send([]any{})
 		case route == "/repos/github/gh-aw/releases":
 			send([]any{map[string]any{"tag_name": "v0.93.1", "draft": false, "prerelease": false}})
 		case route == prefix+"/commits/main":

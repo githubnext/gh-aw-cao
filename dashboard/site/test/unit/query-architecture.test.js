@@ -38,7 +38,9 @@ describe('dashboard query architecture', () => {
     const guidance = read('../../AGENTS.md');
 
     expect(guidance).toContain('Eliminate every JavaScript-based dashboard query.');
-    expect(guidance).toContain('executed by the query engine in the data Web Worker against the canonical database');
+    expect(guidance).toContain('executed through the data Web Worker for static deployments');
+    expect(guidance).toContain("the Go server's query engine for local SQLite and hosted PostgreSQL deployments");
+    expect(guidance).toContain('Author consumer queries in dashboard documents, not JavaScript engine modules.');
     expect(guidance).toContain('Keep the active page or view subscribed to its worker query');
     expect(guidance).toContain('Effects may synchronize query results and local interaction state to owned DOM only.');
   });
