@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
+
 	"github.com/githubnext/gh-cao/server/internal/logger"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
@@ -42,14 +43,15 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 		}
 		projections[index] = column.Expression
 	}
+	//nolint:gosec // Expressions come only from the generated canonical relation, not query input.
 	statement := "SELECT " + strings.Join(projections, ",") + " FROM " +
 		strings.ReplaceAll(relation.SQL, "{}", "$1") + fmt.Sprintf(" LIMIT %d", query.MaxInputRows+1)
 	rows, err := r.tx.QueryContext(ctx, statement, r.store.namespace)
 	if err != nil {
 		return query.SQLRelation{}, nil, err
 	}
+	defer func() { _ = rows.Close() }()
 	candidates, err := func() ([]map[string]any, error) {
-		defer func() { _ = rows.Close() }()
 		result := []map[string]any{}
 		var bytes int64
 		for rows.Next() {
@@ -89,17 +91,18 @@ func (r *readTransaction) statisticalSQLSource(ctx context.Context) (query.SQLRe
 	}
 	var selected []map[string]any
 	frame := map[string]any{"weight-valid": false}
-	if errors.Is(err, dashboardquery.ErrStatisticalBudget) {
+	switch {
+	case errors.Is(err, dashboardquery.ErrStatisticalBudget):
 		statisticalLog.Print("event=statistical-source status=unavailable reason=input-budget")
 		quality["availability"] = "unavailable"
 		quality["completeness"] = "unknown"
 		quality["error"] = "statistical candidate frame exceeds input budget"
-	} else if watermark == "" {
+	case watermark == "":
 		statisticalLog.Print("event=statistical-source status=unavailable reason=missing-clock")
 		quality["availability"] = "unavailable"
 		quality["completeness"] = "unknown"
 		quality["error"] = "statistical sampling requires a recorded canonical watermark"
-	} else {
+	default:
 		selected, frame, err = dashboardquery.SampleStatisticalRuns(candidates, dashboardquery.StatisticalOptions{
 			Context: ctx, Logf: statisticalLog.Printf,
 			Watermark: watermark, Capacity: dashboardquery.StatisticalPostgresCapacity,

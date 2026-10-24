@@ -7,6 +7,7 @@ import { openCanonicalDatabase, readCollections } from '../../src/data/storage/i
 import { DashboardQueryCancelledError } from '../../src/data/queries/declarative.js';
 import { queryDatabaseSources } from '../../src/data/queries/database.js';
 import { processDataRequest } from '../../src/data-worker.js';
+import { executeNamedQuery } from '../../src/agent/query-executor.js';
 
 vi.stubGlobal('crypto', webcrypto);
 vi.stubGlobal('IDBKeyRange', IDBKeyRange);
@@ -341,6 +342,33 @@ describe('independent frozen statistical sampling', () => {
       )).toBe(true);
       expect(result[`statistical-${store}`].metadata['statistical-frame']).toMatchObject({ 'population-count': 6 });
     }
+  });
+
+  it('keeps the backend capacity and canonical frame clock in named-query results', async () => {
+    const factory = new IDBFactory();
+    const database = await openCanonicalDatabase(factory);
+    const transaction = database.transaction('runs', 'readwrite');
+    for (const row of fixture.rows) transaction.objectStore('runs').put(row);
+    await new Promise((resolve, reject) => { transaction.oncomplete = resolve; transaction.onerror = reject; });
+    database.close();
+    const result = await executeNamedQuery({
+      indexedDB: factory,
+      document: { dashboard: { queries: [{ name: 'sample', from: 'statistical-runs' }] } },
+      queryId: 'sample', statisticalCapacity: STATISTICAL_CAPACITIES.sqlite
+    });
+    expect(result.metadata['statistical-frame']).toMatchObject({
+      capacity: STATISTICAL_CAPACITIES.sqlite, 'population-count': 6, 'weight-valid': false,
+      watermark: fixture.watermark
+    });
+    expect(result.metadata['sample-frame']).toEqual(result.metadata['statistical-frame']);
+    expect(result.metadata['as-of']).toBe(fixture.watermark);
+    const controller = new AbortController();
+    controller.abort();
+    await expect(executeNamedQuery({
+      indexedDB: factory,
+      document: { dashboard: { queries: [{ name: 'sample', from: 'statistical-runs' }] } },
+      queryId: 'sample', signal: controller.signal
+    })).rejects.toMatchObject({ name: 'AbortError' });
   });
 
   it('does not refill a bounded sample after a consumer narrows to an unselected run', async () => {

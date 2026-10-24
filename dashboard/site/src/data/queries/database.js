@@ -108,6 +108,7 @@ function executeDatabaseQuery(queryName, inputs, sources, metadataSource, budget
           availability: result.rows.length > 0 ? 'available' : 'empty',
           ...(queryName.startsWith('statistical-') && inputs.$statisticalMembership
             ? {
+                'as-of': inputs.$statisticalMembership.metadata['as-of'],
                 'statistical-frame': inputs.$statisticalMembership.metadata['statistical-frame'],
                 'sample-frame': inputs.$statisticalMembership.metadata['statistical-frame']
               } : {})
@@ -1187,7 +1188,7 @@ function queryStores(name) {
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} logicalSources
  * @param {string[]} sourceNames
- * @param {{ onMetrics?: (metrics: { databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] }) => void, checkpoint?: () => void }} [options]
+ * @param {{ onMetrics?: (metrics: { databaseMs: number, projectionMs: number, totalMs: number, recordsRead: number, stores: string[] }) => void, checkpoint?: () => void, statisticalCapacity?: number }} [options]
  */
 export async function queryDatabaseSources(indexedDB, logicalSources, sourceNames, options = {}) {
   const startedAt = monotonicNow();
@@ -1246,6 +1247,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
     const runMetadata = queryMetadata(sources, 'runs', 'runs', rawRuns?.metadata?.availability !== 'unavailable');
     try {
       const sample = await sampleStatisticalRuns(collections.runs ?? [], {
+        capacity: options.statisticalCapacity,
         watermark: runMetadata['as-of'] || canonicalStatisticalWatermark(collections.runs ?? []),
         complete: runMetadata.completeness === 'complete'
           && runMetadata.availability !== 'unavailable',
@@ -1258,7 +1260,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
           id: row.id, organization: row.owner, repository: row.repository, run: String(row.githubRunId),
           ...Object.fromEntries(Object.entries(row).filter(([field]) => field.startsWith('statistical-')))
         })),
-        metadata: { ...runMetadata, 'statistical-frame': sample.frame }
+        metadata: { ...runMetadata, 'as-of': sample.frame.watermark, 'statistical-frame': sample.frame }
       };
     } catch (error) {
       if (error instanceof DashboardQueryCancelledError) throw error;
@@ -1347,7 +1349,7 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
 /**
  * @param {IDBFactory} indexedDB
  * @param {Record<string, unknown>} sources
- * @param {{ ingest?: boolean, storage?: StorageManager, sourceNames?: string[], queries?: unknown[], signal?: AbortSignal, budget?: import('./declarative.js').QueryBudget }} [options]
+ * @param {{ ingest?: boolean, storage?: StorageManager, sourceNames?: string[], queries?: unknown[], signal?: AbortSignal, budget?: import('./declarative.js').QueryBudget, statisticalCapacity?: number }} [options]
  */
 export async function loadDatabaseQuerySources(indexedDB, sources, options = {}) {
   if (options.ingest) await ingestDashboardSources(indexedDB, sources, { storage: options.storage, signal: options.signal });
@@ -1363,7 +1365,9 @@ export async function loadDatabaseQuerySources(indexedDB, sources, options = {})
   const declared = dashboardQueryIndex(queries);
   const required = resolveDashboardQuerySources(queries, remaining, nativeNames)
     .filter((name) => !nativeNames.has(name) && !declared.has(name));
-  const database = await queryDatabaseSources(indexedDB, sources, required, { checkpoint: () => budget.checkpoint() });
+  const database = await queryDatabaseSources(indexedDB, sources, required, {
+    checkpoint: () => budget.checkpoint(), statisticalCapacity: options.statisticalCapacity
+  });
   return {
     ...Object.fromEntries(sourceNames.filter((name) => nativeNames.has(name) || !declared.has(name)).map((name) => [
       name, native[name] ?? database[name]

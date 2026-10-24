@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
+
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
 )
