@@ -3,13 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T17:53:23Z",
-      "worker_run_id": "39826129909",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection for the latest 20 completed docs.yml runs from the preceding 14 days was blocked immediately by the GitHub REST API rate limit at 2026-10-22T17:53:23Z. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful runs, workflow/job median and p90 timings, step timings, trusted cache hit/miss evidence, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the reusable dashboard generation category remains next."
-    },
-    {
       "evaluated_at": "2026-10-22T18:46:36Z",
       "worker_run_id": "39833630318",
       "category": "reusable dashboard generation",
@@ -757,6 +750,34 @@
         40028915755
       ],
       "outcome": "incomplete: the 2026-10-23T21:44:11Z to 2026-10-24T02:03:05Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Run metadata showed only three successful runs long enough to contain the recently observed 62-75 second build path: workflow_run 40050211598, schedule 40039211316, and workflow_run 40039164850, all at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. The other successful runs completed in 25 seconds or less and therefore cannot contain a comparable build-and-deploy path. This is below the required minimum of five comparable successful runs, so workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T04:23:08Z",
+      "worker_run_id": "40061943504",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40060697788,
+        40059981240,
+        40059296868,
+        40058322772,
+        40058304540,
+        40056639629,
+        40055917295,
+        40055829888,
+        40054501924,
+        40052532232,
+        40051897521,
+        40050519437,
+        40050211598,
+        40048891001,
+        40048322967,
+        40047130409,
+        40043057001,
+        40041469818,
+        40040264232,
+        40039211316
+      ],
+      "outcome": "incomplete: the 2026-10-23T23:21:32Z to 2026-10-24T04:01:40Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Trusted job and step metadata established only two successful build-and-deploy paths: workflow_run 40058304540 and workflow_run 40050211598, both at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. Long schedule runs 40058322772 and 40039211316 freshness-checked and skipped build and deploy after queue or concurrency waits; the other successful runs completed in 17 seconds or less and cannot contain the observed 57-62 second build paths. This is below the required minimum of five comparable successful runs, so workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
