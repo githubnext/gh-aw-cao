@@ -44,6 +44,8 @@ type Runner struct {
 	GitHubAPIURL string
 	// WindowDays bounds the retained collection window.
 	WindowDays int
+	// Since narrows local refreshes without changing the retained evidence window.
+	Since time.Time
 	// RunLimit bounds runs collected per repository per invocation.
 	RunLimit int
 	// MaxStorageMB bounds on-disk artifact usage per invocation.
@@ -249,6 +251,10 @@ func (r Runner) Collect(ctx context.Context, task Task) error {
 
 func (r Runner) downloadLogs(ctx context.Context, repository, workspace, token string, reserve int) error {
 	shardPrefix := filepath.Join(r.Lake.ShardDirectory(), r.Lake.ShardPrefix(repository))
+	startDate := fmt.Sprintf("-%dd", r.windowDays())
+	if !r.Since.IsZero() {
+		startDate = r.Since.UTC().Format(time.RFC3339)
+	}
 	arguments := []string{
 		filepath.Join(r.CatalogRoot, "activity", "collect-workflow-logs.mjs"), r.gh(), "--audit",
 		"--repo", repository,
@@ -256,7 +262,7 @@ func (r Runner) downloadLogs(ctx context.Context, repository, workspace, token s
 		"--summary-file", "",
 		"--cached-jsonl", shardPrefix + "*",
 		"--artifacts", "usage,experiment",
-		"--start-date", fmt.Sprintf("-%dd", r.windowDays()),
+		"--start-date", startDate,
 		"--cache-before", fmt.Sprintf("-%dd", r.windowDays()),
 		"--count", strconv.Itoa(r.runLimit()),
 		"--timeout", strconv.Itoa(r.requestTimeout()),
