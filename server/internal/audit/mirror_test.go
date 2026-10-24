@@ -3,9 +3,11 @@ package audit
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -131,5 +133,41 @@ func TestMirrorSerializesCompleteJSONLines(t *testing.T) {
 	group.Wait()
 	if lines := bytes.Split(bytes.TrimSpace(buffer.Bytes()), []byte("\n")); len(lines) != 8 {
 		t.Fatalf("mirror lost concurrent lines: %s", buffer.String())
+	}
+}
+
+func TestEncodeMirrorRecordProducesOneJSONLine(t *testing.T) {
+	data, err := encodeMirrorRecord(t.Context(), []slog.Attr{slog.String("event", "token.minted"), slog.Int("count", 2)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasSuffix(data, []byte("\n")) || bytes.Count(data, []byte("\n")) != 1 {
+		t.Fatalf("record is not exactly one line: %q", data)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded["msg"] != "audit" || decoded["event"] != "token.minted" || decoded["count"] != float64(2) {
+		t.Fatalf("unexpected record: %v", decoded)
+	}
+}
+
+func TestEncodeMirrorRecordWithoutFieldsKeepsMarker(t *testing.T) {
+	data, err := encodeMirrorRecord(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"msg":"audit"`) {
+		t.Fatalf("missing audit marker: %q", data)
+	}
+}
+
+func TestMirrorWriteReportsTimeoutWhenSlotIsHeld(t *testing.T) {
+	m := &mirror{writer: &bytes.Buffer{}, active: make(chan struct{}, 1)}
+	m.active <- struct{}{}
+	err := m.write(t.Context(), nil)
+	if !errors.Is(err, ErrMirrorUnavailable) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("held slot was not reported as a timeout: %v", err)
 	}
 }
