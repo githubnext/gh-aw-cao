@@ -1,8 +1,11 @@
+import { createDebug } from '../../debug.js';
 import databaseQueries from '../queries/database.json' with { type: 'json' };
 import routing from '../../../dashboard-fragments/model-routing.json' with { type: 'json' };
 import ingestionQueries from './routing-aggregate.json' with { type: 'json' };
 import { executeDashboardQueries } from '../queries/declarative.js';
 import { dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../queries/view-payload-compiler.js';
+
+const debugModelRoutingNormalize = createDebug('normalize:model-routing');
 
 const transientFields = ['routingBaselineModel', 'routingBaselineComplete', 'routingBaselineMainRequests', 'eligibleChoices', 'catalogueOverlap'];
 
@@ -30,7 +33,10 @@ export const ROUTING_AGGREGATE_FIELDS = {
  * @param {import('../model/schema.js').CanonicalBatch} batch
  */
 export function compactRoutingRuns(batch) {
-  if (!batch.audits.some((record) => record.type === 'session.format')) return;
+  if (!batch.audits.some((record) => record.type === 'session.format')) {
+    debugModelRoutingNormalize({ event: 'compact-routing-runs', status: 'skipped', reason: 'no-session-format' });
+    return;
+  }
   const auditProjection = databaseQueries.find((query) => query.name === 'audits');
   if (!auditProjection?.select) throw new TypeError('Routing ingestion requires the canonical Audit projection');
   const definitions = /** @type {Array<Record<string, unknown>>} */ (resolveDashboardQueryParameters([...routing.queries, ...ingestionQueries],
@@ -58,6 +64,7 @@ export function compactRoutingRuns(batch) {
     $audits: input('$audits', batch.audits), $runs: input('$runs', batch.runs)
   }, ['routing-ingestion-aggregate'])['routing-ingestion-aggregate'];
   if (result.metadata?.availability === 'unavailable') {
+    debugModelRoutingNormalize({ event: 'compact-routing-runs', status: 'unavailable', runs: batch.runs.length });
     throw new TypeError(`Routing aggregate unavailable: ${JSON.stringify(result.metadata)}`);
   }
   const runs = new Map(batch.runs.map((run) => [run.id, run]));
@@ -69,6 +76,9 @@ export function compactRoutingRuns(batch) {
       run[field] = row[source] ?? null;
     }
   }
+  debugModelRoutingNormalize({
+    event: 'compact-routing-runs', status: 'applied', runs: batch.runs.length, aggregateRows: result.rows.length
+  });
   // No inventory, generic proxy events or ingestion-only facts enter storage,
   // including when replaying older cached session projections.
   batch.audits = batch.audits.filter((record) => !['model.inventory', 'firewall.event'].includes(String(record.type)))
