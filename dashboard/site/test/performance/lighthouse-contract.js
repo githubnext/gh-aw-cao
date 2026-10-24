@@ -51,7 +51,8 @@ export function assertCanonicalCounts(state, counts, shardCount) {
     throw new Error('Canonical performance counts are incomplete or invalid.');
   }
   if (state === 'empty') {
-    if (Object.entries(counts).some(([store, count]) => store !== 'transactions' && count !== 0)) {
+    if (Object.entries(counts).some(([store, count]) =>
+      store !== 'transactions' && count !== 0 && !(store === 'dailyRunCountState' && count === 1))) {
       throw new Error('The empty performance dataset contains canonical entities.');
     }
   } else if (state === 'full') {

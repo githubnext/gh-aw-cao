@@ -404,6 +404,19 @@
       ]
     },
     {
+      "name": "indexing-daily-run-counts",
+      "subject": "Inspect admitted daily logical Run counts independently of retained detail and shard receipts.",
+      "objective": "Make the daily run-count projection visible as an ingestion diagnostic.",
+      "acceptance": "Sum daily buckets by observed UTC execution-start day across repositories and workflows, without page filters, detail fallback, fabricated days or zero populations. Preserve aggregate coverage and partial or unavailable evidence; counts do not prove upstream completeness.",
+      "from": "daily-run-counts",
+      "aggregate": {
+        "by": ["day"],
+        "values": [{ "field": "total", "as": "runs", "reducer": "sum" }]
+      },
+      "select": [{ "field": "day", "as": "date" }, { "field": "runs" }],
+      "order-by": [{ "field": "date", "direction": "asc" }]
+    },
+    {
       "name": "indexing-campaigns-table-count",
       "subject": "Count retained campaigns rows in the dashboard database.",
       "objective": "Provide the retained campaigns row count for the table-count diagnostic.",
@@ -1727,7 +1740,7 @@
       "id": "indexing",
       "kind": "custom",
       "intent": "Determine whether collection, ingestion and retained data are healthy enough for analysis.",
-      "subject": "Server collection health, API usage, ingestion queues, shards and retained transactions.",
+      "subject": "Server collection health, API usage, ingestion queues, daily run counts, shards and retained transactions.",
       "objective": "Locate evidence gaps and bottlenecks before trusting dashboard conclusions.",
       "acceptance": "Show native states, timestamps, counts, sizes and units with backend limitations; preserve failures and partial/unavailable evidence. Empty queues or tables alone do not establish successful collection.",
       "title": "Ingestion",
@@ -1772,6 +1785,23 @@
               "type": "quantitative",
               "title": "Rows"
             }
+          }
+        },
+        {
+          "id": "indexing-daily-run-counts",
+          "title": "Observed daily runs",
+          "subject": "Inspect the daily run-count projection by UTC execution-start day.",
+          "objective": "Compare admitted daily logical Run volume independently of retained detail and per-shard input counts.",
+          "acceptance": "Show observed day totals only, preserving partial coverage and unavailable projection state. Counts do not establish complete upstream collection or verified outcomes.",
+          "description": "Daily logical Run counts across all repositories and workflows, by observed UTC execution-start day, not import or shard date. Counts survive detail eviction and do not count attempts separately. Undated runs are excluded; missing days are not measured zeroes. Partial coverage does not reconstruct evicted history, and admitted counts do not prove complete upstream collection.",
+          "data": { "source": "indexing-daily-run-counts", "query-context": false },
+          "mark": "chart",
+          "chart": "line",
+          "layout": "full",
+          "empty-message": "No dated daily Run observations are available. Collection coverage remains unknown.",
+          "encoding": {
+            "x": { "field": "date", "type": "temporal", "format": "human-friendly-timestamp", "time-unit": "day", "title": "UTC execution-start day" },
+            "y": { "field": "runs", "type": "quantitative", "title": "Observed logical Runs" }
           }
         },
         {

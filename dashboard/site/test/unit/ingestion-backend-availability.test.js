@@ -7,7 +7,8 @@ import {
 } from '../../src/dashboard-chunks.js';
 import { disposeDashboard, renderDashboard } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
-import { DATABASE_NAME, openCanonicalDatabase, recordTransaction, TRANSACTION_STORE } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, openCanonicalDatabase, recordTransaction, TRANSACTION_STORE, upsertCanonicalBatch } from '../../src/data/storage/indexeddb.js';
+import { normalize } from '../../src/data/normalize/index.js';
 import { DashboardServerError, queryRemoteDashboard } from '../../src/remote-data-backend.js';
 import { validateDashboardDocument } from '../../src/validator.js';
 import { compileDashboardViewPayloadQueries, dashboardViewAliasName } from '../../src/data/queries/view-payload-compiler.js';
@@ -58,6 +59,118 @@ afterEach(() => {
 });
 
 describe('Ingestion backend contract', () => {
+  it('declares a separate daily projection diagnostic without detail fallback or page filters', () => {
+    const daily = contract.dailyRuns;
+    const query = authoritativeDashboard.dashboard.queries.find(
+      (/** @type {{ name: string }} */ query) => query.name === daily.source
+    );
+    expect(query).toMatchObject({
+      from: daily.input,
+      aggregate: {
+        by: ['day'],
+        values: [{ field: 'total', as: daily.count, reducer: 'sum' }]
+      },
+      'order-by': [{ field: daily.day, direction: 'asc' }]
+    });
+    expect(query.union).toBeUndefined();
+    expect(query.limit).toBeUndefined();
+    expect(page.views.find((/** @type {{ id: string }} */ view) => view.id === daily.view)).toMatchObject({
+      mark: 'chart', chart: 'line',
+      data: { source: daily.source, 'query-context': false },
+      encoding: {
+        x: { field: daily.day, type: 'temporal', title: 'UTC execution-start day' },
+        y: { field: daily.count, title: 'Observed logical Runs' }
+      }
+    });
+  });
+
+  it('subscribes to daily worker results, preserving corrections, detail independence, partial coverage and unavailable state', async () => {
+    const daily = contract.dailyRuns;
+    const view = page.views.find((/** @type {{ id: string }} */ view) => view.id === daily.view);
+    const document = {
+      ...documentInput,
+      dashboard: { ...documentInput.dashboard, pages: [{ ...page, views: [view] }] }
+    };
+    /** @type {any} */
+    let subscription;
+    const read = async () => /** @type {Record<string, import('../../src/presenter.js').LogicalSourceInput>} */ (await processDataRequest({
+      operation: 'query-canonical-dashboard',
+      pageId: contract.page, viewId: view.id, sourceNames: [daily.source],
+      context: document.dashboard,
+      queryContext: {
+        filters: { repository: ['unrelated'] },
+        timeWindow: { start: '2099-01-01T00:00:00Z', end: '2099-01-02T00:00:00Z' }
+      }
+    }, subscription?.signal));
+    const root = renderDashboard({
+      document, sources: {},
+      loadPageSources: Object.assign(vi.fn(), { subscribeViewSources: vi.fn(async (_page, _view, _names, options) => {
+        subscription = options;
+        return read();
+      }) })
+    });
+    roots.push(root);
+    globalThis.document.body.append(root);
+    await vi.waitFor(() => expect(root.textContent).toContain(view['empty-message']));
+    const run = {
+      id: 'run:daily-one', repositoryId: 'repository:one', workflowId: 'workflow:one',
+      owner: 'octo', repository: 'one', workflowPath: 'one.md',
+      startedAt: '2026-10-22T23:30:00-02:00', updatedAt: '2026-10-23T02:00:00Z',
+      status: 'completed', conclusion: 'success', attempt: 1
+    };
+    const write = (/** @type {Record<string, unknown>[]} */ runs) =>
+      upsertCanonicalBatch(indexedDB, { ...normalize([]), runs }, { validateRelationships: false });
+    await write([
+      run,
+      { ...run, id: 'run:daily-two', repositoryId: 'repository:two', workflowId: 'workflow:two', repository: 'two', workflowPath: 'two.md' },
+      { ...run, id: 'run:daily-three', startedAt: '2026-10-21T00:00:00Z' },
+      { ...run, id: 'run:undated', startedAt: undefined }
+    ]);
+    await write([run]);
+    const initial = await read();
+    expect(initial[daily.source].rows).toEqual([
+      { date: '2026-10-21', runs: 1 }, { date: '2026-10-23', runs: 2 }
+    ]);
+    expect(initial[daily.source].metadata).toMatchObject({
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted', completeness: 'partial', 'excluded-runs': 1
+    });
+    subscription.onUpdate(initial);
+    await vi.waitFor(() => expect(root.querySelector('[data-chart-widget="line"]')).not.toBeNull());
+    expect(root.textContent).toContain('Undated runs are excluded');
+    expect(root.textContent).toContain('Partial coverage');
+    await write([{ ...run, attempt: 2, startedAt: '2026-10-21T12:00:00Z', updatedAt: '2026-10-24T00:00:00Z' }]);
+    const database = await openCanonicalDatabase(indexedDB);
+    try {
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('runs', 'readwrite');
+        transaction.objectStore('runs').clear();
+        transaction.oncomplete = () => resolve(undefined);
+        transaction.onerror = () => reject(transaction.error);
+      });
+      const updated = await read();
+      expect(updated[daily.source].rows).toEqual([
+        { date: '2026-10-21', runs: 2 }, { date: '2026-10-23', runs: 1 }
+      ]);
+      subscription.onUpdate(updated);
+      await new Promise((resolve, reject) => {
+        const transaction = database.transaction('dailyRunCountState', 'readwrite');
+        transaction.objectStore('dailyRunCountState').clear();
+        transaction.oncomplete = () => resolve(undefined);
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } finally {
+      database.close();
+    }
+    const unavailable = await read();
+    expect(unavailable[daily.source]).toMatchObject({ rows: [], metadata: { availability: 'unavailable' } });
+    subscription.onUpdate(unavailable);
+    await vi.waitFor(() => expect(root.querySelector('[data-view-availability="unavailable"]')).not.toBeNull());
+    expect(root.textContent).not.toContain(view['empty-message']);
+    expect(root.querySelector('[data-chart-widget="line"]')).toBeNull();
+    disposeDashboard(root);
+    expect(subscription.signal.aborted).toBe(true);
+  });
+
   it('selects only producible static sources before and after lazy page loading', async () => {
     const { core, pageChunks } = splitDashboardDocument(documentInput);
     const unloaded = resolveDashboardDocument(core, []);
