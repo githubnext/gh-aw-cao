@@ -8,9 +8,10 @@ import { normalizedRunShard } from './normalized-shard.js';
 
 const siteRoot = fileURLToPath(new URL('../..', import.meta.url));
 const origin = 'http://ingestion-backend.dashboard.test';
-const asOf = '2026-09-24T00:00:00Z';
+const activityDay = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10);
+const asOf = `${activityDay}T00:00:00Z`;
 const hash = 'a'.repeat(64);
-const shardName = `gh-aw-logs-runs/2026-09-24-0000-${'b'.repeat(16)}.jsonl`;
+const shardName = `gh-aw-logs-runs/${activityDay}-0000-${'b'.repeat(16)}.jsonl`;
 const contract = JSON.parse(readFileSync(join(siteRoot, 'test/fixtures/ingestion-backend-contract.json'), 'utf8'));
 const pageDefinition = authoritativeDashboard.dashboard.pages.find(
   (/** @type {{ id: string }} */ page) => page.id === contract.page
@@ -82,7 +83,7 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
           run: {
             run_id: 3001, run_attempt: 1, organization: 'githubnext', repository: 'gh-cao',
             workflow_path: 'dashboard.md', workflow_name: 'Dashboard', status: 'completed',
-            conclusion: 'success', created_at: asOf, updated_at: asOf
+            conclusion: 'success', started_at: asOf, created_at: asOf, updated_at: asOf
           }
         })}\n`)
       });
@@ -121,6 +122,22 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   await expect(page.locator('[data-view-id="ingestion-storage"]')).toContainText('Browser-local storage (IndexedDB)');
   await expect(page.getByRole('heading', { name: 'Indexed data over time' })).toHaveCount(0);
   await expect(page.locator('[data-view-id="indexing-database-table-counts"] [data-chart-widget="horizontal-bar"]')).toBeVisible();
+  const daily = page.locator(`[data-view-id="${contract.dailyRuns.view}"]`);
+  await expect(daily.getByRole('heading', { name: 'Observed daily runs' })).toBeVisible();
+  await expect(daily.locator('[data-chart-widget="line"]')).toBeVisible();
+  await expect(daily).toContainText('Undated runs are excluded');
+  await expect(daily).toContainText('do not prove complete upstream collection');
+  const dailyRows = await page.evaluate(async (source) => {
+    const { processDataRequest } = await import(new URL('/src/data-worker.js', window.location.href).href);
+    const chunk = await (await fetch('/dashboard-pages/indexing.json')).json();
+    const result = await processDataRequest({
+      operation: 'query-canonical-dashboard', sourceNames: [source],
+      context: { queries: chunk.queries, pages: [chunk.page] }
+    });
+    return result[source];
+  }, contract.dailyRuns.source);
+  expect(dailyRows.rows).toEqual([{ date: activityDay, runs: 1 }]);
+  expect(dailyRows.metadata).toMatchObject({ 'aggregate-version': 1, 'aggregate-coverage': 'admitted' });
   const shards = page.locator('[data-view-id="ingested-shards"]');
   await expect(shards).toContainText(shardName);
   await expect(shards).toContainText('Committed records');
@@ -142,7 +159,7 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   });
   expect(ingestionRows.metadata.availability).toBe('available');
   expect(ingestionRows.rows.length).toBeGreaterThan(0);
-  expect(ingestionRows.rows.find((/** @type {any} */ row) => row['shard-day'])?.['shard-day']).toBe('2026-09-24');
+  expect(ingestionRows.rows.find((/** @type {any} */ row) => row['shard-day'])?.['shard-day']).toBe(activityDay);
   await expect(scatter.locator('.scatter-chart-point')).toHaveCount(
     ingestionRows.rows.filter((/** @type {any} */ row) => row['shard-day']).length
   );
@@ -164,6 +181,7 @@ test(`stale data links to ingested shards without hosted telemetry at ${viewport
   expect(sources).not.toContain('collection-health');
   expect(sources).not.toContain('github-quota-usage');
   expect(sources).toContain('indexing-database-table-counts');
+  expect(sources).toContain(contract.dailyRuns.source);
   expect(sources).toContain('dashboard-data-freshness');
   await banner.getByRole('button', { name: 'Dismiss Dashboard data may be stale' }).click();
   await expect(banner).toHaveCount(0);

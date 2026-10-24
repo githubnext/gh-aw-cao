@@ -24,3 +24,16 @@ it('requires empty entities or populated evidence with every shard committed', (
   expect(() => assertCanonicalCounts('full', { runs: 1, repositories: 1, audits: 1, transactions: 499 }, 500)).toThrow(/completely/);
   expect(() => assertCanonicalCounts('full', { runs: 1, repositories: 1, audits: 1 }, 500)).toThrow(/incomplete/);
 });
+
+it('allows only singleton projection state in an otherwise empty database', () => {
+  const empty = {
+    runs: 0, repositories: 0, audits: 0, transactions: 2,
+    dailyRunCounts: 0, runCountContributions: 0, dailyRunCountState: 1
+  };
+  expect(() => assertCanonicalCounts('empty', empty, 2)).not.toThrow();
+  for (const store of ['runs', 'repositories', 'audits', 'dailyRunCounts', 'runCountContributions', 'unexpectedStore']) {
+    expect(() => assertCanonicalCounts('empty', { ...empty, [store]: 1 }, 2)).toThrow(/contains/);
+  }
+  expect(() => assertCanonicalCounts('empty', { ...empty, dailyRunCountState: 2 }, 2)).toThrow(/contains/);
+  expect(() => assertCanonicalCounts('empty', { ...empty, dailyRunCountState: -1 }, 2)).toThrow(/invalid/);
+});

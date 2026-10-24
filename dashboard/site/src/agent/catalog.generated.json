@@ -933,13 +933,14 @@
       "title": "Ingestion",
       "description": "Determine whether the evidence pipeline supports reliable CAO analysis.",
       "intent": "Determine whether collection, ingestion and retained data are healthy enough for analysis.",
-      "subject": "Server collection health, API usage, ingestion queues, shards and retained transactions.",
+      "subject": "Server collection health, API usage, ingestion queues, daily run counts, shards and retained transactions.",
       "objective": "Locate evidence gaps and bottlenecks before trusting dashboard conclusions.",
       "acceptance": "Show native states, timestamps, counts, sizes and units with backend limitations; preserve failures and partial/unavailable evidence. Empty queues or tables alone do not establish successful collection.",
       "experimental": false,
       "parameters": [],
       "queries": [
         "github-api-usage",
+        "indexing-daily-run-counts",
         "indexing-database-table-counts",
         "indexing-ingestion-runs",
         "indexing-shards",
@@ -5325,6 +5326,27 @@
         "backend": "sqlite",
         "requirements": [
           "transactions"
+        ]
+      }
+    },
+    {
+      "id": "indexing-daily-run-counts",
+      "subject": "Inspect admitted daily logical Run counts independently of retained detail and shard receipts.",
+      "objective": "Make the daily run-count projection visible as an ingestion diagnostic.",
+      "acceptance": "Sum daily buckets by observed UTC execution-start day across repositories and workflows, without page filters, detail fallback, fabricated days or zero populations. Preserve aggregate coverage and partial or unavailable evidence; counts do not prove upstream completeness.",
+      "description": "",
+      "parameters": [],
+      "sources": [
+        "daily-run-counts"
+      ],
+      "used-by-pages": [
+        "indexing"
+      ],
+      "execution": {
+        "local": true,
+        "backend": "sqlite",
+        "requirements": [
+          "daily-run-counts"
         ]
       }
     },
