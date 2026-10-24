@@ -7,8 +7,9 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { resetRecycleProjection } from '../../activity/recycle-snapshot.mjs';
 import { CANONICAL_SCHEMA_VERSION } from '../../dashboard/site/src/data/model/schema.js';
-import { DAILY_RUN_COUNT_STORES } from '../../dashboard/site/src/data/model/daily-run-counts.js';
+import { DAILY_RUN_COUNT_STORES, dailyRunCountCutoff } from '../../dashboard/site/src/data/model/daily-run-counts.js';
 import { DATABASE_NAME, DATABASE_VERSION } from '../../dashboard/site/src/data/storage/indexeddb.js';
+import { doctorSqliteDatabase } from '../../dashboard/site/src/data/storage/sqlite-doctor.js';
 import { hashFileContents } from '../../activity/cli/files.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
@@ -143,6 +144,65 @@ test('Activity SQLite v44 upgrade backfills multiple cursor pages without rewrit
   assert.equal(values(database, 'dailyRunCounts')[0].total, 251);
   assert.equal(DATABASE_VERSION, 46);
   assert.equal(CANONICAL_SCHEMA_VERSION, 35);
+});
+
+test('Activity doctor publishes UTC rollover eviction independently of detail TTL and fences changed-shard replay', async (t) => {
+  const fixture_ = await fixture(t);
+  const { database, shards, phases } = fixture_;
+  const cutoff = Date.parse(`${dailyRunCountCutoff(Date.now())}T00:00:00Z`);
+  const monday = cutoff + 21 * day;
+  const timestamp = new Date(cutoff).toISOString();
+  const boundary = new Date(cutoff + 7 * day).toISOString();
+  const input = path.join(shards, 'rollover.jsonl');
+  const expired = Array.from({ length: 251 }, (_, index) => runEnvelope(index + 1, {
+    created_at: timestamp, started_at: timestamp, updated_at: timestamp
+  }));
+  const retained = runEnvelope(252, {
+    created_at: boundary, started_at: boundary, updated_at: boundary, conclusion: 'failure'
+  });
+  await writeFile(input, [...expired, retained].map(JSON.stringify).join('\n') + '\n');
+  runCao(['hash-payloads', '--shard-dir', shards, ...phases]);
+  runCao(['ingest-jsonl', '--database', database, ...phases, '--run-retention-days', '30']);
+  assert.equal(values(database, 'runs').length, 252);
+  assert.equal(values(database, 'runCountContributions').length, 252);
+  const detail = records(database, 'runs');
+
+  const rollover = await doctorSqliteDatabase(database, {
+    now: monday, ttlDays: 'all', runTtlDays: 'all'
+  });
+  assert.equal(rollover.healthy, true);
+  assert.deepEqual(rollover.repairs.actions, ['maintain-daily-count-retention']);
+  assert.deepEqual(records(database, 'runs'), detail);
+  assert.equal(values(rollover.repairs.backup, 'runCountContributions').length, 252);
+  assert.equal(values(database, 'runCountContributions').length, 1);
+  const [count] = values(database, 'dailyRunCounts');
+  assert.equal(count.day, boundary.slice(0, 10));
+  assert.equal(count.total, 1);
+  assert.equal(count.failed, 1);
+  assert.equal(values(database, 'dailyRunCountState')[0].retentionCutoff, boundary.slice(0, 10));
+  const published = await publish(fixture_);
+
+  const detailExpiry = await doctorSqliteDatabase(database, {
+    now: monday, ttlDays: 1, runTtlDays: 1
+  });
+  assert.equal(detailExpiry.healthy, true);
+  assert.equal(detailExpiry.after.counts.runs, 0);
+  assert.deepEqual(values(database, 'dailyRunCounts'), [count]);
+  const protectedBefore = protectedRecords(database);
+  // Force a changed payload through normalization, not the unchanged shortcut.
+  await writeFile(input, [...expired, retained,
+    { schema_version: 2, kind: 'workflow_runs', request: { repository: 'octo/demo' }, payload: [] }]
+    .map(JSON.stringify).join('\n') + '\n');
+  runCao(['ingest-jsonl', '--database', database, '--input', input,
+    '--retention-days', '1', '--run-retention-days', '1']);
+  assert.deepEqual(protectedRecords(database), protectedBefore);
+  const [state] = values(database, 'dailyRunCountState');
+  assert.equal(state.retentionWatermark, monday);
+  assert.equal(state.retentionCutoff, boundary.slice(0, 10));
+  assert.equal(state.receiptCount, 1);
+  assert.equal(state.dailyBucketCount, 1);
+  const republished = await publish(fixture_);
+  assert.notEqual(republished['gh-aw-logs.sqlite'], published['gh-aw-logs.sqlite']);
 });
 
 for (const { age, ttl, retained } of [

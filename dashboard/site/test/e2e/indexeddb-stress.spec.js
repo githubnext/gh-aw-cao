@@ -93,6 +93,67 @@ test('native IndexedDB persists a large mixed reconciliation across connections'
   });
 });
 
+test('native IndexedDB ingestion expires detail and weekly counts on unchanged-shard finalization', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
+    const ingestion = await import(`${location.origin}/src/data/ingest/coordinator.js`);
+    const { CANONICAL_SCHEMA_VERSION } = await import(`${location.origin}/src/data/model/schema.js`);
+    const sunday = Date.parse('2026-10-25T23:59:59.999Z');
+    const monday = sunday + 1;
+    const runs = Array.from({ length: 252 }, (_, index) => ({
+      id: `run:${String(index).padStart(3, '0')}`,
+      repositoryId: 'repository:1', workflowId: 'workflow:1',
+      owner: 'octo', repository: 'demo', workflowPath: '.github/workflows/worker.md',
+      startedAt: index < 251 ? '2026-10-05T00:00:00Z' : '2026-10-12T00:00:00Z',
+      updatedAt: '2026-10-12T00:00:00Z', status: 'completed', conclusion: 'success', attempt: 2
+    }));
+    async function* payload() {
+      yield `${JSON.stringify({
+        kind: 'metadata', phase: 'runs', records: runs.length,
+        schemaVersion: CANONICAL_SCHEMA_VERSION,
+        ingestionVersion: ingestion.NORMALIZED_JSONL_INGESTION_VERSION
+      })}\n`;
+      for (const record of runs) yield `${JSON.stringify({ kind: 'record', collection: 'runs', record })}\n`;
+    }
+    const options = {
+      now: sunday, retentionWindowMs: 30 * 86_400_000,
+      maxDatabaseBytes: Number.MAX_SAFE_INTEGER,
+      payloadIdentity: 'native-retention', payloadScope: 'native-retention'
+    };
+    const stores = ['runs', 'dailyRunCounts', 'runCountContributions', 'dailyRunCountState'];
+    await ingestion.ingestNormalizedJsonl(indexedDB, payload(), { ...options, deferMaintenance: true });
+    const admitted = await storage.readCollections(indexedDB, stores);
+    const ttl = { ...options, retentionWindowMs: 86_400_000 };
+    await ingestion.finalizeNormalizedJsonlIngestion(indexedDB, ttl);
+    const detailExpired = await storage.readCollections(indexedDB, stores);
+    await ingestion.ingestNormalizedJsonl(indexedDB, payload(), ttl);
+    async function* unread() { yield await Promise.reject(new Error('Skipped shard must not be consumed')); }
+    const skipped = await ingestion.ingestNormalizedJsonl(indexedDB, unread(), { ...ttl, now: monday });
+    const rolled = await storage.readCollections(indexedDB, stores);
+    await ingestion.ingestNormalizedJsonl(indexedDB, payload(), {
+      ...ttl, payloadIdentity: 'native-changed-replay'
+    });
+    const replayed = await storage.readCollections(indexedDB, stores);
+    return { admitted, detailExpired, skipped, rolled, replayed };
+  });
+  expect(result.admitted.runs).toHaveLength(252);
+  expect(result.detailExpired.runs).toEqual([]);
+  expect(result.detailExpired.dailyRunCounts).toEqual([
+    expect.objectContaining({ day: '2026-10-05', total: 251 }),
+    expect.objectContaining({ day: '2026-10-12', total: 1 })
+  ]);
+  expect(result.detailExpired.runCountContributions).toHaveLength(252);
+  expect(result.detailExpired.dailyRunCountState[0].retentionCutoff).toBe('2026-10-05');
+  expect(result.skipped).toMatchObject({ skipped: true });
+  expect(result.rolled.dailyRunCounts).toEqual([expect.objectContaining({ day: '2026-10-12', total: 1 })]);
+  expect(result.rolled.runCountContributions).toHaveLength(1);
+  expect(result.rolled.dailyRunCountState[0]).toMatchObject({
+    retentionCutoff: '2026-10-12', retentionWatermark: Date.parse('2026-10-26T00:00:00Z'),
+    receiptCount: 1, dailyBucketCount: 1
+  });
+  expect(result.replayed).toEqual(result.rolled);
+});
+
 test('production data worker preserves daily health and repository chart coverage after detail eviction', async ({ page }) => {
   const result = await page.evaluate(async () => {
     const storage = await import(`${location.origin}/src/data/storage/indexeddb.js`);
