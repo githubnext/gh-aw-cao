@@ -1,6 +1,7 @@
 name: Docker Actions runtime
 
 on:
+  workflow_call:
   pull_request:
     paths:
       - .github/workflows/actions-runtime.yml

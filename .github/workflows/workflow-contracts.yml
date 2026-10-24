@@ -11,6 +11,7 @@ on:
       - .github/workflows/cid.yml
       - dashboard/site/**
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -20,8 +21,31 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Select affected contract areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      integration: ${{ steps.plan.outputs.integration }}
+      documentation: ${{ steps.plan.outputs.documentation }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - id: plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-test-plan.mjs
+
   installer:
     name: Public installer integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
@@ -40,6 +64,7 @@ jobs:
 
   agent-plugin:
     name: Install agent plugin with Copilot CLI
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -53,10 +78,10 @@ jobs:
 
   unit:
     name: Unit contracts (${{ matrix.area }})
+    needs: changes
     strategy:
       fail-fast: false
-      matrix:
-        area: [activity, dashboard, workflows, tooling, documentation]
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -76,11 +101,11 @@ jobs:
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run ${{ matrix.area }} unit contracts
-        run: npm run test:unit:area -- ${{ matrix.area }}
+        env:
+          UNIT_AREA: ${{ matrix.area }}
+        run: npm run test:unit:area -- "$UNIT_AREA"
 
-  test:
-    needs: unit
-    if: ${{ !cancelled() }}
+  fast-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -103,18 +128,22 @@ jobs:
           npm run compile
       - name: Check patch formatting
         run: git diff --check
-      - name: Require successful unit areas
-        if: ${{ !cancelled() }}
+
+  test:
+    needs: [changes, unit, fast-contracts]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Require successful selected checks
         env:
-          UNIT_RESULT: ${{ needs.unit.result }}
+          RESULTS: ${{ toJSON(needs) }}
         run: |
-          if [[ "$UNIT_RESULT" != "success" ]]; then
-            echo "::error::Unit contracts failed or were skipped ($UNIT_RESULT)"
-            exit 1
-          fi
+          jq -e 'all(.[]; .result == "success")' <<< "$RESULTS"
 
   full-contracts:
     name: Integration, load, API, and documentation contracts
+    needs: changes
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -133,15 +162,17 @@ jobs:
       - name: Install gh-aw
         uses: ./.github/actions/setup-gh-aw # zizmor: ignore[self-repository] - Local actions use the syntax accepted by GitHub Actions and actionlint.
       - name: Run integration and load contracts
+        if: needs.changes.outputs.integration == 'true'
         run: |
           npm run test:integration
           npm run test:load
       - name: Verify versioned server API signatures
+        if: needs.changes.outputs.integration == 'true'
         run: |
           npm --prefix server/spec ci
           npm run dashboard:server:spec:check
       - name: Build and validate documentation
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.changes.outputs.documentation == 'true' }}
         run: |
           npm run check:svg
           npm run docs:build
@@ -228,7 +259,7 @@ jobs:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "$BASE_SHA" =~ ^0+$ ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event_name }}" == "schedule" || -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
             matrix="$(node scripts/campaign-lifecycle-matrix.mjs --all)"
           else
             matrix="$(node scripts/campaign-lifecycle-matrix.mjs "$BASE_SHA" "$HEAD_SHA")"
@@ -265,6 +296,7 @@ jobs:
         id: campaign-api
         env:
           GH_TOKEN: ${{ github.token }}
+          REQUIRE_COMPLETE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |
           remaining="$(gh api rate_limit --jq '.resources.core.remaining')"
           echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
@@ -272,6 +304,7 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining; 500 are required for clean-room campaign tests."
             echo "Campaign lifecycle tests were skipped because the shared GitHub App installation API quota is exhausted." >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$REQUIRE_COMPLETE" == "true" ]]; then exit 1; fi
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
@@ -283,6 +316,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           NODE_OPTIONS: '--test-name-pattern="${{ matrix.test-pattern }}"'
+          REQUIRE_COMPLETE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |
           # gh-aw only classifies a 40-character hex ref as a commit SHA; an abbreviated
           # SHA is treated as a branch name, so `gh aw update` resolves the campaign
@@ -300,6 +334,7 @@ jobs:
           if grep -Fq "API rate limit exceeded for installation" <<< "$output"; then
             echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation API quota was exhausted during clean-room campaign tests."
             echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$REQUIRE_COMPLETE" == "true" ]]; then exit 1; fi
             exit 0
           fi
           # `gh aw update` swallows the underlying error for a package that installs no
@@ -310,6 +345,7 @@ jobs:
           if (( remaining < 50 )); then
             echo "::warning title=Campaign lifecycle incomplete::The shared GitHub App installation has $remaining core API requests remaining after the clean-room campaign tests."
             echo "Campaign lifecycle tests became inconclusive because the shared GitHub App installation API quota was exhausted during the run." >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$REQUIRE_COMPLETE" == "true" ]]; then exit 1; fi
             exit 0
           fi
           exit "$status"

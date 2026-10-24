@@ -38,6 +38,9 @@ test("bootstrap clears real tokens and runs only the isolated local integration"
   assert.equal(authenticated.length, 1);
   assert.match(authenticated[0].run, /gh extension install github\/gh-aw --pin/);
   assert.doesNotMatch(source, /gh aw run|gh workflow run|gh api.*(?:POST|PATCH|PUT|DELETE)|git push/);
-  assert.deepEqual(workflow.on.schedule, [{ cron: "17 7 * * *" }]);
+  assert.equal(workflow.on.schedule, undefined);
+  assert.equal(workflow.on.pull_request, undefined);
+  assert.deepEqual(workflow.on.push.branches, ["main"]);
+  assert.ok(Object.hasOwn(workflow.on, "workflow_call"));
   assert.ok(Object.hasOwn(workflow.on, "workflow_dispatch"));
 });

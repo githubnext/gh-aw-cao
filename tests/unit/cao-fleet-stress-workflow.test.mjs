@@ -6,7 +6,10 @@ const workflow = readFileSync(new URL("../../.github/workflows/cao-fleet-stress.
 const pkg = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
 
 test("daily fleet stress uses only the local simulator with no secrets or inference", () => {
-  assert.match(workflow, /schedule:\n\s+- cron: "\d+ \d+ \* \* \*"/);
+  assert.match(workflow, /workflow_call:/);
+  const daily = readFileSync(".github/workflows/ci-daily.yml", "utf8");
+  assert.match(daily, /schedule:\n\s+- cron: "\d+ \d+ \* \* \*"/);
+  assert.match(daily, /uses: \.\/\.github\/workflows\/cao-fleet-stress\.yml/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /npm run test:stress:cao/);
