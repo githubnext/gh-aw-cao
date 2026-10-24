@@ -218,6 +218,10 @@ An opt-in, disabled-by-default GitHub App webhook receiver and durable dispatche
 
 The generated, read-only browser tool interface that exposes each agent-facing dashboard page as one `cao_<page id>` tool, so a browser-based AI agent can discover and run dashboard pages the way an operator does. WebMCP tools are generated adapters over the same page definitions and query execution path as human rendering, so there is no second tool catalog to maintain; it is experimental and available only in browsers that implement the underlying API. See [WebMCP](dashboard-webmcp.md).
 
+## Workflow Value collection
+
+The current bounded record of whether outcome measurement is registered and healthy for one exact repository and workflow filename stem. It carries the registration (`enabled`, `disabled`, or `unconfigured`), the latest decision and state (such as `never-captured`, `deferred`, `failed`, or `available`), and the last actual collector attempt, each with its own clock. It is retained independently of operational value evidence and does not itself measure outcomes, promote completeness or freshness, or authorize running a target workflow. See [Dashboard data model](dashboard-data-model.md).
+
 ## Worker
 
 A workflow that receives one selected target and performs one bounded task for a campaign. Workers revalidate their control envelope and can only narrow the policy they receive. **Worker** is both the operator-facing and technical term; it is not synonymous with AI agent or engine because it describes the workflow's role. See the canonical gh-aw definition of [Worker Workflow](https://github.github.com/gh-aw/reference/glossary/#worker-workflow).
