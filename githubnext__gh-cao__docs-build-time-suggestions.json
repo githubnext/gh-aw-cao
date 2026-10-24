@@ -3,32 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T16:43:18Z",
-      "worker_run_id": "39815901360",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39811384405,
-        39810377245,
-        39810257564,
-        39809708440,
-        39808334179,
-        39807825131,
-        39807186345,
-        39807089515,
-        39806601059,
-        39804747613,
-        39804570209,
-        39804176410,
-        39803369148,
-        39802996994,
-        39802640774,
-        39801009014,
-        39799097113,
-        39798555925
-      ],
-      "outcome": "incomplete: the first bounded Actions read returned 18 completed docs.yml runs (14 successful and four skipped) plus two still-queued runs from the newest workflow entries. A follow-up request needed to complete the exact latest-20 window was blocked by the GitHub REST API rate limit at 2026-10-22T16:43:18Z. Per resource-limit policy, no further API or model work was attempted. The required five comparable successful build-and-deploy runs, workflow/job median and p90 timings, step timings, trusted cache hit/miss evidence, and duplicate open-issue check could not be completed, so no actionable recommendation was made and the Astro documentation generation category remains next."
-    },
-    {
       "evaluated_at": "2026-10-22T17:38:58Z",
       "worker_run_id": "39824026473",
       "category": "Astro documentation generation",
@@ -755,6 +729,34 @@
         40026212138
       ],
       "outcome": "incomplete: the 2026-10-23T21:21:52Z to 2026-10-24T01:35:51Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Trusted run metadata and the previously verified freshness-only paths in the overlapping window established only two successful build-and-deploy paths: workflow_run 40050211598 and workflow_run 40039164850, both at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. Fresh job and step metadata confirmed build jobs of 62 and 75 seconds and deploy jobs of 9 and 11 seconds; the remaining successful runs were freshness-only or too short to contain either build path. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T02:02:00Z",
+      "worker_run_id": "40052191054",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40051897521,
+        40050519437,
+        40050211598,
+        40048891001,
+        40048322967,
+        40047130409,
+        40043057001,
+        40041469818,
+        40040264232,
+        40039211316,
+        40039164850,
+        40037228871,
+        40035689948,
+        40035174045,
+        40034330979,
+        40033195230,
+        40030833753,
+        40029180516,
+        40028915755,
+        40027585845
+      ],
+      "outcome": "incomplete: the 2026-10-23T21:33:02Z to 2026-10-24T01:54:35Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Run metadata showed only four successful runs long enough to plausibly contain the recently observed 62-75 second build path, so the required five comparable successful build-and-deploy runs were not available. A bounded follow-up job-metadata request then hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, all further API and model work stopped. Workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
