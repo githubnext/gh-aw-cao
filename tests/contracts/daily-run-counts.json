@@ -68,10 +68,11 @@
       "runner": "go",
       "directory": ".",
       "packages": ["./internal/cli"],
-      "pattern": "^TestNativeDailyCountsSource$",
-      "files": ["internal/cli/native_daily_counts_test.go"],
+      "pattern": "^TestNative(DailyCountsSource|RepositoryRunInventoryDailyAvailability)$",
+      "files": ["internal/cli/native_daily_counts_test.go", "internal/cli/native_daily_inventory_test.go"],
       "coverage": {
-        "availability": "TestNativeDailyCountsSource"
+        "availability": "TestNativeDailyCountsSource",
+        "repository-chart": "TestNativeRepositoryRunInventoryDailyAvailability"
       }
     },
     {

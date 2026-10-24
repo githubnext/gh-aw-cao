@@ -67,8 +67,6 @@ jobs:
           --health-interval 2s
           --health-timeout 2s
           --health-retries 30
-    env:
-      POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_daily_test?sslmode=disable
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,6 +88,8 @@ jobs:
         working-directory: dashboard/site
         run: npx playwright install --with-deps chromium
       - name: Verify the implemented daily aggregate contract across backends
+        env:
+          POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_daily_test?sslmode=disable
         run: npm run test:conformance:daily-run-counts
 
   windows-local-server:

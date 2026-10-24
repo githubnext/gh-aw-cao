@@ -389,16 +389,18 @@ test("Docker samples runtime runs automatically only for server code changes", (
 
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {
   const cases = [
-    ["dashboard/site/src/dashboard-app.js", ["cid.yml"]],
-    ["dashboard/site/dashboard-fragments/overview.json", ["cid.yml"]],
+    ["dashboard/site/src/dashboard-app.js", ["cgo.yml", "cid.yml"]],
+    ["dashboard/site/dashboard-fragments/overview.json", ["cgo.yml", "cid.yml"]],
     ["dashboard/site/README.md", []],
     ["docs/glossary.md", ["workflow-contracts.yml"]],
     ["docs/assets/logo-day.svg", ["cid.yml", "svg-contrast-check.yml", "workflow-contracts.yml"]],
     ["public/favicon.svg", ["cid.yml", "workflow-contracts.yml"]],
-    ["activity/dashboard-complexity.mjs", ["workflow-contracts.yml"]],
+    ["activity/dashboard-complexity.mjs", ["cgo.yml", "workflow-contracts.yml"]],
     ["tests/e2e/dashboard-ingestion-scale.spec.mjs", ["workflow-contracts.yml"]],
     ["server/internal/query/query.go", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
     ["server/spec/main.tsp", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
+    ["scripts/run-daily-run-counts-conformance.mjs", ["cgo.yml", "workflow-contracts.yml"]],
+    ["tests/contracts/daily-run-counts.json", ["cgo.yml", "workflow-contracts.yml"]],
     ["server/README.md", ["workflow-contracts.yml"]],
     [".github/workflows/shared/control.md", ["cao-validate.yml", "workflow-contracts.yml"]],
     [".github/workflows/cid.yml", ["action-lint.yml", "cid.yml"]],

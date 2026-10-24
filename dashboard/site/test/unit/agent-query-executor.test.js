@@ -9,7 +9,7 @@ import {
   executeNamedQuery
 } from '../../src/agent/query-executor.js';
 import { loadDatabaseQuerySources } from '../../src/data/queries/database.js';
-import { DATABASE_NAME } from '../../src/data/storage/indexeddb.js';
+import { DATABASE_NAME, openCanonicalDatabase } from '../../src/data/storage/indexeddb.js';
 import { authoritativeDashboard } from '../authoritative-dashboard.js';
 
 const simulatorInputs = {
@@ -161,6 +161,36 @@ describe('named query execution', () => {
     expect(result.metadata.availability).toBe('available');
     expect(result.metadata['returned-rows']).toBe(12);
     expect(result.metadata.limit).toBe(DEFAULT_NAMED_QUERY_LIMIT);
+  });
+
+  it('preserves partial daily evidence provenance through the named-query boundary', async () => {
+    const db = await openCanonicalDatabase(indexedDB);
+    const transaction = db.transaction('dailyRunCountState', 'readwrite');
+    transaction.objectStore('dailyRunCountState').put({
+      id: 'daily-run-counts', status: 'ready', coverage: 'available-evidence-only',
+      excludedRuns: 4, conflictedRuns: 2,
+      retentionCutoff: '2026-09-01', retentionWatermark: Date.parse('2026-09-10T00:00:00Z')
+    });
+    await new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(undefined);
+      transaction.onerror = () => reject(transaction.error);
+    });
+    db.close();
+    const result = await executeNamedQuery({
+      indexedDB,
+      document: { dashboard: { queries: [{ name: 'daily-counts', from: 'daily-run-counts' }] } },
+      queryId: 'daily-counts'
+    });
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(result.metadata).toMatchObject({
+      availability: 'available', completeness: 'partial', freshness: 'unknown',
+      'aggregate-version': 1, 'aggregate-time-grain': 'utc-run-start-day',
+      'aggregate-coverage': 'available-evidence-only',
+      'aggregate-retention-start': '2026-09-01',
+      'aggregate-retention-watermark': '2026-09-10T00:00:00.000Z',
+      'excluded-runs': 4, 'conflicted-runs': 2,
+      'query-diagnostic': 'Some runs have missing start/identity facts or unresolved equal-revision conflicts.'
+    });
   });
 
   it('preserves database-query dependencies behind bounded dashboard queries', async () => {

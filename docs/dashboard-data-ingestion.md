@@ -143,8 +143,10 @@ failed resolutions appear in the Model routing Problems view once per run, with
 an unknown time unless the session clock is recorded, and per-run resolution roles
 stay on the run page. Routed sessions are expected
 to lack these events, and legacy sessions report no resolution evidence rather
-than failure. Canonical schema 35 / IndexedDB version 45 rebuild older browser
-projections; hosted PostgreSQL needs a fresh generated schema with the new
+than failure. Canonical schema 35 remains unchanged. IndexedDB version 46
+preserves version 44 and 45 databases with a `runs` store through an additive
+upgrade; incompatible older browser projections rebuild. Hosted PostgreSQL
+needs a fresh generated schema with the new
 Audit columns and compact Run routing aggregates. Ingestion derives the aggregate
 with shared Dashboard Language accounting, retains request evidence needed by
 run-page views, and drops unused inventory and generic proxy events.
@@ -154,17 +156,37 @@ The activity shard manifest is the dashboard's published operational input. The 
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 35. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 45. Its canonical stores are
+`gh-aw-cao-dashboard-data`, IndexedDB version 46. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `workflowValueCollections`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
 `evals`, and `evalObservations`;
 all use `id` as the key.
-The `transactions` store records
-ingestion outcomes and is indexed by `createdAt`. The disposable
-Overview aggregates are computed by request-scoped queries over canonical runs
-rather than stored separately. Because the database is derived state, physical schema
-upgrades rebuild every store from authoritative dashboard inputs.
+The `transactions` store records ingestion outcomes and is indexed by
+`createdAt`; `storageShards` holds disposable storage accounting. The separate
+`dailyRunCounts`, `runCountContributions`, and `dailyRunCountState` projection
+stores use `id` keys without secondary indexes. They hold UTC
+day/Repository/Workflow counters, per-logical-Run reconciliation receipts, and
+coverage/readiness, backfill checkpoints, and retention state respectively.
+[Daily counts](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md#722-additive-daily-run-counts)
+are the only persisted daily projection; other Overview metrics remain
+request-scoped queries.
+
+Upgrading version 44 or 45 with a `runs` store creates only missing stores and
+preserves existing canonical records and projection state. Newly created daily
+state starts `backfilling` with `retained-v44` or `retained-v45` coverage.
+Backfill reconciles at most 250 retained Runs per transaction and commits its
+checkpoint with the contributions, so interruption can resume without double
+counting. Coverage remains partial because already-evicted history cannot be
+reconstructed. Other older databases rebuild all stores from authoritative inputs.
+New databases initialize daily state as `ready` with `admitted` coverage.
+
+Daily counts and compact receipts retain the current UTC Monday-start week and
+its two preceding weeks, independently of detail cleanup. Reconciliation
+atomically replaces a Run's contribution; detail eviction does not subtract
+counts. A monotonic retention watermark prevents expired weeks from reopening.
+Unavailable projection state must not be treated as zero counts or fall back
+to retained detail.
 
 Experiment assignments and eval observations come from the unified session when it contains them. Otherwise, ingestion accepts gh-aw's explicit current-run `assignments.json` artifact (including the compact `usage/experiment/` layout and prefixed artifact directories) and a supplied `evals.jsonl`. Collection requests the `usage,experiment,graders` artifact sets without widening repository scope or collection budgets. Before retaining these artifacts, collection verifies repository, run ID, and attempt against `aw_info.json`; a mismatch skips that evidence. Unified assignments, including an explicitly empty map, take precedence, and cumulative experiment state counts never infer a run's variant. The Experiments page shows retained assignment variants with run evidence links, and the Evals ledger shows `YES`, `NO`, and `UNKNOWN` answers distinctly; `UNKNOWN` is not a failed eval.
 

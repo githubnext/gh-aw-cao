@@ -107,8 +107,10 @@ test('daily run-count CI runs the cross-backend command with PostgreSQL and nati
   assert.ok(workflow.on.pull_request.paths.includes('tests/contracts/daily-run-counts.json'));
   assert.ok(workflow.on.pull_request.paths.includes('scripts/run-daily-run-counts-conformance.mjs'));
   assert.equal(job.services.postgres.image, 'postgres:16-alpine');
-  assert.match(job.env.POSTGRES_URL, /job\.services\.postgres\.ports/);
+  assert.equal(job.env?.POSTGRES_URL, undefined);
   assert.ok(job.steps.some((step) => step.run === 'npx playwright install --with-deps chromium'));
-  assert.ok(job.steps.some((step) => step.run === 'npm run test:conformance:daily-run-counts'));
+  const conformance = job.steps.find((step) => step.run === 'npm run test:conformance:daily-run-counts');
+  assert.ok(conformance);
+  assert.match(conformance.env.POSTGRES_URL, /job\.services\.postgres\.ports/);
   assert.equal(job.if, undefined);
 });

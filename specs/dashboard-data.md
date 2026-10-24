@@ -40,8 +40,10 @@ Audit retains typed routing identifiers,
 classifier labels, request identities, sub-agent ownership, token classes,
 per-response AIC and collection receipts. It MUST NOT retain prompts, bodies,
 free-form errors/reasons, raw tool payloads or content-derived hashes.
-Canonical schema 35 and IndexedDB version 45 invalidate older browser projections;
-hosted PostgreSQL deployments require a fresh schema with the generated Audit
+The canonical model remains version 35. IndexedDB version 46 SHALL preserve
+version 44 and 45 databases with a `runs` store through the additive upgrade in
+§5.1; incompatible older browser projections SHALL be rebuilt.
+Hosted PostgreSQL deployments require a fresh schema with the generated Audit
 and Run aggregate columns. Inventory (`model.inventory`) and generic proxy
 (`firewall.event`) rows SHALL NOT be retained, including replayed cached
 projections. Ingestion-only baseline and candidate-pool fields SHALL be removed
@@ -634,8 +636,8 @@ The implementation profile defined by this specification is:
 | Layer | Version | Physical structure |
 | --- | ---: | --- |
 | Canonical model | 35 | Campaign, Repository, Workflow, Run, Domain, Tool, Skill, Friction, Audit, Issue, Operational Value, Operational Value Evidence, Workflow Value Collection, Marketplace Package, Experiment, Experiment Assignment, Grader, Grader Observation, Eval, and Eval Observation records |
-| Browser IndexedDB | 45 | Twenty canonical entity stores, `transactions`, and disposable `storageShards` accounting |
-| Local SQLite projection | IndexedDB 45 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
+| Browser IndexedDB | 46 | Twenty canonical entity stores, `transactions`, disposable `storageShards` accounting, and three separate daily run-count projection stores |
+| Local SQLite projection | IndexedDB 46 | `__idb_databases`, `__idb_stores`, `__idb_indexes`, and `__idb_records` for the same logical stores, plus a `campaigns` table and six transactional relational evidence mirrors without duplicate record documents |
 | Go server Postgres sources | Canonical model 19 | Fresh TypeSpec-defined entity and input tables with query-required native columns, compact presence bits, entity-owned relational child values, and transactional diagnostics/revision state; no stored JSON documents or duplicate scalar row formats |
 | Static SQL export | 3 | Versioned JSON interchange produced from upstream SQL tables or views |
 
@@ -760,6 +762,7 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `issues` | `byRun -> runId`, `byQuerySummary -> _queryKeys.byQuerySummary` |
 | `skills`, `friction` | `byRun -> runId` |
 | `operationalValues` | `byRepository -> repositoryId`, `byValue -> valueId` |
+| `operationalValueEvidence`, `workflowValueCollections` | `byRepository -> repositoryId`, `byWorkflow -> workflowId` |
 | `marketplacePackages` | `byRegistry -> registryId`, `byRepository -> repository` |
 | `experiments`, `graders`, `evals` | `byWorkflow -> workflowId` |
 | `experimentAssignments` | `byRun -> runId`, `byExperiment -> experimentId` |
@@ -767,6 +770,9 @@ store uses `id` as its key path. The implemented secondary indexes are:
 | `evalObservations` | `byRun -> runId`, `byEval -> evalId` |
 | `transactions` | `byCreatedAt -> createdAt` |
 | `storageShards` | none |
+| `dailyRunCounts` | none |
+| `runCountContributions` | none |
+| `dailyRunCountState` | none |
 
 Time-bounded stores additionally index `byStorageTimestamp -> [_storage.timestamp, id]`.
 Run-linked stores additionally index `byStorageRun -> [runId, id]`
@@ -802,8 +808,28 @@ run attempts, null and missing values, ordering, provenance, pagination, and
 unavailable inputs. Unsupported plans retain normal fail-closed execution, and
 an oversized selected scope MUST NOT be truncated or have its limits raised.
 
-Physical IndexedDB upgrades SHALL rebuild every store because all browser state
-is disposable. The SQLite-backed implementation SHALL preserve exactly the same
+The three daily run-count stores SHALL implement only the separate projection
+in §72.2, not additional canonical entities or general computation results.
+`dailyRunCounts` SHALL hold UTC execution-start-day/Repository/Workflow buckets,
+with `id` encoding `[day, repositoryId, workflowId]`; namespace is implicit in
+the scoped database. `runCountContributions` SHALL use the logical Run ID as
+`id` and retain compact count-relevant Run facts, the reconciled contribution,
+and replay/conflict guards independently of detail. `dailyRunCountState` SHALL
+use `id: "daily-run-counts"` for readiness, coverage, backfill checkpoint,
+excluded/conflicted counts, byte accounting, and monotonic retention state.
+All three stores use `id` keys without secondary indexes.
+
+Physical upgrades from version 44 or 45 with an existing `runs` store SHALL
+create only missing stores and preserve existing records and projection state.
+A newly created daily state SHALL start `backfilling` with coverage
+`retained-v44` or `retained-v45`. Backfill SHALL process at most 250 retained
+Runs per transaction, atomically checkpointing contributions and progress;
+completion SHALL set status `ready` without claiming complete historical
+coverage. It SHALL NOT rewrite canonical detail or recover already-evicted
+history. New databases SHALL initialize daily state as `ready` with `admitted`
+coverage. Other older databases SHALL rebuild every store from authoritative
+inputs because their browser state is disposable.
+The SQLite-backed implementation SHALL preserve exactly the same
 logical database version, store names, key paths, indexes, and record values.
 The metadata tables are an emulation detail and MUST NOT be presented as
 canonical domain tables.
@@ -926,8 +952,9 @@ visible and MUST NOT be collapsed to a fabricated single version.
 The SQLite Campaign projection and the IndexedDB `campaigns` object store MUST
 preserve the same three campaign-maintenance fields with identical missing-data
 semantics. Both projections remain disposable and reconstructable from campaign
-inventory inputs. Schema migration MUST rebuild these derived records, and a
-failed refresh MUST NOT publish a complete maintenance query payload. Campaign
+inventory inputs. Incompatible canonical schema migrations MUST rebuild these
+derived records; compatible additive upgrades SHALL follow §5.1. A failed
+refresh MUST NOT publish a complete maintenance query payload. Campaign
 and repository maintenance actions MUST use these canonical query results and
 MUST NOT inspect upstream manifests or browser storage directly.
 
@@ -1738,8 +1765,9 @@ independently observed historical execution facts. Similar values at different
 grains are not necessarily reconstructible: Run status and conclusion,
 requested and resolved models, friction and total Run costs, token classes,
 call and outcome events, and execution and dispatched-target repositories
-retain their separate meanings. Browser schema upgrades SHALL rebuild the
-disposable stores; PostgreSQL requires a fresh schema matching TypeSpec.
+retain their separate meanings. Browser schema upgrades SHALL follow §5.1,
+preserving compatible stores during additive version 44/45 upgrades and
+rebuilding incompatible projections; PostgreSQL requires a fresh schema matching TypeSpec.
 Retained row counts SHALL be calculated from namespace-scoped entity tables
 in the same read snapshot, not persisted in `cao_quality`.
 
@@ -2614,19 +2642,19 @@ The canonical browser database SHALL use:
 
 ```js
 const DATABASE_NAME = "gh-aw-cao-dashboard-data";
-const DATABASE_VERSION = 45;
+const DATABASE_VERSION = 46;
 ```
 
 The name MAY be scoped by deployment path to prevent unrelated dashboard
-deployments on the same origin from sharing derived state. A version upgrade
-SHALL recreate the stores in Section 5.1 rather than migrate stale derived
-rows.
+deployments on the same origin from sharing derived state. Version upgrades
+SHALL follow Section 5.1: versions 44 and 45 with a `runs` store receive an
+additive upgrade; incompatible older projections are recreated from inputs.
 
 ---
 
 # 27. Object Stores
 
-IndexedDB version 45 SHALL define:
+IndexedDB version 46 SHALL define:
 
 ```text
 campaigns
@@ -2651,6 +2679,9 @@ evals
 evalObservations
 transactions
 storageShards
+dailyRunCounts
+runCountContributions
+dailyRunCountState
 ```
 
 Future physical versions MAY include:
@@ -4011,7 +4042,9 @@ Because IndexedDB is not authoritative:
 
 > Rebuildability is more important than preserving stale derived rows.
 
-Physical schema upgrades SHALL rebuild the database. Derived projections that
+Physical schema upgrades SHALL follow §5.1: upgrades from version 44 or 45 with
+a `runs` store SHALL preserve existing stores and create only missing stores;
+incompatible older projections SHALL be rebuilt. Derived projections that
 use generations SHOULD keep the published generation available until compatible
 replacement metadata is committed.
 

@@ -97,8 +97,10 @@ Run-scoped Audit facts remain for request, attribution and resolution drill-down
 inventory and generic proxy events are discarded. Complete paired main-request
 costs can be compared to a named, explicitly estimated baseline, separately from
 total accounting. Missing costs remain unknown; partial runs do not
-enter cost quantiles. Browser schema 35 / IndexedDB version 45 rebuild older
-projections, and hosted PostgreSQL requires a fresh generated schema.
+enter cost quantiles. The canonical model remains version 35; IndexedDB version
+46 preserves version 44 and 45 databases with a `runs` store through an additive
+upgrade, while incompatible older projections are rebuilt. Hosted PostgreSQL
+requires a fresh generated schema.
 
 A Run owns ordered Domain, Tool, Skill, Friction, Audit, and Issue records combining observations
 from agents, tools, MCP servers, gateways, firewalls, policy engines,
@@ -122,7 +124,7 @@ The activity shard manifest is the dashboard's published operational input. Norm
 The complete normative [cached gh-aw JSONL mapping](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-gh-aw-jsonl-mapping.md) describes source fields, canonical entities, identity, ownership, and accounting.
 
 The canonical model is version 35. The browser database is
-`gh-aw-cao-dashboard-data`, IndexedDB version 45. Its canonical stores are
+`gh-aw-cao-dashboard-data`, IndexedDB version 46. Its canonical stores are
 `campaigns`, `repositories`, `workflows`, `runs`, `domains`, `tools`, `skills`,
 `friction`, `audits`, `issues`, `operationalValues`, `operationalValueEvidence`, `workflowValueCollections`, `marketplacePackages`,
 `experiments`, `experimentAssignments`, `graders`, `graderObservations`,
@@ -139,10 +141,23 @@ Eval model metadata are reconstructed from retained components or the owning
 Run. Identity, integrity keys, provenance, and independently observed historical
 facts remain stored.
 
-The `transactions` store records
-ingestion outcomes and is indexed by `createdAt`. Overview aggregates are
-computed by request-scoped queries over canonical runs. Schema upgrades rebuild all stores from
-authoritative dashboard inputs.
+The `transactions` store records ingestion outcomes and is indexed by
+`createdAt`; `storageShards` holds disposable storage accounting. Three separate
+projection stores, also keyed by `id` and without secondary indexes, implement
+[additive daily run counts](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md#722-additive-daily-run-counts):
+`dailyRunCounts` holds UTC day/Repository/Workflow counters,
+`runCountContributions` holds one compact reconciliation receipt per logical
+Run, and `dailyRunCountState` holds coverage, readiness, backfill checkpoints,
+and retention state. This is not an additional canonical entity or a general
+persisted Overview cache. Other Overview metrics remain request-scoped queries.
+
+Upgrades from version 44 or 45 with a `runs` store create only missing stores,
+preserving existing records and projection state. A newly created daily state
+starts resumable, bounded backfill from retained Runs with partial coverage;
+already-evicted history cannot be recovered. Other older databases rebuild from
+authoritative inputs. Daily counts and receipts retain the current UTC
+Monday-start week and two preceding weeks independently of detail retention;
+missing or incomplete projection state is not an empty population.
 
 For each ingestion, the worker reads the existing canonical batch, merges the incoming records, expires run-linked detail outside the browser's 7-day window (while retaining available run summaries and keeping Operational Values on 30 days), and prunes orphaned descendants and unreferenced structural parents. The effective retention horizon is the later of the browser clock and the newest incoming observation, so a browser with a slow clock cannot prune current producer data. The worker then reconciles each canonical collection: it deletes records absent from the retained batch and writes changed records. This makes expired records disappear while allowing fresh partial collections to retain compatible history.
 
