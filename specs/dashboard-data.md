@@ -642,16 +642,15 @@ The implementation profile defined by this specification is:
 ### 5.1.1 Independent statistical run projection
 
 `statistical-runs` is a separate, bounded statistical query layer over the current
-canonical snapshot. It SHALL NOT replace `runs`, change existing Run or linked
-detail retention, evict evidence, or create daily aggregates. This is the
-incremental sampling portion of
+canonical snapshot. It SHALL NOT replace `runs`, change existing exact Run or
+linked-detail retention, evict evidence, or create daily aggregates. This is the
+incremental sampling and PostgreSQL bundle-persistence portion of
 [the three-tier proposal](../adr/three-tier-operational-storage.md), not an
-implementation of its hot-tier eviction, persisted sample bundles, daily
-contributions, or online reservoir.
+implementation of its hot-tier eviction, daily contributions, or online reservoir.
 
 Selection SHALL execute inside the canonical worker/storage query boundary, or
-the server's pinned query transaction, before consumer filters, joins, grouping,
-or pagination. All consumers of a snapshot and sampling policy SHALL use the
+PostgreSQL's canonical publication transaction, before consumer filters, joins,
+grouping, or pagination. All consumers of a snapshot and sampling policy SHALL use the
 same frame. UI code SHALL NOT reconstruct a sample from view rows.
 
 The frame SHALL use a recorded logical UTC watermark, never query wall-clock
@@ -704,8 +703,38 @@ remain bound to their population after row projection or filtering. This
 identifies the sampling design, not a revision of mutable Run measurements.
 Missing or conflicting evidence SHALL invalidate unsupported weights; strata
 allocated zero records SHALL preclude a full-population estimate. There is no
-expiration-without-refill probability claim: the projection is reconstructed
-from the current snapshot rather than maintained as an online reservoir.
+expiration-without-refill probability claim: complete frames are reconstructed
+from canonical snapshots rather than maintained as an online reservoir.
+
+PostgreSQL SHALL atomically publish the frame, membership, strata, source
+quality, selected Runs, all nine admitted Run-linked collections, and their
+structural parent closure in private typed `cao_sample_*` tables. These tables
+SHALL NOT be canonical ingestion inputs or daily retention partitions.
+Statistical query dependencies SHALL read these frozen copies, including their
+parent context; exact dependencies in the same plan SHALL continue to read
+canonical tables. A manifest or membership cache joined to mutable canonical
+detail does not constitute persisted bundles.
+
+The persisted frame SHALL expose `storage-mode: persisted-bundles`,
+`source-data-revision`, and `source-revision`. It describes its recorded
+publication watermark and evidence revision, not the latest incremental state.
+Incremental writes and partition maintenance SHALL NOT mutate or independently
+expire sampled children, recompute weights, or refill membership. A subsequent
+canonical revision SHALL make the frozen source stale, without changing its
+historical weights. Only complete canonical snapshot publication SHALL replace
+the frame and bundles, rebuilding the seven-day window at that snapshot's
+recorded watermark. This is bounded snapshot persistence, not a continuously
+maintained reservoir or an extension of exact retention.
+
+Bundle admission SHALL be all-or-nothing and bounded to 200,000 records per
+collection, 500,000 evidence/context records in total, and 256 MiB of expanded
+typed values plus estimated membership bytes and a 1 MiB metadata reserve.
+The byte envelope excludes PostgreSQL page/index overhead. Budget exhaustion
+SHALL publish an unavailable statistical source with no retained bundle subset
+or valid weights, while preserving independent exact publication. Database
+errors, cancellation, or failed canonical validation SHALL roll back publication
+and preserve the previous committed frame. Snapshot readers SHALL observe either
+the previous complete publication or the next complete publication.
 
 The Models & Agents sample-composition query consumes `statistical-runs`. Its
 counts and chart shares SHALL describe the unweighted sample only, explicitly
@@ -713,8 +742,10 @@ not population totals or model shares; failure reserves can change composition.
 Exact usage summaries, AIC/token statistics, operational totals, failure
 sequences, Run routes, and Operational Value queries SHALL retain their existing
 sources. Additional migrations require their own acceptance/weighting review.
-This projection cannot preserve detail already removed by canonical retention
-and does not reduce the underlying canonical storage or shard download volume.
+Only the PostgreSQL profile persists independent bundles; browser and SQLite
+projections cannot preserve detail already removed by canonical retention.
+Persistence cannot recover detail missing at admission. No profile reduces
+underlying canonical storage or shard download volume in this increment.
 
 ## 5.2 Go server profile
 

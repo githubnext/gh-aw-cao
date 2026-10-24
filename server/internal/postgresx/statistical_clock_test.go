@@ -30,14 +30,17 @@ func TestOversizedStatisticalFramePreservesExactQueries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := writer.Publish(t.Context(), "oversized-statistical-frame"); err != nil {
+	if err := writer.Flush(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.db.ExecContext(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
+	if _, err := writer.tx.Exec(t.Context(), `INSERT INTO runs(namespace,ordinal,present_fields,id,repository_id,workflow_id,run_at)
 		SELECT namespace,n,present_fields,'github:run:o/r:' || n,repository_id,workflow_id,run_at
 		FROM runs CROSS JOIN generate_series(2,$2) AS n
 		WHERE namespace=$1 AND id='github:run:o/r:1'`,
 		store.namespace, dashboardquery.StatisticalMaxInputRows+1); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Publish(t.Context(), "oversized-statistical-frame"); err != nil {
 		t.Fatal(err)
 	}
 	results, _, err := store.ExecuteSQLPlan(t.Context(), []query.Definition{

@@ -192,14 +192,21 @@ adapters never store dashboard entities or execute dashboard queries.
 
 The independent `statistical-runs` query projection selects a deterministic,
 seven-day, date/outcome-stratified sample from the current canonical snapshot.
-Selection belongs to the data worker and server query/storage boundary, before
+Selection belongs to the data worker and server storage boundary, before
 consumer predicates, with separate backend capacities and explicit frame/weight
 metadata. It does not change exact sources, retention, or Operational Value.
 The Models & Agents composition chart describes sampled observations rather
 than population shares; its cost/token summaries continue using exact retained
-runs. Persisted sampled bundles, hot eviction, and daily aggregates from the
-three-tier storage proposal remain separate work; this projection cannot recover
-evicted evidence or reduce canonical storage/downloads.
+runs. PostgreSQL atomically persists complete sampled bundles, typed frame and
+membership metadata, source quality, and structural parents at canonical snapshot
+publication; statistical dependencies read those private, non-partitioned copies
+without changing exact dependencies. Incremental revisions mark the frozen source
+stale, never mutate sampled evidence or weights; only a complete publication
+rebuilds the seven-day frame. Admission limits reject an entire statistical
+snapshot rather than truncate bundles. SQLite and browser sampling remain query
+projections. Hot eviction and daily aggregates from the three-tier proposal remain
+separate work; persistence cannot recover evidence missing at admission or reduce
+canonical storage/downloads.
 
 The Go server is the unified local and hosted dashboard serving runtime.
 `npm run dev` and `npm run dashboard:local` build the site and invoke `serve`

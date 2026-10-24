@@ -12,62 +12,7 @@ import (
 
 func TestStatisticalNativeSQLBoundary(t *testing.T) {
 	store, _ := nativeTestStore(t)
-	content, err := os.ReadFile("../../../dashboard/site/test/fixtures/statistical-sampling.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var fixture struct {
-		Rows      []model.Row
-		Watermark string
-	}
-	if err := json.Unmarshal(content, &fixture); err != nil {
-		t.Fatal(err)
-	}
-	asOf := time.Date(2026, time.October, 8, 12, 0, 0, 0, time.UTC)
-	if err := store.RunPartitionMaintenance(t.Context(), asOf, 30, store.linkedRetentionDays); err != nil {
-		t.Fatal(err)
-	}
-	w, err := store.BeginIngestion(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer w.Abort(t.Context())
-	w.ingestedAt = asOf
-	for _, input := range []struct {
-		source string
-		row    model.Row
-	}{
-		{"$repositories", model.Row{"id": "repo", "owner": "o", "name": "r"}},
-		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repo", "path": "worker.md"}},
-	} {
-		if err := w.Append(t.Context(), input.source, input.row); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, row := range fixture.Rows {
-		row["repositoryId"], row["workflowId"] = "repo", "workflow"
-		if err := w.Append(t.Context(), "$runs", row); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, source := range []string{"$tools", "$domains", "$skills", "$audits"} {
-		for _, row := range []model.Row{
-			{"id": "a", "runId": fixture.Rows[0]["id"]}, {"id": "b", "runId": fixture.Rows[0]["id"]},
-			{"id": "expired", "runId": fixture.Rows[7]["id"]},
-		} {
-			if err := w.Append(t.Context(), source, row); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	if err := w.Quality(t.Context(), "$runs", model.Metadata{
-		"as-of": fixture.Watermark, "completeness": "complete", "availability": "available",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := w.Publish(t.Context(), "statistical-boundary"); err != nil {
-		t.Fatal(err)
-	}
+	publishStatisticalFixture(t, store, "statistical-boundary", "")
 	corpus, err := os.ReadFile("../../../dashboard/site/src/data/queries/database.json")
 	if err != nil {
 		t.Fatal(err)
@@ -117,5 +62,83 @@ func TestStatisticalNativeSQLBoundary(t *testing.T) {
 				t.Fatalf("owned observation lost its run's frame binding: %s", source)
 			}
 		}
+	}
+}
+
+func publishStatisticalFixture(t *testing.T, store *Store, revision, watermark string) {
+	t.Helper()
+	content, err := os.ReadFile("../../../dashboard/site/test/fixtures/statistical-sampling.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Rows      []model.Row
+		Watermark string
+	}
+	if err := json.Unmarshal(content, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if watermark != "" {
+		fixture.Watermark = watermark
+	}
+	asOf := time.Date(2026, time.October, 8, 12, 0, 0, 0, time.UTC)
+	if err := store.RunPartitionMaintenance(t.Context(), asOf, 30, store.linkedRetentionDays); err != nil {
+		t.Fatal(err)
+	}
+	w, err := store.BeginIngestion(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Abort(t.Context())
+	w.ingestedAt = asOf
+	for _, input := range []struct {
+		source string
+		row    model.Row
+	}{
+		{"$campaigns", model.Row{"id": "campaign", "slug": "sample"}},
+		{"$repositories", model.Row{"id": "repo", "owner": "o", "name": "r"}},
+		{"$workflows", model.Row{"id": "workflow", "repositoryId": "repo", "campaignId": "campaign", "path": "worker.md"}},
+		{"$workflows", model.Row{"id": "experiment-workflow", "repositoryId": "repo", "campaignId": "campaign", "path": "experiment.md"}},
+		{"$experiments", model.Row{"id": "assignment-experiment", "workflowId": "workflow"}},
+		{"$experiments", model.Row{"id": "cross-experiment", "workflowId": "experiment-workflow"}},
+		{"$graders", model.Row{"id": "grader", "workflowId": "workflow"}},
+		{"$evals", model.Row{"id": "eval", "workflowId": "workflow"}},
+	} {
+		if err := w.Append(t.Context(), input.source, input.row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, row := range fixture.Rows {
+		row["repositoryId"], row["workflowId"] = "repo", "workflow"
+		if err := w.Append(t.Context(), "$runs", row); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, source := range []string{"$tools", "$domains", "$skills", "$audits", "$friction", "$issues",
+		"$experimentAssignments", "$graderObservations", "$evalObservations"} {
+		for _, row := range []model.Row{
+			{"id": "a", "runId": fixture.Rows[0]["id"]}, {"id": "b", "runId": fixture.Rows[0]["id"]},
+			{"id": "expired", "runId": fixture.Rows[7]["id"]},
+		} {
+			switch source {
+			case "$experimentAssignments":
+				row["experimentId"] = "assignment-experiment"
+			case "$graderObservations":
+				row["graderId"], row["experimentId"] = "grader", "cross-experiment"
+			case "$evalObservations":
+				row["evalId"], row["experimentId"] = "eval", "cross-experiment"
+			}
+			if err := w.Append(t.Context(), source, row); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := w.Quality(t.Context(), "$runs", model.Metadata{
+		"as-of": fixture.Watermark, "completeness": "complete", "availability": "available",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Publish(t.Context(), revision); err != nil {
+		t.Fatal(err)
 	}
 }
