@@ -3,6 +3,7 @@ package postgresx
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -18,12 +19,17 @@ func TestStatisticalNativeSQLBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	var definitions []query.Definition
-	if err := json.Unmarshal(append(corpus[:len(corpus)-2], []byte(`,
-		{"name":"sample-success","from":"statistical-runs","filter":{"predicates":[{"field":"run-conclusion","equals":"success"}]}},
-		{"name":"sample-empty","from":"statistical-runs","filter":{"predicates":[{"field":"run","equals":"not-present"}]}}
-	]`)...), &definitions); err != nil {
+	if err := json.Unmarshal(corpus, &definitions); err != nil {
 		t.Fatal(err)
 	}
+	var consumers []query.Definition
+	if err := json.Unmarshal([]byte(`[
+		{"name":"sample-success","from":"statistical-runs","filter":{"predicates":[{"field":"run-conclusion","equals":"success"}]}},
+		{"name":"sample-empty","from":"statistical-runs","filter":{"predicates":[{"field":"run","equals":"not-present"}]}}
+	]`), &consumers); err != nil {
+		t.Fatal(err)
+	}
+	definitions = slices.Concat(definitions, consumers)
 	result, metrics, err := store.ExecuteSQLPlan(t.Context(), definitions, []string{
 		"sample-success", "sample-empty", "runs", "statistical-tools", "statistical-domains", "statistical-skills", "statistical-audits",
 	})

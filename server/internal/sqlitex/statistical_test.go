@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
@@ -48,12 +49,14 @@ func TestStatisticalSnapshotProductionBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Parse the consumer exactly as the production HTTP boundary does.
-	if err := json.Unmarshal(append(corpus[:len(corpus)-2], []byte(`,
+	var consumers []query.Definition
+	if err := json.Unmarshal([]byte(`[
 		{"name":"sample-success","from":"statistical-runs","filter":{"predicates":[{"field":"run-conclusion","equals":"success"}]}},
 		{"name":"sample-empty","from":"statistical-runs","filter":{"predicates":[{"field":"run","equals":"not-present"}]}}
-	]`)...), &definitions); err != nil {
+	]`), &consumers); err != nil {
 		t.Fatal(err)
 	}
+	definitions = slices.Concat(definitions, consumers)
 	err = store.WithReadTransaction(t.Context(), func(ctx context.Context, reader dashboardstore.Reader) error {
 		result, _, err := reader.ExecuteSQLPlan(ctx, definitions, []string{
 			"sample-success", "sample-empty", "runs", "statistical-tools", "statistical-domains", "statistical-skills", "statistical-audits",
