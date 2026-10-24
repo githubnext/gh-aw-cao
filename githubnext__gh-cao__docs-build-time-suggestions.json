@@ -1,35 +1,7 @@
 {
-  "source_sha": "22a3655f4893cfa0c2ea0b846c5a04a693c39f46",
+  "source_sha": "3597d0793b0572dec242efc98b35d310eebbee91",
   "next_category": "dependency installation and caching",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-23T23:34:50Z",
-      "worker_run_id": "40040214026",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        40040264232,
-        40039211316,
-        40039164850,
-        40037228871,
-        40035689948,
-        40035174045,
-        40034330979,
-        40033195230,
-        40030833753,
-        40029180516,
-        40028915755,
-        40027585845,
-        40026212138,
-        40024779826,
-        40023686325,
-        40022023112,
-        40020443215,
-        40019016724,
-        40018992346,
-        40016016928
-      ],
-      "outcome": "incomplete: the 2026-10-23T20:01:44Z to 2026-10-23T23:32:36Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Bounded trusted job and step metadata established only three successful build-and-deploy paths in the window: workflow_run 40039164850, push 40024779826, and schedule 40018992346, across two source SHAs. The remaining inspected long-running successful entries were freshness-only paths that skipped build and deploy after queue or concurrency waits; short completed entries cannot contain the approximately 72-78 second build path observed in the three builds. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
-    },
     {
       "evaluated_at": "2026-10-23T23:51:27Z",
       "worker_run_id": "40041658765",
@@ -694,6 +666,34 @@
         40097760513
       ],
       "outcome": "incomplete: the 2026-10-24T13:21:08Z to 2026-10-24T17:05:29Z latest-20 completed docs.yml window contained 14 successful, four skipped, and two failed schedule runs, with no cancelled runs. All successful runs completed in 12-18 seconds at source SHA 22a3655f4893cfa0c2ea0b846c5a04a693c39f46, so the window did not establish five comparable successful build-and-deploy paths; four workflow_run entries were skipped. The two newest schedule runs failed after 238 and 24 seconds and are disclosed as failures, not normal samples. A bounded job-metadata follow-up for those failures and the latest success then hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, all further API work stopped. Workflow and dashboard/build/deploy job median and p90 timings, step-level repeated-cost analysis, trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T18:23:58Z",
+      "worker_run_id": "40120320199",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40120191494,
+        40118803916,
+        40117600869,
+        40116502677,
+        40116326535,
+        40116139464,
+        40115877669,
+        40115632104,
+        40114233064,
+        40113131683,
+        40112478577,
+        40112181680,
+        40111299199,
+        40109642528,
+        40108472481,
+        40107671094,
+        40107450733,
+        40106531426,
+        40105066853,
+        40103950322
+      ],
+      "outcome": "incomplete: the 2026-10-24T14:45:52Z to 2026-10-24T18:21:02Z latest-20 completed docs.yml window contained 14 successful, four skipped, and two failed runs, with no cancelled runs. Trusted job and step metadata established only three successful full build-and-deploy paths: push 40120191494 at source SHA 3597d0793b0572dec242efc98b35d310eebbee91, workflow_run 40116326535 at source SHA 11cfeefa2b4db1df3d1fb8a79f5da1afd7493ef7, and schedule 40115632104 at source SHA 81e996cca86cedc82ec96bba01842500c1f9481b. Their elapsed workflow times were 75, 120, and 127 seconds; build jobs were 56, 86, and 77 seconds and deploy jobs were 9, 14, and 18 seconds. Each restored the dashboard cache and skipped artifact fallback. The other successful runs completed in 10-18 seconds and did not contain a full build path. Schedule failures 40114233064 and 40113131683 failed in freshness checking and are excluded from normal samples. This is below the required five comparable successful full runs, so complete workflow/job median and p90 timings, repeated-cost analysis, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
