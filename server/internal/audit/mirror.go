@@ -7,7 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"time"
+
+	"github.com/githubnext/gh-cao/server/internal/logger"
 )
+
+var mirrorLog = logger.New("cao:audit")
 
 // MirrorWriteTimeout includes waiting for any preceding mirror write. An
 // arbitrary io.Writer cannot be canceled; one shared slot bounds outstanding
@@ -23,7 +27,12 @@ func (m *mirror) write(ctx context.Context, fields []slog.Attr) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, MirrorWriteTimeout)
 	defer cancel()
 	reason := "success"
-	defer func() { observeMirror(context.WithoutCancel(ctx), reason) }()
+	defer func() {
+		if reason != "success" {
+			mirrorLog.Printf("audit mirror write failed: reason=%s", reason)
+		}
+		observeMirror(context.WithoutCancel(ctx), reason)
+	}()
 	select {
 	case m.active <- struct{}{}:
 	case <-ctx.Done():
@@ -32,10 +41,8 @@ func (m *mirror) write(ctx context.Context, fields []slog.Attr) (err error) {
 	}
 	// Encode before dispatch so the background writer retains only immutable
 	// bytes, never caller-owned attributes or mutable structured values.
-	var buffer bytes.Buffer
-	record := slog.NewRecord(time.Now(), slog.LevelInfo, "audit", 0)
-	record.AddAttrs(fields...)
-	if err := slog.NewJSONHandler(&buffer, nil).Handle(ctx, record); err != nil {
+	data, err := encodeMirrorRecord(ctx, fields)
+	if err != nil {
 		<-m.active
 		reason = "error"
 		return ErrMirrorUnavailable
@@ -45,7 +52,6 @@ func (m *mirror) write(ctx context.Context, fields []slog.Attr) (err error) {
 		reason = "timeout"
 		return fmt.Errorf("%w: %w", ErrMirrorUnavailable, err)
 	}
-	data := buffer.Bytes()
 	done := make(chan error, 1)
 	go func() {
 		defer func() { <-m.active }()
@@ -68,4 +74,15 @@ func (m *mirror) write(ctx context.Context, fields []slog.Attr) (err error) {
 		reason = "timeout"
 		return fmt.Errorf("%w: %w", ErrMirrorUnavailable, ctx.Err())
 	}
+}
+
+// encodeMirrorRecord renders fields as one complete JSON line.
+func encodeMirrorRecord(ctx context.Context, fields []slog.Attr) ([]byte, error) {
+	var buffer bytes.Buffer
+	record := slog.NewRecord(time.Now(), slog.LevelInfo, "audit", 0)
+	record.AddAttrs(fields...)
+	if err := slog.NewJSONHandler(&buffer, nil).Handle(ctx, record); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
