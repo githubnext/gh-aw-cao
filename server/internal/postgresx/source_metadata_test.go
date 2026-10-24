@@ -12,15 +12,16 @@ import (
 func TestRepositoryRunInventoryDailyAvailability(t *testing.T) {
 	store, _ := nativeTestStore(t)
 	dailyPublish(t, store, dailyRun("observed", "success", "completed"))
-	var definitions []query.Definition
-	for _, path := range []string{
-		"../../../dashboard/site/src/data/queries/database.json",
-		"../../../dashboard/site/src/agent/queries.generated.json",
-	} {
-		content, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
+	databaseContent, err := os.ReadFile("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentContent, err := os.ReadFile("../../../dashboard/site/src/agent/queries.generated.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	definitions := make([]query.Definition, 0, 2)
+	for _, content := range [][]byte{databaseContent, agentContent} {
 		var batch []query.Definition
 		if err := json.Unmarshal(content, &batch); err != nil {
 			t.Fatal(err)

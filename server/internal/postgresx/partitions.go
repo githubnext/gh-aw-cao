@@ -99,10 +99,6 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 	return s.purgeInactiveRepositoriesAt(ctx, cutoff, now)
 }
 
-func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time) error {
-	return s.purgeInactiveRepositoriesAt(ctx, cutoff, time.Now())
-}
-
 func (s *Store) purgeInactiveRepositoriesAt(ctx context.Context, cutoff, now time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

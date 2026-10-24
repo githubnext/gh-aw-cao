@@ -68,7 +68,7 @@ func TestDailyCountsClassifyReplayCorrectionAndPreserve(t *testing.T) {
 		{"action-required", "completed", "approval"}, {"cancelled", "queued", "pending"}, {"", "in_progress", "pending"},
 		{"cancelled", "completed", "other"}, {"skipped", "", "other"}, {"", "completed", "other"},
 	}
-	rows := make([]model.Row, len(cases))
+	rows := make([]model.Row, len(cases), len(cases)+1)
 	for index, test := range cases {
 		rows[index] = dailyRun(fmt.Sprint(index), test.conclusion, test.status)
 	}
@@ -110,7 +110,7 @@ func TestDailyCountsClassifyReplayCorrectionAndPreserve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var definitions []query.Definition
+	definitions := make([]query.Definition, 0, 1)
 	if err := json.Unmarshal(content, &definitions); err != nil {
 		t.Fatal(err)
 	}

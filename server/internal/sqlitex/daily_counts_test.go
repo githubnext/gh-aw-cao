@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
+
 	"github.com/githubnext/gh-cao/server/internal/dashboardstore"
 	"github.com/githubnext/gh-cao/server/internal/model"
 	"github.com/githubnext/gh-cao/server/internal/query"
@@ -54,7 +55,7 @@ func TestDailyCountsSnapshotSourceWithoutDetail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var definitions []query.Definition
+	definitions := make([]query.Definition, 0, 1)
 	if err := json.Unmarshal(content, &definitions); err != nil {
 		t.Fatal(err)
 	}
@@ -170,15 +171,16 @@ func TestDailyCountsOldSnapshotUnavailable(t *testing.T) {
 }
 
 func TestRepositoryRunInventoryDailyAvailability(t *testing.T) {
-	var definitions []query.Definition
-	for _, path := range []string{
-		"../../../dashboard/site/src/data/queries/database.json",
-		"../../../dashboard/site/src/agent/queries.generated.json",
-	} {
-		content, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
+	databaseContent, err := os.ReadFile("../../../dashboard/site/src/data/queries/database.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentContent, err := os.ReadFile("../../../dashboard/site/src/agent/queries.generated.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	definitions := make([]query.Definition, 0, 2)
+	for _, content := range [][]byte{databaseContent, agentContent} {
 		var batch []query.Definition
 		if err := json.Unmarshal(content, &batch); err != nil {
 			t.Fatal(err)

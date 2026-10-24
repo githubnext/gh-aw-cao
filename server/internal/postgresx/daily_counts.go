@@ -221,7 +221,7 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 		return "CASE WHEN " + alias + ".status='completed' OR " + alias + ".conclusion IN ('success','failure','startup-failure','stale','timed-out','action-required') THEN 1 ELSE 0 END"
 	}
 	key := func(alias string) string {
-		values := []string{}
+		values := make([]string, 0, 12)
 		for _, column := range []string{"id", "repository_id", "workflow_id", "owner", "repository", "workflow_path", "started_at", "status", "conclusion", "attempt", "updated_at", "completed_at"} {
 			value := alias + "." + column
 			if column == "started_at" || column == "updated_at" || column == "completed_at" {
@@ -393,7 +393,7 @@ func dailySQLSource(namespace string, available, raw bool) query.SQLRelation {
 		}
 	}
 	columns := map[string]query.SQLColumn{}
-	var empty []string
+	empty := make([]string, 0, len(fields))
 	for field, physical := range fields {
 		kind, cast := query.SQLText, "text"
 		if field == "total" || field == "successful" || field == "failed" || field == "approval" || field == "pending" || field == "other" {
