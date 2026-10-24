@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-23T05:56:31Z",
-      "worker_run_id": "39908200922",
-      "category": "reusable dashboard generation",
-      "evidence_run_ids": [
-        39907916424,
-        39907754438,
-        39906678928,
-        39905561225,
-        39905537147,
-        39903475793,
-        39902750666,
-        39902484892,
-        39901826702,
-        39900445281,
-        39898153337,
-        39896843545,
-        39895217766,
-        39895144358,
-        39893837040,
-        39892817541,
-        39892116066,
-        39890304784,
-        39890234174,
-        39887150030
-      ],
-      "outcome": "no-op: the 2026-10-23T02:00:12Z to 2026-10-23T05:49:54Z latest-20 completed docs.yml window contained 18 successful and two skipped runs, with no failed or cancelled runs. Five successful build-and-deploy paths were comparable (three workflow_run, one push, and one schedule, across three source SHAs): median/p90 end-to-end 101/111.6 seconds, initial queue 4/9.4 seconds, queue-excluded execution 96/106.2 seconds, build job 71/76.8 seconds, and deploy job 11/11.6 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml. Dependency installation was 20/23.2 seconds, Astro generation 14/14.6 seconds, reusable-dashboard restoration 1/2 seconds, and Pages artifact upload 3/3 seconds. Bounded trusted logs verified identical-key 301 MiB npm package-cache hits and approximately 3 MiB reusable-dashboard-cache hits on all five comparable builds; step metadata showed all five skipped dashboard lookup and artifact fallback. The latest five successful dashboard producer workflows had median/p90 end-to-end 26/33.2 seconds and build jobs 14/16.2 seconds; dashboard dependency installation was 2/3.6 seconds, dashboard assembly 2/2 seconds, artifact upload 2/2 seconds, and cache publication 6/7.2 seconds. Reuse is already effective: eliminating the 1-second median docs restore would save about 1% of median queue-excluded execution, while the complete producer path is isolated, only 26 seconds median, and runs for fresh activity snapshots. No concrete correctness- and freshness-preserving reusable-dashboard change can reasonably save 60 seconds or at least 14.4 seconds (15% of median docs execution), so no actionable recommendation was made and the category advanced."
-    },
-    {
       "evaluated_at": "2026-10-23T06:34:16Z",
       "worker_run_id": "39911934538",
       "category": "artifact transfer and Pages packaging",
@@ -715,6 +687,13 @@
         40088202008
       ],
       "outcome": "incomplete: the 2026-10-24T11:01:11Z to 2026-10-24T15:01:28Z latest-20 completed docs.yml window contained 16 successful and four skipped runs, with no failed or cancelled runs. All successful runs completed in 11-17 seconds at source SHA 22a3655f4893cfa0c2ea0b846c5a04a693c39f46, so none could contain the recently observed 75-99 second build-and-deploy path; they freshness-checked and avoided build and deploy. This is below the required minimum of five comparable successful build-and-deploy runs, so workflow and dashboard/build/deploy job median and p90 timings, step-level repeated-cost analysis, trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T15:35:01Z",
+      "worker_run_id": "40107434314",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: the first bounded latest-completed docs.yml workflow-run request returned a GitHub API rate-limit error before a current evidence window could be collected. Per resource-limit policy, all further GitHub API and model work stopped. The required five comparable successful runs, workflow and dashboard/build/deploy job median and p90 timings, step-level repeated-cost analysis, trusted cache-hit verification, outlier disclosure, and duplicate open-issue check could not be completed. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
