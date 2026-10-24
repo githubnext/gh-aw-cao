@@ -2,8 +2,7 @@ name: Mobile dashboard integration
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "23 6 * * *"
+  workflow_call:
   push:
     branches: [main]
     paths:

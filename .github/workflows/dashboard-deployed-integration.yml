@@ -39,6 +39,12 @@ on:
       - tests/playwright/configs/dashboard-query-performance.config.mjs
       - "!server/**/*.md"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      full:
+        description: Include expensive deployed-data benchmarks in the daily suite
+        type: boolean
+        default: false
   schedule:
     - cron: "12,27,42,57 * * * *"
 
@@ -91,6 +97,7 @@ jobs:
         run: exit 1
 
   query-performance:
+    if: github.event_name != 'schedule' || inputs.full == true
     name: Benchmark deployed dashboard queries (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -134,6 +141,7 @@ jobs:
 
   query-cost:
     name: Measure deployed SQLite and Postgres query cost
+    if: github.event_name != 'schedule' || inputs.full == true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:

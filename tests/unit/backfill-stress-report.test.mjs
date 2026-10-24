@@ -67,8 +67,10 @@ test("artifact reader preserves separate case directories and exposes missing ar
 
 test("full stress workflow is daily-only and keeps issue-write outside the test jobs", () => {
   const workflow = fs.readFileSync(".github/workflows/backfill-stress.yml", "utf8");
-  assert.match(workflow, /cron: "23 4 \* \* \*"/);
-  assert.doesNotMatch(workflow, /workflow_dispatch|pull_request:|push:/);
+  assert.match(workflow, /workflow_call:/);
+  assert.doesNotMatch(workflow, /pull_request:|push:/);
+  const daily = fs.readFileSync(".github/workflows/ci-daily.yml", "utf8");
+  assert.match(daily, /uses: \.\/\.github\/workflows\/backfill-stress\.yml/);
   assert.match(workflow, /repositories: \[1000, 10000, 50000\]/);
   assert.match(workflow, /needs: backfill-stress/);
   assert.match(workflow, /issues: write/);

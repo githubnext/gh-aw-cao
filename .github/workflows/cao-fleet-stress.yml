@@ -1,9 +1,8 @@
 name: CAO simulated fleet stress
 
 on:
-  schedule:
-    - cron: "43 5 * * *"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

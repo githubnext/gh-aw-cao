@@ -1,8 +1,7 @@
 name: Dashboard massive-scale stress
 
 on:
-  schedule:
-    - cron: "17 * * * *"
+  workflow_call:
   workflow_dispatch:
     inputs:
       repositories:

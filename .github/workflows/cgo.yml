@@ -26,6 +26,9 @@ on:
       - "!dashboard/site/**/*.md"
       - "!server/**/*.md"
 
+  workflow_dispatch:
+  workflow_call:
+
 permissions:
   contents: read
 
@@ -36,6 +39,7 @@ concurrency:
 jobs:
   windows-local-server:
     name: Windows local development server
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -45,7 +49,9 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: |
+            server/go.sum
+            internal/dashboardquery/go.sum
       - name: Build native Windows development server
         run: go -C server build ./cmd/cao-dashboard
       - name: Run local SQLite server and query its HTTP API
@@ -71,7 +77,9 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: |
+            server/go.sum
+            internal/dashboardquery/go.sum
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
       - name: Check formatting
@@ -81,8 +89,11 @@ jobs:
         working-directory: server
         run: golangci-lint run ./...
       - name: Unit tests
-        run: go -C server test ./...
+        env:
+          GO_TEST_MODE: ${{ github.event_name == 'pull_request' && '-short' || '-count=1' }}
+        run: go -C server test "$GO_TEST_MODE" ./...
       - name: Local Actions, OIDC, admission, and webhook gateway integration
+        if: github.event_name != 'pull_request'
         run: >-
           go -C server test -race ./internal/simulator ./internal/admission
           ./internal/webhookgateway ./cmd/cao-webhook-gateway
@@ -96,6 +107,7 @@ jobs:
 
   actions-simulator-postgres:
     name: Local Actions and webhook PostgreSQL integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -120,7 +132,7 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: server/go.sum
       - name: Exercise local Actions and gateway with durable PostgreSQL state
         env:
           POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_actions_test?sslmode=disable
@@ -140,7 +152,7 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: server/go.sum
       - name: Run isolated backfill services and integration tests
         run: bash scripts/test-dashboard-backfill.sh
       - name: Upload backfill results and service logs
@@ -212,7 +224,7 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: server/go.sum
       - name: Run rate-limit stress harness with profiling
         working-directory: server
         run: |
@@ -315,7 +327,7 @@ jobs:
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
         with:
           go-version: 1.27.3
-          cache: false
+          cache-dependency-path: server/go.sum
       - name: Install dependencies
         run: |
           npm ci

@@ -2,6 +2,7 @@ name: Dashboard views
 
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [main]
     paths:
@@ -22,8 +23,6 @@ on:
       - tests/e2e/dashboard-deployed-refresh-helpers.mjs
       - tests/playwright/configs/dashboard-views.config.mjs
       - "!dashboard/site/**/*.md"
-  schedule:
-    - cron: "53 5 * * *"
 
 permissions:
   contents: read
