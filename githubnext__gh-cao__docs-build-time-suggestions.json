@@ -1,35 +1,7 @@
 {
   "source_sha": "acb345d8b1ec152e103c0570562a9e99a5431d62",
-  "next_category": "reusable dashboard generation",
+  "next_category": "artifact transfer and Pages packaging",
   "evaluations": [
-    {
-      "evaluated_at": "2026-10-24T02:02:00Z",
-      "worker_run_id": "40052191054",
-      "category": "dependency installation and caching",
-      "evidence_run_ids": [
-        40051897521,
-        40050519437,
-        40050211598,
-        40048891001,
-        40048322967,
-        40047130409,
-        40043057001,
-        40041469818,
-        40040264232,
-        40039211316,
-        40039164850,
-        40037228871,
-        40035689948,
-        40035174045,
-        40034330979,
-        40033195230,
-        40030833753,
-        40029180516,
-        40028915755,
-        40027585845
-      ],
-      "outcome": "incomplete: the 2026-10-23T21:33:02Z to 2026-10-24T01:54:35Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Run metadata showed only four successful runs long enough to plausibly contain the recently observed 62-75 second build path, so the required five comparable successful build-and-deploy runs were not available. A bounded follow-up job-metadata request then hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, all further API and model work stopped. Workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
-    },
     {
       "evaluated_at": "2026-10-24T02:26:50Z",
       "worker_run_id": "40053971247",
@@ -674,6 +646,34 @@
         40114233064
       ],
       "outcome": "complete no-op: the 2026-10-24T17:01:31Z to 2026-10-24T19:45:53Z latest-20 completed docs.yml window contained 17 successful, two skipped, and one failed run. Six successful full build-and-deploy paths were comparable across schedule, workflow_run, and push triggers. Median execution was 96.0s (p90 120.0s), queue time 3.5s (p90 44.5s), build 74.5s (p90 84.5s), deploy 10.0s (p90 17.0s), and Astro documentation generation 13.0s (p90 15.0s). Six successful CAO Dashboard build jobs had median 15.0s (p90 19.0s). Trusted step metadata showed all six docs builds restored the dashboard cache and skipped artifact fallback. The failed schedule run 40114233064 was disclosed and excluded. No Astro recommendation was made: even eliminating the entire 13-second median Astro step would save less than 15% of the 96-second median execution and far less than 60 seconds, so no concrete change can meet the actionability threshold without weakening correctness. The next category is reusable dashboard generation."
+    },
+    {
+      "evaluated_at": "2026-10-24T20:20:39Z",
+      "worker_run_id": "40129115343",
+      "category": "reusable dashboard generation",
+      "evidence_run_ids": [
+        40127913019,
+        40126757278,
+        40125625633,
+        40124647241,
+        40124625205,
+        40123369506,
+        40122394170,
+        40121780130,
+        40121606358,
+        40121585605,
+        40121471441,
+        40120653572,
+        40120191494,
+        40118803916,
+        40117600869,
+        40116502677,
+        40116326535,
+        40116139464,
+        40115877669,
+        40115632104
+      ],
+      "outcome": "complete no-op: the 2026-10-24T17:19:58Z to 2026-10-24T20:01:29Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Six successful full build-and-deploy paths were comparable. Median execution was 96.0s (p90 120.0s), queue time 3.5s (p90 44.5s), build 74.5s (p90 84.5s), and deploy 10.0s (p90 17.0s). Six successful CAO Dashboard producers in the latest-20 dashboard window had build median 15.0s (p90 19.0s) and full-workflow median 29.5s (p90 36.5s). Trusted step metadata verified effective dashboard-cache hits in all six docs builds: restore completed in 0-2s and both run lookup and artifact-download fallback were skipped. Dashboard assembly was 1-3s and producer artifact upload 1-3s. No recommendation was made because reusable dashboard generation is already asynchronous and reused; its docs critical-path cost is at most 2s, far below 60s and 15% of the 96s median. The next category is artifact transfer and Pages packaging."
     }
   ]
 }
