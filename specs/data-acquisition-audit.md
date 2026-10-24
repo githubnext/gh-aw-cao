@@ -11,7 +11,7 @@ editors:
 
 **Version:** 1.0.0  
 **Status:** Working Draft  
-**Audit date:** 2026-10-23
+**Audit date:** 2026-10-24
 
 **Hosted deployment retirement:** The hosted health worker and its four-hour
 cadence gate, hosted MCP smoke test, and hosted backfill freshness test have
@@ -122,6 +122,7 @@ output destination is the admitted target.
 | `dashboard/canvas-server.mjs` | Internal canvas authoring bridge only: reads repository default branch, finds and validates the latest dashboard-data artifact, downloads it, and reads viewer identity and compiler-release metadata. | Canvas startup performs these reads once without polling. Ordinary local serving no longer runs this Node module; Go `serve` reuses a verified SQLite cache, downloading the selected published snapshot only when missing or explicitly refreshed. Go `serve-pages` serves prepared static files without upstream acquisition. |
 | `dashboard/local-github-service.mjs` | Read-only canvas GitHub proxy: ≤16 concurrent upstream requests, 5-minute fresh and 24-hour stale in-memory SQLite cache (128 entries), conditional `If-None-Match` revalidation, single-flight per key, and rate-limit/403/429 backoff serving stale data. | Bounded and ETag-aware, but the cache is in-memory by default and per canvas process, so it is not shared with Activity or browser caches. |
 | `.github/workflows/self-care-dashboard-review.md` (prefetch now gated only on target repository, not mode) | Direct `gh api` calls for default branch, one unpaginated 100-item artifact list, and run provenance, followed by `gh run download` of the dashboard artifact; the agent then separately queries the workflow registry and the latest 100 runs from the last 24 hours through its own `gh-proxy` toolset. | Bounded per-call limits and a trusted-provenance check exist, but this predownload and history query are independent of `activity/index.mjs` and `records.mjs`; every dispatch re-discovers the same artifact and run metadata rather than reusing the `cao-activity` snapshot. **Changed:** `#14009` widened the "Build expected control-plane inventory" and "Download and grade the live dashboard artifact" steps' `if:` condition from `inputs.target_repo == 'githubnext/gh-cao' && (inputs.safe_output_mode || 'review') == 'live'` to just `inputs.target_repo == 'githubnext/gh-cao'`, so this artifact/run discovery and download now also runs once per dispatch in `review` mode, not only in `live` mode. |
+| `.github/workflows/cao-value-local.yml` with `activity/local-values.mjs` | **New:** a `workflow_run` job after each successful default-branch CAO Activity run downloads the already-published `cao-activity-index` artifact from that run (one artifact-API download using the workflow token), restores the `cao-value-local-v1-*` Actions cache, and computes bounded local Values with `GH_TOKEN` cleared. Owner-scoped Activity fragments may carry `workflow-value-local.json` request metadata (≤1000 requests, 16 MiB) that `mergeActivityFragments` merges. | Reuses the Activity snapshot and issues no target-repository API reads; `concurrency` serializes runs. The cache key includes run ID and attempt with a prefix restore, so each run saves a new entry; it is isolated from `cao-activity-v4-*`. |
 | `.github/workflows/cao-activity.yml` and `.github/workflows/cao-dashboard.yml` | Activity produces one coherent cache snapshot; the dashboard workflow restores it and does not recollect. | Correctly centralizes dashboard collection. |
 
 ### 3.3 Workflow prefetch and grader paths
@@ -193,6 +194,7 @@ Administrative setup (`gh cao setup auth github-app` and the shared App helpers 
 | `deployed-workflows.json` local run index | `activity/index.mjs` | Activity collectors | Rebuilt from checked-out metadata and the shared logs snapshot without API fallback |
 | Shared gh-aw logs JSONL | `.github/workflows/cao-activity.yml` | Consumers | Persistent activity cache; internally carried as per-run `gh-aw-logs-shards/` wildcard shards and reconsolidated into bounded published shards each run, so only new or changed shards are re-ingested instead of the whole rolling window. After a successful collection, `activity/collect-logs.sh` runs `cao compact-jsonl --input-dir <shard_directory> --group <repo>=<shard_prefix>` once per activity run, retaining runs whose workflow path ends in `.lock.yml` and their associated records while merging each repository's accumulated shard files into ordered, size-bounded files before the shard directory is persisted. This is a local file-consolidation step with no additional `gh`/GitHub API traffic; it excludes non-agentic Actions workflows and limits browser parsing memory and cache-entry/file-count bloat without changing the acquisition request shape. |
 | `records.mjs` run map | `activity/index.mjs` via `deployed-workflows.json` | `dashboard/report/records.mjs` | In-memory join by runtime repository and run ID; no run-detail request |
+| `cao-value-local-v1-*` Actions cache | `.github/workflows/cao-value-local.yml` | Next local Value run | Retained `operational-values.jsonl` keyed by Activity run ID and attempt; latest prefix match; separate from the Activity cache and merged back by Activity as `operational-values-local.jsonl` |
 | Maintenance activity and forecast logs | `agentics-maintenance.yml` | Later maintenance runs | Separate Actions caches, outside the CAO activity snapshot |
 | GitHub API telemetry ledger (`cao-gh.jsonl`) | `activity/github-telemetry.mjs` | Next activity run's dashboard quota history and the `cao-gh` artifact | Rolling 24-hour window retained inside the `cao-activity` cache; trimmed on restore by `prepare`, not a fresh discard per run |
 | Dashboard source document | Dashboard data worker | Current browser session and later page queries | Canonical generations in IndexedDB store campaigns/repositories/workflows/runs/domains/tools/audits/issues; `work-items`, `security-findings`, and other rows not materialized as database tables are retained only in worker memory and reconstructed after reload |
@@ -294,6 +296,8 @@ flowchart LR
     marketplace["activity/marketplace.mjs<br/>registry ref/tree/manifests<br/>+ per-registry repo signal"]
     wvalues["workflow-values.mjs + daily-file-diet collector<br/>search/issues, timeline, PR, GraphQL,<br/>artifacts, commits; blobless git fetch"]
     cache[("cao-activity Actions cache")]
+    localvalue["cao-value-local.yml<br/>download cao-activity-index artifact,<br/>no target API reads"]
+    valuecache[("cao-value-local-v1 cache")]
   end
   subgraph Dashboard
     records["records.mjs<br/>issues/comments/artifacts per repo<br/>run attribution from activity index"]
@@ -350,6 +354,9 @@ flowchart LR
   cache -->|feeds issue targets| issuestatus
   issuestatus -->|enriches records in| cache
   cache -->|feeds| opval
+  cache -->|cao-activity-index artifact download per Activity run| localvalue
+  localvalue -->|restores and saves| valuecache
+  valuecache -.->|local values merged by next Activity, separate from| cache
   wvalues -->|cadence-gated evidence and proof workspace to| cache
   wvalues -.->|re-discovers artifacts and issues also read by| records
   opval -->|appends operational-values.jsonl to| cache
