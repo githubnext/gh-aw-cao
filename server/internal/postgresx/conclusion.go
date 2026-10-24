@@ -141,6 +141,9 @@ func (s *Store) RecordConcludedRun(ctx context.Context, identity admission.Ident
 		if err := partialInvocationQuality(ctx, tx, s.namespace, source); err != nil {
 			return err
 		}
+		if err := s.reconcileDailyInvocation(ctx, tx, runID); err != nil {
+			return err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1,evaluated_at=greatest(evaluated_at,$2) WHERE namespace=$1`, s.namespace, at); err != nil {
 		return err

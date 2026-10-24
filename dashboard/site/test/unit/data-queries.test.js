@@ -88,6 +88,31 @@ function overviewRuns(rows, workflowRows = []) {
 }
 
 describe('declarative dashboard queries', () => {
+  it('preserves identical aggregate provenance across branches without combining different coverage', () => {
+    const provenance = {
+      'aggregate-version': 1, 'aggregate-coverage': 'admitted',
+      'aggregate-time-grain': 'utc-run-start-day', 'excluded-runs': 2
+    };
+    const left = { source: 'left', rows: [{ value: 1 }], metadata: { ...metadata('left'), ...provenance } };
+    const right = { source: 'right', rows: [{ value: 2 }], metadata: { ...metadata('right'), ...provenance } };
+    const query = { name: 'combined', from: 'left', union: ['right'] };
+    const matching = executeDashboardQuery(query, { left, right });
+    expect(matching.metadata).toMatchObject(provenance);
+    expect(matching.metadata['excluded-runs']).toBe(2);
+    for (const overrides of [
+      { 'aggregate-coverage': 'retained-v44' },
+      { 'excluded-runs': 3 },
+      { 'query-diagnostic': 'Different evidence' },
+      { 'aggregate-version': undefined }
+    ]) {
+      const mixed = executeDashboardQuery(query, {
+        left, right: { ...right, metadata: { ...right.metadata, ...overrides } }
+      });
+      expect(mixed.metadata['aggregate-version']).toBeUndefined();
+      expect(mixed.metadata['aggregate-coverage']).toBeUndefined();
+    }
+  });
+
 
   it('avoids redundant input copies when a later operator materializes independent rows', () => {
     const row = Object.freeze({ value: 2 });

@@ -52,6 +52,9 @@ func relationColumns(table entityTable, presence func(int) string) map[string]qu
 }
 
 func (r *readTransaction) entitySQLSource(name string) (query.SQLRelation, error) {
+	if name == dailySource || name == "$dailyRunCounts" {
+		return dailySQLSource(r.store.namespace, r.store.dailyCounts, name == "$dailyRunCounts"), nil
+	}
 	if name == "$operationalValueEvidence" {
 		return r.operationalValueEvidenceSQLSource(), nil
 	}

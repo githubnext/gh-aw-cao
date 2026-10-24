@@ -219,6 +219,8 @@ export async function executeNamedQuery({ indexedDB, document, queryId, paramete
     query: id,
     rows,
     metadata: {
+      ...Object.fromEntries(Object.entries(metadata['aggregate-version'] === 1 ? metadata : {}).filter(([field]) =>
+        field.startsWith('aggregate-') || ['excluded-runs', 'conflicted-runs', 'query-diagnostic'].includes(field))),
       availability: typeof metadata.availability === 'string'
         ? (metadata.availability === 'available' && rows.length === 0 ? 'empty' : metadata.availability)
         : 'unknown',

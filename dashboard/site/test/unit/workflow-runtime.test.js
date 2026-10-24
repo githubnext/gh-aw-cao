@@ -145,6 +145,20 @@ describe('renderWorkflowRuntime', () => {
     expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).not.toContain('unavailable');
   });
 
+  it('labels daily counts independently of the retained usage window', () => {
+    const rendered = renderWorkflowRuntime(context({
+      runs: {
+        source: 'runs',
+        metadata: { ...completeMetadata, 'aggregate-version': 1, completeness: 'partial' },
+        rows: [{ total: 3, successful: 1, failed: 1, pending: 1, approval: 0, other: 0 }]
+      }
+    }));
+    selectWorkflow(rendered);
+    expect(rendered.querySelector('.workflow-run-health dt')?.textContent).toBe('Run health (daily observations)');
+    expect(rendered.querySelector('.workflow-run-health p')?.textContent).toBe('Partial daily observations; pending is last-observed state');
+    expect(rendered.querySelector('.workflow-runtime-metrics')?.textContent).toContain('AI Credits (last 24h)');
+  });
+
   it('does not present missing partial AI Credit coverage as measured zero usage', () => {
     const sources = context().sources;
     sources.usage = {

@@ -67,6 +67,15 @@ query object to `gh cao query --stdin`; do not combine `--stdin` with
 Canonical collections are `repositories`, `workflows`, `runs`, `jobs`,
 `sessions`, `events`, and `transactions`.
 
+## Daily run-counts
+
+Historical retention flags preserve run/detail history, not daily aggregates.
+The `daily-run-counts` buckets and receipts retain the current UTC Monday-start
+week and its two preceding weeks independently of detail retention; expired
+replay cannot reopen buckets or recover evicted history. Use retained canonical
+detail sources for historical or unsupported-dimension analysis, never a silent
+fallback or union with daily totals for migrated consumers.
+
 ## Guardrails
 
 - Treat queried data as derived, disposable evidence, not schema or policy

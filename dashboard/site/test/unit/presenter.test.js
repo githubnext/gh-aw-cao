@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { webcrypto } from 'node:crypto';
 import { IDBFactory } from 'fake-indexeddb';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { loadDatabaseQuerySources } from '../../src/data/queries/database.js';
 import { DataRequestWorker } from '../data-request-worker.js';
 import { renderDashboard as renderDashboardView, disposeDashboard, enableDashboardKeyboardNavigation, enableDashboardPageNavigation, dashboardPageLazySourceNames, resolveQueryDrillPageTitle } from '../../src/presenter.js';
 import { processDataRequest } from '../../src/data-worker.js';
@@ -2093,7 +2094,8 @@ describe('presenter built-in and custom pages', () => {
       window.location.hash = '#page-indexing';
       await vi.waitFor(() => expect(rendered.querySelector('[data-page-id="indexing"]')?.hasAttribute('data-page-pending')).toBe(false));
       const page = rendered.querySelector('[data-page-id="indexing"]');
-      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(9);
+      expect(page?.querySelectorAll('[data-view-id]')).toHaveLength(10);
+      expect(page?.querySelector('[data-view-id="indexing-daily-run-counts"] [data-view-availability="unavailable"]')).not.toBeNull();
       expect(page?.querySelector('[data-view-id="ingestion-webhook-status"] [data-view-availability="unavailable"]')).not.toBeNull();
       expect(page?.querySelectorAll('[data-chart-widget="bar"]')).toHaveLength(0);
       expect(page?.querySelector('[data-view-id="ingestion-storage"]')?.textContent).toContain('Storage engine unknown');
@@ -3785,7 +3787,9 @@ describe('presenter built-in and custom pages', () => {
   });
 
 
-  it('DLS-PAGE-002 DLS-PAGE-006 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 renders built-in sections in authoritative dashboard.json view order grouped by declared source instead of hard-coded section index positions', () => {
+  it('DLS-PAGE-002 DLS-PAGE-006 DLS-PAGE-008 DLS-PAGE-009 DLS-PAGE-010 DLS-PAGE-011 DLS-PAGE-012 DLS-PAGE-013 DLS-PAGE-014 renders built-in sections in authoritative dashboard.json view order grouped by declared source instead of hard-coded section index positions', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-29T20:01:00Z'));
+    onTestFinished(() => clock.mockRestore());
     /** @type {import('../../src/presenter.js').PresentationInput['document']} */
     const document = {
       languageVersion: '0.1.0',
@@ -3816,7 +3820,7 @@ describe('presenter built-in and custom pages', () => {
 
     const rendered = renderDashboard({
       document,
-      sources: applyDashboardQueries({
+      sources: await loadDatabaseQuerySources(new IDBFactory(), {
         runs: {
           source: 'runs',
           rows: [
@@ -3862,7 +3866,10 @@ describe('presenter built-in and custom pages', () => {
             availability: 'available'
           }
         }
-      }, ['runs-table', 'runs-daily-conclusions'])
+      }, {
+        ingest: true, queries: authoritativeDashboardDocument.dashboard.queries,
+        sourceNames: ['runs-table', 'runs-daily-conclusions']
+      })
     });
 
     const headings = [...rendered.querySelectorAll('[data-page-id="runs"] .page-section > h2, [data-page-id="runs"] .page-section > .chart-prompt-heading > h2')].map((element) => element.textContent);

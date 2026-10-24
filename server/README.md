@@ -351,11 +351,47 @@ npm --prefix dashboard/site run build
 go -C server run ./cmd/cao-dashboard serve
 ```
 
-Plain `serve` reuses `.cao/gh-aw-logs.sqlite` in this checkout without network
-access. If that cache is missing, startup downloads the public CAO Pages snapshot,
+Plain `serve` reuses `.cao/gh-aw-logs.sqlite` in this checkout without downloading
+it again. If that cache is missing, startup downloads the public CAO Pages snapshot,
 or `DASHBOARD_DATA_URL` when set. `--sqlite PATH` selects another cache and has the
 same download-if-missing behavior. Database service environment variables alone
 do not change this local default.
+
+The downloaded snapshot stays **read-only**. SQLite's native `ATTACH DATABASE`
+links it to a separate writable delta, defaulting to the snapshot path plus
+`.local.sqlite`; `--sqlite-overlay PATH` selects another local file. Only schema
+metadata is copied, not the pre-indexed records. Queries read the union, with
+local upserts and deletion markers taking precedence over the snapshot.
+
+Local backfill starts in the background immediately and repeats five minutes
+after each pass finishes (`--backfill-interval` changes the delay). It uses
+`GH_TOKEN`, then `GITHUB_TOKEN`, then `gh auth token --hostname github.com`.
+Install Node.js and the `gh aw` extension for collection and canonical ingestion.
+The runtime catalog is resolved relative to `--database-queries`; keep the
+repository's Activity runtime alongside those query definitions.
+Missing tools or credentials and collection/ingestion failures are reported
+explicitly without preventing the committed dashboard data from being served.
+The token is passed only to the GitHub collection subprocess, never stored in
+SQLite or sent to the browser.
+
+Refresh scope is exclusively the repositories already declared in the deployed
+snapshot, capped at 10,000 repositories. Credential access never adds targets or
+changes rollout policy. Collection uses each repository's latest retained run
+with a one-day overlap and includes older unfinished runs, within a bounded
+30-day window. Each repository invocation collects at most 10,000 runs with a
+five-minute deadline; a pass has a 30-minute deadline. This is recent evidence
+refresh, not an exhaustive historical archive or a completeness guarantee.
+Successful repository collections use the existing Activity compactor and
+canonical ingester against a staged copy of **only the local delta**. Failed
+repository collections are discarded and reported; they do not block successful
+repositories. Failed ingestion leaves committed data unchanged. Successful
+publication is atomic, rejects concurrent stale writers, and notifies active
+revision subscribers. The private per-pass evidence directory is removed on
+completion or failure. Shutdown cancels collection and ingestion.
+
+Use `--backfill=false` for offline serving without GitHub requests. Existing
+local deltas remain visible. The internal Copilot canvas profile continues to
+serve its verified snapshot without enabling this backfill.
 
 Use `--download-sqlite` to explicitly refresh the cache, even when it exists.
 Its optional URL overrides `DASHBOARD_DATA_URL` and accepts any GitHub Pages site,
@@ -388,6 +424,10 @@ An unbuilt `--site` fails before downloading. Stop any existing snapshot users
 before refreshing; symlink destinations and existing SQLite journal sidecars
 are rejected rather than risking corruption. Checkpoint a locally modified
 snapshot with its owning tool, or select a different `--sqlite` path.
+An overlay is bound to the snapshot's canonical content revision. After replacing
+the snapshot with different data, choose a new `--sqlite-overlay` file. A
+mismatched overlay fails closed and is preserved, rather than applying stale
+overrides to a different base or silently deleting local evidence.
 
 For offline startup, use plain `serve` with an existing default cache, or select
 another existing snapshot:
@@ -395,6 +435,7 @@ another existing snapshot:
 ```bash
 go -C server run ./cmd/cao-dashboard serve \
   --sqlite ../.cao/gh-aw-logs.sqlite \
+  --backfill=false \
   --listen 127.0.0.1:8443
 ```
 
@@ -404,15 +445,15 @@ Paths in this example resolve from `server/` because of `go -C server`.
 `gh cao download` prepares the default CAO snapshot; use `--url` with another
 dashboard's `payload-hashes.json` URL to select different data.
 The snapshot must use
-the canonical IndexedDB-compatible SQLite layout and database version 42.
+the canonical IndexedDB-compatible SQLite layout and database version 45.
 Only a genuinely missing cache triggers automatic acquisition. Unreadable or
 invalid existing files, dangling symlinks, unsupported versions, and missing
 requested stores fail closed without a repair download. Startup never creates
-an empty database, repairs, migrates, or ingests SQLite data. Acquisition installs
+an empty snapshot, repairs, migrates, or ingests the downloaded file. Acquisition installs
 a verified file before the read-only server opens it; it is not ingestion or a
 fallback from a failed database connection.
 
-This is the default **local bearer-only, read-only** profile.
+This is the default **local bearer-only, read-only request** profile.
 Only loopback listeners are accepted; HTTP is supported locally, with optional
 `--cert` and `--key` for HTTPS. Existing access-token authentication and the HTTP
 query, canonical API, diagnostics, revision events, and optional MCP protocols
@@ -3440,6 +3481,19 @@ re-ingest authoritative inputs when changing the physical contract. Existing
 `<table>_wYYYYMMDD` weekly layouts are rejected without conversion; rebuild
 canonical storage in a fresh schema or database. Never drop
 operational audit/queue state if it shares the old database.
+
+The daily run-count layer is a separately generated additive extension, not a
+replacement native detail contract. To add it to an existing compatible database,
+run owner-only `database bootstrap --store canonical --namespace NAMESPACE` with
+the deployment's owner credentials, then apply the updated
+`server/postgres/canonical-grants.sql` grants. Runtime does not create its tables;
+without the extension, `daily-run-counts` is unavailable while existing detail
+queries remain usable. Its independent receipts preserve daily counts when detail
+expires. Initial backfill can cover only still-retained runs, not previously
+evicted history. Counts use UTC run-start dates, exclude undated evidence with
+incomplete coverage, and retain all admitted dates in this initial implementation;
+no new detail-retention, sampling, or aggregate-expiry policy is enabled.
+
 Redis remains namespaced operational storage for caches, queues, sessions, and
 it does not hold dashboard entity rows or query indexes.
 Neither store grants control-plane authority. Credentials stay server-side.

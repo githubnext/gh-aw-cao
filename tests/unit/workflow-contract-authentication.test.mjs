@@ -112,7 +112,9 @@ test("Copilot setup installs the Go lint tooling used by server CI", () => {
   assert.ok(go);
   assert.ok(lint);
   assert.equal(go.uses, ciGo.uses);
-  assert.deepEqual(go.with, ciGo.with);
+  assert.equal(go.with["go-version"], ciGo.with["go-version"]);
+  assert.notEqual(ciGo.with.cache, false, "CI reuses the server compiler and module cache");
+  assert.match(ciGo.with["cache-dependency-path"], /server\/go\.sum/);
   assert.equal(lint.run, ciSteps.find((step) => step.name === "Install golangci-lint").run);
   assert.ok(steps.indexOf(go) < steps.indexOf(lint));
 });

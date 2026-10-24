@@ -1,13 +1,34 @@
 name: Docker Actions runtime
 
 on:
+  workflow_call:
   pull_request:
     paths:
+      - .github/workflows/actions-runtime.yml
+      - .github/workflows/cao-activity.yml
+      - .github/actions/setup-cao-runtime/**
+      - .github/workflows/shared/**
+      - activity/**
+      - dashboard/site/src/data/**
+      - tests/helpers/actions-runtime/**
+      - tests/integration/*actions-runtime.test.mjs
+      - package.json
+      - package-lock.json
       - server/**
       - "!server/**/*.md"
   push:
     branches: [main]
     paths:
+      - .github/workflows/actions-runtime.yml
+      - .github/workflows/cao-activity.yml
+      - .github/actions/setup-cao-runtime/**
+      - .github/workflows/shared/**
+      - activity/**
+      - dashboard/site/src/data/**
+      - tests/helpers/actions-runtime/**
+      - tests/integration/*actions-runtime.test.mjs
+      - package.json
+      - package-lock.json
       - server/**
       - "!server/**/*.md"
   workflow_dispatch:
@@ -21,7 +42,7 @@ concurrency:
 
 jobs:
   actions-runtime:
-    name: Docker AWI, CAO, and webhook gateway integration
+    name: Docker AWI, CAO Activity, and webhook gateway integration
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -53,5 +74,8 @@ jobs:
             .tmp/actions-runtime/e2e-*/**/report.json
             .tmp/actions-runtime/e2e-*/**/*.log
             .tmp/actions-runtime/e2e-*/**/*.error
+            .tmp/actions-runtime/activity-*/**/report.json
+            .tmp/actions-runtime/activity-*/**/*.log
+            .tmp/actions-runtime/activity-*/**/*.error
           if-no-files-found: ignore
           retention-days: 7

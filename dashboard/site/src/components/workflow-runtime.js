@@ -134,12 +134,18 @@ function renderRunHealthMetric(health, available, coverage, label) {
 /** @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function coverageLabel(metadata) {
   if (metadata?.availability !== 'available' && metadata?.availability !== 'empty') return 'Actions run data unavailable';
+  if (metadata['aggregate-version'] === 1) {
+    return metadata.completeness === 'complete'
+      ? 'Observed UTC run-start days; pending is last-observed state'
+      : 'Partial daily observations; pending is last-observed state';
+  }
   const hours = coverageWindowHours(metadata);
   return `${hours ? `${hours}-hour ` : ''}Actions run window`;
 }
 
 /** @param {string} label @param {import('../presenter.js').SourceMetadata | undefined} metadata */
 function recentMetricLabel(label, metadata) {
+  if (metadata?.['aggregate-version'] === 1) return `${label} (daily observations)`;
   const hours = coverageWindowHours(metadata);
   return hours ? `${label} (last ${hours}h)` : `Recent ${label}`;
 }

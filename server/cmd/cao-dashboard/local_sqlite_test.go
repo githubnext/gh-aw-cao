@@ -25,6 +25,9 @@ func TestServeSQLiteFlagValidation(t *testing.T) {
 		want string
 	}{
 		{"empty", []string{"--sqlite="}, "--sqlite requires"},
+		{"empty-overlay", []string{"--sqlite-overlay="}, "--sqlite-overlay requires"},
+		{"zero-backfill", []string{"--backfill-interval=0"}, "--backfill-interval must be positive"},
+		{"backfill-postgres", []string{"--backfill", "--postgres-url=postgres://localhost/test"}, "none of the others"},
 		{"postgres", []string{"--sqlite=local.sqlite", "--postgres-url=postgres://localhost/test"}, "none of the others"},
 		{"redis", []string{"--sqlite=local.sqlite", "--redis-url=redis://localhost"}, "none of the others"},
 		{"source", []string{"--sqlite=local.sqlite", "--source=deployed"}, "none of the others"},
@@ -96,6 +99,7 @@ func sqliteServeTestArgs(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	return []string{
+		"--backfill=false",
 		"--site=" + site,
 		"--access-token=" + localSQLiteTestToken,
 		"--database-queries=" + filepath.Join(root, "data/queries/database.json"),
@@ -117,12 +121,14 @@ func TestServeSQLiteDefaultStartup(t *testing.T) {
 		cached  bool
 		custom  bool
 		refresh bool
+		mcp     bool
 	}{
 		{name: "default-missing"},
 		{name: "default-offline", cached: true},
 		{name: "custom-missing", custom: true},
 		{name: "custom-offline", cached: true, custom: true},
 		{name: "explicit-refresh", cached: true, refresh: true},
+		{name: "local-token-mcp", cached: true, mcp: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			working := filepath.Join(t.TempDir(), "server")
@@ -132,6 +138,11 @@ func TestServeSQLiteDefaultStartup(t *testing.T) {
 			t.Chdir(working)
 			cache := defaultSQLitePath
 			args := append([]string{}, baseArgs...)
+			if test.mcp {
+				t.Setenv("GITHUB_TOKEN", "local-user-token-not-an-actions-identity")
+				t.Setenv("GITHUB_ACTOR", "")
+				args = append(args, "--mcp-enabled")
+			}
 			if test.custom {
 				cache = "custom.sqlite"
 				args = append(args, "--sqlite="+cache)

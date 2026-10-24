@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/githubnext/gh-cao/internal/dashboardquery"
 
@@ -136,6 +138,9 @@ func (r *reader) ExecuteSQLPlanWithOptions(ctx context.Context, definitions []qu
 			return err
 		}
 		metrics.QueryCount++
+		if postgresx.ComposeMetadata(definitions, roots, definition.Name)["availability"] == "unavailable" {
+			rows = nil
+		}
 		if err := retain(definition.Name, rows); err != nil {
 			return err
 		}
@@ -256,6 +261,72 @@ func (r *reader) source(ctx context.Context, name string, state dashboardstore.S
 			"freshness": quality["freshness"], "availability": "available", "statistical-frame": frame}
 		if quality["availability"] == "unavailable" {
 			metadata["availability"] = "unavailable"
+		}
+		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
+	}
+	if name == "daily-run-counts" || name == "$dailyRunCounts" {
+		read := dashboardquery.ReadDailyRunCounts
+		if name == "$dailyRunCounts" {
+			read = dashboardquery.ReadDailyRunCountRecords
+		}
+		rows, available, undated, err := read(ctx, r.tx, maxSnapshotInputRows, maxSnapshotWorkingBytes)
+		if err != nil {
+			return model.Source{}, err
+		}
+		metadata := model.Metadata{"source-id": name, "source-kind": "canonical", "availability": "unavailable", "completeness": "unknown", "freshness": "unknown",
+			"aggregate-version": 1, "aggregate-time-grain": "utc-run-start-day", "aggregate-coverage": "absent"}
+		if available {
+			metadata["availability"], metadata["completeness"] = "available", "partial"
+			if len(rows) == 0 {
+				metadata["availability"] = "empty"
+			}
+			metadata["undated-run-count"] = undated
+			metadata["excluded-runs"] = undated
+			metadata["retention"] = "all-admitted-dated-observations"
+			states, err := dashboardquery.ReadCollectionFields(ctx, r.tx, "dailyRunCountState",
+				[]string{"id", "coverage", "excludedRuns", "conflictedRuns", "retentionCutoff", "retentionWatermark"}, 1, 64<<10)
+			if err != nil {
+				return model.Source{}, err
+			}
+			for _, dailyState := range states {
+				if dailyState["id"] != "daily-run-counts" {
+					continue
+				}
+				if dailyState["coverage"] != nil {
+					metadata["aggregate-coverage"] = dailyState["coverage"]
+				}
+				for field, key := range map[string]string{"excluded-runs": "excludedRuns", "conflicted-runs": "conflictedRuns"} {
+					if dailyState[key] != nil {
+						metadata[field] = dailyState[key]
+					}
+				}
+				if dailyState["retentionCutoff"] == nil {
+					continue
+				}
+				cutoff, ok := dailyState["retentionCutoff"].(string)
+				if !ok {
+					return model.Source{}, errors.New("daily run count retention cutoff must be a UTC date")
+				}
+				if cutoff == "" {
+					continue
+				}
+				if _, err := time.Parse("2006-01-02", cutoff); err != nil {
+					return model.Source{}, errors.New("daily run count retention cutoff must be a UTC date")
+				}
+				metadata["retention"] = "three-utc-calendar-weeks"
+				metadata["aggregate-retention-start"] = cutoff
+				if dailyState["retentionWatermark"] != nil {
+					watermark, ok := dailyState["retentionWatermark"].(float64)
+					if !ok || math.IsNaN(watermark) || math.IsInf(watermark, 0) || watermark < 0 || watermark > 253402300799999 {
+						return model.Source{}, errors.New("daily run count retention watermark must be Unix milliseconds")
+					}
+					metadata["aggregate-retention-watermark"] = time.UnixMilli(int64(watermark)).UTC().Format(time.RFC3339Nano)
+				}
+			}
+		}
+		result := make([]model.Row, len(rows))
+		for index, row := range rows {
+			result[index] = model.Row(row)
 		}
 		return model.Source{Source: name, Rows: result, Metadata: metadata}, nil
 	}

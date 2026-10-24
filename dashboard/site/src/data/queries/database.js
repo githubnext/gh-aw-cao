@@ -29,6 +29,7 @@ import { isGitHubQuerySource } from '../github-query-sources.js';
 import { SIMULATION_DAYS, simulationDaysSource } from './simulation-days.js';
 import { createDebug } from '../../debug.js';
 import { operationalValueEvidenceMetadata, operationalValueEvidenceRows } from '../model/operational-value-evidence.js';
+import { DAILY_RUN_COUNT_STATE_ID } from '../model/daily-run-counts.js';
 import { incrementalAggregate } from './incremental-aggregate.js';
 import { canonicalStatisticalWatermark, sampleStatisticalRuns, STATISTICAL_INPUT_LIMITS } from './statistical-sample.js';
 
@@ -48,6 +49,30 @@ const NATIVE_COUNT_FIELDS = {
   campaigns: new Set(['id', 'campaign']),
   repositories: new Set(['id', 'repository'])
 };
+
+/** @param {Record<string, unknown> | undefined} state */
+function dailyRunCountMetadata(state) {
+  const ready = state?.status === 'ready';
+  return {
+    'aggregate-version': 1,
+    'aggregate-time-grain': 'utc-run-start-day',
+    availability: ready ? 'available' : 'unavailable',
+    completeness: ready && state.coverage === 'admitted'
+      && !state.excludedRuns && !state.conflictedRuns ? 'complete' : 'partial',
+    'aggregate-coverage': state?.coverage ?? 'absent',
+    ...(state?.retentionCutoff ? {
+      'aggregate-retention-start': state.retentionCutoff,
+      'aggregate-retention-watermark': new Date(Number(state.retentionWatermark)).toISOString()
+    } : {}),
+    'excluded-runs': Number(state?.excludedRuns ?? 0),
+    'conflicted-runs': Number(state?.conflictedRuns ?? 0),
+    ...(!ready ? { 'query-diagnostic': 'Daily run count state is absent or backfill is incomplete.' }
+      : state.coverage === 'retained-v44'
+      ? { 'query-diagnostic': 'Backfill covers retained v44 runs only; previously evicted history is unavailable.' }
+      : state.excludedRuns || state.conflictedRuns
+      ? { 'query-diagnostic': 'Some runs have missing start/identity facts or unresolved equal-revision conflicts.' } : {})
+  };
+}
 /**
  * @param {Record<string, unknown>} sources
  * @param {string} sourceName
@@ -197,6 +222,16 @@ export async function queryIndexedDatabaseSources(indexedDB, logicalSources, def
   const budget = options.budget ?? createDashboardQueryBudget(options);
   budget.checkpoint();
   const index = dashboardQueryIndex(definitions);
+  requested = [...requested];
+  if (resolveDashboardQuerySources(definitions, requested).includes('daily-run-counts')) {
+    const states = await readCollections(indexedDB, ['dailyRunCountState']);
+    const metadata = dailyRunCountMetadata(states.dailyRunCountState.find((state) => state.id === DAILY_RUN_COUNT_STATE_ID));
+    logicalSources = {
+      ...logicalSources,
+      dailyRunCounts: { source: 'dailyRunCounts', rows: [], metadata },
+      'daily-run-counts': { source: 'daily-run-counts', rows: [], metadata }
+    };
+  }
   const defects = dashboardQueryDefects(definitions);
   const countPlans = [...requested].flatMap((name) => {
     const definition = index.get(name);
@@ -1218,9 +1253,10 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       .filter((name) => !unavailableStatistical.has(name)) : databaseRequested;
   const stores = [...new Set(activeQueries.flatMap(queryStores))];
   const transactionRequested = stores.includes('transactions');
-  const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').ENTITY_STORES[number]>} */ (
+  const collectionStores = /** @type {Array<typeof import('../storage/indexeddb.js').DATABASE_STORES[number]>} */ (
     stores.filter((name) => name !== 'transactions')
   );
+  if (stores.includes('dailyRunCounts')) collectionStores.push('dailyRunCountState');
   const databaseStartedAt = monotonicNow();
   /** @type {[Record<string, Record<string, unknown>[]>, Record<string, unknown>[]]} */
   const [collections, transactions] = await Promise.all([
@@ -1302,6 +1338,17 @@ export async function queryDatabaseSources(indexedDB, logicalSources, sourceName
       };
     }
     if (visiting.has(name)) throw new Error(`Cyclic canonical database query: ${name}`);
+    if (name === 'daily-run-counts') {
+      const state = collections.dailyRunCountState?.find((record) => record.id === DAILY_RUN_COUNT_STATE_ID);
+      const metadata = dailyRunCountMetadata(state);
+      if (metadata.availability === 'unavailable') {
+        return unavailableResult(definition, /** @type {import('../../presenter.js').SourceMetadata} */ ({
+          ...queryMetadata(sources, name, name, false), ...metadata
+        }),
+          String(metadata['query-diagnostic']));
+      }
+      sources.dailyRunCounts = { metadata };
+    }
     visiting.add(name);
     const inputs = Object.fromEntries(queryInputNames(definition).map((input) => {
       if (!input.startsWith('$')) return [input, resolveSource(input)];

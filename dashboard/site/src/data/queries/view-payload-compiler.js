@@ -580,12 +580,22 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const includeHistory = retainedHistory || (isPlainObject(definition.time) && definition.time.range === 'all');
     // Option queries scope their input rows before projecting distinct values.
     const inputScoped = scopeInput && name === sourceName;
-    const inputPredicates = (inputScoped ? outputPredicates : predicatesBeforeQuery(definition, outputPredicates))
+    // Daily scope must reach the count branch before inventory's top-N limit.
+    const dailyCounts = resolveDashboardQuerySources(definitions, [name]).includes('daily-run-counts');
+    const inputPredicates = (inputScoped ? outputPredicates : predicatesBeforeQuery(
+      dailyCounts ? { ...definition, limit: undefined } : definition, outputPredicates))
       .filter((predicate) => !includeHistory || predicate.field !== '@time');
     const retainedPredicates = inputScoped ? [] : outputPredicates;
     /** @param {string} source @param {number} inputIndex */
     const compileInput = (source, inputIndex) => {
       if (byName.has(source)) return compile(source, inputPredicates, inputTime, includeHistory);
+      if (source === 'daily-run-counts') {
+        const unsupported = inputPredicates.find((predicate) => predicate.optional
+          && !['organization', 'repository', 'workflow'].includes(String(predicate.field)));
+        if (unsupported) {
+          throw new TypeError(`Daily run counts do not support the selected "${String(unsupported.field)}" filter.`);
+        }
+      }
       if (inputPredicates.length === 0) return source;
       const inputName = `${scoped}:input-${inputIndex + 1}`;
       dependencies.push({
@@ -602,7 +612,16 @@ function compileScopedQueryGraph(sourceName, alias, predicates, search, orderBy,
     const compiledJoins = Array.isArray(definition.joins)
       ? definition.joins.map((join) => (
           isPlainObject(join) && typeof join.source === 'string'
-            ? { ...join, source: compile(join.source, joinKeyPredicates(join, inputPredicates), inputTime, includeHistory) }
+            ? { ...join, source: compile(join.source, [
+                ...joinKeyPredicates(join, inputPredicates),
+                ...(resolveDashboardQuerySources(definitions, [join.source]).includes('daily-run-counts')
+                  ? inputPredicates.filter((predicate) => predicate.optional).map((/** @type {Record<string, unknown>} */ predicate) => (
+                      predicate.field === 'repository' && Array.isArray(predicate.in)
+                        ? { ...predicate, in: predicate.in.map((value) => typeof value === 'string'
+                          ? value.slice(value.indexOf('/') + 1) : value) }
+                        : predicate
+                    )) : [])
+              ], inputTime, includeHistory) }
             : join
         ))
       : undefined;
@@ -689,9 +708,9 @@ function predicatesBeforeQuery(definition, predicates) {
     ? new Map(definition.select.filter(isPlainObject).map((value) => [value.as ?? value.field, value.field]))
     : null;
   return predicates.flatMap((predicate) => {
-    const field = selected ? selected.get(predicate.field) : predicate.field;
+    const field = selected ? selected.get(predicate.field) ?? (predicate.optional ? predicate.field : undefined) : predicate.field;
     if (typeof field !== 'string' || computed.has(field) || joined.has(field)
-        || (groups && !groups.has(field))
+        || (groups && !groups.has(field) && !predicate.optional)
         || windows.some((window) => !Array.isArray(window.groupby) || !window.groupby.includes(field))) return [];
     return [{ ...predicate, field }];
   });

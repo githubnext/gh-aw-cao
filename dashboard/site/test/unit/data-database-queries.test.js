@@ -6,6 +6,7 @@ import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_STORES,
+  ENTITY_STORES,
   recordTransaction
 } from '../../src/data/storage/indexeddb.js';
 import {
@@ -332,7 +333,7 @@ describe('canonical view sources', () => {
 
   it('matches declarative counts for every canonical database table', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
-    const tableNames = DATABASE_STORES.filter((store) => store !== 'storageShards');
+    const tableNames = DATABASE_STORES.filter((store) => [...ENTITY_STORES, 'transactions'].includes(store));
     const canonical = await queryCanonicalViewSources(indexedDB, sources, tableNames);
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
@@ -495,7 +496,7 @@ describe('canonical view sources', () => {
   });
 
   it('returns the same zero counts as declarative execution for empty tables', async () => {
-    const tableNames = DATABASE_STORES.filter((store) => store !== 'storageShards');
+    const tableNames = DATABASE_STORES.filter((store) => [...ENTITY_STORES, 'transactions'].includes(store));
     const definitions = tableNames.map((table) => ({
       name: `${table}-count`,
       from: table,
@@ -683,17 +684,25 @@ describe('canonical view sources', () => {
 
   it('streams row-local computed daily run aggregates without changing declarative results', async () => {
     await loadCanonicalViewSources(indexedDB, sources, { ingest: true });
+    const queries = [{
+      name: 'retained-daily-conclusions', from: 'runs',
+      compute: [{ as: 'day', function: 'date-day', args: [{ field: 'started-at' }] }],
+      aggregate: {
+        by: ['day', 'run-conclusion'],
+        values: [{ field: 'run', as: 'runs', reducer: 'count' }]
+      }
+    }];
 
     const native = await queryNativeCountSources(
       indexedDB,
       sources,
-      dashboardQueries,
-      ['runs-daily-conclusions']
+      queries,
+      ['retained-daily-conclusions']
     );
 
     const canonical = await queryCanonicalViewSources(indexedDB, sources, ['runs']);
-    const expected = executeDashboardQueries(dashboardQueries, canonical, ['runs-daily-conclusions']);
-    expect(native['runs-daily-conclusions'].rows).toEqual(expected['runs-daily-conclusions'].rows);
+    const expected = executeDashboardQueries(queries, canonical, ['retained-daily-conclusions']);
+    expect(native['retained-daily-conclusions'].rows).toEqual(expected['retained-daily-conclusions'].rows);
   });
 
   it('streams eligible transformed counts and declines joins, invalid queries, and non-table sources', async () => {

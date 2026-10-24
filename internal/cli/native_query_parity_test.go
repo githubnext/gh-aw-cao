@@ -76,11 +76,19 @@ func TestNativePopulatedNamedQueriesMatchProduction(t *testing.T) {
 import {readFile} from 'node:fs/promises';
 const root = process.argv[1];
 const {createDatabase} = await import(root + '/activity/cli/ingestion.mjs');
-const {upsertCanonicalBatch} = await import(root + '/dashboard/site/src/data/storage/indexeddb.js');
+const {upsertCanonicalBatch,openCanonicalDatabase} = await import(root + '/dashboard/site/src/data/storage/indexeddb.js');
 const {readAgentCatalog,runNamedDashboardQuery} = await import(root + '/activity/agent-catalog.mjs');
 const {queryGhData} = await import(root + '/activity/cli/queries.mjs');
 const indexedDB = await createDatabase(process.argv[2]);
 await upsertCanonicalBatch(indexedDB, JSON.parse(await readFile(process.argv[3],'utf8')), {validateRelationships:false});
+// This fixture supplies available evidence, not an exhaustive upstream history.
+const db = await openCanonicalDatabase(indexedDB);
+const transaction = db.transaction('dailyRunCountState', 'readwrite');
+transaction.objectStore('dailyRunCountState').put({
+  id:'daily-run-counts',status:'ready',coverage:'available-evidence-only',excludedRuns:0,conflictedRuns:0
+});
+await new Promise((resolve,reject) => { transaction.oncomplete=resolve;transaction.onerror=() => reject(transaction.error); });
+db.close();
 const catalog = await readAgentCatalog();
 const results = {};
 for (const query of catalog.queries) {

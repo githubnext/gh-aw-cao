@@ -1,5 +1,6 @@
 import { EVIDENCE_DEFINITION_STORES, mergeEvidenceDefinition, timestampMilliseconds } from '../model/schema.js';
 import { mergeCanonicalRun } from '../model/fields.js';
+import { DAILY_RUN_COUNT_STORES, evictDailyRunCounts, readProtectedRunCountBytes, reconcileDailyRunCountsBatch, reconcileRunCountRecord } from '../model/daily-run-counts.js';
 import { mergeOperationalValueEvidence } from '../model/operational-value-evidence.js';
 import { mergeWorkflowValueCollection } from '../model/workflow-value-collection.js';
 import {
@@ -100,8 +101,15 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   const store = transaction.objectStore(storeName);
   const shards = transaction.objectStore(STORAGE_SHARD_STORE);
   const unique = new Map();
+  const runCountConflicts = new Set();
+  const runCountCandidates = new Map();
   for (const record of records) {
     const previous = unique.get(String(record.id));
+    if (storeName === 'runs') {
+      const reconciled = reconcileRunCountRecord(runCountCandidates.get(String(record.id)), record);
+      runCountCandidates.set(String(record.id), reconciled.run);
+      if (reconciled.conflict) runCountConflicts.add(String(record.id));
+    }
     unique.set(String(record.id), previous && storeName === 'runs'
       ? mergeStoredRun(previous, record)
       : previous && EVIDENCE_DEFINITION_STORES.has(storeName)
@@ -126,6 +134,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
   /** @type {string[]} */
   const dirtyRuns = [];
   const dirtyAudits = new Set();
+  const countRecords = [];
   let failureLogs = false;
   const referencesAudits = ['experimentAssignments', 'graderObservations', 'evalObservations'].includes(storeName);
   /** @param {Record<string, unknown>} record @param {number} sign */
@@ -144,7 +153,8 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
     account(record, -1);
     if (referencesAudits && typeof record.auditId === 'string') dirtyAudits.add(record.auditId);
   }
-  incoming.forEach((record, index) => {
+  for (const [index, incomingRecord] of incoming.entries()) {
+    let record = incomingRecord;
     const existing = previous[index];
     if (existing) account(existing, -1);
     if (referencesAudits && typeof existing?.auditId === 'string' && existing.auditId !== record.auditId) {
@@ -165,12 +175,18 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
         existing ? withoutStorageMetadata(existing) : undefined, withoutStorageMetadata(record)
       ));
     }
+    if (storeName === 'runs') {
+      countRecords.push({
+        ...withoutStorageMetadata(record), ...runCountCandidates.get(String(record.id))
+      });
+    }
     account(record, 1);
     if (storeName === 'runs' && typeof record.failureLog === 'string' && record.failureLog.length > 0) failureLogs = true;
     if (storeName === 'runs' && existing && JSON.stringify(auditCurationRunFacts(existing))
         !== JSON.stringify(auditCurationRunFacts(record))) dirtyRuns.push(String(record.id));
     store.put(record);
-  });
+  }
+  await reconcileDailyRunCountsBatch(transaction, countRecords, runCountConflicts);
   for (const record of removed) store.delete(/** @type {IDBValidKey} */ (record.id));
   if (deltas.size === 0) return;
   const changes = [...deltas.values()];
@@ -209,6 +225,7 @@ export async function writeAccountedRecords(transaction, storeName, records, rem
  * @param {(transaction: IDBTransaction) => Promise<T>} task
  */
 async function write(database, stores, task) {
+  if (stores.includes('runs')) stores = [...stores, ...DAILY_RUN_COUNT_STORES];
   const transaction = database.transaction([...new Set([...stores, STORAGE_SHARD_STORE])], 'readwrite');
   const done = completed(transaction);
   try {
@@ -433,6 +450,7 @@ async function pruneFailureLogs(database, shards, options) {
 export async function maintainStorageShards(database, options) {
   const startedAt = performance.now();
   const now = options.now ?? Date.now();
+  await evictDailyRunCounts(database, now, options.signal);
   let deletedRecords = 0;
   let shards = await readShards(database, options);
   for (const [index, storeName] of options.entityStores.entries()) {
@@ -475,7 +493,8 @@ export async function maintainStorageShards(database, options) {
       ?? { id: TOTALS_ID, bytes: 0, count: 0 }
   );
   let totals = await readTotals();
-  const target = Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75);
+  const protectedBytes = await readProtectedRunCountBytes(database);
+  const target = Math.max(0, Math.floor(Math.max(0, options.maxDatabaseBytes) * 0.75) - protectedBytes);
   const usageTarget = Number.isFinite(options.usageBytes) && Number(options.usageBytes) > options.maxDatabaseBytes
     ? Math.floor(totals.bytes * options.maxDatabaseBytes / Number(options.usageBytes) * 0.9) : target;
   const effectiveTarget = Math.min(target, usageTarget);
@@ -498,9 +517,9 @@ export async function maintainStorageShards(database, options) {
   debug({
     event: 'maintained-storage-shards', durationMs: Math.round(performance.now() - startedAt),
     shardCount: shards.length, deletedRecords, prunedAudits, prunedFailureLogs,
-    estimatedBytes: totals.bytes, retainedRecords: totals.count
+    estimatedBytes: totals.bytes + protectedBytes, protectedBytes, retainedRecords: totals.count
   });
-  return { deletedRecords, prunedAudits, prunedFailureLogs, estimatedBytes: totals.bytes, retainedRecords: totals.count };
+  return { deletedRecords, prunedAudits, prunedFailureLogs, estimatedBytes: totals.bytes + protectedBytes, protectedBytes, retainedRecords: totals.count };
 }
 
 /**

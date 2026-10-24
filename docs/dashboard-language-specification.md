@@ -399,11 +399,9 @@ does not appear late and shift the active page; subsequent results stay subscrib
 
 ### 5.1 Database Tables and Grain
 
-The database table vocabulary is closed in version 0.1.0. A runtime provider
-may supply only an explicitly registered query source from Section 5.4; these
-sources are not persisted database tables. Views continue to use `data.source`
-as the binding name for either one registered data source or one declared
-query.
+Version 0.1.0 sources are closed: tables below, a separate persisted projection
+(§5.1.2), and nonpersisted runtime sources (§5.4). Views bind these or declared
+queries with `data.source`.
 
 | Table | One row represents | Core fields |
 |---|---|---|
@@ -477,6 +475,31 @@ The following smell IDs are currently emitted:
 
 All smell rows use `low`, `medium`, or `high` severity. `low` identifies an optimization opportunity with limited immediate consequence. `medium` identifies a material maintainability, cost, or governance concern. `high` identifies fail-open configuration, supply-chain exposure, detected unsafe behavior, or a control-plane defect that can invalidate safe operation. Severity controls Home attention priority but does not replace the source-specific meaning.
 
+#### 5.1.2 Daily Run-Count Projection Source
+
+`daily-run-counts` persists a projection, not an entity/runtime provider.
+Contract: checked-out `specs/dashboard-data.md` §72.2
+([online main](https://github.com/githubnext/gh-cao/blob/main/specs/dashboard-data.md#722-additive-daily-run-counts)).
+
+Grain: namespace / UTC execution-start `day` / `organization` / `repository` /
+`workflow`. Six nonnegative integer counters are sum-only, not bucket counts.
+`total` equals five exclusive classes: `successful` (`success`), `failed`
+(`failure`, `startup-failure`, `stale`, `timed-out`), `approval` (`action-required`),
+`pending` (otherwise unclassified, nonempty noncompleted status), `other`
+(remainder). Underscore aliases match. Attempts replace contributions;
+pending is last-observed, success is not accepted value.
+
+Only migrated additive queries use Organization/Repository/Workflow/whole UTC
+days at start-day midnight. Unsupported dimensions (including rollout mode)
+fail; costs, distinct counts, Run predicates and incidents stay on detail.
+Joins preserve provenance/partial coverage. Unavailable is not empty/zero;
+zero is not confirmed inactivity. No Run unions, detail fallback or invented days.
+
+Buckets/receipts expire outside the current UTC Monday-start week and two prior
+weeks, independent of detail overrides; expired replay cannot reopen them.
+Bounded checkpointed backfill is partial and cannot recover evicted history.
+No other persisted daily/metric/computation projection is allowed.
+
 ### 5.2 Raw Token Classes
 
 The canonical raw-token measures are `input-tokens`, `output-tokens`, `cache-read-tokens`, `cache-write-tokens`, and `reasoning-tokens`. They remain separate because provider reporting conventions may overlap.
@@ -537,7 +560,7 @@ Published dashboards **MUST NOT** request these providers.
   have no observed operational provenance and **MUST NOT** be represented as
   measured activity.
 
-- **DLS-SEM-017:** A `metric`, `table`, `list`, or `chart` view `data.source` **MUST** name exactly one Section 5.1 database table, one registered Section 5.4 runtime source, the built-in `simulation-days` source, or one declared query. An `element` view `data.sources` **MUST** name one or more unique Section 5.1 database tables, registered Section 5.4 runtime sources, the built-in `simulation-days` source, or declared queries; the interaction-only `query-editor`, `command-terminal`, `environment-defaults` and `prompt-wizard` elements and deployment-only `storage-info` element **MAY** declare an empty list. An optional `data.route-field` **MUST** name one field from `data.source`.
+- **DLS-SEM-017:** Views **MUST** use only §5.1 tables/projection, §5.4 sources, `simulation-days`, or declared queries. `metric`/`table`/`list`/`chart` `data.source` names exactly one; `element` `data.sources` lists unique sources, nonempty except for `query-editor`, `command-terminal`, `environment-defaults`, `prompt-wizard`, `storage-info`. Optional `data.route-field` **MUST** name a source field.
 - **DLS-SEM-018:** Each database table **MUST** preserve the grain declared in Section 5.1; duplicated observations **MUST** retain distinct observation identifiers in provenance.
 - **DLS-SEM-019:** A `usage` row **MUST** represent one model invocation and **MUST NOT** repeat invocation-level AIC across token-class rows.
 - **DLS-SEM-020:** Grader values, operational-grader results, eval results, AIC, each raw-token measure, outcome states, and operational value **MUST** remain separately named throughout filtering, aggregation, and presentation.
@@ -561,7 +584,7 @@ Published dashboards **MUST NOT** request these providers.
 
 ### 5.5 Declarative Queries
 
-`dashboard.queries`, when present, declares reusable query results. A query is a closed, structured projection over Section 5.1 database tables, registered Section 5.4 runtime sources, or earlier queries; it contains no SQL text, scripts, callbacks, templates, or general-purpose expressions.
+`dashboard.queries` declares reusable, closed projections over §5.1 tables/projection, §5.4 sources, or earlier queries; no SQL, scripts, callbacks, templates, or general-purpose expressions.
 
 Each query retains a non-empty `subject` describing what its data is about or intended to show. The optional `objective` explains why the query exists or what to improve or understand, and `acceptance` states the conditions that make it acceptable. This authoring metadata does not affect execution or presentation.
 

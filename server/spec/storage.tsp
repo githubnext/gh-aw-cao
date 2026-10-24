@@ -1,4 +1,5 @@
 import "./postgres-emitter.mjs";
+import "./daily-counts.tsp";
 using TypeSpec.Reflection;
 // Editable canonical Postgres storage contract. Generate SQL and Go bindings with npm run generate:storage.
 namespace Cao.Postgres;

@@ -96,10 +96,10 @@ func (s *Store) RunPartitionMaintenance(ctx context.Context, now time.Time, rete
 			return err
 		}
 	}
-	return s.purgeInactiveRepositories(ctx, cutoff)
+	return s.purgeInactiveRepositoriesAt(ctx, cutoff, now)
 }
 
-func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time) error {
+func (s *Store) purgeInactiveRepositoriesAt(ctx context.Context, cutoff, now time.Time) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -107,6 +107,31 @@ func (s *Store) purgeInactiveRepositories(ctx context.Context, cutoff time.Time)
 	defer func() { _ = tx.Rollback() }()
 	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended(current_schema() || ':' || $1, 0))`, s.namespace); err != nil {
 		return err
+	}
+	capable, err := dailyCapability(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if capable {
+		changed := false
+		if err := maintainDailyCounts(ctx, s.namespace, now, func(ctx context.Context, statement string, args ...any) error {
+			result, err := tx.ExecContext(ctx, statement, args...)
+			if err == nil && strings.HasPrefix(statement, "DELETE") {
+				count, err := result.RowsAffected()
+				if err != nil {
+					return err
+				}
+				changed = changed || count > 0
+			}
+			return err
+		}); err != nil {
+			return err
+		}
+		if changed {
+			if _, err := tx.ExecContext(ctx, `UPDATE cao_state SET revision=revision+1 WHERE namespace=$1`, s.namespace); err != nil {
+				return err
+			}
+		}
 	}
 	// Keep the identity while any historical or inventory record still refers
 	// to it. Retired identities become eligible only after the retention window.

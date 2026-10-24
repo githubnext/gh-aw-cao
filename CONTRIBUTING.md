@@ -107,8 +107,8 @@ boundary: workers operate on one dispatched repository, and rollout policy
 remains in `.github/workflows/cao.json`.
 
 See [AGENTS.md](AGENTS.md) for architecture, repository conventions, and focused
-test commands. Run the complete repository validation before submitting a pull
-request:
+test commands. Use the narrowest applicable checks while iterating. To run the
+complete root validation locally:
 
 ```bash
 npm run check
@@ -126,6 +126,42 @@ are real. The test isolates HOME, GitHub CLI configuration, and extension storag
 verifies credentials remain unchanged, and removes its installation afterward.
 It requires network access, Bash, curl, Git, GitHub CLI 2.68+, Node.js 24+, and the
 repository's npm dependencies; CI runs it as a separate public-installer job.
+
+### CI feedback tiers
+
+PRs favor quick feedback over exhaustive coverage: affected root unit areas,
+lint/type checks, compilation, dashboard unit/build checks, and short-mode Go
+tests remain enabled. Browser matrices, Windows server checks, public download
+and authenticated compatibility tests, bootstrap, and service-backed integration
+run after merge rather than on the PR critical path. A green PR is intentionally
+not a claim that every integration or performance scenario passed.
+
+Main pushes select full suites through each workflow's path filters. Root
+contract areas are further selected by `scripts/ci-test-plan.mjs`; documentation-only
+changes omit root integration/load/API checks. Unknown paths or an unavailable
+comparison base widen selection. Fast contract checks run concurrently with units;
+the existing `test` aggregate check requires both to succeed.
+
+`Daily full validation` (`.github/workflows/ci-daily.yml`) runs at 06:37 UTC
+and can be dispatched manually on main. It reuses the complete contract,
+dashboard, Go, bootstrap, simulator, Azure, query/MCP parity, mobile, view,
+deployed-data, worker-memory, and stress suites without change filtering.
+This replaces the separate daily stress schedules and hourly massive-scale run.
+The 15-minute deployed health check remains, but its expensive query performance
+and cost benchmarks run only on relevant main pushes, manual runs, and the daily
+full suite.
+
+The daily run publishes an Actions summary and a 30-day `ci-daily-report`
+artifact (Markdown and JSON), including every suite's outcome, total completed
+runner-minutes, and the 20 slowest jobs. Per-suite traces, profiles, and detailed
+reports remain attached to the same run. Failed, cancelled, or skipped suites
+make the aggregate report incomplete. Campaign lifecycle API-quota exhaustion
+also fails daily/manual full runs; main pushes retain infrastructure-incomplete
+warnings instead of blocking on shared quota.
+These measurements exclude queue time and billing multipliers. Use them to
+compare test cost and find regressions rather than assuming savings from job
+count alone. Required branch checks should use the fast PR jobs, not daily or
+main-only integrations.
 
 ### Documentation sources and validation
 

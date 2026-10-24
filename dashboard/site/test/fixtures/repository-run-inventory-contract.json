@@ -6,7 +6,6 @@
   "limit": 100,
   "native-aggregates": [
     "repository-run-statistics",
-    "repository-observed-run-counts",
     "repository-workflow-totals",
     "audit-event-runs",
     "domain-event-runs",
@@ -14,14 +13,15 @@
     "issue-event-runs"
   ],
   "import-identity-fields": ["organization", "repository", "workflow", "run", "run-attempt"],
-  "canonicalSources": ["repositories", "runs"],
+  "canonicalSources": ["daily-run-counts", "repositories"],
+  "countSemantics": "logical Runs in whole UTC start-day buckets, not attempts or retained detail",
   "rows": [
     { "repository": "org/alpha", "runs": 6 },
     { "repository": "org/approval", "runs": 1 },
-    { "repository": "org/reported", "runs": 1 },
     { "repository": "org/running", "runs": 1 },
     { "repository": "other/alpha", "runs": 1 },
     { "repository": "org/disabled", "runs": 0 },
-    { "repository": "org/empty", "runs": 0 }
+    { "repository": "org/empty", "runs": 0 },
+    { "repository": "org/reported", "runs": 0 }
   ]
 }

@@ -554,6 +554,9 @@ func (w *Writer) Publish(ctx context.Context, dataRevision string) (State, error
 	if err := w.restoreValuePublications(ctx); err != nil {
 		return State{}, err
 	}
+	if err := w.reconcileDaily(ctx); err != nil {
+		return State{}, err
+	}
 	// Autovacuum cannot analyze uncommitted replacement rows or partitioned parents.
 	// Refresh estimates before integrity joins can choose quadratic cold-start plans.
 	if _, err := w.tx.Exec(ctx, "SELECT cao_analyze_native()"); err != nil {

@@ -373,7 +373,7 @@ function policyOptions({ normalizeOrchestrator = false } = {}) {
     requestedMode: environment("CAO_REQUESTED_MODE"),
     requestedMaxRepositories: environment("CAO_REQUESTED_MAX_REPOSITORIES"),
     requestedRolloutPercent: environment("CAO_REQUESTED_ROLLOUT_PERCENT"),
-    targetRepository: environment("CAO_TARGET_REPOSITORY"),
+    targetRepository: environment("CAO_TARGET_REPOSITORY") || environment("CAO_DEFAULT_TARGET_REPOSITORY"),
     eventName: environment("GITHUB_EVENT_NAME"),
   };
 }
@@ -799,7 +799,7 @@ function createContext(policy) {
     workflowName,
     role,
     worker,
-    targetRepository: environment("CAO_TARGET_REPOSITORY"),
+    targetRepository: environment("CAO_TARGET_REPOSITORY") || environment("CAO_DEFAULT_TARGET_REPOSITORY"),
     dispatchMaximum: parseInteger(environment("CAO_DISPATCH_MAX"), 1),
     safeOutputRepository: environment("CAO_SAFE_OUTPUT_REPOSITORY"),
     correlationId: environment("CAO_CORRELATION_ID"),

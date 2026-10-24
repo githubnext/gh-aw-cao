@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf16"
 
 	"github.com/spf13/cobra"
@@ -266,6 +267,9 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 	otherCanonicalRead := false
 	evidenceClocks := map[string]any{}
 	var statisticalFrame map[string]any
+	aggregateMetadata := map[string]map[string]any{}
+	dailyRead := false
+	var dailyFailure error
 	var load func(string) ([]map[string]any, error)
 	load = func(source string) ([]map[string]any, error) {
 		if err := ctx.Err(); err != nil {
@@ -301,6 +305,21 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 			frame["watermark-policy"] = "canonical-run-max"
 			statisticalFrame = frame
 			rows = dashboardquery.StatisticalMembership(selected)
+		case source == "daily-run-counts":
+			canonicalRead, otherCanonicalRead = true, true
+			dailyRead = true
+			var available bool
+			var undated int64
+			rows, available, undated, err = dashboardquery.ReadDailyRunCounts(ctx, db, 500_000, 1<<30)
+			if err == nil && !available {
+				err = nativeErrorf("Daily run counts are not available in this snapshot; download or rebuild an aggregate-capable snapshot")
+			}
+			if err == nil {
+				aggregateMetadata[source], err = nativeDailyCountMetadata(ctx, db, undated)
+			}
+			if err != nil && dailyFailure == nil {
+				dailyFailure = err
+			}
 		case strings.HasPrefix(source, "$"):
 			canonicalRead = true
 			otherCanonicalRead = otherCanonicalRead || source != "$operationalValueEvidence"
@@ -326,12 +345,28 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 				return nil, nativeErrorf("No canonical database query or runtime source is registered for %q.", source)
 			}
 			definition = nativeObject(nativeResolveOperands(definition, parameters, ""))
+			inputs := []string{}
 			rows, err = dashboardquery.Execute(ctx, definition, func(input string) ([]map[string]any, error) {
+				inputs = append(inputs, input)
 				if isDashboard && input == source && c.database[source] != nil {
 					return dashboardquery.Execute(ctx, c.database[source], load)
 				}
 				return load(input)
 			})
+			var provenance map[string]any
+			preserveJoined := len(nativeArray(definition["joins"])) > 0 && len(nativeArray(definition["union"])) == 0
+			for _, input := range inputs {
+				metadata := aggregateMetadata[input]
+				if metadata == nil && preserveJoined {
+					continue
+				}
+				if metadata == nil {
+					provenance = nil
+					break
+				}
+				provenance = metadata
+			}
+			aggregateMetadata[source] = provenance
 		}
 		if err != nil {
 			return nil, err
@@ -343,6 +378,10 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 		return rows, nil
 	}
 	rows, err := load(id)
+	// Daily evidence is required even when reached through an optional left join.
+	if dailyFailure != nil {
+		err = dailyFailure
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -359,6 +398,10 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 	completeness, freshness := "complete", "fresh"
 	if canonicalRead {
 		completeness, freshness = "unknown", "unknown"
+	}
+	if dailyRead {
+		// A snapshot proves available evidence, not exhaustive upstream history.
+		completeness = "partial"
 	}
 	if len(rows) > limit {
 		rows, completeness = rows[:limit], "partial"
@@ -378,6 +421,9 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 			metadata[field] = instant
 		}
 	}
+	for field, value := range aggregateMetadata[id] {
+		metadata[field] = value
+	}
 	if len(resolved) > 0 {
 		values := map[string]any{}
 		for _, parameter := range resolved {
@@ -386,6 +432,46 @@ func (c *nativeCatalog) runQuery(ctx context.Context, db *sql.DB, id string, par
 		metadata["parameters"] = values
 	}
 	return map[string]any{"query": id, "rows": rows, "metadata": metadata}, nil
+}
+
+func nativeDailyCountMetadata(ctx context.Context, db *sql.DB, undated int64) (map[string]any, error) {
+	states, err := dashboardquery.ReadCollectionFields(ctx, db, "dailyRunCountState",
+		[]string{"id", "coverage", "excludedRuns", "conflictedRuns", "retentionCutoff", "retentionWatermark"}, 1, 64<<10)
+	if err != nil {
+		return nil, err
+	}
+	metadata := map[string]any{"aggregate-version": 1, "aggregate-time-grain": "utc-run-start-day",
+		"aggregate-coverage": "absent", "excluded-runs": float64(undated), "conflicted-runs": 0}
+	for _, state := range states {
+		if state["id"] != "daily-run-counts" {
+			continue
+		}
+		if state["coverage"] != nil {
+			metadata["aggregate-coverage"] = state["coverage"]
+		}
+		for field, key := range map[string]string{"excluded-runs": "excludedRuns", "conflicted-runs": "conflictedRuns"} {
+			if state[key] != nil {
+				metadata[field] = state[key]
+			}
+		}
+		if cutoff := nativeText(state["retentionCutoff"]); cutoff != "" {
+			if _, err := time.Parse("2006-01-02", cutoff); err != nil {
+				return nil, errors.New("daily run count retention cutoff must be a UTC date")
+			}
+			watermark, ok := state["retentionWatermark"].(float64)
+			if !ok || math.IsNaN(watermark) || math.IsInf(watermark, 0) || watermark < 0 || watermark > 253402300799999 {
+				return nil, errors.New("daily run count retention watermark must be Unix milliseconds")
+			}
+			metadata["aggregate-retention-start"] = cutoff
+			metadata["aggregate-retention-watermark"] = time.UnixMilli(int64(watermark)).UTC().Format("2006-01-02T15:04:05.000Z")
+		}
+		if state["coverage"] == "retained-v44" {
+			metadata["query-diagnostic"] = "Backfill covers retained v44 runs only; previously evicted history is unavailable."
+		} else if nativeNumber(metadata["excluded-runs"]) != 0 || nativeNumber(metadata["conflicted-runs"]) != 0 {
+			metadata["query-diagnostic"] = "Some runs have missing start/identity facts or unresolved equal-revision conflicts."
+		}
+	}
+	return metadata, nil
 }
 
 func nativeExistingPromptSnapshot(cmd *cobra.Command) (string, error) {

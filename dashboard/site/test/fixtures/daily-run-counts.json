@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "runDefaults": {
+    "id": "run:golden",
+    "repositoryId": "repository:golden",
+    "workflowId": "workflow:golden",
+    "owner": "octo",
+    "repository": "demo",
+    "workflowPath": ".github/workflows/worker.md"
+  },
+  "cases": [
+    {
+      "name": "all-six-outcome-classes",
+      "writes": [[
+        { "id": "run:success", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" },
+        { "id": "run:failure", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "failure" },
+        { "id": "run:startup", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "startup-failure" },
+        { "id": "run:stale", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "stale" },
+        { "id": "run:timeout", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "timed-out" },
+        { "id": "run:approval", "startedAt": "2026-10-02T01:00:00Z", "status": "queued", "conclusion": "action-required" },
+        { "id": "run:pending", "startedAt": "2026-10-02T01:00:00Z", "status": "in_progress", "conclusion": null },
+        { "id": "run:unclassified", "startedAt": "2026-10-02T01:00:00Z", "status": "queued", "conclusion": "cancelled" },
+        { "id": "run:other", "startedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "cancelled" }
+      ]],
+      "expectedRows": [{
+        "day": "2026-10-02", "organization": "octo", "repository": "demo", "workflow": ".github/workflows/worker.md",
+        "total": 9, "successful": 1, "failed": 4, "approval": 1, "pending": 2, "other": 1
+      }]
+    },
+    {
+      "name": "utc-offset-start",
+      "writes": [[{ "startedAt": "2026-10-02T00:30:00+02:00", "status": "completed", "conclusion": "success" }]],
+      "expectedRows": [{
+        "day": "2026-10-01", "organization": "octo", "repository": "demo", "workflow": ".github/workflows/worker.md",
+        "total": 1, "successful": 1, "failed": 0, "approval": 0, "pending": 0, "other": 0
+      }]
+    },
+    {
+      "name": "exact-replay",
+      "writes": [
+        [{ "startedAt": "2026-10-02T00:00:00Z", "attempt": 1, "updatedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" }],
+        [{ "startedAt": "2026-10-02T00:00:00Z", "attempt": 1, "updatedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" }]
+      ],
+      "expectedRows": [{
+        "day": "2026-10-02", "organization": "octo", "repository": "demo", "workflow": ".github/workflows/worker.md",
+        "total": 1, "successful": 1, "failed": 0, "approval": 0, "pending": 0, "other": 0
+      }]
+    },
+    {
+      "name": "date-and-parent-correction",
+      "writes": [
+        [{ "startedAt": "2026-10-02T00:00:00Z", "updatedAt": "2026-10-02T01:00:00Z", "status": "in_progress", "conclusion": null }],
+        [{ "repositoryId": "repository:corrected", "workflowId": "workflow:corrected", "owner": "other", "repository": "target", "workflowPath": ".github/workflows/corrected.md", "startedAt": "2026-10-03T00:00:00Z", "updatedAt": "2026-10-04T00:00:00Z", "status": "completed", "conclusion": "failure" }]
+      ],
+      "expectedRows": [{
+        "day": "2026-10-03", "organization": "other", "repository": "target", "workflow": ".github/workflows/corrected.md",
+        "total": 1, "successful": 0, "failed": 1, "approval": 0, "pending": 0, "other": 0
+      }]
+    },
+    {
+      "name": "higher-attempt-clears-outcome",
+      "writes": [
+        [{ "startedAt": "2026-10-02T00:00:00Z", "attempt": 1, "updatedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" }],
+        [{ "startedAt": "2026-10-03T00:00:00Z", "attempt": 2, "updatedAt": "2026-10-03T01:00:00Z", "status": "queued" }]
+      ],
+      "expectedRows": [{
+        "day": "2026-10-03", "organization": "octo", "repository": "demo", "workflow": ".github/workflows/worker.md",
+        "total": 1, "successful": 0, "failed": 0, "approval": 0, "pending": 1, "other": 0
+      }]
+    },
+    {
+      "name": "higher-attempt-missing-start-is-excluded",
+      "writes": [
+        [{ "startedAt": "2026-10-02T00:00:00Z", "attempt": 1, "updatedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" }],
+        [{ "attempt": 2, "updatedAt": "2026-10-03T01:00:00Z", "status": "queued" }]
+      ],
+      "excludedRuns": 1,
+      "expectedRows": []
+    },
+    {
+      "name": "explicit-null-conclusion-clears-outcome",
+      "writes": [
+        [{ "startedAt": "2026-10-02T00:00:00Z", "attempt": 1, "updatedAt": "2026-10-02T01:00:00Z", "status": "completed", "conclusion": "success" }],
+        [{ "attempt": 1, "updatedAt": "2026-10-03T01:00:00Z", "status": "completed", "conclusion": null }]
+      ],
+      "expectedRows": [{
+        "day": "2026-10-02", "organization": "octo", "repository": "demo", "workflow": ".github/workflows/worker.md",
+        "total": 1, "successful": 0, "failed": 0, "approval": 0, "pending": 0, "other": 1
+      }]
+    },
+    {
+      "name": "undated-excluded",
+      "writes": [[{ "startedAt": null, "status": "completed", "conclusion": "success" }]],
+      "excludedRuns": 1,
+      "expectedRows": []
+    },
+    {
+      "name": "missing-state-unavailable",
+      "writes": [[{ "startedAt": "2026-10-02T00:00:00Z", "status": "completed", "conclusion": "success" }]],
+      "stateMode": "missing",
+      "expectedAvailability": "unavailable",
+      "expectedRows": []
+    },
+    {
+      "name": "null-state-status-unavailable",
+      "writes": [[{ "startedAt": "2026-10-02T00:00:00Z", "status": "completed", "conclusion": "success" }]],
+      "stateMode": "null",
+      "expectedAvailability": "unavailable",
+      "expectedRows": []
+    }
+  ]
+}

@@ -26,6 +26,8 @@ async function scenario({
   document = policy(),
   target = "acme/private-a",
   mode = "app",
+  defaultTarget = "",
+  eventName = "workflow_dispatch",
   env: extraEnv = {},
   api: options = {},
   role = "orchestrator",
@@ -82,12 +84,13 @@ async function scenario({
     Object.assign(process.env, {
       GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: "acme/control",
       GITHUB_SERVER_URL: "https://github.com", GITHUB_WORKFLOW_SHA: api.sha,
-      GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_ACTOR: "developer", GITHUB_TRIGGERING_ACTOR: "developer",
+      GITHUB_EVENT_NAME: eventName, GITHUB_ACTOR: "developer", GITHUB_TRIGGERING_ACTOR: "developer",
       GITHUB_WORKFLOW_REF: `acme/control/.github/workflows/${workflow === "__none__" ? "dependabot" : workflow}.lock.yml@refs/heads/main`,
       GITHUB_RUN_ID: "123", GITHUB_RUN_ATTEMPT: "1",
       GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: summary, RUNNER_TEMP: directory,
       CAO_CAMPAIGN: campaign, CAO_WORKFLOW: workflow, CAO_ROLE: role, CAO_WORKER: role === "worker" ? "update-planner" : "",
       CAO_TARGET_REPOSITORY: target, CAO_REQUESTED_MODE: requestedMode, CAO_SAFE_OUTPUT_REPOSITORY: target,
+      CAO_DEFAULT_TARGET_REPOSITORY: defaultTarget,
       CAO_REQUESTED_SAFE_OUTPUT_REPOSITORY: context.inputs.safe_output_repo || "",
       CAO_CORRELATION_ID: context.inputs.correlation_id || "",
       CAO_CENTRAL_REPOSITORY: context.inputs.central_repo || "",
@@ -150,6 +153,40 @@ test("scheduled exact fleet excludes the control repository before token minting
   assert.equal(result.precompute.effective_max_repos, 2);
   const explicit = await scenario({ document: policy({ inventory: { "max-scan-repositories": 1 } }) });
   assert.equal(explicit.precompute.activation_ready, true, "only the selected target consumes the scan bound");
+});
+
+test("repository-local scheduled inventory avoids unrelated PAT mappings", async () => {
+  const source = parse(readFileSync(join(root, ".github/workflows/self-care.md"), "utf8").split("---")[1]);
+  const defaultTarget = interpolate(source.env.CAO_DEFAULT_TARGET_REPOSITORY, {
+    github: { repository: "acme/control" },
+  });
+  assert.equal(defaultTarget, "acme/control");
+  const env = {
+    CAO_CONTROL_READ_PAT: "control-pat", CAO_INVENTORY_READ_PAT: "control-pat",
+    CAO_READ_PAT_REPOSITORIES: JSON.stringify({
+      "acme/control": "CONTROL_PAT", "acme/private-a": "TARGET_PAT", "acme/private-b": "OTHER_PAT",
+    }),
+  };
+  const result = await scenario({ target: "", defaultTarget, eventName: "schedule", mode: "pat", env });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.admission.authorized, true);
+  assert.equal(result.precompute.activation_ready, true);
+  assert.deepEqual(result.precompute.candidate_repositories.map(repo => repo.full_name), ["acme/control"]);
+  assert.ok(!result.calls.some(call => /\/repos\/acme\/private-/.test(call.path)));
+  assert.equal(result.minted.length, 0);
+
+  const fleet = await scenario({ target: "", mode: "pat", env });
+  assert.equal(fleet.precompute.activation_ready, false);
+  assert.equal(fleet.precompute.reason, "pat-fleet-unsupported");
+});
+
+test("explicit inventory targets take precedence over workflow defaults and remain policy checked", async () => {
+  const result = await scenario({ defaultTarget: "acme/control" });
+  assert.equal(result.precompute.activation_ready, true);
+  assert.deepEqual(result.precompute.candidate_repositories.map(repo => repo.full_name), ["acme/private-a"]);
+  const denied = await scenario({ target: "", defaultTarget: "acme/not-enrolled" });
+  assert.equal(denied.precompute.activation_ready, false);
+  assert.equal(denied.minted.length, 0);
 });
 
 for (const [name, options, reason] of [

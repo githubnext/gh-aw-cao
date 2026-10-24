@@ -72,9 +72,16 @@ const baseline = queries.map((query) => {
   };
 });
 /** @type {Query[]} */
-const chartBaseline = baseline.map((query) => query.name === runInventoryContract.source
-  ? { ...query, from: 'repository-activity', joins: undefined, compute: undefined }
-  : query);
+const chartBaseline = baseline.map((query) => {
+  if (query.name === runInventoryContract.source) {
+    return { ...query, from: 'repository-activity', joins: undefined, compute: undefined };
+  }
+  // Compare the former chart's work on the daily projection's admitted horizon.
+  if (query.name === 'repository-run-totals') {
+    return { ...query, filter: { predicates: [{ field: 'started-at', gte: '2026-09-07T00:00:00Z' }] } };
+  }
+  return query;
+});
 
 /** @param {string} name @param {Record<string, unknown>[]} rows */
 function source(name, rows) {
@@ -146,18 +153,31 @@ function fixture() {
 async function canonicalSources(inputs = fixture()) {
   return /** @type {Record<string, Source>} */ (await processDataRequest({
     operation: 'load-dashboard-query-sources',
-    ingest: true, sources: inputs, queries: [], sourceNames: canonicalNames
+    ingest: true, sources: inputs, queries: [], sourceNames: [...canonicalNames, 'daily-run-counts']
   }));
 }
 
-/** @param {Query[] | Record<string, unknown>[]} definitions @param {Record<string, Source>} sources @param {string[]} [names] */
+/** @param {Query[] | Record<string, unknown>[]} definitions @param {Record<string, Source>} sources @param {string[]} [names] @returns {Record<string, { rows: Record<string, unknown>[], metadata: Source['metadata'] }>} */
 function workerQuery(definitions, sources, names = publicNames) {
+  if (names.length === 1 && names[0] === runInventoryContract.source) {
+    const compiled = chartPayload(/** @type {Query[]} */ (definitions));
+    return { [names[0]]: workerQuery(compiled.queries, sources, compiled.aliases)[compiled.aliases[0]] };
+  }
   const results = /** @type {Record<string, Source>} */ (processDataRequest({
     operation: 'execute-dashboard-queries', queries: definitions, sources, sourceNames: names
   }));
   return Object.fromEntries(names.map((name) => [name, {
     rows: results[name].rows, metadata: results[name].metadata
   }]));
+}
+
+/** @param {Query[]} definitions */
+function chartPayload(definitions) {
+  const page = dashboard.pages.find((/** @type {{ id: string }} */ value) => value.id === runInventoryContract.page);
+  return compileDashboardViewPayloadQueries(page.definition, runInventoryContract.page, {
+    queries: definitions, viewId: runInventoryContract.view,
+    evaluatedAt: '2026-09-24T00:00:00Z'
+  });
 }
 
 beforeEach(async () => {
@@ -242,7 +262,7 @@ describe('repository activity query optimization', () => {
       { definitions: queries, names: [runInventoryContract.source] },
       { definitions: compiled.queries, names: compiled.aliases }
     ]) {
-      expect(resolveDashboardQuerySources(definitions, names).filter((name) => canonicalNames.includes(name)).toSorted())
+      expect(resolveDashboardQuerySources(definitions, names).filter((name) => [...canonicalNames, 'daily-run-counts'].includes(name)).toSorted())
         .toEqual(runInventoryContract.canonicalSources);
     }
     const inputs = fixture();
@@ -257,7 +277,7 @@ describe('repository activity query optimization', () => {
     expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source]).toEqual(expected);
   });
 
-  it.each(contexts)('preserves run chart rows while eliminating unrelated evidence for %j', async (queryContext) => {
+  it.each(contexts.filter((context) => !context.filters?.['rollout-mode']))('preserves run chart rows for supported scopes while eliminating unrelated evidence for %j', async (queryContext) => {
     const sources = await canonicalSources();
     const page = dashboard.pages.find((/** @type {{ id: string }} */ candidate) => candidate.id === runInventoryContract.page);
     /** @param {Query[]} definitions */
@@ -271,12 +291,13 @@ describe('repository activity query optimization', () => {
     expect(scoped(queries)).toEqual(scoped(chartBaseline));
   });
 
-  it('reduces chart row work by at least two thirds and only reads repositories and runs through the worker', async () => {
+  it('reduces chart row work by at least two thirds and only reads repositories and daily counts through the worker', async () => {
     const sources = await canonicalSources();
     /** @param {Query[]} definitions */
     const measure = (definitions) => {
       const budget = createDashboardQueryBudget();
-      const result = executeDashboardQueries(definitions, sources, [runInventoryContract.source], { budget })[runInventoryContract.source];
+      const compiled = chartPayload(definitions);
+      const result = executeDashboardQueries(compiled.queries, sources, compiled.aliases, { budget })[compiled.aliases[0]];
       return { rows: result.rows, operations: budget.operations };
     };
     const original = measure(chartBaseline);
@@ -285,9 +306,9 @@ describe('repository activity query optimization', () => {
     expect(optimized.operations).toBeLessThan(original.operations / 3);
     const result = /** @type {Record<string, Source>} */ (await processDataRequest({
       operation: 'load-dashboard-query-sources', sources: {},
-      queries, sourceNames: [runInventoryContract.source]
+      queries: chartPayload(queries).queries, sourceNames: chartPayload(queries).aliases
     }));
-    expect(result[runInventoryContract.source].rows).toEqual(optimized.rows);
+    expect(result[chartPayload(queries).aliases[0]].rows).toEqual(optimized.rows);
   });
 
   it('lists repository run counts and drill links through the production worker boundary', async () => {
@@ -362,12 +383,12 @@ describe('repository activity query optimization', () => {
     expect(result.rows.at(-1)).toMatchObject({ repository: 'org/extra-dv', runs: 0 });
   });
 
-  it('preserves empty and unavailable run evidence quality for repository run inventory', async () => {
+  it('preserves empty inventory and rejects unavailable daily evidence without false zeros', async () => {
     const sources = await canonicalSources();
-    sources.runs = { ...sources.runs, rows: [], metadata: { ...sources.runs.metadata, availability: 'unavailable' } };
+    sources['daily-run-counts'] = { ...sources['daily-run-counts'], rows: [], metadata: { ...sources['daily-run-counts'].metadata, availability: 'unavailable' } };
     const result = workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source];
-    expect(result.rows).toHaveLength(runInventoryContract.rows.length);
-    expect(result.metadata.completeness).toBe('partial');
+    expect(result.rows).toEqual([]);
+    expect(result.metadata.availability).toBe('unavailable');
     sources.repositories = { ...sources.repositories, rows: [], metadata: { ...sources.repositories.metadata, availability: 'empty' } };
     expect(workerQuery(queries, sources, [runInventoryContract.source])[runInventoryContract.source].rows).toEqual([]);
   });

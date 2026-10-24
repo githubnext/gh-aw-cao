@@ -56,7 +56,10 @@ describe('first-pass canonical Audit curation', () => {
     expect(await isAuditCurationCurrent(indexedDB)).toBe(false);
     const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
     const maintained = await maintainCanonicalDatabase(indexedDB, options);
-    expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
+    expect(getAll.mock.calls.every(([, count], index) => count === (
+      ['dailyRunCounts', 'runCountContributions'].includes(
+        /** @type {IDBObjectStore} */ (getAll.mock.contexts[index]).name) ? 250 : 1000
+    ))).toBe(true);
     getAll.mockRestore();
     expect(maintained.prunedAudits).toBe(incoming.audits.filter((audit) => discardAudit(audit, incoming.runs[0])).length);
     expect(maintained.prunedAudits).toBeGreaterThan(0);
@@ -120,7 +123,10 @@ describe('first-pass canonical Audit curation', () => {
     try {
       const maintained = await maintainCanonicalDatabase(indexedDB, options);
       expect(maintained.prunedAudits).toBe(2105);
-      expect(getAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
+      expect(getAll.mock.calls.every(([, count], index) => count === (
+        ['dailyRunCounts', 'runCountContributions'].includes(
+          /** @type {IDBObjectStore} */ (getAll.mock.contexts[index]).name) ? 250 : 1000
+      ))).toBe(true);
       expect(indexGetAll.mock.calls).toHaveLength(3);
       expect(indexGetAll.mock.calls.every(([, count]) => count === 1000)).toBe(true);
       expect(cursorDelete).not.toHaveBeenCalled();

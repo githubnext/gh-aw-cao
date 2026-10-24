@@ -46,6 +46,9 @@ func (s *Store) RecordAdmittedRun(ctx context.Context, identity admission.Identi
 	if err = insertInvocationEntity(ctx, tx, s.namespace, "$runs", run, now); err != nil {
 		return err
 	}
+	if err := s.reconcileDailyInvocation(ctx, tx, fmt.Sprint(runID)); err != nil {
+		return err
+	}
 	for _, source := range []string{"$repositories", "$workflows", "$runs"} {
 		if err := partialInvocationQuality(ctx, tx, s.namespace, source); err != nil {
 			return err

@@ -59,9 +59,10 @@ test("slow integration workflows run on relevant main pushes, not pull requests"
     assert.equal(runsForFile(name, "push", "server/README.md"), false, name);
     assert.ok(Object.hasOwn(triggers, "workflow_dispatch"), name);
   }
-  for (const name of ["actions.yml", "dashboard-deployed-integration.yml", "dashboard-views.yml"]) {
-    assert.ok(parse(workflow(name)).on.schedule.length > 0, name);
+  for (const name of ["actions.yml", "dashboard-views.yml"]) {
+    assert.ok(Object.hasOwn(parse(workflow(name)).on, "workflow_call"), name);
   }
+  assert.ok(parse(workflow("dashboard-deployed-integration.yml")).on.schedule.length > 0);
 });
 
 test("MCP parity keeps service-backed Go integration tests out of its contract step", () => {
@@ -268,7 +269,7 @@ test("Go extension keeps authenticated doctor integration separate from unit and
   assert.deepEqual(permissions, { contents: "read" });
   assert.equal(job.permissions, undefined);
   assert.equal(job.env?.GH_TOKEN, undefined);
-  assert.equal(job.if, undefined);
+  assert.equal(job.if, "github.event_name != 'pull_request'");
   assert.equal(job.needs, undefined);
   assert.equal(quality.needs, undefined);
   assert.equal(install.if, undefined);
@@ -311,7 +312,7 @@ test("Go extension setup simulator runs only on main pushes, independently witho
     GITHUB_ENTERPRISE_TOKEN: "",
   });
   assert.equal(job.env, undefined);
-  assert.equal(job.if, "github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  assert.equal(job.if, "github.event_name != 'pull_request' && github.ref == 'refs/heads/main'");
   assert.deepEqual(triggers.push.branches, ["main"]);
   assert.ok(triggers.pull_request, "PR quality and authenticated doctor checks remain enabled");
   assert.equal(job.needs, undefined);
@@ -342,7 +343,10 @@ test("Go extension setup simulator runs only on main pushes, independently witho
 test("Docker samples runtime has an independent read-only workflow", () => {
   const runtime = parse(workflow("actions-runtime.yml"));
   const contracts = parse(workflow("workflow-contracts.yml"));
-  assert.deepEqual(runtime.on.pull_request.paths, ["server/**", "!server/**/*.md"]);
+  for (const pattern of ["server/**", "!server/**/*.md", "activity/**", "dashboard/site/src/data/**",
+    "tests/helpers/actions-runtime/**", "tests/integration/*actions-runtime.test.mjs", ".github/workflows/cao-activity.yml"]) {
+    assert.ok(runtime.on.pull_request.paths.includes(pattern), pattern);
+  }
   assert.deepEqual(runtime.on.push.paths, runtime.on.pull_request.paths);
   assert.deepEqual(runtime.on.push.branches, ["main"]);
   assert.ok(Object.hasOwn(runtime.on, "workflow_dispatch"));
@@ -361,13 +365,20 @@ test("Docker samples runtime has an independent read-only workflow", () => {
   assert.equal(diagnostics.with["retention-days"], 7);
 });
 
-test("Docker samples runtime runs automatically only for server code changes", () => {
+test("Docker runtime runs automatically for simulator, Activity and shared data-boundary changes", () => {
   for (const event of ["pull_request", "push"]) {
     for (const file of [
       "server/internal/webhookgateway/worker.go",
       "server/internal/operational/postgres/webhook_schema.sql",
       "server/go.mod",
       "server/go.sum",
+      "tests/helpers/actions-runtime/runner.mjs",
+      "tests/integration/activity-actions-runtime.test.mjs",
+      "activity/collect-logs.sh",
+      "dashboard/site/src/data/model/daily-run-counts.js",
+      ".github/workflows/actions-runtime.yml",
+      ".github/workflows/cao-activity.yml",
+      ".github/workflows/shared/control.md",
     ]) {
       assert.ok(runsForFile("actions-runtime.yml", event, file), `${event}: ${file}`);
     }
@@ -376,9 +387,6 @@ test("Docker samples runtime runs automatically only for server code changes", (
       "server/internal/webhookgateway/README.md",
       "docs/glossary.md",
       "dashboard/site/src/dashboard-app.js",
-      "tests/helpers/actions-runtime/runner.mjs",
-      ".github/workflows/actions-runtime.yml",
-      ".github/workflows/shared/control.md",
       "cmd/gh-cao/main.go",
       "go.mod",
     ]) {
@@ -389,22 +397,24 @@ test("Docker samples runtime runs automatically only for server code changes", (
 
 test("pull request triggers route frontend, control, server, and test changes selectively", () => {
   const cases = [
-    ["dashboard/site/src/dashboard-app.js", ["cid.yml"]],
-    ["dashboard/site/dashboard-fragments/overview.json", ["cid.yml"]],
+    ["dashboard/site/src/dashboard-app.js", ["cgo.yml", "cid.yml"]],
+    ["dashboard/site/dashboard-fragments/overview.json", ["cgo.yml", "cid.yml"]],
     ["dashboard/site/README.md", []],
     ["docs/glossary.md", ["workflow-contracts.yml"]],
     ["docs/assets/logo-day.svg", ["cid.yml", "svg-contrast-check.yml", "workflow-contracts.yml"]],
     ["public/favicon.svg", ["cid.yml", "workflow-contracts.yml"]],
-    ["activity/dashboard-complexity.mjs", ["workflow-contracts.yml"]],
+    ["activity/dashboard-complexity.mjs", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
     ["tests/e2e/dashboard-ingestion-scale.spec.mjs", ["workflow-contracts.yml"]],
     ["server/internal/query/query.go", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
     ["server/spec/main.tsp", ["actions-runtime.yml", "cgo.yml", "workflow-contracts.yml"]],
+    ["scripts/run-daily-run-counts-conformance.mjs", ["cgo.yml", "workflow-contracts.yml"]],
+    ["tests/contracts/daily-run-counts.json", ["cgo.yml", "workflow-contracts.yml"]],
     ["server/README.md", ["workflow-contracts.yml"]],
-    [".github/workflows/shared/control.md", ["cao-validate.yml", "workflow-contracts.yml"]],
+    [".github/workflows/shared/control.md", ["actions-runtime.yml", "cao-validate.yml", "workflow-contracts.yml"]],
     [".github/workflows/cid.yml", ["action-lint.yml", "cid.yml"]],
-    [".github/workflows/shared/ci.yml", ["action-lint.yml", "cao-validate.yml", "workflow-contracts.yml"]],
+    [".github/workflows/shared/ci.yml", ["action-lint.yml", "actions-runtime.yml", "cao-validate.yml", "workflow-contracts.yml"]],
     [".github/workflows/actions.yml", ["action-lint.yml", "workflow-contracts.yml"]],
-    [".github/workflows/actions-runtime.yml", ["action-lint.yml", "workflow-contracts.yml"]],
+    [".github/workflows/actions-runtime.yml", ["action-lint.yml", "actions-runtime.yml", "workflow-contracts.yml"]],
     [".github/workflows/cao-evolution.lock.yml", ["cao-validate.yml", "workflow-contracts.yml"]],
   ];
   for (const [file, expected] of cases) {
@@ -442,15 +452,17 @@ test("main pushes retain browser and integration coverage for representative inp
 
 test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", () => {
   const cases = [
-    ["workflow-contracts.yml", ["unit", "test", "agent-plugin", "installer"], [
+    ["workflow-contracts.yml", ["unit", "test"], [
+      "agent-plugin", "installer",
       "full-contracts", "github-issue-query",
       "dependabot-operational-value", "campaign-lifecycle-changes",
     ]],
     ["cgo.yml", ["server-quality", "server-spec"], [
+      "windows-local-server", "actions-simulator-postgres",
       "server-backfill", "server-stress", "redis-dashboard-integration",
     ]],
     ["cid.yml", ["lint-unit", "dead-views"], [
-      "playwright-integration", "query-complexity", "lighthouse-performance",
+      "pages", "playwright-integration", "query-complexity", "lighthouse-performance",
     ]],
   ];
   for (const [name, fastJobs, mainJobs] of cases) {
@@ -466,8 +478,9 @@ test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", 
   }
   const contracts = parse(workflow("workflow-contracts.yml")).jobs;
   assert.match(contracts["campaign-lifecycle"].if, /github\.event_name != 'pull_request'/);
-  assert.match(contracts.test.if, /!cancelled\(\)/);
-  assert.ok(contracts.test.steps.some((step) => step.name === "Require successful unit areas"));
+  assert.equal(contracts["fast-contracts"].needs, undefined, "fast checks run in parallel with unit areas");
+  assert.deepEqual(contracts.test.needs, ["changes", "unit", "fast-contracts"]);
+  assert.equal(contracts.test.if, "always()");
 });
 
 test("PR reporters do not start for skipped main-only producers", () => {

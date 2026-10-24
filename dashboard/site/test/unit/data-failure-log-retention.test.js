@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { normalize } from '../../src/data/normalize/index.js';
+import { readProtectedRunCountBytes } from '../../src/data/model/daily-run-counts.js';
 import { CANONICAL_SCHEMA_VERSION, relationshipErrors } from '../../src/data/model/schema.js';
 import { finalizeNormalizedJsonlIngestion, ingestNormalizedJsonl } from '../../src/data/ingest/coordinator.js';
 import {
@@ -258,12 +259,16 @@ describe.each(['IndexedDB', 'SQLite'])('resolved failure logs in %s', (backend) 
 
   it.each([false, true])('reclaims excerpts before whole-Run size eviction (repair=%s)', async (repairAuditCuration) => {
     const indexedDB = database();
+    await maintainCanonicalDatabase(indexedDB, options);
     const input = fixture(['failure', 'success']);
     await upsertCanonicalBatch(indexedDB, input);
     const bytes = (await storedTotals(indexedDB)).bytes;
+    const connection = await openCanonicalDatabase(indexedDB);
+    const protectedBytes = await readProtectedRunCountBytes(connection);
+    connection.close();
     const savings = JSON.stringify({ failureLog: input.runs[0].failureLog }).length - 2;
     const result = await maintainCanonicalDatabase(indexedDB, {
-      ...options, repairAuditCuration, maxDatabaseBytes: Math.ceil((bytes - savings + 10) / 0.75)
+      ...options, repairAuditCuration, maxDatabaseBytes: Math.ceil((bytes - savings + protectedBytes + 10) / 0.75)
     });
     expect(result).toMatchObject({ deletedRecords: 0, prunedFailureLogs: 1 });
     expect(await readCollection(indexedDB, 'runs')).toHaveLength(2);

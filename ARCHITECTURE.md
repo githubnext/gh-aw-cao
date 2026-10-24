@@ -349,8 +349,11 @@ fresh canonical schema rebuilt from authoritative inputs without removing
 operational audit/queue state. A fixed schema-qualified
 ANALYZE capability preserves ingestion statistics without runtime ownership.
 Bootstrap performs no legacy conversion or
-backward-compatible import. There are no persistent Postgres generations or
-separate derived projections. Redis remains reconstructable
+backward-compatible import. There are no persistent Postgres generations.
+The additive daily run-count projection, compact contribution receipts, and
+state in `specs/dashboard-data.md` §72.2 are the only persisted derived-projection
+exception; other daily metrics and computation results remain request-scoped.
+Redis remains reconstructable
 operational state, not an entity
 authority. The same server binary provides a read-only diagnostic check-up
 that inspects the runtime, Redis operations, Postgres canonical state and
@@ -605,7 +608,7 @@ dashboard data authority, policy, or rollout authority.
 The local Go `serve` command defaults to a cached canonical SQLite projection
 through the ordinary HTTP query, canonical API, diagnostics, revision
 subscriptions, and optional read-only MCP boundary.
-It reuses `.cao/gh-aw-logs.sqlite` in the checkout without network access, or
+It reuses `.cao/gh-aw-logs.sqlite` in the checkout without another download, or
 downloads deployed data on demand when the cache is missing. `--sqlite PATH`
 selects another cache with the same behavior. An explicit `--postgres-url`,
 `--source`, or `--redis-url` selects the PostgreSQL profile; database service
@@ -621,7 +624,7 @@ direct manifest URL may supply the snapshot; directory
 discovery checks its root and then `cao/` on HTTP 404. Bounded streaming,
 manifest SHA-256 verification, and canonical-version validation precede atomic
 replacement; failed acquisition preserves the old file and fails startup.
-This acquisition path does not ingest shards or relax read-only serving.
+This acquisition path does not ingest shards or relax read-only snapshot access.
 Invalid or unreadable existing caches and dangling symlinks fail closed rather
 than triggering automatic repair downloads.
 
@@ -636,6 +639,34 @@ webhook, or hosted execution capabilities. Query result caching is disabled;
 in-place commits change the revision and notify active subscriptions. Snapshot
 quality remains unknown without stronger evidence. This default local mode
 does not introduce a hosted SQLite backend or a fallback from PostgreSQL.
+Outside the internal canvas profile, SQLite's native `ATTACH DATABASE` links the
+read-only snapshot to a writable local delta (`--sqlite-overlay`, default
+snapshot path plus `.local.sqlite`). The shared overlay SQL in
+`internal/dashboardquery/overlay.sql` unions historical records with local
+upserts and deletion markers without copying snapshot records. Every HTTP
+request remains query-only. The overlay is bound to the snapshot's canonical
+content revision; a different base requires another overlay and never silently
+discards the previous delta.
+
+Local background backfill uses `GH_TOKEN`, `GITHUB_TOKEN`, or the local `gh`
+login, never a hosted App identity. It refreshes only repositories present in the
+deployed snapshot (at most 10,000), with no token-driven inventory expansion,
+rollout changes, webhooks, or hosted collector authority. Per-repository run
+watermarks overlap one day and include older unfinished runs within 30 days;
+collection is capped at 10,000 runs and five minutes per repository, and 30
+minutes per pass. The existing Activity collector/compactor and canonical
+ingester read the attached history while writing a staged copy of only the
+local delta. Failed repositories are discarded and reported independently;
+failed ingestion never changes committed data. Successful publication swaps
+local rows and tombstones transactionally, rejects a stale concurrent generation,
+and broadcasts the revision. Private per-pass evidence is removed afterward.
+Backfill starts asynchronously and repeats five minutes after each pass;
+`--backfill-interval` changes that delay and `--backfill=false` provides offline
+serving while retaining local data. Missing credentials/tools or failed refreshes
+are explicit and retry without blocking snapshot serving or claiming complete
+quality. Application shutdown cancels and joins this local work. The internal
+canvas and read-only constructor remain snapshot-only.
+
 Its fixed local evaluator profile admits 500,000 input/intermediate rows and
 50 million operations with 1 GiB working-source and 2 GiB / 2 million live
 retained-row budgets; final-consumer release discards completed DAG inputs.
@@ -1444,8 +1475,21 @@ not authorize cross-repository evidence access.
   and emit bounded, versioned results; they do not create authority or convert
   runtime success into verified outcomes or operational value.
 - Overview counters use IndexedDB-native counts or request-scoped declarative
-  queries over canonical records. No daily aggregate or computation-result
-  projection is persisted. Failure clustering and audit diagnosis execute in
+  queries over canonical records. A separate daily run-count projection and
+  compact per-Run contribution receipts support explicitly migrated additive
+  health queries; receipts survive detail eviction and replacement updates
+  subtract old contributions before adding new ones atomically. Its dimensions
+  are namespace, UTC run-start date, repository, and workflow. Existing detail
+  storage and retention are unchanged. Daily buckets and receipts retain the
+  current UTC Monday-start week and its two preceding weeks independently of
+  detail-retention overrides; backfill cannot recover already-evicted history.
+  Other daily metrics and computation-result projections are not persisted.
+  Changes to this projection, reconciliation, retention, source, or migrated
+  consumers require `POSTGRES_URL=... npm run test:conformance:daily-run-counts`
+  against an isolated PostgreSQL database whose test role can create schemas,
+  with native Chromium installed. Skipped backends or browser emulation alone
+  are not conformance; `npm run check` does not run this additional gate.
+  Failure clustering and audit diagnosis execute in
   bounded, selected-partition queries. Runtime facts evaluate orchestrators first
   and enumerate worker targets only when orchestration is eligible. Worker facts
   use one evaluation partition per target so success on one target cannot mask

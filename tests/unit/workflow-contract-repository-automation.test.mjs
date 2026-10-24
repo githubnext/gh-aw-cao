@@ -123,26 +123,28 @@ test("workflow contracts isolate authenticated campaign lifecycle checks", () =>
   const source = workflow("workflow-contracts.yml");
   const jobs = generatedJobs(source);
   const unit = jobs.get("unit")?.block ?? "";
-  const contracts = jobs.get("test")?.block ?? "";
+  const contracts = jobs.get("fast-contracts")?.block ?? "";
+  const aggregate = jobs.get("test")?.block ?? "";
   const fullContracts = jobs.get("full-contracts")?.block ?? "";
   const operationalValue = jobs.get("dependabot-operational-value")?.block ?? "";
   const campaignLifecycle = jobs.get("campaign-lifecycle")?.block ?? "";
 
   assert.match(source, /pull_request:\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
   assert.match(source, /push:\n    branches: \[main\]\n    paths-ignore:\n      - \.github\/workflows\/cid\.yml\n      - dashboard\/site\/\*\*/);
-  assert.match(unit, /area: \[activity, dashboard, workflows, tooling, documentation\]/);
+  assert.match(unit, /matrix: \$\{\{ fromJSON\(needs\.changes\.outputs\.matrix\) \}\}/);
   assert.match(unit, /uses: \.\/\.github\/actions\/setup-gh-aw/);
-  assert.match(unit, /npm run test:unit:area -- \$\{\{ matrix\.area \}\}/);
+  assert.match(unit, /npm run test:unit:area -- "\$UNIT_AREA"/);
   assert.doesNotMatch(unit, /GH_TOKEN|CENTRAL_AGENTIC_OPS_CAMPAIGN_SOURCE|test:campaign-lifecycle/);
-  assert.match(contracts, /needs: unit/);
-  assert.match(contracts, /if: \$\{\{ !cancelled\(\) \}\}/);
-  assert.match(contracts, /UNIT_RESULT: \$\{\{ needs\.unit\.result \}\}/);
+  assert.doesNotMatch(contracts, /needs:/);
+  assert.match(aggregate, /needs: \[changes, unit, fast-contracts\]/);
+  assert.match(aggregate, /if: always\(\)/);
+  assert.match(aggregate, /RESULTS: \$\{\{ toJSON\(needs\) \}\}/);
   for (const command of ["lint", "typecheck:cao", "typecheck:copilot", "compile"]) {
     assert.ok(contracts.includes(`npm run ${command}\n`), `missing ${command} from contract checks`);
   }
   assert.doesNotMatch(contracts, /test:integration|test:load|check:svg|docs:build|dashboard:server:spec:check/);
   assert.match(fullContracts, /if: github\.event_name != 'pull_request'/);
-  assert.match(fullContracts, /- name: Build and validate documentation\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+run: \|\n\s+npm run check:svg\n\s+npm run docs:build/);
+  assert.match(fullContracts, /- name: Build and validate documentation\n\s+if: \$\{\{ !cancelled\(\) && needs\.changes\.outputs\.documentation == 'true' \}\}\n\s+run: \|\n\s+npm run check:svg\n\s+npm run docs:build/);
   for (const command of ["test:integration", "test:load", "check:svg", "docs:build", "dashboard:server:spec:check"]) {
     assert.ok(fullContracts.includes(`npm run ${command}\n`), `missing ${command} from full contract checks`);
   }

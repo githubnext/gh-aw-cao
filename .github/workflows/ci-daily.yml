@@ -1,0 +1,199 @@
+name: Daily full validation
+
+on:
+  schedule:
+    - cron: "37 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-full-validation
+  cancel-in-progress: false
+
+jobs:
+  revision:
+    name: Require main for the unfiltered full suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - env:
+          REF: ${{ github.ref }}
+        run: test "$REF" = refs/heads/main
+
+  contracts:
+    needs: revision
+    uses: ./.github/workflows/workflow-contracts.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      issues: read
+  dashboard:
+    needs: revision
+    uses: ./.github/workflows/cid.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: write
+  server:
+    needs: revision
+    uses: ./.github/workflows/cgo.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+  extension:
+    needs: revision
+    uses: ./.github/workflows/go-extension.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  bootstrap:
+    needs: revision
+    uses: ./.github/workflows/cao-bootstrap.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  actions-runtime:
+    needs: revision
+    uses: ./.github/workflows/actions-runtime.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  azure:
+    needs: revision
+    uses: ./.github/workflows/azure-local-integration.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  query-parity:
+    needs: revision
+    uses: ./.github/workflows/dashboard-query-parity.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+  mcp-parity:
+    needs: revision
+    uses: ./.github/workflows/mcp-parity.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  mobile:
+    needs: revision
+    uses: ./.github/workflows/actions.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+  views:
+    needs: revision
+    uses: ./.github/workflows/dashboard-views.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+  deployed:
+    needs: revision
+    uses: ./.github/workflows/dashboard-deployed-integration.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    with:
+      full: true
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: write
+  dashboard-stress:
+    needs: revision
+    uses: ./.github/workflows/dashboard-massive-scale.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  fleet-stress:
+    needs: revision
+    uses: ./.github/workflows/cao-fleet-stress.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+  backfill-stress:
+    needs: revision
+    uses: ./.github/workflows/backfill-stress.yml # zizmor: ignore[self-repository] - Local reusable workflows use syntax supported by Actions and actionlint.
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+
+  worker-memory:
+    name: Fully ingested dashboard worker heap
+    needs: revision
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: |
+            server/go.sum
+            internal/dashboardquery/go.sum
+      - run: npm ci --ignore-scripts && npm --prefix dashboard/site ci --omit=dev --ignore-scripts
+      - name: Install Chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.sources
+          npx playwright install --with-deps chromium
+      - run: npm run test:memory:dashboard-overview
+      - name: Retain worker memory evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: daily-worker-memory
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  report:
+    name: Daily quality and test-time report
+    if: always()
+    needs:
+      - revision
+      - contracts
+      - dashboard
+      - server
+      - extension
+      - bootstrap
+      - actions-runtime
+      - azure
+      - query-parity
+      - mcp-parity
+      - mobile
+      - views
+      - deployed
+      - dashboard-stress
+      - fleet-stress
+      - backfill-stress
+      - worker-memory
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish suite outcomes and slowest jobs
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SUITES: ${{ toJSON(needs) }}
+        with:
+          script: |
+            const { writeFileSync, appendFileSync } = require('node:fs')
+            const { pathToFileURL } = require('node:url')
+            const { resolve } = require('node:path')
+            const { buildCIReport } = await import(pathToFileURL(resolve('scripts/ci-report.mjs')).href)
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              ...context.repo, run_id: context.runId, filter: 'latest', per_page: 100,
+            })
+            const suites = JSON.parse(process.env.SUITES)
+            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            const report = buildCIReport(suites, jobs, url, context.sha)
+            writeFileSync('ci-daily-report.json', JSON.stringify(report, null, 2) + '\n')
+            writeFileSync('ci-daily-report.md', report.markdown)
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, report.markdown)
+            if (report.status !== 'success') core.setFailed('Daily validation failed or is incomplete; see the suite report.')
+      - name: Retain daily report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-daily-report
+          path: ci-daily-report.*
+          if-no-files-found: error
+          retention-days: 30

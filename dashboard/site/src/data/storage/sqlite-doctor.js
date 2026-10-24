@@ -4,18 +4,22 @@ import path from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
 import { relationshipErrors } from '../model/schema.js';
 import { pruneCanonicalRecord } from '../model/fields.js';
+import { DAILY_RUN_COUNT_STORES, dailyRunCountCutoff, evictDailyRunCounts } from '../model/daily-run-counts.js';
 import {
   CANONICAL_DATABASE_SCHEMA,
   DATABASE_NAME,
   DATABASE_STORES,
   DATABASE_VERSION,
   ENTITY_STORES,
+  openCanonicalDatabase,
   prepareCanonicalRecord
 } from './indexeddb.js';
 import { STORAGE_SHARD_STORE } from './shards.js';
 import { mergeRetainedRecords, OPERATIONAL_VALUE_RETENTION_MS, RETENTION_WINDOW_DAYS } from './retention.js';
 import {
   createSqliteRelationalTables,
+  createSqliteIndexedDB,
+  SqliteIDBKeyRange,
   SQLITE_INDEXEDDB_METADATA_SCHEMA,
   SQLITE_RELATIONAL_STORES
 } from './sqlite-indexeddb.js';
@@ -322,6 +326,11 @@ async function backupDatabase(filename, checkedAt) {
  * @param {DoctorTransaction[]} transactions
  */
 function writeCanonicalDatabase(connection, batch, transactions) {
+  // Detail repair cannot reconstruct receipts for runs already detail-evicted.
+  const protectedCounts = connection.prepare(`
+    SELECT store_name, record_key, value FROM __idb_records
+    WHERE database_name = ? AND store_name IN (?, ?, ?)
+  `).all(DATABASE_NAME, ...DAILY_RUN_COUNT_STORES);
   for (const table of ['__idb_records', '__idb_indexes', '__idb_stores']) {
     const query = sql`DELETE FROM ${identifier(table)} WHERE database_name = ${DATABASE_NAME}`;
     connection.prepare(query.text).run(...query.values);
@@ -346,6 +355,9 @@ function writeCanonicalDatabase(connection, batch, transactions) {
   const insertRecord = connection.prepare(`
     INSERT INTO __idb_records (database_name, store_name, record_key, value) VALUES (?, ?, ?, ?)
   `);
+  for (const row of protectedCounts) {
+    insertRecord.run(DATABASE_NAME, row.store_name, row.record_key, row.value);
+  }
   /** @type {Map<string, import('./shards.js').Shard>} */
   const shards = new Map();
   const totals = { id: 'totals', bytes: 0, count: 0 };
@@ -632,6 +644,13 @@ export async function doctorSqliteDatabase(filename, options = {}) {
   if (needsRepair) {
     let repair;
     try {
+      if ([44, 45].includes(beforeSchema.version) && !scanned.error && scanned.invalid.length === 0) {
+        backupPath = await backupDatabase(databasePath, checkedAt);
+        const keyRange = /** @type {typeof IDBKeyRange} */ (/** @type {unknown} */ (SqliteIDBKeyRange));
+        const database = await openCanonicalDatabase(createSqliteIndexedDB(databasePath), keyRange);
+        database.close();
+        actions.push('backfill-daily-run-counts');
+      }
       repair = await repairCanonicalDatabase(
         databasePath,
         checkedAt,
@@ -639,9 +658,9 @@ export async function doctorSqliteDatabase(filename, options = {}) {
         retentionWindowMs,
         retentionWindowMsByStore
       );
-      backupPath = repair.backupPath;
+      backupPath ??= repair.backupPath;
     } catch (error) {
-      backupPath = error && typeof error === 'object' && 'backupPath' in error
+      backupPath ??= error && typeof error === 'object' && 'backupPath' in error
         ? /** @type {{ backupPath: string | null }} */ (error).backupPath
         : null;
       const doctorStage = error && typeof error === 'object' && 'doctorStage' in error
@@ -700,6 +719,35 @@ export async function doctorSqliteDatabase(filename, options = {}) {
     });
   }
 
+  try {
+    const keyRange = /** @type {typeof IDBKeyRange} */ (/** @type {unknown} */ (SqliteIDBKeyRange));
+    const database = await openCanonicalDatabase(createSqliteIndexedDB(databasePath), keyRange);
+    try {
+      const state = await new Promise((resolve, reject) => {
+        const request = database.transaction('dailyRunCountState').objectStore('dailyRunCountState').get('daily-run-counts');
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const cutoff = dailyRunCountCutoff(Math.max(Number(state?.retentionWatermark ?? -Infinity), now));
+      if (state?.status === 'ready' && state.retentionCutoff !== cutoff) {
+        const counts = await Promise.all(['dailyRunCounts', 'runCountContributions'].map((name) =>
+          new Promise((resolve, reject) => {
+            const request = database.transaction(name).objectStore(name).count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          })));
+        if (counts.some((count) => Number(count) > 0)) {
+          backupPath ??= await backupDatabase(databasePath, checkedAt);
+          actions.push('maintain-daily-count-retention');
+        }
+      }
+      await evictDailyRunCounts(database, now, undefined, keyRange);
+    } finally {
+      database.close();
+    }
+  } catch (error) {
+    errors.push(`daily count retention: ${error instanceof Error ? error.message : String(error)}`);
+  }
   const afterSqlite = sqliteDiagnostics(databasePath);
   const afterSchema = schemaDiagnostics(databasePath);
   const afterScan = scanRecords(databasePath);

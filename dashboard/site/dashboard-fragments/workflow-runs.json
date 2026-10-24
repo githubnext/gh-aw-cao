@@ -15,27 +15,19 @@
     },
     {
       "name": "workflow-runtime-health-summary",
-      "subject": "Count mutually exclusive runtime conclusion classes for the selected workflow.",
-      "objective": "Identify workflows whose retained run conclusions or pending execution warrant investigation.",
-      "acceptance": "Within each organization, repository, and workflow, successful, failed, approval, pending, and other counts sum to the retained run total; missing or unrecognized conclusions are not treated as success, and runtime success is not a verified outcome.",
-      "from": "runs",
-      "compute": [
-        { "as": "successful", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }] },
-        { "as": "failed", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }] },
-        { "as": "approval", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "action-required" }] },
-        { "as": "classified", "function": "equals-any", "args": [{ "field": "run-conclusion" }, { "value": "success" }, { "value": "failure" }, { "value": "startup-failure" }, { "value": "stale" }, { "value": "timed-out" }, { "value": "action-required" }] },
-        { "as": "status", "function": "concat", "args": [{ "field": "run-status" }, { "value": "" }] },
-        { "as": "terminal-or-missing", "function": "equals-any", "args": [{ "field": "status" }, { "value": "completed" }, { "value": "" }] }
-      ],
+      "subject": "Sum daily runtime conclusion counts for the selected workflow.",
+      "objective": "Inspect observed dated runs independently of retained detail.",
+      "acceptance": "Sum by organization/repository/workflow without adding detail; successful, failed, approval, pending, and other sum to total. Dates use UTC run start; undated evidence is incomplete and missing projection is unavailable. Pending is last-observed state, success is not a verified outcome, and sub-day filters are unsupported.",
+      "from": "daily-run-counts",
       "aggregate": {
         "by": ["organization", "repository", "workflow"],
         "values": [
-          { "field": "run", "as": "total", "reducer": "count" },
-          { "field": "run", "as": "successful", "reducer": "count", "filter": { "predicates": [{ "field": "successful", "equals": true }] } },
-          { "field": "run", "as": "failed", "reducer": "count", "filter": { "predicates": [{ "field": "failed", "equals": true }] } },
-          { "field": "run", "as": "approval", "reducer": "count", "filter": { "predicates": [{ "field": "approval", "equals": true }] } },
-          { "field": "run", "as": "pending", "reducer": "count", "filter": { "predicates": [{ "field": "classified", "equals": false }, { "field": "terminal-or-missing", "equals": false }] } },
-          { "field": "run", "as": "other", "reducer": "count", "filter": { "predicates": [{ "field": "classified", "equals": false }, { "field": "terminal-or-missing", "equals": true }] } }
+          { "field": "total", "as": "total", "reducer": "sum" },
+          { "field": "successful", "as": "successful", "reducer": "sum" },
+          { "field": "failed", "as": "failed", "reducer": "sum" },
+          { "field": "approval", "as": "approval", "reducer": "sum" },
+          { "field": "pending", "as": "pending", "reducer": "sum" },
+          { "field": "other", "as": "other", "reducer": "sum" }
         ]
       }
     },
@@ -951,6 +943,7 @@
         {
           "id": "workflow-runtime-route",
           "title": "Workflow runtime",
+          "description": "Daily observed run health, independent of retained execution detail; AI Credit telemetry retains its own coverage.",
           "data": {
             "sources": [
               "workflow-route-record",

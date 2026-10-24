@@ -66,6 +66,7 @@ Use `dashboard/site/src/reactive.js` for state-driven updates:
 2. Add or extend a Playwright test when behavior depends on real browser layout, navigation, workers, focus, scrolling, or responsive interaction.
 3. From `dashboard/site/`, run the focused tests, `npm test`, `npm run lint`, and `npm run typecheck`. Run focused end-to-end tests for browser-facing changes.
 4. Validate every changed dashboard document with the repository validator. If a workflow Markdown source changes, run the repository workflow compile command.
+5. For daily run-count projection, reconciliation, retention, source, or migrated-consumer changes, also run `POSTGRES_URL=... npm run test:conformance:daily-run-counts` from the repository root with isolated PostgreSQL (test role can create schemas) and native Chromium. The contract is in the checked-out `specs/dashboard-data.md` §72.2. Skipped backends/tests, browser emulation alone, or `npm run check` is not a substitute for this gate.
 
 ## Completion contract
 

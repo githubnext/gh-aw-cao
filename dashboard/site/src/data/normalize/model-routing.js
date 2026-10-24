@@ -1,9 +1,11 @@
 import databaseQueries from '../queries/database.json' with { type: 'json' };
 import routing from '../../../dashboard-fragments/model-routing.json' with { type: 'json' };
 import ingestionQueries from './routing-aggregate.json' with { type: 'json' };
+import { createDebug } from '../../debug.js';
 import { executeDashboardQueries } from '../queries/declarative.js';
 import { dashboardFormDefaultValues, resolveDashboardQueryParameters } from '../queries/view-payload-compiler.js';
 
+const debugModelRouting = createDebug('normalize:model-routing');
 const transientFields = ['routingBaselineModel', 'routingBaselineComplete', 'routingBaselineMainRequests', 'eligibleChoices', 'catalogueOverlap'];
 
 /** Stored facts are query outputs, not a second JavaScript accounting implementation. */
@@ -30,7 +32,11 @@ export const ROUTING_AGGREGATE_FIELDS = {
  * @param {import('../model/schema.js').CanonicalBatch} batch
  */
 export function compactRoutingRuns(batch) {
-  if (!batch.audits.some((record) => record.type === 'session.format')) return;
+  if (!batch.audits.some((record) => record.type === 'session.format')) {
+    debugModelRouting({ event: 'compact-routing', status: 'skipped', reason: 'no-session-format', audits: batch.audits.length });
+    return;
+  }
+  const startedAt = Date.now();
   const auditProjection = databaseQueries.find((query) => query.name === 'audits');
   if (!auditProjection?.select) throw new TypeError('Routing ingestion requires the canonical Audit projection');
   const definitions = /** @type {Array<Record<string, unknown>>} */ (resolveDashboardQueryParameters([...routing.queries, ...ingestionQueries],
@@ -58,8 +64,11 @@ export function compactRoutingRuns(batch) {
     $audits: input('$audits', batch.audits), $runs: input('$runs', batch.runs)
   }, ['routing-ingestion-aggregate'])['routing-ingestion-aggregate'];
   if (result.metadata?.availability === 'unavailable') {
+    debugModelRouting({ event: 'compact-routing', status: 'unavailable', audits: batch.audits.length, runs: batch.runs.length });
     throw new TypeError(`Routing aggregate unavailable: ${JSON.stringify(result.metadata)}`);
   }
+  debugModelRouting({ event: 'compact-routing', status: 'aggregated', audits: batch.audits.length,
+    runs: batch.runs.length, aggregateRows: result.rows.length, durationMs: Date.now() - startedAt });
   const runs = new Map(batch.runs.map((run) => [run.id, run]));
   for (const row of result.rows) {
     const run = runs.get(row['canonical-run-id']);

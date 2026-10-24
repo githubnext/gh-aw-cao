@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "specification": "specs/dashboard-data.md#722-additive-daily-run-counts",
+  "scope": "Implemented additive daily run counts only; not the proposed three-tier architecture.",
+  "deferred": [
+    "sampling",
+    "hot-tier limits",
+    "native weekly aggregate partitions",
+    "other aggregate metrics",
+    "full scope-level evidence reconciliation"
+  ],
+  "requirements": {
+    "activity-runtime": "Checked-in cao-activity workflow collects GitHub simulator evidence with real gh-aw, ingests and publishes daily counts, restores cache, replays, corrects reruns and rebuilds recycle-only snapshots",
+    "classification": "UTC execution-start days and exclusive health counters summing to total",
+    "reconciliation": "Replay, winning attempts, explicit nulls, corrections and atomic replacement",
+    "retention": "Independent detail expiry, three UTC weeks, rollover, future exclusion and replay fences",
+    "backfill": "Bounded resumable upgrade, unchanged retained detail and partial historical coverage",
+    "availability": "Undated evidence and absent or incomplete state cannot manufacture healthy zeros",
+    "workflow-health": "Shipped workflow runtime health query sums observations without detail fallback",
+    "daily-chart": "Shipped runtime health chart preserves UTC buckets, zero classes and supported scope",
+    "repository-chart": "Shipped repository chart preserves scoped counts, inventory identities and coverage",
+    "native-browser": "Chromium native IndexedDB and a real data worker preserve all migrated consumers"
+  },
+  "suites": [
+    {
+      "id": "coverage-contract",
+      "runner": "node",
+      "files": ["tests/unit/dashboard-daily-run-counts-conformance.test.mjs"],
+      "coverage": {}
+    },
+    {
+      "id": "activity-sqlite",
+      "runner": "node",
+      "files": ["tests/unit/activity-daily-run-counts.test.mjs"],
+      "coverage": {
+        "retention": "Activity doctor publishes UTC rollover eviction independently of detail TTL and fences changed-shard replay",
+        "backfill": "Activity SQLite v44 upgrade backfills multiple cursor pages without rewriting retained detail"
+      }
+    },
+    {
+      "id": "activity-actions-runtime",
+      "runner": "node",
+      "files": ["tests/integration/activity-actions-runtime.test.mjs"],
+      "coverage": {
+        "activity-runtime": "cao-activity collects simulator runs and publishes replay-safe daily counts through the Actions runtime"
+      }
+    },
+    {
+      "id": "indexeddb-worker",
+      "runner": "vitest",
+      "files": [
+        "dashboard/site/test/unit/data-daily-run-counts.test.js",
+        "dashboard/site/test/unit/data-daily-run-count-retention.test.js",
+        "dashboard/site/test/unit/repository-activity-query-optimization.test.js"
+      ],
+      "coverage": {
+        "classification": "matches every mutually exclusive runtime health class and uses UTC start dates only",
+        "reconciliation": "rolls back canonical run, contribution and bucket changes together on a count write failure",
+        "retention": "runs independent TTL and weekly eviction through deferred ingestion and unchanged replay in %s",
+        "backfill": "resumes an interrupted v%s backfill with bounded cursors and byte-identical retained detail",
+        "availability": "fails closed for absent state in direct and native production queries",
+        "workflow-health": "composes the shipped workflow health query through the worker after corrections and detail deletion",
+        "daily-chart": "serves the shipped daily chart with scoped UTC buckets, corrections, and no detail dependency",
+        "repository-chart": "lists repository run counts and drill links through the production worker boundary"
+      }
+    },
+    {
+      "id": "chromium-worker",
+      "runner": "playwright",
+      "files": ["dashboard/site/test/e2e/indexeddb-stress.spec.js"],
+      "pattern": "(production data worker preserves daily health and repository chart coverage after detail eviction|native IndexedDB ingestion expires detail and weekly counts on unchanged-shard finalization)$",
+      "coverage": {
+        "retention": "native IndexedDB ingestion expires detail and weekly counts on unchanged-shard finalization",
+        "native-browser": "production data worker preserves daily health and repository chart coverage after detail eviction"
+      }
+    },
+    {
+      "id": "native-cli",
+      "runner": "go",
+      "directory": ".",
+      "packages": ["./internal/cli"],
+      "pattern": "^TestNative(DailyCountsSource|RepositoryRunInventoryDailyAvailability)$",
+      "files": ["internal/cli/native_daily_counts_test.go", "internal/cli/native_daily_inventory_test.go"],
+      "coverage": {
+        "availability": "TestNativeDailyCountsSource",
+        "repository-chart": "TestNativeRepositoryRunInventoryDailyAvailability"
+      }
+    },
+    {
+      "id": "hosted-sqlite",
+      "runner": "go",
+      "directory": "server",
+      "packages": ["./internal/sqlitex"],
+      "pattern": "^Test(DailyCounts|RepositoryRunInventoryDailyAvailability)",
+      "files": ["server/internal/sqlitex/daily_counts_test.go"],
+      "coverage": {
+        "retention": "TestDailyCountsSnapshotSourceWithoutDetail",
+        "availability": "TestDailyCountsOldSnapshotUnavailable",
+        "repository-chart": "TestRepositoryRunInventoryDailyAvailability"
+      }
+    },
+    {
+      "id": "postgresql",
+      "runner": "go",
+      "directory": "server",
+      "packages": ["./internal/postgresx"],
+      "pattern": "^Test(DailyCounts|DailyAggregateLeftJoinMetadata|RepositoryRunInventoryDailyAvailability)",
+      "files": [
+        "server/internal/postgresx/daily_counts_test.go",
+        "server/internal/postgresx/daily_counts_null_test.go",
+        "server/internal/postgresx/daily_counts_reconciliation_test.go",
+        "server/internal/postgresx/daily_counts_retention_test.go",
+        "server/internal/postgresx/source_metadata_test.go"
+      ],
+      "coverage": {
+        "classification": "TestDailyCountsClassifyReplayCorrectionAndPreserve",
+        "reconciliation": "TestDailyCountsExplicitNullCorrections",
+        "retention": "TestDailyCountsRetentionRolloverRollbackReplayAndClockRegression",
+        "backfill": "TestDailyCountsBoundedBackfillBatches",
+        "availability": "TestRepositoryRunInventoryDailyAvailability",
+        "repository-chart": "TestRepositoryRunInventoryDailyAvailability"
+      }
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import {
 } from '../../src/data/storage/indexeddb.js';
 import { normalize } from '../../src/data/normalize/index.js';
 import { tidy } from '../../src/data-operations.js';
+import { protectedRunCountBytes } from '../../src/data/model/daily-run-counts.js';
 
 const LEGACY_PACKAGES_DATABASE_VERSION = 17;
 
@@ -188,10 +189,11 @@ describe('canonical IndexedDB', () => {
       observedAt
     })));
 
+    const countState = (await readCollections(indexedDB, ['dailyRunCountState'])).dailyRunCountState[0];
     await maintainCanonicalDatabase(indexedDB, {
       now: Date.parse('2026-09-10T00:00:00Z'),
       retentionWindowMs: 30 * 24 * 60 * 60 * 1000,
-      maxDatabaseBytes: 3_000
+      maxDatabaseBytes: 3_000 + protectedRunCountBytes(countState) / 0.75
     });
 
     const retainedRuns = await readCollection(indexedDB, 'runs');
@@ -260,6 +262,8 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyRunCountState',
+      'dailyRunCounts',
       'domains',
       'evalObservations',
       'evals',
@@ -273,6 +277,7 @@ describe('canonical IndexedDB', () => {
       'operationalValueEvidence',
       'operationalValues',
       'repositories',
+      'runCountContributions',
       'runs',
       'skills',
       'storageShards',
@@ -309,7 +314,7 @@ describe('canonical IndexedDB', () => {
 
   it('removes persisted aggregate stores when upgrading an existing database', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 2);
       request.onupgradeneeded = () => {
         request.result.createObjectStore('dailyOverviewAggregates', { keyPath: 'id' });
         request.result.createObjectStore('overviewAggregateMetadata', { keyPath: 'id' });
@@ -335,7 +340,7 @@ describe('canonical IndexedDB', () => {
     expect(upgrading).not.toHaveBeenCalled();
     await deleteCanonicalDatabase(indexedDB);
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 2);
       request.onupgradeneeded = () => request.result.createObjectStore('legacy');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -414,6 +419,8 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyRunCountState',
+      'dailyRunCounts',
       'domains',
       'evalObservations',
       'evals',
@@ -427,6 +434,7 @@ describe('canonical IndexedDB', () => {
       'operationalValueEvidence',
       'operationalValues',
       'repositories',
+      'runCountContributions',
       'runs',
       'skills',
       'storageShards',
@@ -441,7 +449,7 @@ describe('canonical IndexedDB', () => {
 
   it('clears stale marketplace snapshots when package identity changes', async () => {
     const legacy = await new Promise((resolve, reject) => {
-      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 1);
+      const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION - 2);
       request.onupgradeneeded = () => {
         const packages = request.result.createObjectStore('marketplacePackages', { keyPath: 'id' });
         packages.put({ id: 'official:example/packages/demo@old' });
@@ -482,6 +490,8 @@ describe('canonical IndexedDB', () => {
     expect([...database.objectStoreNames]).toEqual([
       'audits',
       'campaigns',
+      'dailyRunCountState',
+      'dailyRunCounts',
       'domains',
       'evalObservations',
       'evals',
@@ -495,6 +505,7 @@ describe('canonical IndexedDB', () => {
       'operationalValueEvidence',
       'operationalValues',
       'repositories',
+      'runCountContributions',
       'runs',
       'skills',
       'storageShards',
@@ -541,7 +552,8 @@ describe('canonical IndexedDB', () => {
       repositories: canonicalBatch.repositories,
       campaigns: canonicalBatch.campaigns
     });
-    expect(transactions).toHaveBeenCalledTimes(1);
+    expect(transactions).toHaveBeenCalledTimes(2);
+    expect(transactions).toHaveBeenCalledWith('dailyRunCountState');
     expect(transactions).toHaveBeenCalledWith(['repositories', 'campaigns']);
     transactions.mockRestore();
   });
@@ -936,6 +948,7 @@ describe('canonical IndexedDB', () => {
   });
 
   it('preserves the original write error when transaction abort also fails', async () => {
+    (await openCanonicalDatabase(indexedDB)).close();
     const replacement = normalize([]);
     replacement.repositories = [{ id: 'repository:1' }];
     const originalPut = IDBObjectStore.prototype.put;

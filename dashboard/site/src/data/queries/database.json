@@ -95,6 +95,23 @@
     }]
   },
   {
+    "name": "daily-run-counts",
+    "stores": ["dailyRunCounts"],
+    "from": "$dailyRunCounts",
+    "select": [
+      { "field": "day" },
+      { "field": "owner", "as": "organization" },
+      { "field": "repository" },
+      { "field": "workflowPath", "as": "workflow" },
+      { "field": "total" },
+      { "field": "successful" },
+      { "field": "failed" },
+      { "field": "approval" },
+      { "field": "pending" },
+      { "field": "other" }
+    ]
+  },
+  {
     "name": "routing-aggregates",
     "stores": ["runs"],
     "from": "$runs",
