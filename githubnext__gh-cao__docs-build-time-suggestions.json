@@ -3,34 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-22T17:38:58Z",
-      "worker_run_id": "39824026473",
-      "category": "Astro documentation generation",
-      "evidence_run_ids": [
-        39823859903,
-        39823340588,
-        39821934769,
-        39821931566,
-        39819044759,
-        39817676191,
-        39817383914,
-        39817038075,
-        39816354801,
-        39814418042,
-        39814393375,
-        39811384405,
-        39810377245,
-        39810257564,
-        39809708440,
-        39808334179,
-        39807825131,
-        39807186345,
-        39807089515,
-        39806601059
-      ],
-      "outcome": "no-op: the 2026-10-22T15:37:38Z to 2026-10-22T17:34:11Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Five successful build-and-deploy runs were comparable (two push, two workflow_run, and one schedule, across two source SHAs): median/p90 end-to-end 93/668 seconds, initial queue or concurrency wait 3/349.6 seconds, queue-excluded execution 90/318.8 seconds, build job 69/89.2 seconds, and deploy job 9/49.8 seconds. docs.yml has no dashboard job because dashboard generation is reused from cao-dashboard.yml; the latest five successful dashboard producer workflows were 34/683.2 seconds median/p90 end-to-end and their build jobs were 21/439 seconds, with one older manual-dispatch producer dominating p90. Dependency installation was 18/20.8 seconds, Astro generation 10/13.2 seconds, dashboard-cache restoration 1/2 seconds, and Pages artifact upload 2/3 seconds. Bounded trusted logs verified npm package-cache hits of about 301 MB and reusable dashboard-cache hits of about 3 MB on all five comparable builds; trusted step metadata showed all five skipped dashboard artifact fallback. Astro generation was 11.1% of median queue-excluded execution, and eliminating it entirely would save only 10 seconds, below both the 60-second and 15% actionability thresholds. No correctness-preserving Astro change met the threshold, so the category advanced. Run 39814418042 waited 580 seconds before build and 293 seconds between build completion and deploy start, and its 74-second Deploy Pages step was disclosed as a concurrency/deployment outlier rather than attributed to Astro."
-    },
-    {
       "evaluated_at": "2026-10-22T17:53:23Z",
       "worker_run_id": "39826129909",
       "category": "reusable dashboard generation",
@@ -757,6 +729,34 @@
         40027585845
       ],
       "outcome": "incomplete: the 2026-10-23T21:33:02Z to 2026-10-24T01:54:35Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Run metadata showed only four successful runs long enough to plausibly contain the recently observed 62-75 second build path, so the required five comparable successful build-and-deploy runs were not available. A bounded follow-up job-metadata request then hit an OS-thread resource limit (failed to create a new OS thread). Per resource-limit policy, all further API and model work stopped. Workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T02:26:50Z",
+      "worker_run_id": "40053971247",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [
+        40052532232,
+        40051897521,
+        40050519437,
+        40050211598,
+        40048891001,
+        40048322967,
+        40047130409,
+        40043057001,
+        40041469818,
+        40040264232,
+        40039211316,
+        40039164850,
+        40037228871,
+        40035689948,
+        40035174045,
+        40034330979,
+        40033195230,
+        40030833753,
+        40029180516,
+        40028915755
+      ],
+      "outcome": "incomplete: the 2026-10-23T21:44:11Z to 2026-10-24T02:03:05Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Run metadata showed only three successful runs long enough to contain the recently observed 62-75 second build path: workflow_run 40050211598, schedule 40039211316, and workflow_run 40039164850, all at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. The other successful runs completed in 25 seconds or less and therefore cannot contain a comparable build-and-deploy path. This is below the required minimum of five comparable successful runs, so workflow/job/step median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
