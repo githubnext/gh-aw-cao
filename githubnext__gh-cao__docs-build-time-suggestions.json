@@ -3,13 +3,6 @@
   "next_category": "dependency installation and caching",
   "evaluations": [
     {
-      "evaluated_at": "2026-10-23T00:48:59Z",
-      "worker_run_id": "39880040627",
-      "category": "artifact transfer and Pages packaging",
-      "evidence_run_ids": [],
-      "outcome": "incomplete: GitHub Actions evidence collection was stopped immediately because both bounded workflow-run list requests for docs.yml and cao-dashboard.yml returned an API rate-limit error. No current evidence window or run IDs could be collected, so the required five comparable successful docs runs, workflow/job/step timing distributions, cache-hit verification, outlier disclosure, and duplicate open-issue check could not be completed. Per resource-limit policy, no further GitHub API or model work was attempted. No recommendation was made, and artifact transfer and Pages packaging remains the next category."
-    },
-    {
       "evaluated_at": "2026-10-23T01:49:27Z",
       "worker_run_id": "39885857412",
       "category": "artifact transfer and Pages packaging",
@@ -736,6 +729,13 @@
         40079039344
       ],
       "outcome": "incomplete: the 2026-10-24T08:41:43Z to 2026-10-24T12:02:21Z latest-20 completed docs.yml window contained 17 successful and three skipped runs, with no failed or cancelled runs. Trusted job and step metadata established only three successful build-and-deploy paths: schedule 40085620594 at source SHA 22a3655f4893cfa0c2ea0b846c5a04a693c39f46, push 40085544587 at source SHA a31193495a7499e7f79752280964f86092f6ba9a, and schedule 40081732363 at source SHA 1b5e3cd85fcf6f4c9b4419414839f4371b445389. Workflow_run 40081734662 waited behind the concurrent publication, then freshness-checked and skipped build and deploy; every other successful run completed in 14 seconds or less and cannot contain the observed 75-99 second build paths. This is below the required minimum of five comparable successful runs, so workflow/job median and p90 timings, repeated trusted cache-hit verification, dashboard-producer comparison, and a complete dependency installation and caching evaluation could not be produced. No recommendation was made, and dependency installation and caching remains the next category."
+    },
+    {
+      "evaluated_at": "2026-10-24T12:45:35Z",
+      "worker_run_id": "40095064250",
+      "category": "dependency installation and caching",
+      "evidence_run_ids": [],
+      "outcome": "incomplete: both bounded latest-completed workflow-run requests for docs.yml and cao-dashboard.yml returned GitHub API rate-limit errors before a current evidence window could be collected. Per resource-limit policy, all further GitHub API and model work stopped. The required five comparable successful runs, workflow and dashboard/build/deploy job median and p90 timings, step-level cost analysis, trusted cache-hit verification, outlier disclosure, and duplicate open-issue check could not be completed. No recommendation was made, and dependency installation and caching remains the next category."
     }
   ]
 }
