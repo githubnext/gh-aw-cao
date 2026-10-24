@@ -59,9 +59,10 @@ test("slow integration workflows run on relevant main pushes, not pull requests"
     assert.equal(runsForFile(name, "push", "server/README.md"), false, name);
     assert.ok(Object.hasOwn(triggers, "workflow_dispatch"), name);
   }
-  for (const name of ["actions.yml", "dashboard-deployed-integration.yml", "dashboard-views.yml"]) {
-    assert.ok(parse(workflow(name)).on.schedule.length > 0, name);
+  for (const name of ["actions.yml", "dashboard-views.yml"]) {
+    assert.ok(Object.hasOwn(parse(workflow(name)).on, "workflow_call"), name);
   }
+  assert.ok(parse(workflow("dashboard-deployed-integration.yml")).on.schedule.length > 0);
 });
 
 test("MCP parity keeps service-backed Go integration tests out of its contract step", () => {
@@ -268,7 +269,7 @@ test("Go extension keeps authenticated doctor integration separate from unit and
   assert.deepEqual(permissions, { contents: "read" });
   assert.equal(job.permissions, undefined);
   assert.equal(job.env?.GH_TOKEN, undefined);
-  assert.equal(job.if, undefined);
+  assert.equal(job.if, "github.event_name != 'pull_request'");
   assert.equal(job.needs, undefined);
   assert.equal(quality.needs, undefined);
   assert.equal(install.if, undefined);
@@ -311,7 +312,7 @@ test("Go extension setup simulator runs only on main pushes, independently witho
     GITHUB_ENTERPRISE_TOKEN: "",
   });
   assert.equal(job.env, undefined);
-  assert.equal(job.if, "github.event_name == 'push' && github.ref == 'refs/heads/main'");
+  assert.equal(job.if, "github.event_name != 'pull_request' && github.ref == 'refs/heads/main'");
   assert.deepEqual(triggers.push.branches, ["main"]);
   assert.ok(triggers.pull_request, "PR quality and authenticated doctor checks remain enabled");
   assert.equal(job.needs, undefined);
@@ -442,15 +443,17 @@ test("main pushes retain browser and integration coverage for representative inp
 
 test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", () => {
   const cases = [
-    ["workflow-contracts.yml", ["unit", "test", "agent-plugin", "installer"], [
+    ["workflow-contracts.yml", ["unit", "test"], [
+      "agent-plugin", "installer",
       "full-contracts", "github-issue-query",
       "dependabot-operational-value", "campaign-lifecycle-changes",
     ]],
     ["cgo.yml", ["server-quality", "server-spec"], [
+      "windows-local-server", "actions-simulator-postgres",
       "server-backfill", "server-stress", "redis-dashboard-integration",
     ]],
     ["cid.yml", ["lint-unit", "dead-views"], [
-      "playwright-integration", "query-complexity", "lighthouse-performance",
+      "pages", "playwright-integration", "query-complexity", "lighthouse-performance",
     ]],
   ];
   for (const [name, fastJobs, mainJobs] of cases) {
@@ -466,8 +469,9 @@ test("mixed workflows keep fast checks on PRs and gate expensive jobs off PRs", 
   }
   const contracts = parse(workflow("workflow-contracts.yml")).jobs;
   assert.match(contracts["campaign-lifecycle"].if, /github\.event_name != 'pull_request'/);
-  assert.match(contracts.test.if, /!cancelled\(\)/);
-  assert.ok(contracts.test.steps.some((step) => step.name === "Require successful unit areas"));
+  assert.equal(contracts["fast-contracts"].needs, undefined, "fast checks run in parallel with unit areas");
+  assert.deepEqual(contracts.test.needs, ["changes", "unit", "fast-contracts"]);
+  assert.equal(contracts.test.if, "always()");
 });
 
 test("PR reporters do not start for skipped main-only producers", () => {

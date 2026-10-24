@@ -69,6 +69,9 @@ on:
       - dashboard/site/dashboard-fragments/**
       - dashboard/report/bundle-dashboards.mjs
 
+  workflow_dispatch:
+  workflow_call:
+
 permissions:
   contents: read
 
@@ -111,6 +114,7 @@ jobs:
       - name: Check extension
         run: make check
       - name: Check GitHub CLI release installation
+        if: github.event_name != 'pull_request'
         run: node --test tests/integration/gh-extension-installation.test.mjs
       - name: Check standalone execution without Node.js
         run: |
@@ -136,7 +140,7 @@ jobs:
   extension-setup-simulator:
     name: Setup against local GitHub and Azure simulators
     # Keep the full external-tool topology matrix off the PR critical path.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -191,6 +195,7 @@ jobs:
 
   extension-authtests:
     name: Doctor authenticated integration tests
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
