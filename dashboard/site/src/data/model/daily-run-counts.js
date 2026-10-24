@@ -60,7 +60,7 @@ export function reconcileRunCountRecord(previous, incoming) {
       JSON.stringify(COMPACT_FIELDS.map((field) => value[field] ?? null));
     const rank = (/** @type {Record<string, unknown>} */ value) =>
       Number(value.status === 'completed' || ['success', 'failure', 'startup-failure', 'stale',
-        'timed-out', 'action-required'].includes(String(value.conclusion)));
+        'timed-out', 'action-required'].includes(String(value.conclusion).replaceAll('_', '-')));
     return { run: rank(before) !== rank(merged)
       ? rank(before) > rank(merged) ? before : merged
       : key(before) > key(merged) ? before : merged, conflict: true };
@@ -75,7 +75,7 @@ export function dailyRunCountContribution(run) {
   if (![run.repositoryId, run.workflowId, run.owner, run.repository, run.workflowPath]
     .every((value) => typeof value === 'string' && value.length > 0)) return null;
   const day = new Date(startedAt).toISOString().slice(0, 10);
-  const conclusion = run.conclusion;
+  const conclusion = String(run.conclusion ?? '').replaceAll('_', '-');
   const status = String(run.status ?? '');
   const category = conclusion === 'success' ? 'successful'
     : ['failure', 'startup-failure', 'stale', 'timed-out'].includes(String(conclusion)) ? 'failed'

@@ -16,6 +16,10 @@ on:
       - tests/contracts/daily-run-counts.json
       - tests/unit/activity-daily-run-counts.test.mjs
       - tests/unit/dashboard-daily-run-counts-conformance.test.mjs
+      - tests/integration/activity-actions-runtime.test.mjs
+      - tests/helpers/actions-runtime/**
+      - .github/workflows/cao-activity.yml
+      - .github/actions/setup-cao-runtime/**
       - server/**
       - "!dashboard/site/**/*.md"
       - "!server/**/*.md"
@@ -37,6 +41,10 @@ on:
       - tests/contracts/daily-run-counts.json
       - tests/unit/activity-daily-run-counts.test.mjs
       - tests/unit/dashboard-daily-run-counts-conformance.test.mjs
+      - tests/integration/activity-actions-runtime.test.mjs
+      - tests/helpers/actions-runtime/**
+      - .github/workflows/cao-activity.yml
+      - .github/actions/setup-cao-runtime/**
       - tests/e2e/dashboard-server.spec.mjs
       - tests/playwright/configs/dashboard-server.config.mjs
       - "!dashboard/site/**/*.md"
@@ -87,6 +95,8 @@ jobs:
       - name: Install native Chromium
         working-directory: dashboard/site
         run: npx playwright install --with-deps chromium
+      - name: Pull isolated Activity runner image
+        run: docker pull node:24-bookworm
       - name: Verify the implemented daily aggregate contract across backends
         env:
           POSTGRES_URL: postgresql://postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/cao_daily_test?sslmode=disable

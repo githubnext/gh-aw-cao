@@ -91,8 +91,9 @@ describe('additive daily run outcome counts', () => {
   it('matches every mutually exclusive runtime health class and uses UTC start dates only', () => {
     for (const [conclusion, status, category] of [
       ['success', 'queued', 'successful'],
-      ...['failure', 'startup-failure', 'stale', 'timed-out'].map((value) => [value, 'completed', 'failed']),
-      ['action-required', 'queued', 'approval'], ['cancelled', 'queued', 'pending'],
+      ...['failure', 'startup-failure', 'startup_failure', 'stale', 'timed-out', 'timed_out']
+        .map((value) => [value, 'completed', 'failed']),
+      ['action-required', 'queued', 'approval'], ['action_required', 'queued', 'approval'], ['cancelled', 'queued', 'pending'],
       [null, 'in_progress', 'pending'], ['unknown', '', 'other'], [null, 'completed', 'other']
     ]) {
       const row = dailyRunCountContribution({ ...fixture, conclusion, status });

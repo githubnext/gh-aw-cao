@@ -124,6 +124,19 @@ func TestDailyCountsClassifyReplayCorrectionAndPreserve(t *testing.T) {
 	}
 }
 
+func TestDailyCountsGitHubConclusionSpellings(t *testing.T) {
+	store, _ := nativeTestStore(t)
+	dailyPublish(t, store,
+		dailyRun("timeout", "timed_out", "completed"),
+		dailyRun("startup", "startup_failure", "completed"),
+		dailyRun("approval", "action_required", "queued"))
+	for field, want := range map[string]int64{"total": 3, "successful": 0, "failed": 2, "approval": 1, "pending": 0, "other": 0} {
+		if got := dailyTotals(t, store)[field]; got != want {
+			t.Fatalf("%s=%d want=%d", field, got, want)
+		}
+	}
+}
+
 func TestDailyCountsRollbackBackfillAndNamespace(t *testing.T) {
 	store, config := nativeTestStore(t)
 	// Simulate pre-extension canonical detail, then backfill without editing it.

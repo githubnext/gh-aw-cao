@@ -10,6 +10,7 @@
     "full scope-level evidence reconciliation"
   ],
   "requirements": {
+    "activity-runtime": "Checked-in cao-activity workflow collects GitHub simulator evidence with real gh-aw, ingests and publishes daily counts, restores cache, replays, corrects reruns and rebuilds recycle-only snapshots",
     "classification": "UTC execution-start days and exclusive health counters summing to total",
     "reconciliation": "Replay, winning attempts, explicit nulls, corrections and atomic replacement",
     "retention": "Independent detail expiry, three UTC weeks, rollover, future exclusion and replay fences",
@@ -34,6 +35,14 @@
       "coverage": {
         "retention": "Activity doctor publishes UTC rollover eviction independently of detail TTL and fences changed-shard replay",
         "backfill": "Activity SQLite v44 upgrade backfills multiple cursor pages without rewriting retained detail"
+      }
+    },
+    {
+      "id": "activity-actions-runtime",
+      "runner": "node",
+      "files": ["tests/integration/activity-actions-runtime.test.mjs"],
+      "coverage": {
+        "activity-runtime": "cao-activity collects simulator runs and publishes replay-safe daily counts through the Actions runtime"
       }
     },
     {

@@ -26,7 +26,7 @@
     "test:integration:dashboard-backfill": "bash scripts/test-dashboard-backfill.sh",
     "test:integration:actions-simulator": "go -C server test -race ./internal/simulator ./internal/admission ./internal/webhookgateway ./cmd/cao-webhook-gateway -run '^(TestLocalActions|TestSpecLocalHost|TestGatewayAPI|TestIssueServiceSimulator($|HTTP|GatewaySQLite)|TestGitHubSimulator(Gateway|Discovery)SQLite)' -count=1 -timeout=2m -v",
     "test:integration:issue-services": "go -C server test -race ./internal/simulator ./internal/webhookgateway -run '^TestIssueServiceSimulator($|HTTP|GatewaySQLite)' -count=1 -timeout=2m -v",
-    "test:integration:actions-runtime": "node --test tests/integration/actions-runtime.test.mjs",
+    "test:integration:actions-runtime": "node --test --test-concurrency=1 tests/integration/actions-runtime.test.mjs tests/integration/activity-actions-runtime.test.mjs",
     "test:integration:bootstrap": "CAO_BOOTSTRAP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAOBootstrapIntegration|TestBootstrap)' -count=1 -timeout=10m -v",
     "test:integration:setup": "CAO_SETUP_INTEGRATION=1 go -C server test -race ./internal/simulator -run '^(TestCAO(Setup|HostedCLISetup)Integration|TestSetup)' -count=1 -timeout=10m -v",
     "test:integration:setup-azure": "CAO_SETUP_AZURE_INTEGRATION=1 GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOVCS='*:off' go -C server test -race ./internal/simulator -run '^(TestCAOSetupAzureIntegration|TestSetupAzure|TestLocalTransport)' -count=1 -timeout=10m -v",

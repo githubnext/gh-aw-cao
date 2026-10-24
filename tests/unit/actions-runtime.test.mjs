@@ -1,13 +1,42 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parse } from "yaml";
 import { condition, evaluate, interpolate } from "../helpers/actions-runtime/expressions.mjs";
 import { sampleWorkflow } from "../helpers/actions-runtime/workflow.mjs";
+import { publishFile } from "../helpers/actions-runtime/index.mjs";
 
 const context = {
   status: "success", github: { event: {} }, env: {}, inputs: {},
   steps: { admission: { outputs: { authorized: "true" } } },
   vars: {}, secrets: {}, needs: {},
 };
+
+test("runtime tool publication isolates overlapping writers and preserves complete cached files on failure", t => {
+  const directory = mkdtempSync(join(tmpdir(), "cao-runtime-publish-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const target = join(directory, "tool");
+  publishFile(target, first => {
+    writeFileSync(first, "first");
+    assert.equal(existsSync(target), false);
+    publishFile(target, second => {
+      assert.notEqual(first, second);
+      writeFileSync(second, "second");
+      assert.equal(existsSync(first), true);
+    });
+    assert.equal(readFileSync(target, "utf8"), "second");
+    assert.equal(existsSync(first), true);
+  });
+  assert.equal(readFileSync(target, "utf8"), "first");
+  assert.throws(() => publishFile(target, temporary => {
+    writeFileSync(temporary, "incomplete");
+    throw new Error("checksum mismatch");
+  }), /checksum mismatch/);
+  assert.equal(readFileSync(target, "utf8"), "first");
+  assert.deepEqual(readdirSync(directory), ["tool"]);
+});
 
 test("sample runner expressions preserve values, short circuit and missing properties", () => {
   assert.equal(evaluate("steps.admission.outputs.authorized == 'true'", context), true);
@@ -21,6 +50,27 @@ test("sample runner expressions preserve values, short circuit and missing prope
   assert.equal(interpolate("${{ true }}", context), true);
   assert.equal(interpolate("report-${{ steps.admission.outputs.authorized }}", context), "report-true");
   assert.equal(interpolate("${{ true }}/${{ false }}", context), "true/false");
+  assert.equal(evaluate("join(fromJSON('[\"one\",\"two\"]'), ',')", context), "one,two");
+});
+
+test("Activity runtime coverage executes the checked-in workflow with the real collector and cache handoffs", () => {
+  const source = readFileSync(new URL("../integration/activity-actions-runtime.test.mjs", import.meta.url), "utf8");
+  assert.match(source, /const workflow = "\.github\/workflows\/cao-activity\.yml"/);
+  assert.match(source, /cacheSeed: join\(output, "cache"\)/);
+  assert.match(source, /correction: true/);
+  assert.match(source, /"recycle-only": true/);
+  const tools = readFileSync(new URL("../helpers/actions-runtime/index.mjs", import.meta.url), "utf8");
+  assert.match(tools, /github\/gh-aw\/releases\/download/);
+  assert.match(tools, /checksum mismatch/i);
+  const { scripts } = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8"));
+  assert.match(scripts["test:integration:actions-runtime"], /tests\/integration\/activity-actions-runtime\.test\.mjs/);
+  const ci = parse(readFileSync(new URL("../../.github/workflows/actions-runtime.yml", import.meta.url), "utf8"));
+  for (const trigger of ["pull_request", "push"]) {
+    for (const path of ["activity/**", "tests/helpers/actions-runtime/**", "dashboard/site/src/data/**",
+      ".github/workflows/cao-activity.yml", "tests/integration/*actions-runtime.test.mjs"]) {
+      assert.ok(ci.on[trigger].paths.includes(path), `${trigger}: ${path}`);
+    }
+  }
 });
 
 test("sample runner honors implicit success and explicit failure/always conditions", () => {

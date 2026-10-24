@@ -86,6 +86,7 @@ export function evaluate(source, context) {
         case "failure": return context.status === "failure";
         case "toJSON": return JSON.stringify(args[0]);
         case "fromJSON": return JSON.parse(args[0]);
+        case "join": return args[0].join(args[1] ?? ",");
         case "contains": return Array.isArray(args[0])
           ? args[0].map(lower).includes(lower(args[1]))
           : String(args[0]).toLowerCase().includes(String(args[1]).toLowerCase());

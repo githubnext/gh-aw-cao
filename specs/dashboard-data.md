@@ -4523,7 +4523,10 @@ The source exposes `day`, `organization`, `repository`, `workflow`, `total`,
 `successful`, `failed`, `approval`, `pending`, and `other`. Counters SHALL be
 nonnegative integers. `successful` means conclusion `success`; `failed` means
 `failure`, `startup-failure`, `stale`, or `timed-out`; `approval` means
-`action-required`. An otherwise unclassified Run is `pending` only when status
+`action-required`. GitHub's underscore spellings `startup_failure`, `timed_out`,
+and `action_required` SHALL classify identically to their hyphenated equivalents
+without rewriting the recorded Run or receipt conclusion.
+An otherwise unclassified Run is `pending` only when status
 is present and not `completed`; the remainder is `other`. These five counters
 SHALL sum to `total`. Runtime success SHALL NOT imply accepted outcomes or
 operational value. Pending counts describe last-observed state, not a live
@@ -4606,6 +4609,12 @@ Run `POSTGRES_URL=... npm run test:conformance:daily-run-counts` from the
 repository root against an isolated PostgreSQL database whose test role can
 create schemas. The suite requires real PostgreSQL and rejects skipped or
 unexecuted Go tests; an unset connection is a failure, not a passing backend.
+Docker must be running with `node:24-bookworm` available (`docker pull
+node:24-bookworm`). The Activity runtime test downloads checksum-verified GitHub
+CLI, jq, and the policy-pinned gh-aw collector before executing the checked-in
+workflow in a credential-free, network-isolated container. It runs a loopback-only
+GitHub simulator, not a mocked `gh aw logs` command; missing tools or Docker fail
+the suite rather than skip coverage.
 Chromium must be installed for the native-browser test; Node's IndexedDB
 emulation alone is not conformance (§50). Browser reports also reject empty,
 skipped, failed, or retry-only success. Node and Vitest reports reject empty,
@@ -4624,6 +4633,7 @@ evidence. The command runs these existing production-boundary suites:
 | Suite | Implemented contract exercised |
 | --- | --- |
 | Activity SQLite | CLI normalization, phased ingestion, doctor repair, replay, publication, and bounded legacy backfill |
+| Activity Actions runtime | Full checked-in `cao-activity.yml` planning, collection with real gh-aw and simulated GitHub logs/artifacts, phased ingestion, SQLite digest publication, cache restoration, replay, higher-attempt correction, recycle-only reconstruction without API reads, and shipped daily health query after detail expiry |
 | IndexedDB and worker | Shared reconciliation cases, exclusive UTC counters, atomic corrections, logical retention, resumed backfill, unavailable state, and all three migrated query consumers |
 | Native Chromium worker | Real IndexedDB and a module Web Worker preserve all three migrated consumers through corrections, detail expiry, aggregate rollover, and unavailable state |
 | Native CLI | Canonical SQLite daily source and unavailable legacy snapshots |
@@ -4638,7 +4648,7 @@ additional metrics, native weekly aggregate partitions, or full scope-level
 evidence reconciliation.
 
 The `daily-run-counts-conformance` job in `.github/workflows/cgo.yml` runs this
-same command with a PostgreSQL service and native Chromium on relevant pull
+same command with a PostgreSQL service, Docker, and native Chromium on relevant pull
 requests and main-branch pushes. Root unit CI also enforces the coverage contract
 and verifies that this cross-backend job remains wired.
 

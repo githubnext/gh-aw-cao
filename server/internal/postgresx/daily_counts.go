@@ -145,8 +145,8 @@ func (s *Store) backfillDailyOnce(ctx context.Context) error {
 }
 
 const dailyOutcomeSQL = `CASE WHEN conclusion='success' THEN 'successful'
-	WHEN conclusion IN ('failure','startup-failure','stale','timed-out') THEN 'failed'
-	WHEN conclusion='action-required' THEN 'approval'
+	WHEN replace(conclusion,'_','-') IN ('failure','startup-failure','stale','timed-out') THEN 'failed'
+	WHEN replace(conclusion,'_','-')='action-required' THEN 'approval'
 	WHEN coalesce(status,'')<>'' AND status<>'completed' THEN 'pending' ELSE 'other' END`
 
 func dailyCutoff(now time.Time) time.Time {
@@ -218,7 +218,7 @@ func reconcileDailyCounts(ctx context.Context, namespace, runID string, now time
 	}
 	merged = append(merged, "("+strings.Join(known, "+")+")::bigint AS known_fields")
 	rank := func(alias string) string {
-		return "CASE WHEN " + alias + ".status='completed' OR " + alias + ".conclusion IN ('success','failure','startup-failure','stale','timed-out','action-required') THEN 1 ELSE 0 END"
+		return "CASE WHEN " + alias + ".status='completed' OR replace(" + alias + ".conclusion,'_','-') IN ('success','failure','startup-failure','stale','timed-out','action-required') THEN 1 ELSE 0 END"
 	}
 	key := func(alias string) string {
 		values := make([]string, 0, 12)

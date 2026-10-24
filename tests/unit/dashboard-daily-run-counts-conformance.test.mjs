@@ -10,7 +10,7 @@ import {
 test('daily run-count conformance maps every implemented requirement to runnable existing tests', () => {
   const suites = validateContract(contract);
   assert.deepEqual(suites.map((suite) => suite.id), [
-    'coverage-contract', 'activity-sqlite', 'indexeddb-worker', 'chromium-worker', 'native-cli', 'hosted-sqlite', 'postgresql'
+    'coverage-contract', 'activity-sqlite', 'activity-actions-runtime', 'indexeddb-worker', 'chromium-worker', 'native-cli', 'hosted-sqlite', 'postgresql'
   ]);
   for (const id of ['indexeddb-worker', 'postgresql']) {
     const suite = suites.find((entry) => entry.id === id);
@@ -109,6 +109,7 @@ test('daily run-count CI runs the cross-backend command with PostgreSQL and nati
   assert.equal(job.services.postgres.image, 'postgres:16-alpine');
   assert.equal(job.env?.POSTGRES_URL, undefined);
   assert.ok(job.steps.some((step) => step.run === 'npx playwright install --with-deps chromium'));
+  assert.ok(job.steps.some((step) => step.run === 'docker pull node:24-bookworm'));
   const conformance = job.steps.find((step) => step.run === 'npm run test:conformance:daily-run-counts');
   assert.ok(conformance);
   assert.match(conformance.env.POSTGRES_URL, /job\.services\.postgres\.ports/);
