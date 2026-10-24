@@ -313,3 +313,111 @@ queries:
 See the [view catalog](dashboard-view-catalog.md) for available pages, marks,
 charts, and named UI elements. For every field, function, validation rule, and
 conformance requirement, use the [Dashboard Language Specification](dashboard-language-specification.md).
+
+## Flint chart review: candidate language extensions
+
+This informative review compares
+[Microsoft Flint](https://github.com/microsoft/flint-chart/tree/a794557384adcc3293a77043f6b9aff1c33d152c)
+with Dashboard Language as of **24 October 2026**. It evaluates design ideas,
+not a renderer integration. No new JSON keys or runtime behavior are introduced
+by this review; the specification remains authoritative.
+
+**Decision:** borrow Flint's separation of chart meaning and interaction intent,
+not its runtime or full chart vocabulary. Prioritize a small declarative
+cross-series inspection capability for a follow-up proposal. Consider
+query-bound brushing next, only after its parameter and subscription semantics
+are specified. Do not add a Flint dependency, backend-native configuration, or
+custom interaction callbacks.
+
+### Evidence and capability comparison
+
+The review uses a pinned upstream revision rather than a moving gallery:
+
+- [API reference](https://github.com/microsoft/flint-chart/blob/a794557384adcc3293a77043f6b9aff1c33d152c/docs/api-reference.md):
+  semantic field annotations, chart encodings, renderer support, layout limits,
+  and validation.
+- [Interaction specification](https://github.com/microsoft/flint-chart/blob/a794557384adcc3293a77043f6b9aff1c33d152c/docs/interaction-spec.md):
+  named presets, capability requirements, reset gestures, and conflicting
+  gesture ownership.
+- [Interactive exports](https://github.com/microsoft/flint-chart/blob/a794557384adcc3293a77043f6b9aff1c33d152c/packages/flint-js/src/interactive/index.ts):
+  inspection, navigation, chart linking, filter controls, and update contracts.
+
+This is a source/documentation review, not a browser evaluation or performance
+benchmark. Flint's interaction specification describes the Vega-Lite interactive
+surface; static assemblers do not execute interactions. Multi-backend chart
+support therefore does not establish equivalent interaction support.
+
+| Flint idea | Existing Dashboard Language boundary | Recommendation |
+| --- | --- | --- |
+| `inspect-index`: compare series at one x position | Multi-series lines and per-mark accessible labels/tooltips exist, but there is no authored cross-series inspection preset. | **First candidate:** a bounded interaction declaration on temporal line charts, implemented by the shared renderer. |
+| `brush-x` and `linked-brush`: select an interval or related groups | Page forms already bind typed query parameters; filters and subscriptions already execute through the canonical query boundary. Chart gestures are not declared parameter producers. | **Second candidate:** explicit gesture-to-parameter bindings, not a second filtering engine. Start with one temporal interval; defer arbitrary linked selections. |
+| Semantic annotations with units, intrinsic domains, category order, and colors | Intrinsic field types, reusable units, canonical ordering, semantic status colors, and stable category palettes already cover much of this intent. | **Reuse first.** Consider explicit ordinal domains only for a demonstrated ordering gap; do not infer units or business meaning from titles. |
+| Capability-aware interaction validation and reset policies | The language already validates mark/channel compatibility and rejects unsupported vocabulary. | **Adopt with any interaction extension:** validate prerequisites and gesture conflicts before rendering. Unlike Flint's warning-and-drop behavior, reject unsupported authored behavior rather than silently losing it. |
+| Adaptive layout with target and maximum canvas sizes | Responsive layouts, facets, bounded chart payloads, and shared styling already exist. | **Renderer improvement, not new JSON initially.** Measure label collisions and mobile overflow before exposing additional authoring knobs. |
+| Broad chart catalog, multiple backends, themes, native Excel export | CAO uses a constrained operational vocabulary and shared Primer styling; chart layers already compose area, bar, line, dot, and rule marks. | **Defer.** Add a mark only for an identified operational question not answered by existing marks/layers. Backend selection, arbitrary themes, and Excel export are separate product decisions. |
+
+The CAO baseline is the specification's
+[view contract](dashboard-language-specification.md#11-custom-pages), including
+**DLS-VIEW-005**, **DLS-VIEW-037**, and **DLS-VIEW-048**, its field/unit and
+palette rules in Section 11.1, and **DLS-FORM-005** /
+**DLS-QUERY-027–028** for typed parameter execution. The shared implementation
+boundaries are `dashboard/site/src/components/chart-elements.js`,
+`dashboard/site/src/chart-layer-specification.js`, and the canonical query
+compiler under `dashboard/site/src/data/`.
+
+### First candidate: cross-series inspection
+
+The operational question is: “At this observed time bucket, how do the selected
+workflows' or models' values compare?” A shared inspection cursor would avoid
+requiring readers to target each series separately.
+
+The follow-up language proposal should describe inspection intent independently
+of chart encodings, with a small enumerated vocabulary rather than Flint's
+entire preset/options surface. It should define:
+
+- Support initially for temporal line charts with a common query-produced x
+  field and compatible units; layered, faceted, and independent-scale charts
+  need separate semantics before becoming eligible.
+- A bounded, worker-produced comparison payload in deterministic series order.
+  Pointer or keyboard movement selects an existing comparison entry; the
+  component does not join series, filter source rows, or compute values.
+- Exact observed buckets and values, preserving units and evidence quality.
+  An absent series value stays absent, never zero, interpolated, or carried
+  forward. Inspection does not change aggregates, query scope, or chart links.
+- Pointer, touch, and keyboard access to the same labeled comparison; Escape
+  clears inspection, focus remains stable, and color is not the sole identifier.
+- Refresh and cleanup through the active abort-scoped query subscription.
+  Replacing data invalidates a selection that no longer exists; leaving the view
+  removes listeners and transient state.
+
+Acceptance should cover multi-series and sparse buckets, mixed-unit rejection,
+empty/unavailable/partial evidence, refreshed data, keyboard and touch parity,
+and bounded payload/rendering cost. Existing documents remain valid and retain
+their behavior when the optional declaration is omitted.
+
+### Second candidate: brushing through query parameters
+
+Brushing is useful for narrowing a usage spike and seeing corresponding run
+details. Its declaration should name the source axis, destination page
+parameters, and affected queries explicitly; it should not infer relationships
+from view IDs or send selected raw rows between components.
+
+Before adding syntax, specify temporal parameter typing, interval boundary
+semantics, reset behavior, and interaction with the page's existing time scope.
+The current form contract is not a ready-made temporal brush contract.
+Committing a gesture should update validated parameters and replace the canonical
+query subscription; transient dragging may update the owned selection overlay
+only. Reset restores the declared scope, never a broader implicit query.
+Invalid or missing bindings fail closed rather than removing a predicate.
+
+Acceptance should include boundary timestamps, empty selections, reset,
+superseded responses, database refresh during selection, keyboard alternatives,
+and navigation cleanup. No renderer callback may filter rows or reconstruct
+cross-view relationships. Neither inspection nor brushing grants CLI execution,
+repository access, or control-plane authority.
+
+Any implementation should update the normative specification, validator,
+declarative view/contract fixtures, shared renderer, and focused tests together;
+query-bound behavior also requires worker and hosted-query parity coverage.
+This review deliberately leaves final key names and implementation for that
+separately reviewed contract.
