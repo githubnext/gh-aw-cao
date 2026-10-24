@@ -244,6 +244,38 @@ func TestDailyCountsBoundedBackfillBatches(t *testing.T) {
 	if totals := dailyTotals(t, store); totals["total"] != int64(len(rows)) || totals["successful"] != int64(len(rows)) {
 		t.Fatalf("bounded receipt batches dropped or duplicated runs: %v", totals)
 	}
+	detailDigest := func() string {
+		t.Helper()
+		var digest string
+		if err := store.db.QueryRowContext(t.Context(), `SELECT md5(string_agg(row_to_json(r)::text,'' ORDER BY id))
+			FROM runs r WHERE namespace=$1`, store.namespace).Scan(&digest); err != nil {
+			t.Fatal(err)
+		}
+		return digest
+	}
+	before := detailDigest()
+	// Remove only the projection to exercise legacy backfill across the 512-row
+	// cursor boundary, not just ordinary ingestion with multiple write batches.
+	for _, statement := range []string{
+		"DELETE FROM daily_run_counts WHERE namespace=$1",
+		"DELETE FROM run_count_contributions WHERE namespace=$1",
+		"DELETE FROM daily_run_count_state WHERE namespace=$1",
+	} {
+		if _, err := store.db.ExecContext(t.Context(), statement, store.namespace); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for range 2 {
+		if err := store.backfillDailyOnce(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if totals := dailyTotals(t, store); totals["total"] != int64(len(rows)) || totals["successful"] != int64(len(rows)) {
+			t.Fatalf("bounded legacy backfill dropped or duplicated runs: %v", totals)
+		}
+	}
+	if after := detailDigest(); after != before {
+		t.Fatal("bounded legacy backfill changed retained canonical detail")
+	}
 }
 
 func TestDailyCountsInitializedReopenDoesNotTakeWriterLock(t *testing.T) {

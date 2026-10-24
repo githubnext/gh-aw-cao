@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   CANONICAL_DATABASE_SCHEMA, DATABASE_NAME, DATABASE_VERSION, ENTITY_STORES,
@@ -263,7 +264,7 @@ describe('additive daily run outcome counts', () => {
 
   it.each(['indexeddb', 'sqlite'])('bounds timeless and future-revision undated receipts in %s', async (backend) => {
     if (backend === 'sqlite') {
-      const directory = mkdtempSync('/tmp/cao-undated-retention-');
+      const directory = mkdtempSync(join(tmpdir(), 'cao-undated-retention-'));
       directories.push(directory);
       installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
     }
@@ -287,7 +288,7 @@ describe('additive daily run outcome counts', () => {
 
   it.each(['indexeddb', 'sqlite'])('preserves the retained-day replay guard when a correction removes the start date in %s', async (backend) => {
     if (backend === 'sqlite') {
-      const directory = mkdtempSync('/tmp/cao-undated-correction-');
+      const directory = mkdtempSync(join(tmpdir(), 'cao-undated-correction-'));
       directories.push(directory);
       installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
     }
@@ -310,7 +311,7 @@ describe('additive daily run outcome counts', () => {
 
   it.each(['indexeddb', 'sqlite'])('evicts weekly buckets and receipts atomically with replay fencing in %s', async (backend) => {
       if (backend === 'sqlite') {
-        const directory = mkdtempSync('/tmp/cao-daily-retention-');
+        const directory = mkdtempSync(join(tmpdir(), 'cao-daily-retention-'));
         directories.push(directory);
         installSqliteIndexedDB(join(directory, 'canonical.sqlite'));
       }

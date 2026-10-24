@@ -4567,6 +4567,48 @@ hot-tier limits, and full scope-level evidence reconciliation from the
 [three-tier proposal](../adr/three-tier-operational-storage.md) remain separate
 work.
 
+### Daily run-count conformance
+
+Run `POSTGRES_URL=... npm run test:conformance:daily-run-counts` from the
+repository root against an isolated PostgreSQL database whose test role can
+create schemas. The suite requires real PostgreSQL and rejects skipped or
+unexecuted Go tests; an unset connection is a failure, not a passing backend.
+Chromium must be installed for the native-browser test; Node's IndexedDB
+emulation alone is not conformance (§50). Browser reports also reject empty,
+skipped, failed, or retry-only success. Node and Vitest reports reject empty,
+skipped, or todo tests. Every runner MUST report a passing result for each
+declared coverage test; a successful process with other passing tests does not
+cover a required test omitted by inherited selectors such as `GOFLAGS=-skip`.
+Tests create and remove isolated
+PostgreSQL schemas. Scratch files use
+`.tmp/drc/` within the checkout (short enough for Chromium's Unix socket).
+
+The machine-readable coverage contract is
+`tests/contracts/daily-run-counts.json`. Its enforcement tests require existing
+test evidence for every listed requirement and ensure Go selectors include that
+evidence. The command runs these existing production-boundary suites:
+
+| Suite | Implemented contract exercised |
+| --- | --- |
+| Activity SQLite | CLI normalization, phased ingestion, doctor repair, replay, publication, and bounded legacy backfill |
+| IndexedDB and worker | Shared reconciliation cases, exclusive UTC counters, atomic corrections, logical retention, resumed backfill, unavailable state, and all three migrated query consumers |
+| Native Chromium worker | Real IndexedDB and a module Web Worker preserve all three migrated consumers through corrections, detail expiry, aggregate rollover, and unavailable state |
+| Native CLI | Canonical SQLite daily source and unavailable legacy snapshots |
+| Hosted Go SQLite | Read-only aggregate source, retained provenance, unavailable snapshots, and repository inventory joins |
+| Hosted PostgreSQL | Native transactional reconciliation, explicit nulls, bounded backfill, namespace isolation, retention rollback/replay fences, and aggregate join provenance |
+
+The worker suites ingest canonical Runs and resolve shipped queries through the
+production worker boundary rather than synthesizing daily source rows. This
+conformance command covers only §72.2's implemented additive projection. It does
+not assert the proposed three-tier architecture's sampling, hot-tier limits,
+additional metrics, native weekly aggregate partitions, or full scope-level
+evidence reconciliation.
+
+The `daily-run-counts-conformance` job in `.github/workflows/cgo.yml` runs this
+same command with a PostgreSQL service and native Chromium on relevant pull
+requests and main-branch pushes. Root unit CI also enforces the coverage contract
+and verifies that this cross-backend job remains wired.
+
 ## 72.10 Data-worker heap budgets
 
 The data worker's peak heap SHALL be measured against the deployed
