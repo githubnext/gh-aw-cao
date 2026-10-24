@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -28,14 +31,14 @@ func TestLocalBackfillCollectsSnapshotScopeWithLocalToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	now := time.Now().UTC()
-	run := func(id int, at time.Time) []byte {
+	now := time.Now().UTC().Truncate(time.Second)
+	run := func(id int, at time.Time, status, conclusion string) []byte {
 		content, err := json.Marshal(map[string]any{
 			"schema_version": 2, "kind": "run", "run": map[string]any{
 				"organization": "octo", "repository": "one", "run_id": id, "run_attempt": 1,
 				"workflow_name": "test", "workflow_path": ".github/workflows/test.lock.yml",
-				"created_at": at.Format(time.RFC3339), "updated_at": at.Format(time.RFC3339),
-				"status": "completed", "conclusion": "success",
+				"created_at": at.Format(time.RFC3339), "updated_at": at.Add(time.Minute).Format(time.RFC3339),
+				"status": status, "conclusion": conclusion,
 			},
 		})
 		if err != nil {
@@ -45,7 +48,10 @@ func TestLocalBackfillCollectsSnapshotScopeWithLocalToken(t *testing.T) {
 	}
 	snapshot := filepath.Join(directory, "snapshot.sqlite")
 	fixture := filepath.Join(directory, "run.jsonl")
-	if err := os.WriteFile(fixture, run(123, now.Add(-2*time.Hour)), 0o600); err != nil {
+	seed := append(run(123, now.Add(-2*time.Hour), "completed", "success"),
+		run(122, now.Add(-8*24*time.Hour), "completed", "failure")...)
+	seed = append(seed, run(121, now.Add(-time.Hour), "in_progress", "")...)
+	if err := os.WriteFile(fixture, seed, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	// #nosec G204 -- fixed runtime command and test-owned temporary files.
@@ -59,7 +65,7 @@ func TestLocalBackfillCollectsSnapshotScopeWithLocalToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(fixture, run(124, now), 0o600); err != nil {
+	if err := os.WriteFile(fixture, run(124, now, "completed", "failure"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	arguments := filepath.Join(directory, "arguments")
@@ -90,11 +96,59 @@ cp "` + fixture + `" "${cache}1.jsonl"
 	t.Setenv("GH_TOKEN", "local-test-token")
 	t.Setenv("GITHUB_TOKEN", "unused-other-token")
 	overlay := filepath.Join(directory, "overlay.sqlite")
-	store, err := sqlitex.OpenOverlay(t.Context(), snapshot, overlay, nil)
+	site := t.TempDir()
+	if err := os.WriteFile(filepath.Join(site, "index.html"), []byte("<html>Dashboard</html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	app, err := NewLocalSQLiteOverlayApp(t.Context(), snapshot, overlay, 0, Config{
+		Listen: "127.0.0.1:8080", SiteDirectory: site, AccessToken: testAccessToken,
+		DatabaseQueriesPath: filepath.Join(root, "dashboard/site/src/data/queries/database.json"),
+		Logger:              log.New(&bytes.Buffer{}, "", 0),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = store.Close() }()
+	if err := app.Start(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = app.Stop(context.WithoutCancel(t.Context())) }()
+	store := app.database.(*sqlitex.Store)
+	querySample := func(expectedRuns []string, exactCount int) queryResponse {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "http://localhost/api/v1/query",
+			strings.NewReader(`{"sourceNames":["statistical-runs","runs"]}`))
+		req.Header.Set("Content-Type", "application/json")
+		authorize(req)
+		response := httptest.NewRecorder()
+		app.Handler().ServeHTTP(response, req)
+		var result queryResponse
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil || response.Code != http.StatusOK {
+			t.Fatalf("sample HTTP query: %d %s %v", response.Code, response.Body.String(), err)
+		}
+		sample := result.Sources["statistical-runs"]
+		frame, ok := sample.Metadata["statistical-frame"].(map[string]any)
+		if !ok || frame["capacity"] != float64(8000) ||
+			frame["population-count"] != float64(len(expectedRuns)) ||
+			frame["selected-count"] != float64(len(expectedRuns)) ||
+			frame["watermark-policy"] != "canonical-run-max" ||
+			frame["selection-stage"] != "before-consumer-filter" || frame["weight-valid"] != false {
+			t.Fatalf("missing conservative SQLite frame: %+v", sample.Metadata)
+		}
+		ids := make([]string, 0, len(sample.Rows))
+		for _, row := range sample.Rows {
+			ids = append(ids, row["run"].(string))
+			if row["statistical-frame-id"] != frame["frame-id"] ||
+				row["statistical-weight-valid"] != false || row["statistical-weight"] != nil {
+				t.Fatalf("sample row lost its conservative frame binding: %+v", row)
+			}
+		}
+		slices.Sort(ids)
+		if !slices.Equal(ids, expectedRuns) || len(result.Sources["runs"].Rows) != exactCount {
+			t.Fatalf("incorrect statistical/exact membership: %+v", result.Sources)
+		}
+		return result
+	}
+	initialQuery := querySample([]string{"123"}, 3)
 	initial, err := store.State(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -116,8 +170,22 @@ cp "` + fixture + `" "${cache}1.jsonl"
 		t.Fatalf("local refresh: %v\n%s", err, logs.String())
 	}
 	state, err := store.State(t.Context())
-	if err != nil || state.Counts["$runs"] != 2 || published == 0 || published == initial.Revision {
+	if err != nil || state.Counts["$runs"] != 4 || published == 0 || published == initial.Revision {
 		t.Fatalf("refresh did not publish fresher rows: %+v published=%d err=%v", state, published, err)
+	}
+	refreshed := querySample([]string{"123", "124"}, 4)
+	initialFrame := initialQuery.Sources["statistical-runs"].Metadata["statistical-frame"].(map[string]any)
+	refreshedFrame := refreshed.Sources["statistical-runs"].Metadata["statistical-frame"].(map[string]any)
+	if refreshed.Revision == initialQuery.Revision || refreshedFrame["frame-id"] == initialFrame["frame-id"] ||
+		refreshedFrame["watermark"] != now.Add(time.Minute).Format("2006-01-02T15:04:05.000Z") {
+		t.Fatalf("backfill did not refresh HTTP sampling frame: %+v", refreshed)
+	}
+	if err := b.refresh(t.Context(), log.New(&logs, "", 0), func(revision int64) { published = revision }); err != nil {
+		t.Fatalf("replay local refresh: %v", err)
+	}
+	replayed := querySample([]string{"123", "124"}, 4)
+	if replayed.Sources["statistical-runs"].Metadata["statistical-frame"].(map[string]any)["frame-id"] != refreshedFrame["frame-id"] {
+		t.Fatal("replayed evidence changed statistical membership frame")
 	}
 	after, err := os.ReadFile(snapshot) // #nosec G304 -- test-owned temporary snapshot.
 	if err != nil || !bytes.Equal(before, after) {

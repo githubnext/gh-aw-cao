@@ -4,6 +4,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writ
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { queryDatabaseSources } from "../../dashboard/site/src/data/queries/database.js";
+import { installSqliteIndexedDB } from "../../dashboard/site/src/data/storage/sqlite-indexeddb.js";
 import { prepareActivityTools, root, run, simulate } from "../helpers/actions-runtime/index.mjs";
 
 const repository = "simulator/repo-00001";
@@ -61,7 +63,45 @@ function health(filename) {
   ], { cwd: root })).rows;
 }
 
-test("cao-activity collects simulator runs and publishes replay-safe daily counts through the Actions runtime", { timeout: 600_000 }, () => {
+async function statisticalSample(filename) {
+  const composition = JSON.parse(run(process.execPath, [
+    "activity/cao.mjs", "query", "engines-models-sample-distribution", "--database", filename,
+  ], { cwd: root }));
+  const sources = await queryDatabaseSources(installSqliteIndexedDB(filename), {}, ["statistical-runs", "statistical-audits"], {
+    statisticalCapacity: 8000,
+  });
+  const result = sources["statistical-runs"];
+  const frame = result.metadata["statistical-frame"];
+  assert.ok(frame, "published snapshot must resolve statistical-runs through the production query boundary");
+  assert.equal(frame.capacity, 8000);
+  assert.equal(frame["population-count"], 4);
+  assert.equal(frame["selected-count"], 4);
+  assert.equal(frame["selection-stage"], "before-consumer-filter");
+  assert.equal(frame["watermark-policy"], "canonical-run-max");
+  assert.deepEqual(composition.metadata["statistical-frame"], frame);
+  assert.equal(composition.rows.reduce((count, row) => count + row["sampled-runs"], 0), 4);
+  assert.deepEqual(result.rows.map(row => String(row.run)).sort(), ["1", "2", "3", "7"]);
+  for (const row of result.rows) {
+    assert.equal(row["statistical-frame-id"], frame["frame-id"]);
+    assert.ok(Date.parse(row["started-at"]) >= Date.parse(frame["window-start"]));
+    assert.ok(Date.parse(row["started-at"]) < Date.parse(frame.watermark));
+    // A downloaded snapshot alone does not attest complete upstream collection.
+    assert.equal(row["statistical-weight-valid"], false);
+    assert.equal(row["statistical-weight"] ?? null, null);
+  }
+  const audits = sources["statistical-audits"];
+  assert.deepEqual(audits.metadata["statistical-frame"], frame);
+  assert.ok(audits.rows.length > 0, "collected audit details must resolve through sampled Run membership");
+  for (const row of audits.rows) {
+    assert.ok(result.rows.some(run => run.run === row.run));
+    assert.equal(row["statistical-frame-id"], frame["frame-id"]);
+    assert.equal(row["statistical-weight-valid"], false);
+    assert.equal(row["statistical-weight"] ?? null, null);
+  }
+  return result;
+}
+
+test("cao-activity publishes replay-safe daily counts and statistical queries through the Actions runtime", { timeout: 600_000 }, async () => {
   const parent = join(root, ".tmp/actions-runtime");
   mkdirSync(parent, { recursive: true });
   const directory = mkdtempSync(join(parent, "activity-"));
@@ -104,6 +144,8 @@ test("cao-activity collects simulator runs and publishes replay-safe daily count
   }];
   const snapshotDatabase = join(output, "artifacts/cao-activity-index/gh-aw-logs.sqlite");
   assert.deepEqual(health(snapshotDatabase), expected);
+  const initialSample = await statisticalSample(snapshotDatabase);
+  assert.equal(initialSample.rows.find(row => row.run === "2")["run-conclusion"], "failure");
   assert.ok(readdirSync(join(output, "cache")).some(name => name.startsWith("cao-activity-v5-")));
 
   const replayOutput = join(directory, "replay");
@@ -111,6 +153,9 @@ test("cao-activity collects simulator runs and publishes replay-safe daily count
     cacheSeed: join(output, "cache"), activity: { asOf, runId: 2 } });
   assert.deepEqual(published(replayOutput).dailyRunCounts, initial.dailyRunCounts);
   assert.equal(published(replayOutput).runCountContributions.length, 8);
+  const replaySample = await statisticalSample(join(replayOutput, "artifacts/cao-activity-index/gh-aw-logs.sqlite"));
+  assert.deepEqual(replaySample.rows, initialSample.rows);
+  assert.deepEqual(replaySample.metadata["statistical-frame"], initialSample.metadata["statistical-frame"]);
 
   const correctedOutput = join(directory, "corrected");
   simulate({ workspace, workflow, event, eventName: "workflow_dispatch", output: correctedOutput, tools,
@@ -120,6 +165,11 @@ test("cao-activity collects simulator runs and publishes replay-safe daily count
   assert.equal(corrected.runCountContributions.find(row => row.run.id.endsWith(":2")).run.attempt, 2);
   const correctedHealth = [{ ...expected[0], successful: 3, failed: 3 }];
   assert.deepEqual(health(join(correctedOutput, "artifacts/cao-activity-index/gh-aw-logs.sqlite")), correctedHealth);
+  const correctedSample = await statisticalSample(join(correctedOutput, "artifacts/cao-activity-index/gh-aw-logs.sqlite"));
+  const correctedRun = correctedSample.rows.find(row => row.run === "2");
+  assert.equal(correctedRun["run-attempt"], 2);
+  assert.equal(correctedRun["run-conclusion"], "success");
+  assert.notEqual(correctedSample.metadata["statistical-frame"]["frame-id"], initialSample.metadata["statistical-frame"]["frame-id"]);
 
   const recycleOutput = join(directory, "recycle");
   const recycledReport = simulate({ workspace, workflow,
@@ -131,6 +181,9 @@ test("cao-activity collects simulator runs and publishes replay-safe daily count
   assert.deepEqual(recycledReport.requests, []);
   assert.deepEqual(published(recycleOutput).dailyRunCounts, corrected.dailyRunCounts);
   assert.deepEqual(health(join(recycleOutput, "artifacts/cao-activity-index/gh-aw-logs.sqlite")), correctedHealth);
+  const recycledSample = await statisticalSample(join(recycleOutput, "artifacts/cao-activity-index/gh-aw-logs.sqlite"));
+  assert.deepEqual(recycledSample.rows, correctedSample.rows);
+  assert.deepEqual(recycledSample.metadata["statistical-frame"], correctedSample.metadata["statistical-frame"]);
 
   const repairedDatabase = join(directory, "repaired.sqlite");
   cpSync(snapshotDatabase, repairedDatabase);
